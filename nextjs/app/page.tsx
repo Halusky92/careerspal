@@ -594,7 +594,7 @@ export default function Page() {
     <div className="min-h-screen flex flex-col bg-[#F8F9FD]">
       {currentView !== "admin" && (
         <Navbar
-          onNavigate={(v) => {
+          onNavigate={(v: View) => {
             if (v === "find") setGlobalSearchQuery("");
             if (v === "post") setSelectedPlan({ type: "Standard", price: 79 });
             setCurrentView(v as any);
