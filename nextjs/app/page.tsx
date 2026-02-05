@@ -1,740 +1,330 @@
-"use client";
+'use client';
 
-import React, { useEffect, useMemo, useState } from "react";
-import Navbar from "../../components/Navbar";
-import Hero from "../../components/Hero";
-import FindJobs from "../../components/FindJobs";
-import PostJob from "../../components/PostJob";
-import HireTalent from "../../components/HireTalent";
-import Pricing from "../../components/Pricing";
-import PrivacyPolicy from "../../components/PrivacyPolicy";
-import TermsOfService from "../../components/TermsOfService";
-import AccessibilityStatement from "../../components/AccessibilityStatement";
-import AboutUs from "../../components/AboutUs";
-import AIChatPanel from "../../components/AIChatPanel";
-import EmployerDashboard from "../../components/EmployerDashboard";
-import CandidateDashboard from "../../components/CandidateDashboard";
-import AdminDashboard from "../../components/AdminDashboard";
-import SalaryInsights from "../../components/SalaryInsights";
-import Auth from "../../components/Auth";
-import Checkout from "../../components/Checkout";
-import JobDetail from "../../components/JobDetail";
-import CompanyProfile from "../../components/CompanyProfile";
-import Newsletter from "../../components/Newsletter";
-import Testimonials from "../../components/Testimonials";
-import { Job, Company } from "../../types";
-import { MOCK_COMPANIES, MOCK_JOBS } from "../../constants";
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Hero from '../components/Hero';
+import Testimonials from '../components/Testimonials';
+import Newsletter from '../components/Newsletter';
+import AIChatPanel from '../components/AIChatPanel';
+import { Job } from '../types';
+import { getAllJobs, createJobSlug, createCompanySlug } from '../lib/jobs';
 
-type View =
-  | "home"
-  | "find"
-  | "post"
-  | "hire"
-  | "terms"
-  | "pricing"
-  | "privacy"
-  | "contact"
-  | "about"
-  | "accessibility"
-  | "manage"
-  | "auth"
-  | "checkout"
-  | "job-detail"
-  | "company-profile"
-  | "salaries"
-  | "admin";
+const planWeight = { 'Elite Managed': 3, 'Featured Pro': 2, Standard: 1 };
 
-export type PlanType = "Standard" | "Featured Pro" | "Elite Managed";
+const isNewListing = (postedAt: string) => {
+  const lower = postedAt.toLowerCase();
+  return lower.includes('just now') || lower.includes('hour') || lower.includes('min');
+};
 
-interface User {
-  email: string;
-  role: "candidate" | "employer";
-  savedJobIds?: string[];
-}
-
-export default function Page() {
-  const [currentView, setCurrentView] = useState<View>("home");
-  const [user, setUser] = useState<User | null>(null);
-
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-
-  const [pendingJobData, setPendingJobData] = useState<any>(null);
-  const [selectedPlan, setSelectedPlan] = useState<{
-    type: PlanType;
-    price: number;
-  }>({ type: "Standard", price: 79 });
-  const [localJobs, setLocalJobs] = useState<Job[]>([]);
-  const [globalSearchQuery, setGlobalSearchQuery] = useState("");
-
-  const allJobs = useMemo(() => {
-    return [...localJobs, ...MOCK_JOBS];
-  }, [localJobs]);
+export default function HomePage() {
+  const router = useRouter();
+  const [jobs, setJobs] = useState<Job[]>(() => getAllJobs());
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("cp_user");
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      if (!parsedUser.savedJobIds) parsedUser.savedJobIds = [];
-      setUser(parsedUser);
-      if (parsedUser.email === "admin@careerspal.com") {
-        setCurrentView("admin");
+    const loadJobs = async () => {
+      try {
+        const response = await fetch("/api/jobs");
+        const data = (await response.json()) as { jobs?: Job[] };
+        if (Array.isArray(data.jobs)) {
+          setJobs(data.jobs);
+        }
+      } catch {
+        // keep fallback
       }
-    }
-
-    const savedLocalJobs = JSON.parse(
-      localStorage.getItem("cp_my_jobs") || "[]"
-    );
-    setLocalJobs(savedLocalJobs);
-
-    const savedJob = sessionStorage.getItem("cp_pending_job");
-    if (savedJob) setPendingJobData(JSON.parse(savedJob));
+    };
+    loadJobs();
   }, []);
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [currentView]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("cp_user");
-    setUser(null);
-    setCurrentView("home");
-  };
-
-  const handleHeroSearch = (query: string) => {
-    setGlobalSearchQuery(query);
-    setCurrentView("find");
-  };
-
-  const handlePlanSelection = (type: PlanType, price: number) => {
-    setSelectedPlan({ type, price });
-    if (currentView !== "post") {
-      setCurrentView("post");
-    }
-  };
-
-  const handleJobSubmission = (data: any) => {
-    const finalJobData = {
-      ...data,
-      plan: selectedPlan,
-      planType: selectedPlan.type,
-    };
-    setPendingJobData(finalJobData);
-    sessionStorage.setItem("cp_pending_job", JSON.stringify(finalJobData));
-
-    if (!user || user.role !== "employer") {
-      setCurrentView("auth");
-    } else {
-      setCurrentView("checkout");
-    }
-  };
-
-  const handleAuthSuccess = (u: {
-    email: string;
-    role: "candidate" | "employer";
-  }) => {
-    const fullUser: User = { ...u, savedJobIds: [] };
-    setUser(fullUser);
-    localStorage.setItem("cp_user", JSON.stringify(fullUser));
-
-    if (u.email === "admin@careerspal.com") {
-      setCurrentView("admin");
-      return;
-    }
-
-    const pending = sessionStorage.getItem("cp_pending_job");
-    if (pending && u.role === "employer") {
-      setPendingJobData(JSON.parse(pending));
-      setCurrentView("checkout");
-    } else {
-      setCurrentView("manage");
-    }
-  };
-
-  const handleCheckoutSuccess = () => {
-    const updatedLocalJobs = JSON.parse(
-      localStorage.getItem("cp_my_jobs") || "[]"
-    );
-    setLocalJobs(updatedLocalJobs);
-    setPendingJobData(null);
-    sessionStorage.removeItem("cp_pending_job");
-    setCurrentView("manage");
-  };
-
-  const handleToggleBookmark = (jobId: string) => {
-    if (!user) {
-      setCurrentView("auth");
-      return;
-    }
-    if (user.role !== "candidate") {
-      alert("Only candidates can save jobs.");
-      return;
-    }
-
-    const currentSaved = user.savedJobIds || [];
-    const newSaved = currentSaved.includes(jobId)
-      ? currentSaved.filter((id) => id !== jobId)
-      : [...currentSaved, jobId];
-
-    const updatedUser = { ...user, savedJobIds: newSaved };
-    setUser(updatedUser);
-    localStorage.setItem("cp_user", JSON.stringify(updatedUser));
-  };
-
-  const handleOpenJobDetail = (job: Job) => {
-    setSelectedJob(job);
-    setCurrentView("job-detail");
-  };
-
-  const handleOpenCompanyProfile = (companyName: string) => {
-    const company = MOCK_COMPANIES[companyName] || {
-      name: companyName,
-      logo: "https://picsum.photos/100",
-      website: "#",
-      description: "Company information not fully available yet.",
-      longDescription: "This company has not completed their elite profile yet.",
-      foundedYear: "N/A",
-      employeeCount: "N/A",
-      headquarters: "Remote",
-      images: [],
-      techStack: [],
-      socialLinks: {},
-    };
-    setSelectedCompany(company);
-    setCurrentView("company-profile");
-  };
-
-  const sortedHomeJobs = useMemo(() => {
-    return [...allJobs].sort((a, b) => {
-      const planWeight = { "Elite Managed": 3, "Featured Pro": 2, Standard: 1 };
-      const weightA = planWeight[a.planType || "Standard"] || 1;
-      const weightB = planWeight[b.planType || "Standard"] || 1;
-
-      if (weightA !== weightB) {
-        return weightB - weightA;
-      }
-
-      const timeA = (a as any).timestamp || 0;
-      const timeB = (b as any).timestamp || 0;
-
-      return timeB - timeA;
+  const topJobs = useMemo(() => {
+    return [...jobs].sort((a, b) => {
+      const weightA = planWeight[a.planType || 'Standard'] || 1;
+      const weightB = planWeight[b.planType || 'Standard'] || 1;
+      if (weightA !== weightB) return weightB - weightA;
+      return (b.timestamp ?? 0) - (a.timestamp ?? 0);
     });
-  }, [allJobs]);
+  }, [jobs]);
+  const companyCount = useMemo(() => new Set(jobs.map((job) => job.company)).size, [jobs]);
+  const matchTotal = useMemo(() => jobs.reduce((sum, job) => sum + (job.matches || 0), 0), [jobs]);
 
-  const isNewListing = (postedAt: string) => {
-    const lower = postedAt.toLowerCase();
-    return (
-      lower.includes("just now") ||
-      lower.includes("hour") ||
-      lower.includes("min")
-    );
+  const handleSearch = (query: string) => {
+    router.push(`/jobs?query=${encodeURIComponent(query)}`);
   };
 
-  const renderView = () => {
-    switch (currentView) {
-      case "admin":
-        return <AdminDashboard onLogout={handleLogout} />;
-      case "auth":
-        return <Auth onAuthSuccess={handleAuthSuccess} />;
-      case "checkout":
-        return (
-          <Checkout
-            jobData={pendingJobData}
-            onSuccess={handleCheckoutSuccess}
-            onCancel={() => setCurrentView("post")}
-          />
-        );
-      case "find":
-        return (
-          <>
-            <FindJobs
-              jobs={allJobs}
-              onSelectJob={handleOpenJobDetail}
-              onSelectCompany={handleOpenCompanyProfile}
-              initialQuery={globalSearchQuery}
-              user={user}
-              onToggleBookmark={handleToggleBookmark}
-            />
-            <Testimonials />
-            <Newsletter />
-          </>
-        );
-      case "salaries":
-        return <SalaryInsights onBrowse={() => setCurrentView("find")} />;
-      case "job-detail":
-        return selectedJob ? (
-          <JobDetail
-            job={selectedJob}
-            allJobs={allJobs}
-            onBack={() => setCurrentView("find")}
-            onSelectJob={handleOpenJobDetail}
-            onSelectCompany={handleOpenCompanyProfile}
-          />
-        ) : (
-          <FindJobs
-            jobs={allJobs}
-            onSelectJob={handleOpenJobDetail}
-            onSelectCompany={handleOpenCompanyProfile}
-            user={user}
-            onToggleBookmark={handleToggleBookmark}
-          />
-        );
-      case "company-profile":
-        return selectedCompany ? (
-          <CompanyProfile
-            company={selectedCompany}
-            companyJobs={allJobs.filter((j) => j.company === selectedCompany.name)}
-            onBack={() => setCurrentView("find")}
-            onSelectJob={handleOpenJobDetail}
-          />
-        ) : (
-          <FindJobs
-            jobs={allJobs}
-            onSelectJob={handleOpenJobDetail}
-            onSelectCompany={handleOpenCompanyProfile}
-            user={user}
-            onToggleBookmark={handleToggleBookmark}
-          />
-        );
-      case "post":
-        return (
-          <PostJob
-            onComplete={handleJobSubmission}
-            selectedPlan={selectedPlan}
-            onUpgradePlan={handlePlanSelection}
-          />
-        );
-      case "manage":
-        if (user?.role === "employer") {
-          return (
-            <EmployerDashboard
-              onUpgrade={() => setCurrentView("pricing")}
-              onPostJob={() => {
-                setSelectedPlan({ type: "Standard", price: 79 });
-                setCurrentView("post");
-              }}
-            />
-          );
-        }
-        return (
-          <CandidateDashboard
-            onBrowse={() => setCurrentView("find")}
-            user={user}
-            allJobs={allJobs}
-          />
-        );
-      case "hire":
-        return (
-          <HireTalent
-            onPostJob={() => {
-              setSelectedPlan({ type: "Standard", price: 79 });
-              setCurrentView("post");
-            }}
-          />
-        );
-      case "pricing":
-        return <Pricing onSelectPlan={handlePlanSelection} />;
-      case "about":
-        return <AboutUs />;
-      case "privacy":
-        return <PrivacyPolicy />;
-      case "terms":
-        return <TermsOfService />;
-      case "accessibility":
-        return <AccessibilityStatement />;
-      case "contact":
-        return (
-          <div className="py-24 max-w-4xl mx-auto px-4 text-center">
-            <div className="mb-16">
-              <h1 className="text-6xl font-black text-slate-900 mb-6 tracking-tighter leading-none">
-                Let's Build the <span className="text-gradient">Future.</span>
-              </h1>
-              <p className="text-xl text-slate-500 font-medium max-w-2xl mx-auto italic leading-relaxed">
-                Have questions about hiring or want to optimize your Notion
-                workspace? I am here to help.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-              <div className="bg-white p-12 rounded-[4rem] shadow-2xl border border-slate-50 relative group">
-                <div className="relative w-56 h-56 mx-auto mb-8">
-                  <div className="absolute inset-0 bg-indigo-100 rounded-[3rem] scale-110 blur-2xl opacity-40 group-hover:opacity-60 transition-opacity"></div>
-                  <img
-                    src="https://raw.githubusercontent.com/stackblitz/stackblitz-images/main/marek-bilek-avatar.jpg"
-                    alt="Mgr. Marek Bilek"
-                    className="w-full h-full object-cover rounded-[2.5rem] border-[8px] border-white shadow-2xl relative z-10"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        "https://i.pravatar.cc/400?u=marekbilek";
-                    }}
-                  />
-                  <div className="absolute -bottom-4 -right-4 bg-indigo-600 text-white p-4 rounded-2xl shadow-xl z-20 animate-bounce">
-                    <svg
-                      className="w-6 h-6"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-                    </svg>
-                  </div>
-                </div>
-                <h2 className="text-4xl font-black text-slate-900 tracking-tight mb-1">
-                  Mgr. Marek Bilek
-                </h2>
-                <p className="text-indigo-600 font-black uppercase tracking-[0.4em] text-[10px] mb-6">
-                  CEO & Founder, CareersPal Elite
-                </p>
-                <div className="flex justify-center gap-3">
-                  <div className="px-5 py-2.5 bg-indigo-50 rounded-2xl text-[10px] font-black text-indigo-600 uppercase tracking-widest border border-indigo-100 shadow-sm">
-                    Notion Certified
-                  </div>
-                  <div className="px-5 py-2.5 bg-slate-50 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-widest border border-slate-100">
-                    Ops Architect
-                  </div>
-                </div>
-              </div>
+  const handleOpenJob = (job: Job) => {
+    router.push(`/jobs/${createJobSlug(job)}`);
+  };
 
-              <div className="space-y-6 text-left">
-                <div className="bg-indigo-600 p-12 rounded-[3.5rem] text-white shadow-2xl shadow-indigo-200 group hover:-translate-y-2 transition-transform cursor-pointer relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                  <h3 className="text-xs font-black uppercase tracking-[0.4em] opacity-60 mb-6">
-                    Direct Contact
-                  </h3>
-                  <p className="text-2xl sm:text-3xl font-black mb-3 break-words relative z-10">
-                    info@careerspal.com
-                  </p>
-                  <p className="text-indigo-200 font-bold italic relative z-10">
-                    I reply personally within 24 hours.
-                  </p>
-                </div>
-
-                <div className="bg-slate-900 p-12 rounded-[3.5rem] text-white group hover:-translate-y-2 transition-transform cursor-pointer">
-                  <h3 className="text-xs font-black uppercase tracking-[0.4em] opacity-40 mb-6">
-                    Social Ecosystem
-                  </h3>
-                  <div className="flex items-center gap-5">
-                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center font-black text-2xl text-slate-900 shadow-xl">
-                      in
-                    </div>
-                    <div>
-                      <p className="font-black text-xl">
-                        LinkedIn Professional
-                      </p>
-                      <p className="text-slate-500 text-sm font-medium">
-                        Join my network of 4k+ experts.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      default:
-        return (
-          <>
-            <Hero
-              onBrowse={() => setCurrentView("find")}
-              onJoinPool={() => setCurrentView("hire")}
-              onSearch={handleHeroSearch}
-              jobs={allJobs}
-            />
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-10 pb-20">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                <div className="lg:col-span-8 space-y-6">
-                  <div className="flex items-center justify-between px-2 mb-2">
-                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                      {localJobs.length > 0
-                        ? "Featured & Latest Roles"
-                        : "Latest Roles"}
-                    </h3>
-                    <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">
-                      Showing Top 5
-                    </span>
-                  </div>
-
-                  {sortedHomeJobs.slice(0, 5).map((job) => {
-                    const isElite = job.planType === "Elite Managed";
-                    const isPro = job.planType === "Featured Pro";
-                    const isNew = isNewListing(job.postedAt);
-
-                    return (
-                      <div
-                        key={job.id}
-                        onClick={() => handleOpenJobDetail(job)}
-                        className={`
-                          p-6 rounded-[2.5rem] shadow-lg transition-all cursor-pointer flex items-center justify-between group relative
-                          ${
-                            isElite
-                              ? "bg-slate-900 text-white border-2 border-slate-800"
-                              : isPro
-                              ? "bg-white border-2 border-indigo-100 ring-2 ring-indigo-50"
-                              : "bg-white border border-transparent hover:border-indigo-100"
-                          }
-                        `}
-                      >
-                        {(isElite || isPro) && (
-                          <div
-                            className={`absolute -top-3 left-6 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm
-                            ${
-                              isElite
-                                ? "bg-amber-400 text-slate-900"
-                                : "bg-indigo-600 text-white"
-                            }`}
-                          >
-                            {isElite ? "Elite" : "Featured"}
-                          </div>
-                        )}
-
-                        {isNew && (
-                          <div className="absolute -top-3 right-8 animate-pulse">
-                            <span className="bg-red-500 text-white text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-red-200 shadow-lg border-2 border-white">
-                              New Drop
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="flex items-center space-x-6">
-                          <div
-                            className={`w-14 h-14 rounded-xl flex items-center justify-center p-1 relative
-                             ${isElite ? "bg-white/10" : "bg-slate-50 border"}
-                          `}
-                          >
-                            <img
-                              src={job.logo}
-                              alt=""
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                          <div>
-                            <h4
-                              className={`font-black transition-colors ${
-                                isElite
-                                  ? "text-white"
-                                  : "text-slate-900 group-hover:text-indigo-600"
-                              }`}
-                            >
-                              {job.title}
-                            </h4>
-                            <div className="flex items-center gap-3">
-                              <p
-                                className={`font-bold text-[10px] uppercase tracking-wider ${
-                                  isElite ? "text-indigo-300" : "text-indigo-600"
-                                }`}
-                              >
-                                {job.company}
-                              </p>
-                              <span
-                                className={`text-[10px] ${
-                                  isElite ? "text-slate-500" : "text-slate-300"
-                                }`}
-                              >
-                                •
-                              </span>
-                              <span
-                                className={`text-[10px] font-black uppercase tracking-widest ${
-                                  isElite ? "text-slate-400" : "text-slate-400"
-                                }`}
-                              >
-                                {job.location}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right flex flex-col items-end">
-                          <span
-                            className={`font-black text-lg tracking-tighter ${
-                              isElite ? "text-white" : "text-slate-900"
-                            }`}
-                          >
-                            {job.salary}
-                          </span>
-                          {job.matchScore && (
-                            <span
-                              className={`text-[9px] font-black px-2 py-0.5 rounded-lg mt-1 border
-                               ${
-                                 isElite
-                                   ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                                   : "bg-emerald-50 text-emerald-600 border-emerald-100"
-                               }
-                            `}
-                            >
-                              AI Match: {job.matchScore}%
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  <div className="pt-4">
-                    <button
-                      onClick={() => {
-                        setGlobalSearchQuery("");
-                        setCurrentView("find");
-                      }}
-                      className="w-full py-4 rounded-[2rem] bg-white border-2 border-slate-100 text-slate-600 font-black uppercase tracking-widest text-xs hover:border-indigo-600 hover:text-indigo-600 transition-all shadow-sm"
-                    >
-                      View All {allJobs.length} Open Positions →
-                    </button>
-                  </div>
-                </div>
-                <div className="lg:col-span-4">
-                  <AIChatPanel jobs={allJobs} />
-                </div>
-              </div>
-            </main>
-            <Testimonials />
-            <Newsletter />
-          </>
-        );
-    }
+  const handleOpenCompany = (companyName: string) => {
+    router.push(`/companies/${createCompanySlug({ name: companyName } as { name: string })}`);
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8F9FD]">
-      {currentView !== "admin" && (
-        <Navbar
-          onNavigate={(v: View) => {
-            if (v === "find") setGlobalSearchQuery("");
-            if (v === "post") setSelectedPlan({ type: "Standard", price: 79 });
-            setCurrentView(v as any);
-          }}
-          currentView={currentView}
-          user={user}
-          onLogout={handleLogout}
-        />
-      )}
+    <>
+      <Hero
+        onBrowse={() => router.push('/jobs')}
+        onJoinPool={() => router.push('/hire-talent')}
+        onSearch={handleSearch}
+        jobs={jobs}
+      />
 
-      <div className="flex-grow">{renderView()}</div>
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 pb-8">
+        <div className="bg-indigo-600 text-white rounded-[2rem] px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl shadow-indigo-200">
+          <span className="text-[10px] font-black uppercase tracking-widest">Invite-only roles just opened</span>
+          <button
+            onClick={() => router.push('/jobs')}
+            className="px-4 py-2 rounded-full bg-white text-indigo-600 text-[10px] font-black uppercase tracking-widest"
+          >
+            Explore now
+          </button>
+        </div>
+      </section>
 
-      {currentView !== "admin" && (
-        <footer className="bg-slate-900 text-white pt-24 pb-12 mt-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-20">
-              <div className="space-y-6">
-                <div
-                  className="flex items-center space-x-3 group cursor-pointer"
-                  onClick={() => setCurrentView("home")}
-                >
-                  <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
-                    <span className="text-white font-black text-lg">C</span>
-                  </div>
-                  <span className="text-xl font-black tracking-tighter">
-                    CareersPal
-                  </span>
-                </div>
-                <p className="text-slate-400 text-sm font-medium leading-relaxed">
-                  The elite ecosystem for Notion-first professionals.
-                </p>
-              </div>
-              <div>
-                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 mb-8">
-                  Ecosystem
-                </h4>
-                <ul className="space-y-4 text-left">
-                  <li>
-                    <button
-                      onClick={() => {
-                        setGlobalSearchQuery("");
-                        setCurrentView("find");
-                      }}
-                      className="text-slate-400 hover:text-white font-bold text-sm transition-colors"
-                    >
-                      Find Roles
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => setCurrentView("hire")}
-                      className="text-slate-400 hover:text-white font-bold text-sm transition-colors"
-                    >
-                      Talent Pool
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => setCurrentView("salaries")}
-                      className="text-slate-400 hover:text-white font-bold text-sm transition-colors"
-                    >
-                      Salaries
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => {
-                        setSelectedPlan({ type: "Standard", price: 79 });
-                        setCurrentView("post");
-                      }}
-                      className="text-slate-400 hover:text-white font-bold text-sm transition-colors"
-                    >
-                      Post a Role
-                    </button>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 mb-8">
-                  Platform
-                </h4>
-                <ul className="space-y-4 text-left">
-                  <li>
-                    <button
-                      onClick={() => setCurrentView("about")}
-                      className="text-slate-400 hover:text-white font-bold text-sm transition-colors"
-                    >
-                      Our Mission
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => setCurrentView("contact")}
-                      className="text-slate-400 hover:text-white font-bold text-sm transition-colors"
-                    >
-                      Contact
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => setCurrentView("manage")}
-                      className="text-slate-400 hover:text-white font-bold text-sm transition-colors"
-                    >
-                      Dashboard
-                    </button>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 mb-8">
-                  Legal
-                </h4>
-                <ul className="space-y-4 text-left">
-                  <li>
-                    <button
-                      onClick={() => setCurrentView("privacy")}
-                      className="text-slate-400 hover:text-white font-bold text-sm transition-colors"
-                    >
-                      Privacy Policy
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => setCurrentView("terms")}
-                      className="text-slate-400 hover:text-white font-bold text-sm transition-colors"
-                    >
-                      Terms of Service
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
-              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">
-                © 2026 CareersPal Elite • Mgr. Marek Bilek
-              </p>
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 pb-10">
+        <div className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2.5rem] p-6 sm:p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Trusted by systems-first teams</p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {["Notion Labs", "Linear", "Canva", "Ramp", "Webflow", "Airtable"].map((name) => (
+                <span key={name} className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-50 border border-slate-200/60">
+                  {name}
+                </span>
+              ))}
             </div>
           </div>
-        </footer>
-      )}
-    </div>
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {[
+            { step: "01", title: "Curate", copy: "Every role is reviewed for clarity, salary, and scope." },
+            { step: "02", title: "Verify", copy: "Employers pass a trust check and SLA commitment." },
+            { step: "03", title: "Match", copy: "We highlight roles aligned to your stack and profile." },
+          ].map((item) => (
+            <div key={item.step} className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2rem] p-6 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">{item.step}</div>
+              <h3 className="text-xl font-black text-slate-900 mt-2">{item.title}</h3>
+              <p className="text-slate-500 font-medium mt-2">{item.copy}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        <div className="bg-slate-900 text-white rounded-[3rem] p-8 sm:p-12 shadow-2xl">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200">Live signal</p>
+              <h3 className="text-3xl sm:text-4xl font-black mt-3">High-quality roles, no noise.</h3>
+              <p className="text-slate-300 font-medium mt-2 max-w-2xl">
+                We keep the board tight so each click feels worth it.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: "Live roles", value: jobs.length },
+                { label: "Teams", value: companyCount },
+                { label: "Matches", value: matchTotal || 0 },
+              ].map((item) => (
+                <div key={item.label} className="bg-white/10 border border-white/10 rounded-2xl px-4 py-4 text-center">
+                  <div className="text-2xl font-black">{item.value}</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-indigo-100 mt-1">{item.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-10 pb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-8 space-y-6">
+            <div className="flex items-center justify-between px-2 mb-2">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Featured & Latest Roles</h3>
+              <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Top 5</span>
+            </div>
+
+            {topJobs.slice(0, 5).map((job) => {
+              const isElite = job.planType === 'Elite Managed';
+              const isPro = job.planType === 'Featured Pro';
+              const isNew = isNewListing(job.postedAt);
+
+              return (
+                <div
+                  key={job.id}
+                  onClick={() => handleOpenJob(job)}
+                  className={`
+                    p-6 rounded-[2.5rem] shadow-lg transition-all cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between group relative gap-4
+                    ${isElite ? 'bg-yellow-50 text-slate-900 border-2 border-yellow-200 shadow-yellow-100/40' : 
+                      isPro ? 'bg-white border-2 border-indigo-100 ring-2 ring-indigo-50' : 
+                      'bg-white border border-transparent hover:border-indigo-100'}
+                  `}
+                >
+                  {(isElite || isPro) && (
+                    <div
+                      className={`absolute -top-3 left-6 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm
+                        ${isElite ? 'bg-yellow-200 text-yellow-900' : 'bg-indigo-600 text-white'}`}
+                    >
+                      {isElite ? 'Elite' : 'Featured'}
+                    </div>
+                  )}
+
+                  {isNew && (
+                    <div className="absolute -top-3 right-8 animate-pulse">
+                      <span className="bg-red-500 text-white text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-red-200 shadow-lg border-2 border-white">
+                        New Drop
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center space-x-4 sm:space-x-6 w-full sm:w-auto">
+                    <div
+                      className={`w-14 h-14 rounded-xl flex items-center justify-center p-1 relative
+                        ${isElite ? 'bg-yellow-100 border border-yellow-200' : 'bg-slate-50 border'}
+                      `}
+                    >
+                      <img src={job.logo} alt="" className="w-full h-full object-contain" />
+                    </div>
+                    <div>
+                      <h4
+                        className={`font-black transition-colors ${
+                          isElite ? 'text-slate-900 group-hover:text-yellow-700' : 'text-slate-900 group-hover:text-indigo-600'
+                        }`}
+                      >
+                        {job.title}
+                      </h4>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenCompany(job.company);
+                          }}
+                          className={`font-bold text-[10px] uppercase tracking-wider hover:underline ${
+                            isElite ? 'text-yellow-700' : 'text-indigo-600'
+                          }`}
+                        >
+                          {job.company}
+                        </button>
+                        <span className={`text-[10px] ${isElite ? 'text-yellow-300' : 'text-slate-300'}`}>•</span>
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${isElite ? 'text-yellow-700' : 'text-slate-400'}`}>
+                          {job.location}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-start sm:items-end sm:text-right w-full sm:w-auto">
+                    <span className={`font-black text-lg tracking-tighter whitespace-nowrap ${isElite ? 'text-yellow-900' : 'text-slate-900'}`}>
+                      {job.salary}
+                    </span>
+                    {job.matchScore && (
+                      <span
+                        className={`text-[9px] font-black px-2 py-0.5 rounded-lg mt-1 border
+                          ${isElite ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}
+                        `}
+                      >
+                        AI Match: {job.matchScore}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            <div className="pt-4">
+              <button
+                onClick={() => router.push('/jobs')}
+                className="w-full py-4 rounded-[2rem] bg-white border-2 border-slate-100 text-slate-600 font-black uppercase tracking-widest text-xs hover:border-indigo-600 hover:text-indigo-600 transition-all shadow-sm"
+              >
+                View All {jobs.length} Open Positions →
+              </button>
+            </div>
+
+            <div className="pt-8">
+              <div className="flex items-center justify-between px-2 mb-3">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Just added</h4>
+                <button
+                  onClick={() => router.push('/jobs')}
+                  className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800"
+                >
+                  Explore
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {topJobs.slice(0, 3).map((job) => (
+                  <div
+                    key={`recent-${job.id}`}
+                    onClick={() => handleOpenJob(job)}
+                    className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-2xl p-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] hover:shadow-xl transition-all cursor-pointer"
+                  >
+                    <div className="text-xs font-black text-slate-900 truncate">{job.title}</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 truncate">
+                      {job.company}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-4">
+            <AIChatPanel jobs={jobs} />
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+        <div className="bg-white border border-slate-200/60 shadow-[0_25px_70px_rgba(15,23,42,0.06)] rounded-[3rem] p-10 md:p-14">
+          <div className="text-center mb-10">
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-indigo-400">Why CareersPal</p>
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mt-2">Built for serious operators.</h2>
+            <p className="text-sm md:text-base text-slate-500 font-medium mt-3 max-w-2xl mx-auto">
+              A premium board for roles with clear scope, honest salary ranges, and teams that value operations excellence.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                title: 'Curated roles only',
+                copy: 'Every listing is reviewed for clarity, salary transparency, and relevance.',
+              },
+              {
+                title: 'Verified employers',
+                copy: 'No noise, no spam. Work with teams that value operations excellence.',
+              },
+              {
+                title: 'Designed for remote',
+                copy: 'Find async-first teams with clear expectations and strong systems.',
+              },
+            ].map((item) => (
+              <div key={item.title} className="space-y-3 rounded-[2rem] border border-slate-100 bg-slate-50/60 p-6 text-left shadow-sm">
+                <h3 className="text-lg font-black text-slate-900">{item.title}</h3>
+                <p className="text-sm text-slate-500 font-medium">{item.copy}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { label: "Signal Density", value: "High", note: "No spam listings" },
+            { label: "Salary Coverage", value: "100%", note: "Ranges required" },
+            { label: "Response SLA", value: "7 days", note: "Verified hiring" },
+          ].map((item) => (
+            <div key={item.label} className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2rem] p-6 text-center shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">{item.label}</div>
+              <div className="text-3xl font-black text-slate-900 mt-3">{item.value}</div>
+              <p className="text-slate-500 font-medium mt-2">{item.note}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <Testimonials />
+      <Newsletter />
+    </>
   );
 }
