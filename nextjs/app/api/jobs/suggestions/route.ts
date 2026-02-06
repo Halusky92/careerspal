@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 
+type SuggestionJobRow = {
+  title: string | null;
+  tags: unknown;
+  companies?: { name?: string | null } | Array<{ name?: string | null }> | null;
+};
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("q") || "").toLowerCase();
@@ -18,10 +24,11 @@ export async function GET(request: Request) {
     .limit(50);
 
   const suggestions = new Set<string>();
-  (jobs || []).forEach((job) => {
+  (jobs as SuggestionJobRow[] | null || []).forEach((job) => {
+    const companyName = Array.isArray(job.companies) ? job.companies[0]?.name : job.companies?.name;
     if (job.title && job.title.toLowerCase().includes(q)) suggestions.add(job.title);
-    if (job.companies?.name && job.companies.name.toLowerCase().includes(q)) {
-      suggestions.add(job.companies.name);
+    if (companyName && companyName.toLowerCase().includes(q)) {
+      suggestions.add(companyName);
     }
     const tags = (job.tags as string[]) || [];
     tags.forEach((tag) => {

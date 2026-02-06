@@ -3,6 +3,14 @@ import Stripe from "stripe";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 
+type StripeJobRow = {
+  id: string;
+  title: string;
+  plan_price: number | null;
+  plan_type: string | null;
+  companies?: { name?: string | null } | Array<{ name?: string | null }> | null;
+};
+
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
@@ -32,8 +40,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Job not found." }, { status: 404 });
   }
 
-  const price = body.price || job.plan_price || 79;
-  const planName = body.planName || job.plan_type || "Standard";
+  const jobRow = job as StripeJobRow;
+  const companyName = Array.isArray(jobRow.companies) ? jobRow.companies[0]?.name : jobRow.companies?.name;
+  const price = body.price || jobRow.plan_price || 79;
+  const planName = body.planName || jobRow.plan_type || "Standard";
   const origin = request.headers.get("origin") || process.env.NEXTAUTH_URL || "http://localhost:3000";
 
   const stripe = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });
@@ -46,7 +56,7 @@ export async function POST(request: Request) {
           currency: "usd",
           product_data: {
             name: `${planName} Job Listing`,
-            description: `${job.title} at ${job.companies?.name || "Company"}`,
+            description: `${jobRow.title} at ${companyName || "Company"}`,
           },
           unit_amount: Math.round(price * 100),
         },
@@ -54,9 +64,9 @@ export async function POST(request: Request) {
       },
     ],
     success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/checkout?jobId=${job.id}`,
+    cancel_url: `${origin}/checkout?jobId=${jobRow.id}`,
     metadata: {
-      jobId: job.id,
+      jobId: jobRow.id,
     },
   });
 
@@ -66,7 +76,7 @@ export async function POST(request: Request) {
       stripe_session_id: session.id,
       stripe_payment_status: "pending",
     })
-    .eq("id", job.id);
+    .eq("id", jobRow.id);
 
   return NextResponse.json({ url: session.url });
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 import { createJobSlug } from "../../lib/jobs";
+import { Job } from "../../types";
 
 type AccountUser = {
   name?: string;
@@ -35,7 +36,7 @@ const AccountPage = () => {
   const [image, setImage] = useState("");
   const [files, setFiles] = useState<UserFile[]>([]);
   const [savedJobs, setSavedJobs] = useState<string[]>([]);
-  const [allJobs, setAllJobs] = useState<{ id: string; title: string }[]>([]);
+  const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [healthStatus, setHealthStatus] = useState<"ok" | "error" | "unknown">("unknown");
   const [fileName, setFileName] = useState("");
@@ -72,7 +73,7 @@ const AccountPage = () => {
         const savedData = (await savedRes.json()) as { savedJobs?: { jobId: string }[] };
         setSavedJobs(savedData.savedJobs?.map((item) => item.jobId) || []);
         const jobsRes = await fetch("/api/jobs");
-        const jobsData = (await jobsRes.json()) as { jobs?: { id: string; title: string }[] };
+        const jobsData = (await jobsRes.json()) as { jobs?: Job[] };
         setAllJobs(jobsData.jobs || []);
         const activityRes = await authFetch("/api/account/activity", {}, accessToken);
         const activityData = (await activityRes.json()) as { activity?: Activity };

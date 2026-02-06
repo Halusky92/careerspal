@@ -11,6 +11,17 @@ const csvEscape = (value: string | number | null | undefined) => {
   return str;
 };
 
+type ExportJobRow = {
+  id: string;
+  title: string;
+  location: string | null;
+  type: string | null;
+  salary: string | null;
+  status: string | null;
+  created_at: string;
+  companies?: { name?: string | null } | Array<{ name?: string | null }> | null;
+};
+
 export async function GET(request: Request) {
   const auth = await getSupabaseProfile(request);
   if (auth?.profile?.role !== "admin") {
@@ -36,18 +47,19 @@ export async function GET(request: Request) {
     "createdAt",
   ];
 
-  const rows = (jobs || []).map((job) =>
-    [
+  const rows = (jobs as ExportJobRow[] | null || []).map((job) => {
+    const companyName = Array.isArray(job.companies) ? job.companies[0]?.name : job.companies?.name;
+    return [
       job.id,
       job.title,
-      job.companies?.name,
+      companyName,
       job.location,
       job.type,
       job.salary,
       job.status,
       new Date(job.created_at).toISOString(),
-    ].map(csvEscape).join(",")
-  );
+    ].map(csvEscape).join(",");
+  });
 
   const csv = [header.join(","), ...rows].join("\n");
 

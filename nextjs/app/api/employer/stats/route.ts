@@ -18,8 +18,8 @@ export async function GET(request: Request) {
     .from("jobs")
     .select("views,matches")
     .eq("created_by", profileId);
-  const totals = (data || []).reduce(
-    (acc, job) => ({
+  const totals = (data || []).reduce<{ jobs: number; views: number; matches: number }>(
+    (acc, job: { views?: number | null; matches?: number | null }) => ({
       jobs: acc.jobs + 1,
       views: acc.views + (job.views || 0),
       matches: acc.matches + (job.matches || 0),

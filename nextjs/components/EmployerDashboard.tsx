@@ -171,7 +171,9 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{summary.total ?? myJobs.length} Positions</span>
         </div>
         
-        {myJobs.length > 0 ? myJobs.map((job) => (
+        {myJobs.length > 0 ? myJobs.map((job) => {
+          const isLocked = Boolean(job.status && job.status !== "published");
+          return (
           <div key={job.id} className="bg-white p-8 rounded-[3.5rem] border border-slate-50 shadow-sm hover:shadow-2xl transition-all flex flex-col lg:flex-row items-center justify-between gap-8 group">
             <div className="flex items-center gap-8 flex-1 w-full">
               <div className="w-20 h-20 bg-slate-50 rounded-[1.8rem] flex items-center justify-center border border-slate-100 overflow-hidden flex-shrink-0">
@@ -197,16 +199,16 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
                <a
                  href={`/jobs/${createJobSlug(job)}`}
                  onClick={(event) => {
-                   if (job.status && job.status !== "published") {
+                   if (isLocked) {
                      event.preventDefault();
                    }
                  }}
                  className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest border transition-colors ${
-                   job.status && job.status !== "published"
+                   isLocked
                      ? "bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed"
                      : "bg-white text-slate-600 border-slate-200 hover:border-indigo-200 hover:text-indigo-600"
                  }`}
-                 aria-disabled={job.status && job.status !== "published"}
+                 aria-disabled={isLocked}
                >
                  View listing
                </a>
@@ -225,7 +227,8 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
                </button>
             </div>
           </div>
-        )) : (
+        );
+        }) : (
           <div className="bg-white py-24 rounded-[4rem] text-center border-2 border-dashed border-slate-100">
              <div className="w-24 h-24 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-8 text-4xl opacity-50">📂</div>
              <h3 className="text-3xl font-black text-slate-900 mb-4">No active roles found.</h3>

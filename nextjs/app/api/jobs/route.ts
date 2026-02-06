@@ -52,7 +52,7 @@ export const GET = async (request: Request) => {
   }
 
   const { data, count } = await query;
-  const mapped = (data as SupabaseJobRow[]).map(mapSupabaseJob);
+  const mapped = (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob);
   return NextResponse.json(
     { jobs: mapped, total: count ?? mapped.length },
     { headers: { "Cache-Control": "s-maxage=60, stale-while-revalidate=300" } },
@@ -99,7 +99,7 @@ export const POST = async (request: Request) => {
         website: body.companyWebsite || null,
         logo_url: body.logo || null,
         description: body.companyDescription || null,
-        created_by: profile.id,
+        created_by: profileId,
       },
       { onConflict: "name" },
     )

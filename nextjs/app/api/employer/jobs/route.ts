@@ -33,6 +33,9 @@ const ensureEmployer = async (request: Request) => {
 export const GET = async (request: Request) => {
   const auth = await ensureEmployer(request);
   if ("error" in auth) return auth.error;
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
+  }
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status") || "";
@@ -76,6 +79,9 @@ export const GET = async (request: Request) => {
 export const POST = async (request: Request) => {
   const auth = await ensureEmployer(request);
   if ("error" in auth) return auth.error;
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
+  }
 
   const body = (await request.json()) as Partial<Job> & {
     planPrice?: number;
