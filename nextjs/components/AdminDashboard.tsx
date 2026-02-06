@@ -440,7 +440,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         Approve
                       </button>
                       <button
-                        onClick={() => updateJobStatus(job.id, "archived")}
+                        onClick={() => updateJobStatus(job.id, "private")}
                         className="flex-1 bg-red-600/10 text-red-400 border border-red-600/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
                       >
                         Reject
@@ -448,7 +448,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     </div>
                   ) : (
                     <button
-                      onClick={() => updateJobStatus(job.id, "archived")}
+                      onClick={() => updateJobStatus(job.id, "private")}
                       className="w-full bg-slate-950 text-slate-500 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-red-400 hover:border-red-600/40"
                     >
                       Archive
