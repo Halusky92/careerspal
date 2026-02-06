@@ -21,6 +21,7 @@ type AuthContextValue = {
   loading: boolean;
   refreshProfile: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -103,13 +104,20 @@ const Providers = ({ children }: ProvidersProps) => {
     });
   }, []);
 
+  const signInWithEmail = useCallback(async (email: string) => {
+    await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/auth` },
+    });
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
   }, []);
 
   const value = useMemo(
-    () => ({ user, profile, accessToken, loading, refreshProfile, signInWithGoogle, signOut }),
-    [accessToken, loading, profile, refreshProfile, signInWithGoogle, signOut, user],
+    () => ({ user, profile, accessToken, loading, refreshProfile, signInWithGoogle, signInWithEmail, signOut }),
+    [accessToken, loading, profile, refreshProfile, signInWithGoogle, signInWithEmail, signOut, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

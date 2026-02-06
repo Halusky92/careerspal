@@ -147,28 +147,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B1120] text-slate-200 font-sans p-6 md:p-10 animate-in fade-in">
+    <div className="min-h-screen bg-[#0B1120] text-slate-200 font-sans p-4 sm:p-6 md:p-10 animate-in fade-in">
       {/* Top Bar */}
-      <div className="max-w-[1400px] mx-auto mb-10 flex justify-between items-center border-b border-slate-800 pb-6">
-        <div className="flex items-center gap-5">
-          <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-[0_0_30px_rgba(79,70,229,0.3)]">
+      <div className="max-w-[1400px] mx-auto mb-8 sm:mb-10 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-6 border-b border-slate-800 pb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-xl sm:text-2xl shadow-[0_0_30px_rgba(79,70,229,0.3)]">
             CP
           </div>
           <div>
-            <h1 className="text-3xl font-black text-white tracking-tight">Shadow Command</h1>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Shadow Command</h1>
             <div className="flex items-center gap-2">
                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-               <p className="text-xs font-mono text-emerald-500 uppercase tracking-widest">System Online • Encrypted</p>
+               <p className="text-[10px] sm:text-xs font-mono text-emerald-500 uppercase tracking-widest">System Online • Encrypted</p>
             </div>
           </div>
         </div>
-        <button onClick={onLogout} className="px-8 py-3 bg-slate-900 border border-slate-700 hover:border-red-500 hover:text-red-400 text-slate-400 rounded-xl text-xs font-black uppercase tracking-widest transition-all">
+        <button onClick={onLogout} className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-slate-900 border border-slate-700 hover:border-red-500 hover:text-red-400 text-slate-400 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all">
           Terminate Session
         </button>
       </div>
 
       <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="lg:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4 order-1">
           {[
             { label: "Users", value: adminStats.users },
             { label: "Jobs", value: adminStats.jobs },
@@ -181,7 +181,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </div>
           ))}
         </div>
-        <div className="lg:col-span-12 flex flex-wrap gap-2">
+        <div className="lg:col-span-12 flex flex-wrap gap-2 order-2">
           {Object.entries(roleSummary).map(([role, count]) => (
             <span
               key={role}
@@ -191,7 +191,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </span>
           ))}
         </div>
-        <div className="lg:col-span-12 flex flex-wrap gap-3">
+        <div className="lg:col-span-12 flex flex-wrap gap-3 order-3">
           {[
             { label: "Users CSV", href: "/api/admin/users/export", file: "users-export.csv" },
             { label: "Jobs CSV", href: "/api/admin/jobs/export", file: "jobs-export.csv" },
@@ -213,7 +213,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
         
         {/* ROW 1: ANALYTICS CARDS (Left) */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className="lg:col-span-3 space-y-6 order-6 lg:order-none">
            {/* Total Views Card */}
            <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 backdrop-blur-sm relative overflow-hidden group">
               <div className="relative z-10">
@@ -256,7 +256,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
 
         {/* ROW 1: GLOBAL INTELLIGENCE MAP (Center - Bigger) */}
-        <div className="lg:col-span-6">
+        <div className="lg:col-span-6 order-7 lg:order-none">
            <div className="bg-[#0F172A] rounded-[2.5rem] border border-slate-800 h-full relative overflow-hidden flex flex-col min-h-[500px]">
               <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/30">
                  <h3 className="text-sm font-black text-white uppercase tracking-widest">Global Live Traffic</h3>
@@ -315,7 +315,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
 
         {/* ROW 1: TRAFFIC SOURCES (Right) */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className="lg:col-span-3 space-y-6 order-8 lg:order-none">
            {/* Sources */}
            <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 backdrop-blur-sm h-full flex flex-col justify-center">
               <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-8">Acquisition Channels</h3>
@@ -358,7 +358,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
 
         {/* ROW 2: SUBSCRIBERS */}
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 order-5 lg:order-none">
           <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden shadow-2xl">
             <div className="p-8 border-b border-slate-800 flex justify-between items-center bg-slate-900">
               <div className="flex items-center gap-3">
@@ -409,7 +409,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
 
         {/* ROW 2: ACTIVE JOBS */}
-        <div className="lg:col-span-4">
+        <div className="lg:col-span-4 order-4 lg:order-none">
           <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden h-full flex flex-col">
             <div className="p-8 border-b border-slate-800 bg-slate-900">
               <h3 className="text-lg font-black text-white">Active Deployments</h3>

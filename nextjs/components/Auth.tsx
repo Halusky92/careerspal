@@ -8,9 +8,10 @@ interface AuthProps {
 }
 
 const Auth: React.FC<AuthProps> = () => {
-  const { signInWithGoogle } = useSupabaseAuth();
+  const { signInWithGoogle, signInWithEmail } = useSupabaseAuth();
   const [role, setRole] = useState<'candidate' | 'employer'>('candidate');
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
 
   const handleGoogleSignIn = async () => {
     if (typeof window !== "undefined") {
@@ -18,6 +19,19 @@ const Auth: React.FC<AuthProps> = () => {
     }
     setIsLoading(true);
     await signInWithGoogle();
+  };
+
+  const handleEmailSignIn = async () => {
+    if (!email.trim()) return;
+    if (typeof window !== "undefined") {
+      localStorage.setItem("cp_role", role);
+    }
+    setIsLoading(true);
+    try {
+      await signInWithEmail(email.trim());
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -65,6 +79,31 @@ const Auth: React.FC<AuthProps> = () => {
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-white text-sm font-black">G</span>
           {isLoading ? "Connecting..." : "Continue with Google"}
         </button>
+
+        <div className="space-y-3 mb-6">
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
+            Or use email
+          </div>
+          <input
+            type="email"
+            inputMode="email"
+            placeholder="name@company.com"
+            className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+          <button
+            type="button"
+            onClick={handleEmailSignIn}
+            disabled={isLoading || !email.trim()}
+            className="w-full rounded-2xl bg-slate-900 text-white py-4 text-sm font-black uppercase tracking-widest hover:bg-black disabled:opacity-60"
+          >
+            {isLoading ? "Sending link..." : "Email me a sign-in link"}
+          </button>
+          <p className="text-[10px] text-slate-400 font-bold text-center">
+            We will send a magic link to your email.
+          </p>
+        </div>
 
         <div className="rounded-[2rem] border border-slate-100 bg-slate-50/70 p-5 text-left">
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Trusted access</p>
