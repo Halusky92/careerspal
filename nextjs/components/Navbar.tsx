@@ -147,7 +147,22 @@ const Navbar: React.FC = () => {
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="md:hidden relative z-[102]">
+            <div className="md:hidden relative z-[102] flex items-center gap-2">
+              {(profile?.role === "employer" || profile?.role === "admin") ? (
+                <Link
+                  href="/post-a-job"
+                  className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200"
+                >
+                  Post a Job
+                </Link>
+              ) : (
+                <Link
+                  href="/hire-talent"
+                  className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200"
+                >
+                  Hire Talent
+                </Link>
+              )}
               <button 
                 onClick={() => setIsMenuOpen(!isMenuOpen)} 
                 className="p-2 text-slate-800 focus:outline-none"
@@ -155,7 +170,7 @@ const Navbar: React.FC = () => {
                 aria-expanded={isMenuOpen}
                 aria-controls="mobile-menu"
               >
-                <div className="w-6 h-5 relative flex flex-col justify-between">
+                <div className="w-5 h-4 relative flex flex-col justify-between">
                   <span className={`w-full h-0.5 bg-slate-800 rounded-full transition-all duration-300 origin-left ${isMenuOpen ? 'rotate-45 translate-x-1' : ''}`}></span>
                   <span className={`w-full h-0.5 bg-slate-800 rounded-full transition-all duration-300 ${isMenuOpen ? 'opacity-0 scale-0' : 'opacity-100 scale-100'}`}></span>
                   <span className={`w-full h-0.5 bg-slate-800 rounded-full transition-all duration-300 origin-left ${isMenuOpen ? '-rotate-45 translate-x-1' : ''}`}></span>
@@ -251,6 +266,13 @@ const Navbar: React.FC = () => {
                 {item.label}
               </Link>
             ))}
+              <Link
+                href="/#subscribe"
+                onClick={handleMobileNav}
+                className="w-full text-left text-xl font-black tracking-tight py-4 px-2 border-b border-slate-100 transition-colors text-slate-900"
+              >
+                Subscribe
+              </Link>
             </div>
           </div>
 

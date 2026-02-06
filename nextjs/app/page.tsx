@@ -183,7 +183,13 @@ export default function HomePage() {
                         ${isElite ? 'bg-yellow-100 border border-yellow-200' : 'bg-slate-50 border'}
                       `}
                     >
-                      <img src={job.logo} alt="" className="w-full h-full object-contain" />
+                      {job.logo ? (
+                        <img src={job.logo} alt="" className="w-full h-full object-contain" />
+                      ) : (
+                        <div className="w-full h-full rounded-lg bg-white flex items-center justify-center text-[10px] font-black text-slate-400">
+                          LOGO
+                        </div>
+                      )}
                     </div>
                     <div>
                       <h4
