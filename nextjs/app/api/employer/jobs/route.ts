@@ -4,6 +4,8 @@ import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../../lib/supabaseJobs";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 
+const MAX_JOBS_PER_HOUR = 5;
+
 const normalizeApplyUrl = (value: string) => {
   const trimmed = value.trim();
   if (!trimmed) return trimmed;
@@ -35,7 +37,7 @@ const ensureEmployer = async (request: Request) => {
   if (!supabaseAdmin) {
     return { error: NextResponse.json({ error: "Supabase not configured." }, { status: 500 }) };
   }
-  return { profileId: auth.profile.id, email: auth.profile.email };
+  return { profileId: auth.profile.id, email: auth.profile.email, role };
 };
 
 export const GET = async (request: Request) => {
@@ -103,9 +105,20 @@ export const POST = async (request: Request) => {
   if (body.status && !allowedStatuses.has(body.status)) {
     return NextResponse.json({ error: "Invalid status." }, { status: 400 });
   }
-  const status = body.status || "draft";
+  const status = auth.role === "admin" ? body.status || "draft" : "draft";
   const timestamp = body.timestamp || (status === "published" ? Date.now() : null);
   const postedAt = body.postedAt || (status === "published" ? "Just now" : "Draft");
+
+  const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count: recentCount } = await supabaseAdmin
+    .from("audit_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("actor_id", auth.profileId)
+    .eq("action", "job_created")
+    .gte("created_at", cutoff);
+  if (typeof recentCount === "number" && recentCount >= MAX_JOBS_PER_HOUR) {
+    return NextResponse.json({ error: "Rate limit exceeded. Please try again later." }, { status: 429 });
+  }
 
   const { data: company } = await supabaseAdmin
     .from("companies")
@@ -162,6 +175,17 @@ export const POST = async (request: Request) => {
   if (!data) {
     return NextResponse.json({ error: "Failed to create job." }, { status: 500 });
   }
+
+  await supabaseAdmin.from("audit_logs").insert({
+    action: "job_created",
+    job_id: data.id,
+    actor_id: auth.profileId,
+    metadata: {
+      planType: data.plan_type,
+      planPrice: data.plan_price,
+      status: data.status,
+    },
+  });
 
   return NextResponse.json({ job: mapSupabaseJob(data as SupabaseJobRow) }, { status: 201 });
 };

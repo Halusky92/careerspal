@@ -8,6 +8,7 @@ type StripeJobRow = {
   title: string;
   plan_price: number | null;
   plan_type: string | null;
+  created_by?: string | null;
   companies?: { name?: string | null } | Array<{ name?: string | null }> | null;
 };
 
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
 
   const { data: job } = await supabaseAdmin
     .from("jobs")
-    .select("id,title,plan_price,plan_type,companies(name)")
+    .select("id,title,plan_price,plan_type,created_by,companies(name)")
     .eq("id", body.jobId)
     .single();
   if (!job) {
@@ -41,6 +42,10 @@ export async function POST(request: Request) {
   }
 
   const jobRow = job as StripeJobRow;
+  const isOwner = jobRow.created_by && jobRow.created_by === auth.profile.id;
+  if (!isOwner && auth.profile.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const companyName = Array.isArray(jobRow.companies) ? jobRow.companies[0]?.name : jobRow.companies?.name;
   const price = body.price || jobRow.plan_price || 79;
   const planName = body.planName || jobRow.plan_type || "Standard";
