@@ -11,6 +11,7 @@ const CheckoutPage = () => {
   const searchParams = useSearchParams();
   const { profile, loading: authLoading } = useSupabaseAuth();
   const [pendingJob, setPendingJob] = useState<Job | null>(null);
+  const [resolvedJobId, setResolvedJobId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const jobId = searchParams.get("jobId");
 
@@ -27,13 +28,26 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     const loadJob = async () => {
+      let effectiveJobId = jobId;
+      if (!effectiveJobId) {
+        try {
+          const storedId = sessionStorage.getItem("cp_pending_job_id");
+          if (storedId) effectiveJobId = storedId;
+        } catch {
+          // ignore
+        }
+      }
+      if (effectiveJobId) {
+        setResolvedJobId(effectiveJobId);
+      }
       try {
-        if (jobId) {
-          const response = await fetch(`/api/jobs/${jobId}`);
+        if (effectiveJobId) {
+          const response = await fetch(`/api/jobs/${effectiveJobId}`);
           if (response.ok) {
             const data = (await response.json()) as { job?: Job };
             if (data.job) {
               setPendingJob(data.job);
+              setIsLoading(false);
               return;
             }
           }
@@ -102,7 +116,7 @@ const CheckoutPage = () => {
       </div>
       <Checkout
         jobData={pendingJob}
-        jobId={jobId || undefined}
+        jobId={resolvedJobId || undefined}
         onCancel={() => router.push("/post-a-job")}
         onSuccess={() => router.push("/dashboard/employer")}
       />

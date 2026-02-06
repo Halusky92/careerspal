@@ -33,17 +33,54 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
   const price = jobData?.plan?.price || 79;
   const planName = jobData?.plan?.type || 'Standard';
 
-  const handlePay = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePay = async () => {
     setStep('processing');
 
     try {
+      let effectiveJobId = jobId;
+      if (!effectiveJobId && jobData?.id && !jobData.id.startsWith("local-")) {
+        effectiveJobId = jobData.id;
+      }
+
+      if (!effectiveJobId) {
+        if (!accessToken) {
+          setError("Missing auth. Please sign in again.");
+          setStep("form");
+          return;
+        }
+        const createResponse = await authFetch(
+          "/api/employer/jobs",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...jobData,
+              planPrice: jobData?.plan?.price,
+              status: jobData?.status || "draft",
+            }),
+          },
+          accessToken,
+        );
+        const created = (await createResponse.json()) as { job?: Job; error?: string };
+        if (!createResponse.ok || !created.job?.id) {
+          setError(created.error || "Failed to create the listing.");
+          setStep("form");
+          return;
+        }
+        effectiveJobId = created.job.id;
+        try {
+          sessionStorage.setItem("cp_pending_job_id", effectiveJobId);
+        } catch {
+          // ignore
+        }
+      }
+
       const response = await authFetch(
         "/api/stripe/checkout",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jobId, price, planName }),
+          body: JSON.stringify({ jobId: effectiveJobId, price, planName }),
         },
         accessToken,
       );

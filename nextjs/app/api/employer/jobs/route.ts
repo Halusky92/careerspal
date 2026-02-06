@@ -4,15 +4,23 @@ import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../../lib/supabaseJobs";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 
-const isValidApplyUrl = (value: string) => {
-  if (value === "#" || value.startsWith("/")) return true;
-  if (value.startsWith("mailto:")) return true;
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
+const normalizeApplyUrl = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed === "#" || trimmed.startsWith("/") || trimmed.startsWith("mailto:")) return trimmed;
+  if (trimmed.includes("@") && !trimmed.includes(":")) return `mailto:${trimmed}`;
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+  if (trimmed.includes(".") && !trimmed.includes(" ")) return `https://${trimmed}`;
+  return trimmed;
+};
+
+const normalizeHttpUrl = (value?: string | null) => {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("data:")) return trimmed;
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+  if (trimmed.includes(".") && !trimmed.includes(" ")) return `https://${trimmed}`;
+  return trimmed;
 };
 
 const ensureEmployer = async (request: Request) => {
@@ -87,11 +95,8 @@ export const POST = async (request: Request) => {
     planPrice?: number;
   };
 
-  if (!body.title || !body.company || !body.applyUrl) {
+  if (!body.title || !body.company || !body.applyUrl || !body.applyUrl.trim()) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
-  }
-  if (!isValidApplyUrl(body.applyUrl)) {
-    return NextResponse.json({ error: "Invalid applyUrl." }, { status: 400 });
   }
 
   const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review"]);
@@ -107,8 +112,8 @@ export const POST = async (request: Request) => {
     .upsert(
       {
         name: body.company,
-        website: body.companyWebsite || null,
-        logo_url: body.logo || null,
+        website: normalizeHttpUrl(body.companyWebsite),
+        logo_url: normalizeHttpUrl(body.logo),
         description: body.companyDescription || null,
         created_by: auth.profileId,
       },
@@ -129,10 +134,10 @@ export const POST = async (request: Request) => {
       posted_at_text: postedAt,
       timestamp,
       category: body.category || "Operations",
-      apply_url: body.applyUrl,
+      apply_url: normalizeApplyUrl(body.applyUrl),
       company_description: body.companyDescription || null,
-      company_website: body.companyWebsite || null,
-      logo_url: body.logo || null,
+      company_website: normalizeHttpUrl(body.companyWebsite),
+      logo_url: normalizeHttpUrl(body.logo),
       tags: body.tags || [],
       tools: body.tools || [],
       benefits: body.benefits || [],

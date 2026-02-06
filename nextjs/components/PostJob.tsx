@@ -62,9 +62,17 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   };
 
   const handleFinalSubmit = () => {
+    const normalizeHttpUrl = (value: string) => {
+      const trimmed = value.trim();
+      if (!trimmed) return trimmed;
+      if (trimmed.startsWith("data:")) return trimmed;
+      if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+      if (trimmed.includes(".") && !trimmed.includes(" ")) return `https://${trimmed}`;
+      return trimmed;
+    };
     // Logic: Use provided logo, otherwise fall back to a random seed or placeholder
-    const finalLogo = formData.logo.trim() 
-      ? formData.logo 
+    const finalLogo = formData.logo.trim()
+      ? normalizeHttpUrl(formData.logo)
       : `https://picsum.photos/seed/${formData.company.replace(/\s/g, '')}/100/100`;
     const keywordTags = formData.keywords
       ? formData.keywords
@@ -83,12 +91,14 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
       return trimmed;
     };
     const normalizedApplyUrl = normalizeApplyUrl(formData.applyUrl);
+    const normalizedCompanyWebsite = normalizeHttpUrl(formData.companyWebsite || "");
 
     const finalJob: Job = { 
       ...formData,
       tags: mergedTags,
       applyUrl: normalizedApplyUrl,
       logo: finalLogo,
+      companyWebsite: normalizedCompanyWebsite || undefined,
       postedAt: 'Just now', 
       id: `local-${Date.now()}`,
       isFeatured: selectedPlan.type !== 'Standard'
@@ -100,7 +110,11 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const categoryOptions = CATEGORIES.filter(c => c !== 'All Roles');
 
   // Preview Image Helper
-  const previewLogo = formData.logo.trim() || `https://picsum.photos/seed/${formData.company ? formData.company.replace(/\s/g, '') : 'random'}/100/100`;
+  const previewLogo = formData.logo.trim()
+    ? (formData.logo.startsWith("http://") || formData.logo.startsWith("https://") || formData.logo.startsWith("data:")
+        ? formData.logo
+        : `https://${formData.logo}`)
+    : `https://picsum.photos/seed/${formData.company ? formData.company.replace(/\s/g, '') : 'random'}/100/100`;
 
   const handleLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -230,9 +244,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company Website</label>
                   <input
-                    type="url"
+                    type="text"
                     inputMode="url"
-                    placeholder="https://company.com"
+                    placeholder="company.com"
                     className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
                     value={formData.companyWebsite}
                     onChange={e => setFormData({...formData, companyWebsite: e.target.value})}
