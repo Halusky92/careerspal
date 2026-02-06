@@ -32,7 +32,7 @@ const Newsletter: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+    <div id="subscribe" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 scroll-mt-28">
       <div className="bg-slate-900 rounded-[3rem] p-12 md:p-20 relative overflow-hidden text-center shadow-2xl shadow-indigo-200">
         {/* Background Effects */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600 rounded-full blur-[120px] opacity-40 translate-x-1/3 -translate-y-1/3 pointer-events-none"></div>

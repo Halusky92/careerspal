@@ -5,13 +5,12 @@ import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSupabaseAuth } from "./Providers";
-import { authFetch } from "@/lib/authFetch";
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [savedCount, setSavedCount] = useState<number | null>(null);
+  const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const pathname = usePathname();
-  const { profile, accessToken, loading, signOut } = useSupabaseAuth();
+  const { profile, signOut } = useSupabaseAuth();
 
   const dashboardHref = useMemo(() => {
     if (!profile?.email) return null;
@@ -31,33 +30,20 @@ const Navbar: React.FC = () => {
 
   useEffect(() => {
     setIsMenuOpen(false);
+    setIsOverflowOpen(false);
   }, [pathname]);
 
-  useEffect(() => {
-    const loadSaved = async () => {
-      if (loading || !accessToken) return;
-      if (profile?.role && profile.role !== "candidate") {
-        setSavedCount(null);
-        return;
-      }
-      try {
-        const response = await authFetch("/api/account/saved-count", {}, accessToken);
-        const data = (await response.json()) as { count?: number };
-        setSavedCount(typeof data.count === "number" ? data.count : 0);
-      } catch {
-        setSavedCount(0);
-      }
-    };
-    loadSaved();
-  }, [accessToken, loading, profile?.role]);
+  const overflowItems = [
+    { label: "Post a Job", href: "/post-a-job" },
+    { label: "Salary Insights", href: "/salary-insights" },
+    { label: "Subscribe", href: "/#subscribe" },
+  ];
 
   const navItems = [
     { label: 'Jobs', href: '/jobs' },
-    { label: 'Post a Job', href: '/post-a-job' },
     { label: 'Hire Talent', href: '/hire-talent' },
-    { label: 'Salary Insights', href: '/salary-insights' },
-    { label: 'About', href: '/about' },
     { label: 'Pricing', href: '/pricing' },
+    { label: 'About', href: '/about' },
   ];
 
   const handleMobileNav = () => {
@@ -101,35 +87,53 @@ const Navbar: React.FC = () => {
                 </Link>
               )}
 
-              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
-                Verified Board
-              </span>
-              <span className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-600">
-                Hiring now
-              </span>
-
-              {!profile?.email ? (
+              {!profile?.email && (
                 <Link href="/auth" className="text-sm font-black text-slate-500 hover:text-indigo-600 transition-colors">
                   Sign in
                 </Link>
-              ) : (
-                <>
-                  <Link href="/account" className="text-sm font-black text-slate-500 hover:text-indigo-600 transition-colors inline-flex items-center gap-2">
-                    Account
-                    {profile?.role === "candidate" && savedCount !== null && savedCount > 0 && (
-                      <span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                        {savedCount}
-                      </span>
-                    )}
-                  </Link>
-                  <button
-                    onClick={() => signOut()}
-                    className="text-sm font-black text-slate-500 hover:text-indigo-600 transition-colors"
-                  >
-                    Log out
-                  </button>
-                </>
               )}
+
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsOverflowOpen((prev) => !prev)}
+                  className="h-9 w-9 rounded-full border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-colors flex items-center justify-center"
+                  aria-haspopup="menu"
+                  aria-expanded={isOverflowOpen}
+                  aria-label="More options"
+                >
+                  <span className="text-lg leading-none">⋯</span>
+                </button>
+                {isOverflowOpen && (
+                  <div className="absolute right-0 mt-3 w-48 rounded-2xl border border-slate-200 bg-white shadow-xl p-2 text-sm text-slate-600">
+                    {overflowItems.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="block rounded-xl px-3 py-2 font-bold hover:bg-slate-50 hover:text-slate-900"
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                    {profile?.email && (
+                      <>
+                        <Link
+                          href="/account"
+                          className="block rounded-xl px-3 py-2 font-bold hover:bg-slate-50 hover:text-slate-900"
+                        >
+                          Account
+                        </Link>
+                        <button
+                          onClick={() => signOut()}
+                          className="w-full text-left rounded-xl px-3 py-2 font-bold hover:bg-slate-50 hover:text-slate-900"
+                        >
+                          Log out
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {profile?.role === "employer" || profile?.role === "admin" ? (
                 <Link href="/post-a-job" className="bg-indigo-600 text-white px-6 py-2.5 rounded-2xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 active:scale-95">
