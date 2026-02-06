@@ -2,10 +2,10 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Prisma potrebuje často openssl v alpine
+# runtime deps
 RUN apk add --no-cache openssl
 
-COPY package*.json ./
+COPY nextjs/package*.json ./
 RUN npm ci
 
 # 2) builder
@@ -14,10 +14,7 @@ WORKDIR /app
 RUN apk add --no-cache openssl
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-
-# Prisma client (ak máš prisma/schema.prisma)
-RUN npx prisma generate || true
+COPY nextjs .
 
 # Next build
 RUN npm run build
@@ -38,9 +35,6 @@ COPY --from=builder /app/node_modules ./node_modules
 # Next output
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-
-# Prisma schema (voliteľné, ale často dobré mať)
-COPY --from=builder /app/prisma ./prisma
 
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh

@@ -1,15 +1,4 @@
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: app
-      POSTGRES_DB: app
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
   web:
     build:
       context: .
@@ -19,12 +8,7 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env.local
-    depends_on:
-      - db
+      - ./nextjs/.env.local
     volumes:
-      - .:/app
+      - ./nextjs:/app
       - /app/node_modules
-
-volumes:
-  pgdata:
