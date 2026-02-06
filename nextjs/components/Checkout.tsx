@@ -93,37 +93,34 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
             <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-none">Checkout</h2>
           </div>
 
-          <form onSubmit={handlePay} className="space-y-8">
-            <div className="space-y-6">
-               <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Payment Details</h3>
-               <div className="space-y-4">
-                  <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                     <input type="text" placeholder="Cardholder Name" className="w-full bg-transparent outline-none font-bold text-slate-900" required />
-                  </div>
-                  <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                     <input type="text" placeholder="Card Number (XXXX XXXX XXXX XXXX)" className="w-full bg-transparent outline-none font-bold text-slate-900" required />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                       <input type="text" placeholder="MM/YY" className="w-full bg-transparent outline-none font-bold text-slate-900" required />
-                    </div>
-                    <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                       <input type="text" placeholder="CVC" className="w-full bg-transparent outline-none font-bold text-slate-900" required />
-                    </div>
-                  </div>
-               </div>
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 px-6 py-5">
+              <p className="text-xs font-black uppercase tracking-widest text-slate-400">Secure payment</p>
+              <p className="mt-3 text-sm font-bold text-slate-700">
+                You will complete payment securely on Stripe.
+              </p>
             </div>
 
-            <div className="pt-6">
-               <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all text-xl active:scale-[0.98]">
-                  Pay ${price}.00 & Publish
-               </button>
-               {error && (
-                 <p className="text-center text-red-500 text-sm font-bold mt-4">{error}</p>
-               )}
-               <button type="button" onClick={onCancel} className="w-full text-slate-400 font-bold mt-6 hover:text-slate-600 transition-colors">Cancel & Return</button>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handlePay}
+                className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all text-xl active:scale-[0.98]"
+              >
+                Continue to Stripe (${price}.00)
+              </button>
+              {error && (
+                <p className="text-center text-red-500 text-sm font-bold mt-4">{error}</p>
+              )}
+              <button
+                type="button"
+                onClick={onCancel}
+                className="w-full text-slate-400 font-bold mt-6 hover:text-slate-600 transition-colors"
+              >
+                Cancel & Return
+              </button>
             </div>
-          </form>
+          </div>
         </div>
 
         <div className="lg:col-span-5 space-y-8 sticky top-28">

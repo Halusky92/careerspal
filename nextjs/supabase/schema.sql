@@ -20,6 +20,22 @@ as $$
   select trim(both '-' from regexp_replace(lower(coalesce(value, '')), '[^a-z0-9]+', '-', 'g'));
 $$;
 
+-- Profiles
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text not null unique,
+  role text not null default 'candidate' check (role in ('candidate', 'employer', 'admin')),
+  full_name text,
+  avatar_url text,
+  is_onboarded boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create trigger profiles_set_updated_at
+before update on public.profiles
+for each row execute function public.set_updated_at();
+
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -49,22 +65,6 @@ as $$
     select 1 from public.profiles where id = auth.uid() and role = 'candidate'
   );
 $$;
-
--- Profiles
-create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  email text not null unique,
-  role text not null default 'candidate' check (role in ('candidate', 'employer', 'admin')),
-  full_name text,
-  avatar_url text,
-  is_onboarded boolean not null default false,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create trigger profiles_set_updated_at
-before update on public.profiles
-for each row execute function public.set_updated_at();
 
 alter table public.profiles enable row level security;
 

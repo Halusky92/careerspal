@@ -56,19 +56,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   };
 
   const handleStep2 = () => {
-    const isValidApplyUrl = (value: string) => {
-      if (!value) return false;
-      if (value === "#" || value.startsWith("/")) return true;
-      if (value.startsWith("mailto:")) return true;
-      try {
-        const url = new URL(value);
-        return url.protocol === "http:" || url.protocol === "https:";
-      } catch {
-        return false;
-      }
-    };
     if (!formData.company || !formData.applyUrl) return alert("Please fill in the Company Name and Apply URL.");
-    if (!isValidApplyUrl(formData.applyUrl)) return alert("Please enter a valid Apply URL.");
     setStep(3);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -85,10 +73,16 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
           .filter(Boolean)
       : [];
     const mergedTags = Array.from(new Set([...(formData.tags || []), ...keywordTags]));
-    const normalizedApplyUrl =
-      formData.applyUrl && !formData.applyUrl.includes(":") && formData.applyUrl.includes("@")
-        ? `mailto:${formData.applyUrl}`
-        : formData.applyUrl;
+    const normalizeApplyUrl = (value: string) => {
+      const trimmed = value.trim();
+      if (!trimmed) return trimmed;
+      if (trimmed === "#" || trimmed.startsWith("/") || trimmed.startsWith("mailto:")) return trimmed;
+      if (trimmed.includes("@") && !trimmed.includes(":")) return `mailto:${trimmed}`;
+      if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+      if (trimmed.includes(".") && !trimmed.includes(" ")) return `https://${trimmed}`;
+      return trimmed;
+    };
+    const normalizedApplyUrl = normalizeApplyUrl(formData.applyUrl);
 
     const finalJob: Job = { 
       ...formData,
@@ -107,6 +101,23 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
   // Preview Image Helper
   const previewLogo = formData.logo.trim() || `https://picsum.photos/seed/${formData.company ? formData.company.replace(/\s/g, '') : 'random'}/100/100`;
+
+  const handleLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload an image file.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      if (result) {
+        setFormData(prev => ({ ...prev, logo: result }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
@@ -230,32 +241,50 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 
                 {/* Optional Logo Input */}
                 <div className="space-y-2">
-                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company Logo URL (Optional)</label>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company Logo (Optional)</label>
                    <div className="flex gap-4 items-center">
                       <input 
                         type="url" 
-                        placeholder="https://company.com/logo.png" 
+                        placeholder="https://company.com/logo.png (optional)" 
                         className="flex-1 px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl outline-none font-medium text-sm focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" 
-                        value={formData.logo} 
+                        value={formData.logo.startsWith("data:") ? "" : formData.logo} 
                         onChange={e => setFormData({...formData, logo: e.target.value})} 
                       />
                       <div className="w-12 h-12 bg-white border border-slate-100 rounded-xl p-1 flex-shrink-0 flex items-center justify-center">
                          <img src={previewLogo} className="max-w-full max-h-full object-contain" alt="Preview" />
                       </div>
                    </div>
-                   <p className="text-[9px] text-slate-400 font-bold">Leave empty to auto-generate a placeholder.</p>
+                   <div className="flex flex-wrap items-center gap-3">
+                     <input
+                       type="file"
+                       accept="image/*"
+                       onChange={handleLogoFileChange}
+                       className="text-xs font-bold text-slate-500"
+                     />
+                     {formData.logo && (
+                       <button
+                         type="button"
+                         onClick={() => setFormData(prev => ({ ...prev, logo: "" }))}
+                         className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600"
+                       >
+                         Remove logo
+                       </button>
+                     )}
+                   </div>
+                   <p className="text-[9px] text-slate-400 font-bold">Paste a logo URL or upload an image.</p>
                 </div>
 
                 <div className="space-y-4">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">How to Apply? (URL or Email) *</label>
                   <input
-                    type="url"
+                    type="text"
                     inputMode="url"
-                    placeholder="https://company.com/careers or mailto:jobs@company.com"
+                    placeholder="company.com/careers or jobs@company.com"
                     className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
                     value={formData.applyUrl}
                     onChange={e => setFormData({...formData, applyUrl: e.target.value})}
                   />
+                  <p className="text-[9px] text-slate-400 font-bold">We accept full URLs or emails and auto-normalize.</p>
                 </div>
                 <div className="flex gap-4 pt-6">
                   <button onClick={() => setStep(1)} className="px-6 sm:px-8 py-4 sm:py-5 bg-white text-slate-600 font-black rounded-2xl border border-slate-200/70 hover:border-slate-300 transition-all text-sm sm:text-base">Back</button>
