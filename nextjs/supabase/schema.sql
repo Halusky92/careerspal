@@ -146,11 +146,12 @@ using (true);
 
 create policy "companies_insert_employer"
 on public.companies for insert
-with check (public.is_employer() or public.is_admin());
+with check ((public.is_employer() and created_by = auth.uid()) or public.is_admin());
 
 create policy "companies_update_owner"
 on public.companies for update
-using (created_by = auth.uid() or public.is_admin());
+using (created_by = auth.uid() or public.is_admin())
+with check (created_by = auth.uid() or public.is_admin());
 
 create policy "companies_delete_owner"
 on public.companies for delete
@@ -235,11 +236,12 @@ using (status = 'published' or created_by = auth.uid() or public.is_admin());
 
 create policy "jobs_insert_employer"
 on public.jobs for insert
-with check (public.is_employer() or public.is_admin());
+with check ((public.is_employer() and created_by = auth.uid()) or public.is_admin());
 
 create policy "jobs_update_owner"
 on public.jobs for update
-using (created_by = auth.uid() or public.is_admin());
+using (created_by = auth.uid() or public.is_admin())
+with check (created_by = auth.uid() or public.is_admin());
 
 create policy "jobs_delete_owner"
 on public.jobs for delete
@@ -484,9 +486,9 @@ create policy "audit_logs_select_admin"
 on public.audit_logs for select
 using (public.is_admin());
 
-create policy "audit_logs_insert_any"
+create policy "audit_logs_insert_admin"
 on public.audit_logs for insert
-with check (auth.uid() is not null);
+with check (public.is_admin());
 
 -- Payments
 create table if not exists public.payments (
@@ -512,3 +514,12 @@ using (user_id = auth.uid() or public.is_admin());
 create policy "payments_insert_admin"
 on public.payments for insert
 with check (public.is_admin());
+
+create policy "payments_update_admin"
+on public.payments for update
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "payments_delete_admin"
+on public.payments for delete
+using (public.is_admin());

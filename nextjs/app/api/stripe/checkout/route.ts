@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
+import { checkRateLimit } from "../../../../lib/rateLimit";
 
 type StripeJobRow = {
   id: string;
@@ -25,6 +26,10 @@ export async function POST(request: Request) {
   const auth = await getSupabaseProfile(request);
   if (!auth?.profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const limiter = checkRateLimit(`checkout:${auth.profile.id}`, { windowMs: 60_000, max: 5 });
+  if (!limiter.allowed) {
+    return NextResponse.json({ error: "Too many checkout attempts." }, { status: 429 });
   }
 
   const body = (await request.json()) as { jobId?: string; price?: number; planName?: string };

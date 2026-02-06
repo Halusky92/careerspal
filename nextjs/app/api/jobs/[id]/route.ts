@@ -38,6 +38,10 @@ export const GET = async (_request: NextRequest, context: { params: Promise<{ id
 
 export const PATCH = async (request: NextRequest, context: { params: Promise<{ id: string }> }) => {
   const { id } = await context.params;
+  const auth = await getSupabaseProfile(request);
+  if (!auth?.profile) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const body = (await request.json()) as Partial<Job> & {
     stripeSessionId?: string;
     stripePaymentStatus?: string;
@@ -45,6 +49,19 @@ export const PATCH = async (request: NextRequest, context: { params: Promise<{ i
   const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review"]);
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
+  }
+
+  const { data: existing } = await supabaseAdmin
+    .from("jobs")
+    .select("created_by")
+    .eq("id", id)
+    .single();
+  if (!existing) {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+  const isOwner = existing.created_by && existing.created_by === auth.profile.id;
+  if (!isOwner && auth.profile.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const data: Record<string, unknown> = {};
