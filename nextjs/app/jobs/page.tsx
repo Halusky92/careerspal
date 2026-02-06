@@ -177,17 +177,8 @@ export default function JobsPage() {
                 </div>
               )}
             </div>
-            <div className="mt-6 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-              <span className="px-3 py-1 rounded-full border border-slate-200 bg-white">Search by title</span>
-              <span className="px-3 py-1 rounded-full border border-slate-200 bg-white">Filter by location</span>
-              <span className="px-3 py-1 rounded-full border border-slate-200 bg-white">Verified employers only</span>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-              {["Notion Ops", "Automation", "Remote EU", "Head of Ops", "Zapier"].map((tag) => (
-                <span key={tag} className="px-3 py-1 rounded-full border border-indigo-100 bg-indigo-50 text-indigo-600">
-                  {tag}
-                </span>
-              ))}
+            <div className="mt-6 text-[11px] font-bold text-slate-500">
+              Use the filters below to search by title, location, and tools.
             </div>
             <div className="mt-6">
               {profile?.role === "employer" ? (

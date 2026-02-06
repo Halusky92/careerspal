@@ -55,6 +55,25 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const normalizeHttpUrl = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return trimmed;
+    if (trimmed.startsWith("data:")) return trimmed;
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+    if (trimmed.includes(".") && !trimmed.includes(" ")) return `https://${trimmed}`;
+    return trimmed;
+  };
+
+  const normalizeApplyUrl = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return trimmed;
+    if (trimmed === "#" || trimmed.startsWith("/") || trimmed.startsWith("mailto:")) return trimmed;
+    if (trimmed.includes("@") && !trimmed.includes(":")) return `mailto:${trimmed}`;
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+    if (trimmed.includes(".") && !trimmed.includes(" ")) return `https://${trimmed}`;
+    return trimmed;
+  };
+
   const handleStep2 = () => {
     if (!formData.company || !formData.applyUrl) return alert("Please fill in the Company Name and Apply URL.");
     setStep(3);
@@ -62,14 +81,6 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   };
 
   const handleFinalSubmit = () => {
-    const normalizeHttpUrl = (value: string) => {
-      const trimmed = value.trim();
-      if (!trimmed) return trimmed;
-      if (trimmed.startsWith("data:")) return trimmed;
-      if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
-      if (trimmed.includes(".") && !trimmed.includes(" ")) return `https://${trimmed}`;
-      return trimmed;
-    };
     // Logic: Use provided logo, otherwise fall back to a random seed or placeholder
     const finalLogo = formData.logo.trim()
       ? normalizeHttpUrl(formData.logo)
@@ -81,15 +92,6 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
           .filter(Boolean)
       : [];
     const mergedTags = Array.from(new Set([...(formData.tags || []), ...keywordTags]));
-    const normalizeApplyUrl = (value: string) => {
-      const trimmed = value.trim();
-      if (!trimmed) return trimmed;
-      if (trimmed === "#" || trimmed.startsWith("/") || trimmed.startsWith("mailto:")) return trimmed;
-      if (trimmed.includes("@") && !trimmed.includes(":")) return `mailto:${trimmed}`;
-      if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
-      if (trimmed.includes(".") && !trimmed.includes(" ")) return `https://${trimmed}`;
-      return trimmed;
-    };
     const normalizedApplyUrl = normalizeApplyUrl(formData.applyUrl);
     const normalizedCompanyWebsite = normalizeHttpUrl(formData.companyWebsite || "");
 
@@ -250,6 +252,12 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
                     value={formData.companyWebsite}
                     onChange={e => setFormData({...formData, companyWebsite: e.target.value})}
+                    onBlur={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        companyWebsite: prev.companyWebsite ? normalizeHttpUrl(prev.companyWebsite) : prev.companyWebsite,
+                      }))
+                    }
                   />
                 </div>
                 
@@ -262,7 +270,13 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                         placeholder="https://company.com/logo.png (optional)" 
                         className="flex-1 px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl outline-none font-medium text-sm focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" 
                         value={formData.logo.startsWith("data:") ? "" : formData.logo} 
-                        onChange={e => setFormData({...formData, logo: e.target.value})} 
+                        onChange={e => setFormData({...formData, logo: e.target.value})}
+                        onBlur={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            logo: prev.logo && !prev.logo.startsWith("data:") ? normalizeHttpUrl(prev.logo) : prev.logo,
+                          }))
+                        }
                       />
                       <div className="w-12 h-12 bg-white border border-slate-100 rounded-xl p-1 flex-shrink-0 flex items-center justify-center">
                          <img src={previewLogo} className="max-w-full max-h-full object-contain" alt="Preview" />
@@ -297,8 +311,14 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
                     value={formData.applyUrl}
                     onChange={e => setFormData({...formData, applyUrl: e.target.value})}
+                    onBlur={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        applyUrl: prev.applyUrl ? normalizeApplyUrl(prev.applyUrl) : prev.applyUrl,
+                      }))
+                    }
                   />
-                  <p className="text-[9px] text-slate-400 font-bold">We accept full URLs or emails and auto-normalize.</p>
+                  <p className="text-[9px] text-slate-400 font-bold">Auto-formats after you leave the field.</p>
                 </div>
                 <div className="flex gap-4 pt-6">
                   <button onClick={() => setStep(1)} className="px-6 sm:px-8 py-4 sm:py-5 bg-white text-slate-600 font-black rounded-2xl border border-slate-200/70 hover:border-slate-300 transition-all text-sm sm:text-base">Back</button>
