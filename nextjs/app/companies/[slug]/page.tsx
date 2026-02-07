@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import CompanyProfile from "../../../components/CompanyProfile";
-import { getAllJobs, getCompanyBySlug, createJobSlug } from "../../../lib/jobs";
+import { createJobSlug } from "../../../lib/jobs";
+import type { Company, Job } from "../../../types";
 
 interface CompanyProfilePageProps {
   params: { slug: string };
@@ -12,8 +13,42 @@ interface CompanyProfilePageProps {
 
 const CompanyProfilePage = ({ params }: CompanyProfilePageProps) => {
   const router = useRouter();
-  const company = useMemo(() => getCompanyBySlug(params.slug), [params.slug]);
-  const allJobs = getAllJobs();
+  const [company, setCompany] = useState<Company | null>(null);
+  const [companyJobs, setCompanyJobs] = useState<Job[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadCompany = async () => {
+      try {
+        const response = await fetch(`/api/companies/${params.slug}`);
+        if (!response.ok) {
+          setCompany(null);
+          setCompanyJobs([]);
+          return;
+        }
+        const data = (await response.json()) as { company?: Company | null; jobs?: Job[] };
+        setCompany(data.company ?? null);
+        setCompanyJobs(Array.isArray(data.jobs) ? data.jobs : []);
+      } catch {
+        setCompany(null);
+        setCompanyJobs([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadCompany();
+  }, [params.slug]);
+
+  if (isLoading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-24 text-center">
+        <div className="inline-flex items-center gap-3 text-slate-500 font-bold">
+          <span className="h-3 w-3 rounded-full bg-indigo-500 animate-pulse"></span>
+          Loading company...
+        </div>
+      </div>
+    );
+  }
 
   if (!company) {
     return (
@@ -44,7 +79,7 @@ const CompanyProfilePage = ({ params }: CompanyProfilePageProps) => {
       </div>
       <CompanyProfile
         company={company}
-        companyJobs={allJobs.filter((job) => job.company === company.name)}
+        companyJobs={companyJobs}
         onBack={() => router.back()}
         onSelectJob={(job) => router.push(`/jobs/${createJobSlug(job)}`)}
       />

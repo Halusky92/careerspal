@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import FindJobs from '../../components/FindJobs';
-import { getAllJobs } from '../../lib/jobs';
-import { UserSession } from '../../types';
+import { Job, UserSession } from '../../types';
 import { useSupabaseAuth } from '../../components/Providers';
 import { authFetch } from '../../lib/authFetch';
 
@@ -46,7 +45,7 @@ export default function JobsPage() {
     const qs = params.toString();
     router.replace(qs ? `/jobs?${qs}` : '/jobs', { scroll: false });
   };
-  const [jobs, setJobs] = useState(() => getAllJobs());
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [totalJobs, setTotalJobs] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [savedJobIds, setSavedJobIds] = useState<string[]>(() => getSaved());

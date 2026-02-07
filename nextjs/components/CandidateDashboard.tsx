@@ -4,7 +4,6 @@
 import React, { useState, useMemo } from 'react';
 import { Job, ResumeAudit, UserSession } from '../types';
 import { createJobSlug } from '../lib/jobs';
-import { MOCK_JOBS } from '../constants';
 import { auditCandidateProfile } from '../services/geminiService';
 
 interface CandidateDashboardProps {
@@ -26,10 +25,12 @@ const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ onBrowse, user,
   const [profileScore, setProfileScore] = useState(65); // Initial static score
 
   const applications = useMemo(() => {
-    const source = allJobs.length >= 2 ? allJobs : MOCK_JOBS;
+    if (allJobs.length === 0) return [];
+    const primary = allJobs[0];
+    const secondary = allJobs[1] ?? primary;
     return [
-      { job: source[0], status: 'Interview', date: '2 days ago', step: 2 },
-      { job: source[1] || source[0], status: 'Applied', date: '1 week ago', step: 1 },
+      { job: primary, status: 'Interview', date: '2 days ago', step: 2 },
+      { job: secondary, status: 'Applied', date: '1 week ago', step: 1 },
     ];
   }, [allJobs]);
 
@@ -205,7 +206,13 @@ const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ onBrowse, user,
                      <h3 className="text-2xl font-black text-slate-900 mb-1">Interview Request</h3>
                      <p className="text-slate-500 font-medium mb-6">FlowState Systems wants to chat.</p>
                      <div className="flex items-center gap-4">
-                        <img src={MOCK_JOBS[0].logo} className="w-10 h-10 rounded-full border border-slate-100" alt="" />
+                        {allJobs[0]?.logo ? (
+                          <img src={allJobs[0].logo} className="w-10 h-10 rounded-full border border-slate-100" alt="" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full border border-slate-100 bg-slate-100 flex items-center justify-center text-[9px] font-black text-slate-400">
+                            LOGO
+                          </div>
+                        )}
                         <button className="bg-slate-900 text-white px-5 py-2 rounded-xl text-xs font-black">Respond</button>
                      </div>
                   </div>
@@ -228,23 +235,27 @@ const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ onBrowse, user,
                      <button onClick={() => setActiveTab('applications')} className="text-slate-400 text-xs font-bold hover:text-indigo-600">View All</button>
                   </div>
                   <div className="space-y-6">
-                     {applications.map((app, idx) => (
-                        <div key={idx} className="flex items-center gap-6 p-4 rounded-3xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
-                           <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center p-2 border border-slate-100">
-                              <img src={app.job.logo} alt="" className="w-full h-full object-contain" />
-                           </div>
-                           <div className="flex-1">
-                              <div className="flex justify-between mb-2">
-                                 <h4 className="font-black text-slate-900">{app.job.title}</h4>
-                                 <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(app.status)}`}>
-                                    {app.status}
-                                 </span>
-                              </div>
-                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">{app.job.company} • Applied {app.date}</p>
-                              <Steps current={app.step} />
-                           </div>
-                        </div>
-                     ))}
+                     {applications.length > 0 ? (
+                       applications.map((app, idx) => (
+                          <div key={idx} className="flex items-center gap-6 p-4 rounded-3xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
+                             <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center p-2 border border-slate-100">
+                                <img src={app.job.logo} alt="" className="w-full h-full object-contain" />
+                             </div>
+                             <div className="flex-1">
+                                <div className="flex justify-between mb-2">
+                                   <h4 className="font-black text-slate-900">{app.job.title}</h4>
+                                   <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(app.status)}`}>
+                                      {app.status}
+                                   </span>
+                                </div>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">{app.job.company} • Applied {app.date}</p>
+                                <Steps current={app.step} />
+                             </div>
+                          </div>
+                       ))
+                     ) : (
+                       <p className="text-sm font-bold text-slate-400 text-center">No applications yet.</p>
+                     )}
                   </div>
                </div>
             </div>
@@ -255,28 +266,32 @@ const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ onBrowse, user,
                 <h3 className="text-lg font-black text-slate-900 mb-8">All Applications</h3>
                 {/* Reusing logic from overview for full list */}
                 <div className="space-y-6">
-                  {applications.map((app, idx) => (
-                      <div key={idx} className="flex flex-col sm:flex-row sm:items-center gap-6 p-6 rounded-3xl bg-slate-50 border border-slate-100">
-                        <div className="flex items-center gap-4">
-                           <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center p-2 border border-slate-100 shadow-sm">
-                              <img src={app.job.logo} alt="" className="w-full h-full object-contain" />
-                           </div>
-                           <div>
-                              <h4 className="font-black text-slate-900">{app.job.title}</h4>
-                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{app.job.company}</p>
-                           </div>
-                        </div>
-                        <div className="flex-1 sm:pl-8">
-                           <div className="flex justify-between items-center mb-2">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase">Status</span>
-                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(app.status)}`}>
-                                 {app.status}
-                              </span>
-                           </div>
-                           <Steps current={app.step} />
-                        </div>
-                     </div>
-                  ))}
+                  {applications.length > 0 ? (
+                    applications.map((app, idx) => (
+                        <div key={idx} className="flex flex-col sm:flex-row sm:items-center gap-6 p-6 rounded-3xl bg-slate-50 border border-slate-100">
+                          <div className="flex items-center gap-4">
+                             <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center p-2 border border-slate-100 shadow-sm">
+                                <img src={app.job.logo} alt="" className="w-full h-full object-contain" />
+                             </div>
+                             <div>
+                                <h4 className="font-black text-slate-900">{app.job.title}</h4>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{app.job.company}</p>
+                             </div>
+                          </div>
+                          <div className="flex-1 sm:pl-8">
+                             <div className="flex justify-between items-center mb-2">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">Status</span>
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(app.status)}`}>
+                                   {app.status}
+                                </span>
+                             </div>
+                             <Steps current={app.step} />
+                          </div>
+                       </div>
+                    ))
+                  ) : (
+                    <p className="text-sm font-bold text-slate-400 text-center">No applications yet.</p>
+                  )}
                 </div>
              </div>
           )}

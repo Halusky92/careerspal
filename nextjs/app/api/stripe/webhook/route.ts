@@ -62,6 +62,7 @@ export async function POST(request: Request) {
         .update({
           status: isPaid ? "pending_review" : "draft",
           stripe_payment_status: session.payment_status || (isPaid ? "paid" : "unpaid"),
+          stripe_session_id: session.id,
           posted_at_text: isPaid ? "Just now" : undefined,
           timestamp: isPaid ? Date.now() : undefined,
         })
@@ -138,6 +139,7 @@ export async function POST(request: Request) {
         .from("jobs")
         .update({
           stripe_payment_status: "expired",
+          stripe_session_id: session.id,
         })
         .eq("id", jobId);
       await supabaseAdmin.from("audit_logs").insert({

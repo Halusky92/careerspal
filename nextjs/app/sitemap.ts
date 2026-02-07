@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
-import { createCompanySlug, createJobSlug, getAllCompanies, getAllJobs } from "../lib/jobs";
+import { createCompanySlug, createJobSlug } from "../lib/jobs";
+import { supabaseAdmin } from "../lib/supabaseAdmin";
 
 const getBaseUrl = () => {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
@@ -9,7 +10,7 @@ const getBaseUrl = () => {
   return "http://localhost:3000";
 };
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getBaseUrl();
 
   const staticRoutes = [
@@ -25,8 +26,26 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/accessibility",
   ];
 
-  const jobRoutes = getAllJobs().map((job) => `/jobs/${createJobSlug(job)}`);
-  const companyRoutes = getAllCompanies().map((company) => `/companies/${createCompanySlug(company)}`);
+  let jobRoutes: string[] = [];
+  let companyRoutes: string[] = [];
+  if (supabaseAdmin) {
+    const { data: jobs } = await supabaseAdmin
+      .from("jobs")
+      .select("id,title")
+      .eq("status", "published");
+    jobRoutes = (jobs || []).map((job) =>
+      `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`,
+    );
+
+    const { data: companies } = await supabaseAdmin
+      .from("companies")
+      .select("name,slug");
+    companyRoutes = (companies || []).map((company) => {
+      const name = company.name || "company";
+      const slug = company.slug || createCompanySlug({ name });
+      return `/companies/${slug}`;
+    });
+  }
 
   return [...staticRoutes, ...jobRoutes, ...companyRoutes].map((path) => ({
     url: `${baseUrl}${path}`,

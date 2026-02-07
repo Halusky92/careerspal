@@ -14,21 +14,15 @@ const Auth: React.FC<AuthProps> = () => {
   const [email, setEmail] = useState("");
 
   const handleGoogleSignIn = async () => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("cp_role", role);
-    }
     setIsLoading(true);
-    await signInWithGoogle();
+    await signInWithGoogle({ role });
   };
 
   const handleEmailSignIn = async () => {
     if (!email.trim()) return;
-    if (typeof window !== "undefined") {
-      localStorage.setItem("cp_role", role);
-    }
     setIsLoading(true);
     try {
-      await signInWithEmail(email.trim());
+      await signInWithEmail(email.trim(), { role });
     } finally {
       setIsLoading(false);
     }

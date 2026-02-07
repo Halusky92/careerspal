@@ -7,7 +7,7 @@ import Testimonials from '../components/Testimonials';
 import Newsletter from '../components/Newsletter';
 import AIChatPanel from '../components/AIChatPanel';
 import { Job } from '../types';
-import { getAllJobs, createJobSlug, createCompanySlug } from '../lib/jobs';
+import { createJobSlug, createCompanySlug } from '../lib/jobs';
 
 const planWeight = { 'Elite Managed': 3, 'Featured Pro': 2, Standard: 1 };
 
@@ -18,7 +18,7 @@ const isNewListing = (postedAt: string) => {
 
 export default function HomePage() {
   const router = useRouter();
-  const [jobs, setJobs] = useState<Job[]>(() => getAllJobs());
+  const [jobs, setJobs] = useState<Job[]>([]);
 
   useEffect(() => {
     const loadJobs = async () => {

@@ -3,15 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import CandidateDashboard from "../../../components/CandidateDashboard";
-import { getAllJobs } from "../../../lib/jobs";
-import { UserSession } from "../../../types";
+import { Job, UserSession } from "../../../types";
 import { useSupabaseAuth } from "../../../components/Providers";
 import { authFetch } from "../../../lib/authFetch";
 
 const CandidateDashboardPage = () => {
   const router = useRouter();
   const { profile, accessToken, loading: authLoading } = useSupabaseAuth();
-  const [allJobs, setAllJobs] = useState(() => getAllJobs());
+  const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [user, setUser] = useState<UserSession | null>(null);
 
   const getSavedJobIds = () => {

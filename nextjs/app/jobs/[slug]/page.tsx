@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import JobDetail from "../../../components/JobDetail";
-import { getAllJobs, getJobBySlug, createJobSlug, createCompanySlug, getJobIdFromSlug } from "../../../lib/jobs";
+import { createJobSlug, createCompanySlug, getJobIdFromSlug } from "../../../lib/jobs";
+import { Job } from "../../../types";
 
 interface JobDetailPageProps {
   params: { slug: string };
@@ -12,8 +13,8 @@ interface JobDetailPageProps {
 
 const JobDetailPage = ({ params }: JobDetailPageProps) => {
   const router = useRouter();
-  const [allJobs, setAllJobs] = useState(getAllJobs());
-  const [job, setJob] = useState(() => getJobBySlug(params.slug));
+  const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [job, setJob] = useState<Job | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -22,7 +23,7 @@ const JobDetailPage = ({ params }: JobDetailPageProps) => {
         const jobId = getJobIdFromSlug(params.slug);
         const response = await fetch(`/api/jobs/${jobId}`);
         if (response.ok) {
-          const data = (await response.json()) as { job?: (typeof job) | null };
+          const data = (await response.json()) as { job?: Job | null };
           if (data.job) {
             setJob(data.job);
           } else {
@@ -40,7 +41,7 @@ const JobDetailPage = ({ params }: JobDetailPageProps) => {
     const loadJobs = async () => {
       try {
         const response = await fetch("/api/jobs");
-        const data = (await response.json()) as { jobs?: typeof allJobs };
+        const data = (await response.json()) as { jobs?: Job[] };
         if (Array.isArray(data.jobs)) {
           setAllJobs(data.jobs);
         }

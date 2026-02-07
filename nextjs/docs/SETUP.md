@@ -2,7 +2,7 @@
 
 ## Environment variables
 
-Create `nextjs/.env.local` with:
+Create `nextjs/.env.local` with (start from `.env.example`):
 
 ```
 API_KEY=your_gemini_api_key
@@ -14,7 +14,12 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+RESEND_API_KEY=your_resend_api_key
+RESEND_FROM="CareersPal <onboarding@resend.dev>"
+ADMIN_NOTIFICATION_EMAIL=info@careerspal.com
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
+Use Stripe test keys locally/staging. Switch to live keys only for production and update webhook secrets accordingly.
 
 ## Supabase schema
 

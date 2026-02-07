@@ -14,14 +14,16 @@ type Profile = {
   createdAt?: string | null;
 };
 
+type AuthRole = "candidate" | "employer";
+
 type AuthContextValue = {
   user: User | null;
   profile: Profile | null;
   accessToken: string | null;
   loading: boolean;
   refreshProfile: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
-  signInWithEmail: (email: string) => Promise<void>;
+  signInWithGoogle: (options?: { role?: AuthRole }) => Promise<void>;
+  signInWithEmail: (email: string, options?: { role?: AuthRole }) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -93,23 +95,47 @@ const Providers = ({ children }: ProvidersProps) => {
     };
   }, [fetchProfile]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (accessToken) {
+      const secure = window.location.protocol === "https:" ? "; Secure" : "";
+      document.cookie = `cp_access_token=${accessToken}; Path=/; SameSite=Lax${secure}`;
+    } else {
+      document.cookie = "cp_access_token=; Path=/; Max-Age=0";
+    }
+  }, [accessToken]);
+
   const refreshProfile = useCallback(async () => {
     await fetchProfile(accessToken);
   }, [accessToken, fetchProfile]);
 
-  const signInWithGoogle = useCallback(async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth` },
-    });
+  const buildRedirect = useCallback((role?: AuthRole) => {
+    const url = new URL("/auth", window.location.origin);
+    if (role) {
+      url.searchParams.set("role", role);
+    }
+    return url.toString();
   }, []);
 
-  const signInWithEmail = useCallback(async (email: string) => {
-    await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth` },
-    });
-  }, []);
+  const signInWithGoogle = useCallback(
+    async (options?: { role?: AuthRole }) => {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: buildRedirect(options?.role) },
+      });
+    },
+    [buildRedirect],
+  );
+
+  const signInWithEmail = useCallback(
+    async (email: string, options?: { role?: AuthRole }) => {
+      await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: buildRedirect(options?.role) },
+      });
+    },
+    [buildRedirect],
+  );
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();

@@ -36,6 +36,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [jobs, setJobs] = useState<Job[]>(() => getLocalJson<Job[]>('cp_my_jobs', []));
   const [adminStats, setAdminStats] = useState({ users: 0, jobs: 0, savedJobs: 0, files: 0 });
   const [roleSummary, setRoleSummary] = useState<Record<string, number>>({});
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const { accessToken } = useSupabaseAuth();
 
   // Stats Counters
@@ -431,6 +432,40 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       {job.status || "draft"}
                     </span>
                   </div>
+                  <button
+                    onClick={() => setExpandedJobId((prev) => (prev === job.id ? null : job.id))}
+                    className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-300 text-left"
+                  >
+                    {expandedJobId === job.id ? "Hide details" : "View details"}
+                  </button>
+                  {expandedJobId === job.id && (
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-xs text-slate-300 space-y-3">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</p>
+                        <p className="mt-2 text-slate-300 whitespace-pre-wrap">{job.description || "No description provided."}</p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        <p><span className="text-slate-500 font-bold">Location:</span> {job.location || "N/A"}</p>
+                        <p><span className="text-slate-500 font-bold">Remote policy:</span> {job.remotePolicy || "N/A"}</p>
+                        <p><span className="text-slate-500 font-bold">Type:</span> {job.type || "N/A"}</p>
+                        <p><span className="text-slate-500 font-bold">Salary:</span> {job.salary || "N/A"}</p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        <p><span className="text-slate-500 font-bold">Apply URL:</span> {job.applyUrl || "N/A"}</p>
+                        <p><span className="text-slate-500 font-bold">Company website:</span> {job.companyWebsite || "N/A"}</p>
+                        <p><span className="text-slate-500 font-bold">Keywords:</span> {job.keywords || "N/A"}</p>
+                      </div>
+                      {job.tags?.length ? (
+                        <div className="flex flex-wrap gap-2">
+                          {job.tags.map((tag) => (
+                            <span key={tag} className="px-2 py-1 rounded-lg bg-slate-800 text-slate-200 text-[10px] font-black uppercase tracking-widest">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                   {job.status === "pending_review" ? (
                     <div className="flex gap-2">
                       <button

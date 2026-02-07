@@ -1,14 +1,19 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Auth from "../../components/Auth";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 
 const AuthPage = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { profile, accessToken, loading, refreshProfile } = useSupabaseAuth();
+  const roleParam = searchParams.get("role");
+  const fromParam = searchParams.get("from");
+  const desiredRole = roleParam === "employer" || roleParam === "candidate" ? roleParam : null;
+  const desiredFrom = fromParam && fromParam.startsWith("/") ? fromParam : null;
 
   useEffect(() => {
     let isActive = true;
@@ -22,7 +27,6 @@ const AuthPage = () => {
         return;
       }
 
-      const desiredRole = typeof window !== "undefined" ? localStorage.getItem("cp_role") : null;
       const currentRole = profile.role || "candidate";
       if (desiredRole && desiredRole !== currentRole) {
         try {
@@ -41,20 +45,20 @@ const AuthPage = () => {
         }
       }
 
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("cp_role");
-      }
-
       const finalRole = desiredRole || currentRole || "candidate";
       if (!isActive) return;
-      router.replace(finalRole === "employer" ? "/dashboard/employer" : "/dashboard/candidate");
+      if (desiredFrom) {
+        router.replace(desiredFrom);
+      } else {
+        router.replace(finalRole === "employer" ? "/dashboard/employer" : "/dashboard/candidate");
+      }
     };
 
     syncRoleAndRedirect();
     return () => {
       isActive = false;
     };
-  }, [router, accessToken, loading, profile, refreshProfile]);
+  }, [router, accessToken, loading, profile, refreshProfile, desiredRole, desiredFrom]);
 
   if (loading) {
     return (
