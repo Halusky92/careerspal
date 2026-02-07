@@ -29,7 +29,7 @@ const PostJobPage = () => {
   useEffect(() => {
     if (authLoading) return;
     if (!profile?.email) {
-      router.replace("/auth");
+      router.replace("/auth?role=employer&from=/post-a-job");
       return;
     }
     if (profile.role && profile.role !== "employer" && profile.role !== "admin") {

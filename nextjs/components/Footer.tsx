@@ -73,8 +73,8 @@ const Footer = () => {
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
             © 2026 CareersPal Elite. All rights reserved.
           </p>
-          <div className="flex items-center gap-4 text-xs text-slate-400 font-medium">
-            <span>Built for teams who value clarity, speed, and quality.</span>
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center md:justify-end gap-2 sm:gap-4 text-xs text-slate-400 font-medium text-center md:text-left">
+            <span className="leading-relaxed">Built for teams who value clarity, speed, and quality.</span>
             <span className="hidden md:inline text-slate-300">•</span>
             <Link href="/privacy" className="text-slate-400 hover:text-indigo-600 font-bold uppercase tracking-widest text-[10px]">
               Privacy

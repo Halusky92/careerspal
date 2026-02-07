@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useSupabaseAuth } from "./Providers";
 
 interface AuthProps {
@@ -9,9 +10,15 @@ interface AuthProps {
 
 const Auth: React.FC<AuthProps> = () => {
   const { signInWithGoogle, signInWithEmail } = useSupabaseAuth();
-  const [role, setRole] = useState<'candidate' | 'employer'>('candidate');
+  const searchParams = useSearchParams();
+  const initialRole = searchParams.get("role") === "employer" ? "employer" : "candidate";
+  const [role, setRole] = useState<'candidate' | 'employer'>(initialRole);
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    setRole(initialRole);
+  }, [initialRole]);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);

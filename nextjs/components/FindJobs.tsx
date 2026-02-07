@@ -803,7 +803,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
                       w-11 h-11 sm:w-14 sm:h-14 rounded-[1rem] sm:rounded-[1.3rem] flex items-center justify-center overflow-hidden p-1 flex-shrink-0
                       ${isElite ? 'bg-yellow-100 border border-yellow-200' : 'bg-gray-50 border border-gray-100'}
                     `}>
-                      <img src={job.logo} alt="" className="w-full h-full object-contain" />
+                      {job.logo ? (
+                        <img src={job.logo} alt="" className="w-full h-full object-contain" />
+                      ) : (
+                        <div className="w-full h-full rounded-lg bg-white flex items-center justify-center text-[10px] font-black text-slate-400">
+                          LOGO
+                        </div>
+                      )}
                     </div>
                     
                     {/* Added pr-12 to prevent text overlap with heart button */}

@@ -27,6 +27,18 @@ const getAdminEmail = () => {
   return process.env.ADMIN_NOTIFICATION_EMAIL || "info@careerspal.com";
 };
 
+const logEmailIssue = async (jobId: string, context: Record<string, unknown>) => {
+  try {
+    await supabaseAdmin?.from("audit_logs").insert({
+      action: "email_failed",
+      job_id: jobId,
+      metadata: context,
+    });
+  } catch {
+    // avoid failing webhook on audit log issues
+  }
+};
+
 export async function POST(request: Request) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -96,7 +108,7 @@ export async function POST(request: Request) {
 
           try {
             if (buyerEmail) {
-              await resend.emails.send({
+              const buyerResult = await resend.emails.send({
                 from,
                 to: buyerEmail,
                 subject: "Payment received — your job is under review",
@@ -106,9 +118,13 @@ export async function POST(request: Request) {
                   <p><a href="${dashboardUrl}">${dashboardUrl}</a></p>
                 `,
               });
+              if (buyerResult?.error) {
+                console.error("Resend buyer email failed:", buyerResult.error);
+                await logEmailIssue(jobId, { type: "buyer", error: buyerResult.error });
+              }
             }
 
-            await resend.emails.send({
+            const adminResult = await resend.emails.send({
               from,
               to: getAdminEmail(),
               subject: "New paid job pending review",
@@ -123,9 +139,17 @@ export async function POST(request: Request) {
                 <p><a href="${baseUrl}/dashboard/admin">${baseUrl}/dashboard/admin</a></p>
               `,
             });
-          } catch {
-            // Email failures should not block webhook
+            if (adminResult?.error) {
+              console.error("Resend admin email failed:", adminResult.error);
+              await logEmailIssue(jobId, { type: "admin", error: adminResult.error });
+            }
+          } catch (error) {
+            console.error("Resend unexpected error:", error);
+            await logEmailIssue(jobId, { type: "unexpected", error: String(error) });
           }
+        } else {
+          console.warn("Resend not configured; skipping email notifications.");
+          await logEmailIssue(jobId, { type: "missing_resend", message: "RESEND_API_KEY not set" });
         }
       }
     }
