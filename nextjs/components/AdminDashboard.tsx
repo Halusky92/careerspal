@@ -613,20 +613,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
 
         {/* ROW 2: PENDING REVIEW */}
-        <div className="lg:col-span-4 order-5 lg:order-none">
-          <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden h-full flex flex-col">
-            <div className="p-8 border-b border-slate-800 bg-slate-900">
-              <h3 className="text-lg font-black text-white">Pending Review</h3>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-2">
-                {pendingJobs.length} waiting
-              </p>
+        <div className="lg:col-span-12 order-0">
+          <div className="bg-slate-900 rounded-[2.5rem] border border-amber-500/30 overflow-hidden">
+            <div className="p-8 border-b border-slate-800 bg-slate-900 flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-black text-white">Pending Review</h3>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-2">
+                  {pendingJobs.length} waiting
+                </p>
+              </div>
+              <span className="px-3 py-2 rounded-full text-[9px] font-black uppercase tracking-widest text-amber-300 border border-amber-600/40 bg-amber-600/10">
+                Needs approval
+              </span>
             </div>
-            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120]">
+            <div className="p-4 bg-[#0B1120]">
               {pendingJobs.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                   {pendingJobs.map((job) => (
+                    <React.Fragment key={job.id}>
                     <div
-                      key={job.id}
                       role="button"
                       tabIndex={0}
                       onClick={() => setExpandedJobId((prev) => (prev === job.id ? null : job.id))}
@@ -674,23 +679,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       Decline
                     </button>
                   </div>
+                </div>
                   {expandedJobId === job.id && (
-                    <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-xs text-slate-300 space-y-3">
+                    <div className="sm:col-span-2 xl:col-span-3 rounded-2xl border border-slate-800 bg-slate-950/50 p-5 text-xs text-slate-300 space-y-3">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</p>
                         {editingJobId === job.id && editDraft ? (
                           <textarea
                             value={editDraft.description}
                             onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
-                            className="mt-2 w-full min-h-[120px] rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                            className="mt-2 w-full min-h-[160px] rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
                           />
                         ) : (
-                          <p className="mt-2 text-slate-300 whitespace-pre-wrap max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                          <p className="mt-2 text-slate-300 whitespace-pre-wrap max-h-56 overflow-y-auto pr-2 custom-scrollbar">
                             {job.description || "No description provided."}
                           </p>
                         )}
                       </div>
-                      <div className="grid grid-cols-1 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <p>
                           <span className="text-slate-500 font-bold">Title:</span>{" "}
                           {editingJobId === job.id && editDraft ? (
@@ -751,8 +757,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             job.salary || "N/A"
                           )}
                         </p>
-                      </div>
-                      <div className="grid grid-cols-1 gap-2">
                         <p><span className="text-slate-500 font-bold">Apply URL:</span> {job.applyUrl || "N/A"}</p>
                         <p><span className="text-slate-500 font-bold">Company website:</span> {job.companyWebsite || "N/A"}</p>
                         <p><span className="text-slate-500 font-bold">Keywords:</span> {job.keywords || "N/A"}</p>
@@ -806,7 +810,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       </div>
                     </div>
                   )}
-                </div>
+                    </React.Fragment>
                   ))}
                 </div>
               ) : (
@@ -841,7 +845,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         event.preventDefault();
                         setExpandedJobId((prev) => (prev === job.id ? null : job.id));
                       }}
-                      className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all cursor-pointer"
+                      className={`bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all cursor-pointer ${
+                        expandedJobId === job.id ? "sm:col-span-2 xl:col-span-3" : ""
+                      }`}
                     >
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
@@ -1075,7 +1081,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         event.preventDefault();
                         setExpandedJobId((prev) => (prev === job.id ? null : job.id));
                       }}
-                      className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all cursor-pointer"
+                      className={`bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all cursor-pointer ${
+                        expandedJobId === job.id ? "sm:col-span-2 xl:col-span-3" : ""
+                      }`}
                     >
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-4">

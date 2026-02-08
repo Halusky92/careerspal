@@ -245,7 +245,7 @@ export default function HomePage() {
                   key={job.id}
                   onClick={() => handleToggleJob(job)}
                   className={`
-                    p-6 rounded-[2.5rem] shadow-lg transition-all cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between group relative gap-4
+                    p-6 rounded-[2.5rem] shadow-lg transition-all cursor-pointer flex flex-col items-stretch justify-between group relative gap-4
                     ${isElite ? 'bg-yellow-50 text-slate-900 border-2 border-yellow-200 shadow-yellow-100/40' : 
                       isPro ? 'bg-white border-2 border-indigo-100 ring-2 ring-indigo-50' : 
                       'bg-white border border-transparent hover:border-indigo-100'}
@@ -268,7 +268,7 @@ export default function HomePage() {
                     </div>
                   )}
 
-                  <div className="flex items-center space-x-4 sm:space-x-6 w-full sm:w-auto">
+                  <div className="flex items-center space-x-4 sm:space-x-6 w-full">
                     <div
                       className={`w-14 h-14 rounded-xl flex items-center justify-center p-1 relative
                         ${isElite ? 'bg-yellow-100 border border-yellow-200' : 'bg-slate-50 border'}
@@ -311,7 +311,7 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-start sm:items-end sm:text-right w-full sm:w-auto">
+                  <div className="flex flex-col items-start sm:items-end sm:text-right w-full">
                     <span className={`font-black text-lg tracking-tighter whitespace-nowrap ${isElite ? 'text-yellow-900' : 'text-slate-900'}`}>
                       {job.salary}
                     </span>

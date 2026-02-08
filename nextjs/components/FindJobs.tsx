@@ -808,7 +808,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   handleToggleJob(job);
                 }}
                   className={`
-                    p-3 sm:p-4 rounded-[1.5rem] sm:rounded-[2rem] transition-all cursor-pointer group flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4 relative active:scale-[0.99] animate-in fade-in slide-in-from-bottom-2
+                    p-3 sm:p-4 rounded-[1.5rem] sm:rounded-[2rem] transition-all cursor-pointer group flex flex-col items-stretch justify-between gap-3 sm:gap-4 relative active:scale-[0.99] animate-in fade-in slide-in-from-bottom-2
                     ${isElite 
                       ? 'bg-yellow-50 border-2 border-yellow-200 shadow-xl text-slate-900' 
                       : isPro 
@@ -852,7 +852,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                      <svg className="w-3.5 h-3.5" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
                   </button>
 
-                  <div className="flex items-center gap-4 w-full md:w-auto">
+                  <div className="flex items-center gap-4 w-full">
                     <div
                       className={`
                       w-11 h-11 sm:w-14 sm:h-14 rounded-[1rem] sm:rounded-[1.3rem] flex items-center justify-center overflow-hidden p-1 flex-shrink-0
@@ -918,7 +918,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                       </div>
                     </div>
                   </div>
-                  <div className="w-full md:w-[210px] border-t md:border-none pt-3 md:pt-0 border-slate-100/10 flex flex-col items-start md:items-end text-left md:text-right gap-2">
+                  <div className="w-full border-t md:border-none pt-3 md:pt-0 border-slate-100/10 flex flex-col items-start md:items-end text-left md:text-right gap-2">
                     <div className={`text-lg sm:text-xl font-black tracking-tighter whitespace-nowrap ${isElite ? 'text-yellow-900' : 'text-slate-900'}`}>
                       {job.salary}
                     </div>
