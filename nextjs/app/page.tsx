@@ -97,7 +97,7 @@ export default function HomePage() {
               <div className="flex items-center gap-6 animate-nav-loop pr-6">
                 {[
                   { name: "Notion", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg", glow: "shadow-[0_0_18px_rgba(0,0,0,0.15)]" },
-                  { name: "Linear", logoUrl: "https://logo.clearbit.com/linear.app", glow: "shadow-[0_0_18px_rgba(99,102,241,0.25)]" },
+                  { name: "Linear", logoUrl: "/logos/linear.png", glow: "shadow-[0_0_18px_rgba(99,102,241,0.25)]" },
                   { name: "Canva", logoUrl: "https://public.canva.site/logo/media/82983fc70ff088d1a1a2277f75f1c64d.svg", glow: "shadow-[0_0_18px_rgba(0,180,216,0.25)]" },
                   { name: "Ramp", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4e/Ramp_Business_Corporation_Logo.svg", glow: "shadow-[0_0_18px_rgba(16,185,129,0.25)]" },
                   { name: "Webflow", logoUrl: "https://dhygzobemt712.cloudfront.net/Logo/Full_Logo_Blue_Black.svg", glow: "shadow-[0_0_18px_rgba(59,130,246,0.25)]" },
@@ -115,7 +115,7 @@ export default function HomePage() {
                 ))}
                 {[
                   { name: "Notion", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg", glow: "shadow-[0_0_18px_rgba(0,0,0,0.15)]" },
-                  { name: "Linear", logoUrl: "https://logo.clearbit.com/linear.app", glow: "shadow-[0_0_18px_rgba(99,102,241,0.25)]" },
+                  { name: "Linear", logoUrl: "/logos/linear.png", glow: "shadow-[0_0_18px_rgba(99,102,241,0.25)]" },
                   { name: "Canva", logoUrl: "https://public.canva.site/logo/media/82983fc70ff088d1a1a2277f75f1c64d.svg", glow: "shadow-[0_0_18px_rgba(0,180,216,0.25)]" },
                   { name: "Ramp", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4e/Ramp_Business_Corporation_Logo.svg", glow: "shadow-[0_0_18px_rgba(16,185,129,0.25)]" },
                   { name: "Webflow", logoUrl: "https://dhygzobemt712.cloudfront.net/Logo/Full_Logo_Blue_Black.svg", glow: "shadow-[0_0_18px_rgba(59,130,246,0.25)]" },
