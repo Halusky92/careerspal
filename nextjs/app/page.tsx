@@ -8,6 +8,7 @@ import Newsletter from '../components/Newsletter';
 import AIChatPanel from '../components/AIChatPanel';
 import { Job } from '../types';
 import { createJobSlug, createCompanySlug } from '../lib/jobs';
+import CompanyLogo from '../components/CompanyLogo';
 
 const planWeight = { 'Elite Managed': 3, 'Featured Pro': 2, Standard: 1 };
 
@@ -183,13 +184,14 @@ export default function HomePage() {
                         ${isElite ? 'bg-yellow-100 border border-yellow-200' : 'bg-slate-50 border'}
                       `}
                     >
-                      {job.logo ? (
-                        <img src={job.logo} alt="" className="w-full h-full object-contain" />
-                      ) : (
-                        <div className="w-full h-full rounded-lg bg-white flex items-center justify-center text-[10px] font-black text-slate-400">
-                          LOGO
-                        </div>
-                      )}
+                      <CompanyLogo
+                        name={job.company}
+                        logoUrl={job.logo}
+                        website={job.companyWebsite || job.applyUrl}
+                        className="w-full h-full rounded-lg overflow-hidden bg-white"
+                        imageClassName="w-full h-full object-contain"
+                        fallbackClassName="text-[10px]"
+                      />
                     </div>
                     <div>
                       <h4
