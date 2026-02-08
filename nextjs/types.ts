@@ -47,6 +47,8 @@ export interface Job {
   matches?: number;
   companyWebsite?: string;
   keywords?: string;
+  stripePaymentStatus?: string;
+  stripeSessionId?: string;
 }
 
 export interface RemoteDNA {

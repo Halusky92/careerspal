@@ -34,6 +34,8 @@ export type SupabaseJobRow = {
   plan_currency: string | null;
   views: number | null;
   matches: number | null;
+  stripe_payment_status: string | null;
+  stripe_session_id: string | null;
   companies?: SupabaseCompanyRow;
 };
 
@@ -66,4 +68,6 @@ export const mapSupabaseJob = (row: SupabaseJobRow): Job => ({
   matches: row.matches || 0,
   companyWebsite: row.company_website || row.companies?.website || undefined,
   keywords: row.keywords || undefined,
+  stripePaymentStatus: row.stripe_payment_status || undefined,
+  stripeSessionId: row.stripe_session_id || undefined,
 });

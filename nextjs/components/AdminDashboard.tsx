@@ -512,6 +512,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       {job.status || "draft"}
                     </span>
                   </div>
+                  {job.stripePaymentStatus === "paid" && job.status !== "published" && (
+                    <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-emerald-300">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      Paid · Awaiting Accept
+                    </div>
+                  )}
                   <button
                     onClick={() => setExpandedJobId((prev) => (prev === job.id ? null : job.id))}
                     className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-300 text-left"
@@ -554,29 +560,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       </button>
                     </div>
                   )}
-                  {job.status === "pending_review" ? (
-                    <div className="flex gap-2">
+                  <div className="flex gap-2">
+                    {job.stripePaymentStatus === "paid" && job.status !== "published" && (
                       <button
                         onClick={() => updateJobStatus(job.id, "published")}
                         className="flex-1 bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/30"
                       >
                         Accept
                       </button>
-                      <button
-                        onClick={() => updateJobStatus(job.id, "private")}
-                        className="flex-1 bg-red-600/10 text-red-400 border border-red-600/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  ) : (
+                    )}
                     <button
                       onClick={() => updateJobStatus(job.id, "private")}
-                      className="w-full bg-slate-950 text-slate-500 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-red-400 hover:border-red-600/40"
+                      className={`${
+                        job.stripePaymentStatus === "paid" && job.status !== "published" ? "flex-1" : "w-full"
+                      } bg-slate-950 text-slate-500 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-red-400 hover:border-red-600/40`}
                     >
                       Archive
                     </button>
-                  )}
+                  </div>
                 </div>
               )) : (
                  <div className="h-full flex flex-col items-center justify-center text-slate-600 text-sm italic">
