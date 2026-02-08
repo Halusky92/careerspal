@@ -41,9 +41,7 @@ const Navbar: React.FC = () => {
 
   const navItems = [
     { label: 'Jobs', href: '/jobs' },
-    { label: 'Hire Talent', href: '/hire-talent' },
     { label: 'Pricing', href: '/pricing' },
-    { label: 'About', href: '/about' },
   ];
 
   const handleMobileNav = () => {
@@ -115,6 +113,18 @@ const Navbar: React.FC = () => {
                         {item.label}
                       </Link>
                     ))}
+                    <Link
+                      href="/hire-talent"
+                      className="block rounded-xl px-3 py-2 font-bold hover:bg-slate-50 hover:text-slate-900"
+                    >
+                      Hire Talent
+                    </Link>
+                    <Link
+                      href="/about"
+                      className="block rounded-xl px-3 py-2 font-bold hover:bg-slate-50 hover:text-slate-900"
+                    >
+                      About
+                    </Link>
                     {profile?.email && (
                       <>
                         <Link
