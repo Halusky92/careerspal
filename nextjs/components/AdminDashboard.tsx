@@ -57,10 +57,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString();
   };
+  const getPlanDurationDays = (job: Job) => {
+    const plan = job.planType || job.plan?.type;
+    if (plan === "Elite Managed") return 60;
+    if (plan === "Featured Pro") return 45;
+    return 30;
+  };
   const getExpiryDate = (job: Job) => {
     if (!job.timestamp) return "N/A";
-    const expires = new Date(job.timestamp + 30 * 24 * 60 * 60 * 1000);
+    const expires = new Date(job.timestamp + getPlanDurationDays(job) * 24 * 60 * 60 * 1000);
     return Number.isNaN(expires.getTime()) ? "N/A" : expires.toLocaleDateString();
+  };
+  const getRemainingDays = (job: Job) => {
+    if (!job.timestamp) return null;
+    const expires = new Date(job.timestamp + getPlanDurationDays(job) * 24 * 60 * 60 * 1000);
+    if (Number.isNaN(expires.getTime())) return null;
+    const diffMs = expires.getTime() - Date.now();
+    return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
   };
 
   const stats = useMemo(() => {
@@ -201,9 +214,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     if (!query) return jobs;
     return jobs.filter((job) => {
       const title = job.title?.toLowerCase() || "";
-      const company = job.company?.toLowerCase() || "";
-      const keywords = job.keywords?.toLowerCase() || "";
-      return title.includes(query) || company.includes(query) || keywords.includes(query);
+      return title.includes(query);
     });
   }, [jobs, jobQuery]);
 
@@ -211,8 +222,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     if (!jobQuery.trim() || jobQuery.length < 1) return [];
     const lowQuery = jobQuery.toLowerCase();
     const titles = jobs.filter((j) => j.title?.toLowerCase().includes(lowQuery)).map((j) => j.title);
-    const companies = jobs.filter((j) => j.company?.toLowerCase().includes(lowQuery)).map((j) => j.company);
-    return Array.from(new Set([...titles, ...companies])).slice(0, 6);
+    return Array.from(new Set(titles)).slice(0, 6);
   }, [jobQuery, jobs]);
 
   const audienceSplit = useMemo(() => {
@@ -230,7 +240,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const maxPosts = Math.max(...chartPosts.map((item) => item.count), 1);
 
   const pendingJobs = filteredJobs.filter((job) => job.status === "pending_review");
-  const activeJobs = filteredJobs.filter((job) => job.status !== "pending_review");
+  const archivedJobs = filteredJobs.filter((job) => job.status === "private");
+  const activeJobs = filteredJobs.filter((job) => job.status !== "pending_review" && job.status !== "private");
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-slate-200 font-sans p-4 sm:p-6 md:p-10 animate-in fade-in">
@@ -313,7 +324,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     setShowJobSuggestions(true);
                   }}
                   onFocus={() => setShowJobSuggestions(true)}
-                  placeholder="Search jobs by title or company..."
+                  placeholder="Search job titles..."
                   className="w-full bg-transparent px-3 text-sm font-bold text-slate-200 outline-none placeholder:text-slate-600"
                 />
                 {jobQuery && (
@@ -556,6 +567,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <div>
                         <h4 className="font-bold text-white text-sm line-clamp-1 group-hover:text-indigo-400 transition-colors">{job.title}</h4>
                         <p className="text-[10px] text-slate-500 uppercase tracking-wider">{job.company}</p>
+                        <p className="text-[10px] text-slate-600 uppercase tracking-wider">
+                          {getRemainingDays(job) === null ? "Expiry N/A" : `Expires in ${getRemainingDays(job)} days`}
+                        </p>
                       </div>
                     </div>
                     <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded border border-amber-600/40 text-amber-300 bg-amber-600/10">
@@ -599,7 +613,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         <p><span className="text-slate-500 font-bold">Company website:</span> {job.companyWebsite || "N/A"}</p>
                         <p><span className="text-slate-500 font-bold">Keywords:</span> {job.keywords || "N/A"}</p>
                         <p><span className="text-slate-500 font-bold">Posted:</span> {formatDate(job.timestamp)}</p>
+                        <p><span className="text-slate-500 font-bold">Plan duration:</span> {getPlanDurationDays(job)} days</p>
                         <p><span className="text-slate-500 font-bold">Expires:</span> {getExpiryDate(job)}</p>
+                        <p><span className="text-slate-500 font-bold">Days left:</span> {getRemainingDays(job) ?? "N/A"}</p>
                       </div>
                       {job.tags?.length ? (
                         <div className="flex flex-wrap gap-2">
@@ -629,6 +645,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden h-full flex flex-col">
             <div className="p-8 border-b border-slate-800 bg-slate-900">
               <h3 className="text-lg font-black text-white">Active Deployments</h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-2">
+                {activeJobs.length} active · {archivedJobs.length} archived
+              </p>
             </div>
             <div className="p-4 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120]">
               {activeJobs.length > 0 ? (
@@ -654,6 +673,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                        <div>
                           <h4 className="font-bold text-white text-sm line-clamp-1 group-hover:text-indigo-400 transition-colors">{job.title}</h4>
                           <p className="text-[10px] text-slate-500 uppercase tracking-wider">{job.company}</p>
+                          <p className="text-[10px] text-slate-600 uppercase tracking-wider">
+                            {getRemainingDays(job) === null ? "Expiry N/A" : `Expires in ${getRemainingDays(job)} days`}
+                          </p>
                        </div>
                     </div>
                     <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded border border-slate-700 text-slate-400">
@@ -692,7 +714,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         <p><span className="text-slate-500 font-bold">Company website:</span> {job.companyWebsite || "N/A"}</p>
                         <p><span className="text-slate-500 font-bold">Keywords:</span> {job.keywords || "N/A"}</p>
                         <p><span className="text-slate-500 font-bold">Posted:</span> {formatDate(job.timestamp)}</p>
+                        <p><span className="text-slate-500 font-bold">Plan duration:</span> {getPlanDurationDays(job)} days</p>
                         <p><span className="text-slate-500 font-bold">Expires:</span> {getExpiryDate(job)}</p>
+                        <p><span className="text-slate-500 font-bold">Days left:</span> {getRemainingDays(job) ?? "N/A"}</p>
                       </div>
                       {job.tags?.length ? (
                         <div className="flex flex-wrap gap-2">
@@ -726,12 +750,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         Accept
                       </button>
                     )}
-                    <button
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        updateJobStatus(job.id, "private");
-                      }}
-                      className={`${
+                      <button
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          updateJobStatus(job.id, "private");
+                        }}
+                        className={`${
                         job.stripePaymentStatus === "paid" && job.status !== "published" ? "flex-1" : "w-full"
                       } bg-slate-950 text-slate-500 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-red-400 hover:border-red-600/40`}
                     >
@@ -745,6 +769,121 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                  <div className="h-full flex flex-col items-center justify-center text-slate-600 text-sm italic">
                     <p>No active ops deployed.</p>
                  </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ROW 2: ARCHIVED JOBS */}
+        <div className="lg:col-span-4 order-4 lg:order-none">
+          <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden h-full flex flex-col">
+            <div className="p-8 border-b border-slate-800 bg-slate-900">
+              <h3 className="text-lg font-black text-white">Archived Jobs</h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-2">
+                {archivedJobs.length} archived
+              </p>
+            </div>
+            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120]">
+              {archivedJobs.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {archivedJobs.map((job) => (
+                    <div
+                      key={job.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setExpandedJobId((prev) => (prev === job.id ? null : job.id))}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        setExpandedJobId((prev) => (prev === job.id ? null : job.id));
+                      }}
+                      className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all cursor-pointer"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center text-lg">
+                            {job.planType === "Elite Managed" ? "💎" : "💼"}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-white text-sm line-clamp-1 group-hover:text-indigo-400 transition-colors">{job.title}</h4>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">{job.company}</p>
+                            <p className="text-[10px] text-slate-600 uppercase tracking-wider">
+                              {getRemainingDays(job) === null ? "Expiry N/A" : `Expires in ${getRemainingDays(job)} days`}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded border border-slate-700 text-slate-400">
+                          archived
+                        </span>
+                      </div>
+                      <button
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setExpandedJobId((prev) => (prev === job.id ? null : job.id));
+                        }}
+                        className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-300 text-left"
+                      >
+                        {expandedJobId === job.id ? "Hide details" : "View details"}
+                      </button>
+                      {expandedJobId === job.id && (
+                        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-xs text-slate-300 space-y-3">
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</p>
+                            <p className="mt-2 text-slate-300 whitespace-pre-wrap">{job.description || "No description provided."}</p>
+                          </div>
+                          <div className="grid grid-cols-1 gap-2">
+                            <p><span className="text-slate-500 font-bold">Location:</span> {job.location || "N/A"}</p>
+                            <p><span className="text-slate-500 font-bold">Remote policy:</span> {job.remotePolicy || "N/A"}</p>
+                            <p><span className="text-slate-500 font-bold">Type:</span> {job.type || "N/A"}</p>
+                            <p><span className="text-slate-500 font-bold">Salary:</span> {job.salary || "N/A"}</p>
+                          </div>
+                          <div className="grid grid-cols-1 gap-2">
+                            <p><span className="text-slate-500 font-bold">Apply URL:</span> {job.applyUrl || "N/A"}</p>
+                            <p><span className="text-slate-500 font-bold">Company website:</span> {job.companyWebsite || "N/A"}</p>
+                            <p><span className="text-slate-500 font-bold">Keywords:</span> {job.keywords || "N/A"}</p>
+                            <p><span className="text-slate-500 font-bold">Posted:</span> {formatDate(job.timestamp)}</p>
+                            <p><span className="text-slate-500 font-bold">Plan duration:</span> {getPlanDurationDays(job)} days</p>
+                            <p><span className="text-slate-500 font-bold">Expires:</span> {getExpiryDate(job)}</p>
+                            <p><span className="text-slate-500 font-bold">Days left:</span> {getRemainingDays(job) ?? "N/A"}</p>
+                          </div>
+                          {job.tags?.length ? (
+                            <div className="flex flex-wrap gap-2">
+                              {job.tags.map((tag) => (
+                                <span key={tag} className="px-2 py-1 rounded-lg bg-slate-800 text-slate-200 text-[10px] font-black uppercase tracking-widest">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleDeleteJob(job.id);
+                            }}
+                            className="w-full bg-red-600/10 text-red-400 border border-red-600/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
+                          >
+                            Delete job
+                          </button>
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            updateJobStatus(job.id, "published");
+                          }}
+                          className="flex-1 bg-indigo-600/20 text-indigo-300 border border-indigo-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600/30"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-slate-600 text-sm italic">
+                  <p>No archived jobs.</p>
+                </div>
               )}
             </div>
           </div>
