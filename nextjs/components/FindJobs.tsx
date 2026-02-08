@@ -53,6 +53,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const searchRef = useRef<HTMLDivElement>(null);
   const mobileTitleRef = useRef<HTMLDivElement>(null);
   const mobileLocationRef = useRef<HTMLDivElement>(null);
+  const filterScrollRef = useRef<HTMLDivElement>(null);
+  const [showFilterTopShadow, setShowFilterTopShadow] = useState(false);
+  const [showFilterBottomShadow, setShowFilterBottomShadow] = useState(false);
   
   // Pagination State
   const [visibleCount, setVisibleCount] = useState(JOBS_PER_PAGE);
@@ -101,6 +104,26 @@ const FindJobs: React.FC<FindJobsProps> = ({
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const target = filterScrollRef.current;
+    if (!target) return;
+
+    const updateShadows = () => {
+      const { scrollTop, clientHeight, scrollHeight } = target;
+      setShowFilterTopShadow(scrollTop > 4);
+      setShowFilterBottomShadow(scrollTop + clientHeight < scrollHeight - 4);
+    };
+
+    updateShadows();
+    target.addEventListener('scroll', updateShadows);
+    window.addEventListener('resize', updateShadows);
+
+    return () => {
+      target.removeEventListener('scroll', updateShadows);
+      window.removeEventListener('resize', updateShadows);
+    };
   }, []);
 
   const parseSalaryRange = (salary: string) => {
@@ -314,10 +337,15 @@ const FindJobs: React.FC<FindJobsProps> = ({
   );
 
   const FilterContent = () => (
-    <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-hidden rounded-[2.75rem] border border-transparent">
-      <div className="space-y-10 pr-2 max-h-[calc(100vh-7rem)] overflow-y-auto scroll-smooth">
+    <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-hidden rounded-[2.75rem] border border-transparent relative">
+      <div
+        ref={filterScrollRef}
+        className="space-y-10 pr-2 pb-24 max-h-[calc(100vh-7rem)] overflow-y-auto scroll-smooth"
+      >
       <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
-        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Expertise Segments</h3>
+        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Expertise Segments</h3>
+        </div>
         <div className="space-y-1.5">
           {CATEGORIES.map(cat => (
             <button 
@@ -335,7 +363,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
       </div>
 
       <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
-        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Work Mode</h3>
+        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Work Mode</h3>
+        </div>
         <div className="space-y-2">
           {workModes.map((mode) => (
             <button
@@ -352,7 +382,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
       </div>
 
       <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
-        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Employment Type</h3>
+        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Employment Type</h3>
+        </div>
         <div className="space-y-2">
           {employmentTypes.map((type) => (
             <button
@@ -369,7 +401,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
       </div>
 
       <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
-        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Minimum Salary</h3>
+        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Minimum Salary</h3>
+        </div>
         <div className="space-y-2">
           {salaryFloors.map((option) => (
             <button
@@ -386,7 +420,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
       </div>
 
       <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
-        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Systems Stack</h3>
+        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Systems Stack</h3>
+        </div>
         <div className="space-y-2">
           {systems.map(s => (
             <button 
@@ -399,6 +435,20 @@ const FindJobs: React.FC<FindJobsProps> = ({
           ))}
         </div>
       </div>
+      </div>
+      {showFilterTopShadow && (
+        <div className="pointer-events-none absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-white to-transparent" />
+      )}
+      {showFilterBottomShadow && (
+        <div className="pointer-events-none absolute bottom-14 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent" />
+      )}
+      <div className="absolute bottom-0 left-0 right-0 border-t border-slate-100 bg-white/95 backdrop-blur px-4 py-3">
+        <button
+          onClick={clearAllFilters}
+          className="w-full rounded-2xl bg-slate-900 text-white px-4 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-black transition-colors"
+        >
+          Reset filters ({activeFilterChips.length})
+        </button>
       </div>
     </div>
   );
