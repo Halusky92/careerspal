@@ -77,7 +77,14 @@ const Auth: React.FC<AuthProps> = () => {
           aria-busy={isLoading}
           className="w-full mb-6 flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-4 font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:shadow-md disabled:opacity-60"
         >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-white text-sm font-black">G</span>
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white border border-slate-200">
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.12 0 5.93 1.08 8.14 2.86l6.05-6.05C34.57 3.03 29.62 1 24 1 14.86 1 7.15 6.26 3.64 13.86l7.21 5.6C12.66 14.15 17.9 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.5 24c0-1.67-.15-3.27-.44-4.82H24v9.14h12.6c-.54 2.94-2.2 5.43-4.7 7.1l7.21 5.6C43.66 36.9 46.5 30.98 46.5 24z"/>
+              <path fill="#FBBC05" d="M10.85 28.54A14.4 14.4 0 0 1 10 24c0-1.57.27-3.1.75-4.54l-7.21-5.6A23.97 23.97 0 0 0 1.5 24c0 3.86.92 7.51 2.54 10.86l6.81-6.32z"/>
+              <path fill="#34A853" d="M24 46.5c5.62 0 10.35-1.86 13.8-5.05l-7.21-5.6c-2 1.35-4.55 2.15-6.59 2.15-6.08 0-11.3-4.65-13.13-10.96l-6.81 6.32C7.15 41.74 14.86 46.5 24 46.5z"/>
+            </svg>
+          </span>
           {isLoading ? "Connecting..." : "Continue with Google"}
         </button>
 

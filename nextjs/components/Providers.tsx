@@ -67,7 +67,16 @@ const Providers = ({ children }: ProvidersProps) => {
   useEffect(() => {
     let isActive = true;
     const init = async () => {
-      const { data } = await supabase.auth.getSession();
+      const { data, error } = await supabase.auth.getSession();
+      if (error?.message?.toLowerCase().includes("refresh token")) {
+        await supabase.auth.signOut();
+        if (!isActive) return;
+        setUser(null);
+        setAccessToken(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
       if (!isActive) return;
       const session = data.session;
       setUser(session?.user ?? null);

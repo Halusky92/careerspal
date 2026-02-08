@@ -34,8 +34,8 @@ const Navbar: React.FC = () => {
   }, [pathname]);
 
   const overflowItems = [
-    { label: "Post a Job", href: "/post-a-job" },
     { label: "Salary Insights", href: "/salary-insights" },
+    { label: "About", href: "/about" },
     { label: "Subscribe", href: "/#subscribe" },
   ];
 
@@ -113,18 +113,6 @@ const Navbar: React.FC = () => {
                         {item.label}
                       </Link>
                     ))}
-                    <Link
-                      href="/hire-talent"
-                      className="block rounded-xl px-3 py-2 font-bold hover:bg-slate-50 hover:text-slate-900"
-                    >
-                      Hire Talent
-                    </Link>
-                    <Link
-                      href="/about"
-                      className="block rounded-xl px-3 py-2 font-bold hover:bg-slate-50 hover:text-slate-900"
-                    >
-                      About
-                    </Link>
                     {profile?.email && (
                       <>
                         <Link
