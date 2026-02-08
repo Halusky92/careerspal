@@ -50,6 +50,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedNotice, setSavedNotice] = useState('');
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const mobileTitleRef = useRef<HTMLDivElement>(null);
   const mobileLocationRef = useRef<HTMLDivElement>(null);
@@ -267,6 +268,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   const handleLoadMore = () => {
     setVisibleCount(prev => prev + JOBS_PER_PAGE);
+  };
+  const handleToggleJob = (job: Job) => {
+    if (job.status === 'private' || job.status === 'invite_only') return;
+    setExpandedJobId((prev) => (prev === job.id ? null : job.id));
   };
 
   const handleSaveSearch = async () => {
@@ -795,22 +800,12 @@ const FindJobs: React.FC<FindJobsProps> = ({
                 role="button"
                 tabIndex={0}
                 onClick={() => {
-                  if (isPrivate) return;
-                  if (onSelectJob) {
-                    onSelectJob(job);
-                  } else {
-                    router.push(`/jobs/${createJobSlug(job)}`);
-                  }
+                  handleToggleJob(job);
                 }}
                 onKeyDown={(event) => {
                   if (event.key !== 'Enter' && event.key !== ' ') return;
                   event.preventDefault();
-                  if (isPrivate) return;
-                  if (onSelectJob) {
-                    onSelectJob(job);
-                  } else {
-                    router.push(`/jobs/${createJobSlug(job)}`);
-                  }
+                  handleToggleJob(job);
                 }}
                   className={`
                     p-3 sm:p-4 rounded-[1.5rem] sm:rounded-[2rem] transition-all cursor-pointer group flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4 relative active:scale-[0.99] animate-in fade-in slide-in-from-bottom-2
@@ -970,6 +965,43 @@ const FindJobs: React.FC<FindJobsProps> = ({
                       )}
                     </div>
                   </div>
+                  {expandedJobId === job.id && (
+                    <div className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 text-left">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Role overview</p>
+                        <p className="text-sm sm:text-base text-slate-700 mt-2 whitespace-pre-wrap">
+                          {job.description || "Description coming soon."}
+                        </p>
+                      </div>
+                      <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] font-bold text-slate-600">
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <span className="text-[9px] uppercase tracking-widest text-slate-400">Company</span>
+                          <div className="mt-1">{job.company || "N/A"}</div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <span className="text-[9px] uppercase tracking-widest text-slate-400">Location</span>
+                          <div className="mt-1">{job.location || "N/A"}</div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <span className="text-[9px] uppercase tracking-widest text-slate-400">Work mode</span>
+                          <div className="mt-1">{workModeLabel}</div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <span className="text-[9px] uppercase tracking-widest text-slate-400">Employment type</span>
+                          <div className="mt-1">{job.type || "N/A"}</div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <span className="text-[9px] uppercase tracking-widest text-slate-400">Salary</span>
+                          <div className="mt-1">{job.salary || "N/A"}</div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <span className="text-[9px] uppercase tracking-widest text-slate-400">Posted</span>
+                          <div className="mt-1">{formatPostedDate(job)}</div>
+                        </div>
+                      </div>
+                      {/* Full details CTA temporarily hidden; keep placement for later */}
+                    </div>
+                  )}
                 </div>
               );
             })}

@@ -20,6 +20,7 @@ const isNewListing = (postedAt: string) => {
 export default function HomePage() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -53,6 +54,10 @@ export default function HomePage() {
 
   const handleOpenJob = (job: Job) => {
     router.push(`/jobs/${createJobSlug(job)}`);
+  };
+  const handleToggleJob = (job: Job) => {
+    if (job.status === 'private' || job.status === 'invite_only') return;
+    setExpandedJobId((prev) => (prev === job.id ? null : job.id));
   };
 
   const handleOpenCompany = (companyName: string) => {
@@ -190,11 +195,12 @@ export default function HomePage() {
               const isElite = job.planType === 'Elite Managed';
               const isPro = job.planType === 'Featured Pro';
               const isNew = isNewListing(job.postedAt);
+              const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl !== '#');
 
               return (
                 <div
                   key={job.id}
-                  onClick={() => handleOpenJob(job)}
+                  onClick={() => handleToggleJob(job)}
                   className={`
                     p-6 rounded-[2.5rem] shadow-lg transition-all cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between group relative gap-4
                     ${isElite ? 'bg-yellow-50 text-slate-900 border-2 border-yellow-200 shadow-yellow-100/40' : 
@@ -266,16 +272,51 @@ export default function HomePage() {
                     <span className={`font-black text-lg tracking-tighter whitespace-nowrap ${isElite ? 'text-yellow-900' : 'text-slate-900'}`}>
                       {job.salary}
                     </span>
-                    {job.matchScore && (
-                      <span
-                        className={`text-[9px] font-black px-2 py-0.5 rounded-lg mt-1 border
-                          ${isElite ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}
-                        `}
-                      >
-                        AI Match: {job.matchScore}%
-                      </span>
-                    )}
                   </div>
+                  {expandedJobId === job.id && (
+                    <div className="w-full bg-white/90 border border-slate-200/70 rounded-[2rem] p-5 sm:p-6 text-left">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Role overview</p>
+                        <p className="text-sm text-slate-700 mt-2 whitespace-pre-wrap">
+                          {job.description || "Description coming soon."}
+                        </p>
+                      </div>
+                      <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] font-bold text-slate-600">
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <span className="text-[9px] uppercase tracking-widest text-slate-400">Company</span>
+                          <div className="mt-1">{job.company || "N/A"}</div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <span className="text-[9px] uppercase tracking-widest text-slate-400">Location</span>
+                          <div className="mt-1">{job.location || "N/A"}</div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <span className="text-[9px] uppercase tracking-widest text-slate-400">Type</span>
+                          <div className="mt-1">{job.type || "N/A"}</div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <span className="text-[9px] uppercase tracking-widest text-slate-400">Posted</span>
+                          <div className="mt-1">{job.postedAt}</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!hasApplyUrl) return;
+                          window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
+                        }}
+                        disabled={!hasApplyUrl}
+                        className={`mt-4 inline-flex items-center justify-center rounded-full px-4 py-2 text-[9px] font-black uppercase tracking-widest transition-all w-full sm:w-auto ${
+                          hasApplyUrl
+                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                        }`}
+                      >
+                        {hasApplyUrl ? 'Quick apply' : 'Apply soon'}
+                      </button>
+                      {/* Full details CTA temporarily hidden; keep placement for later */}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -301,16 +342,45 @@ export default function HomePage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {topJobs.slice(0, 3).map((job) => (
-                  <div
+                  (() => {
+                    const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl !== '#');
+                    return (
+                      <div
                     key={`recent-${job.id}`}
-                    onClick={() => handleOpenJob(job)}
+                    onClick={() => handleToggleJob(job)}
                     className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-2xl p-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] hover:shadow-xl transition-all cursor-pointer"
                   >
                     <div className="text-xs font-black text-slate-900 truncate">{job.title}</div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 truncate">
                       {job.company}
                     </div>
-                  </div>
+                    {expandedJobId === job.id && (
+                      <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-[11px] font-bold text-slate-600 space-y-2">
+                        <p className="text-[9px] uppercase tracking-widest text-slate-400">Role overview</p>
+                        <p className="text-slate-700 text-xs whitespace-pre-wrap">
+                          {job.description || "Description coming soon."}
+                        </p>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!hasApplyUrl) return;
+                            window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
+                          }}
+                          disabled={!hasApplyUrl}
+                          className={`mt-2 inline-flex items-center justify-center rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest transition-all w-full ${
+                            hasApplyUrl
+                              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                              : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                          }`}
+                        >
+                          {hasApplyUrl ? 'Quick apply' : 'Apply soon'}
+                        </button>
+                        {/* Full details CTA temporarily hidden; keep placement for later */}
+                      </div>
+                    )}
+                      </div>
+                    );
+                  })()
                 ))}
               </div>
             </div>
