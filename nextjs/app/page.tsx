@@ -96,18 +96,59 @@ export default function HomePage() {
       </section>
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {[
-            { step: "01", title: "Curate", copy: "Every role is reviewed for clarity, salary, and scope." },
-            { step: "02", title: "Verify", copy: "Employers pass a trust check and SLA commitment." },
-            { step: "03", title: "Match", copy: "We highlight roles aligned to your stack and profile." },
-          ].map((item) => (
-            <div key={item.step} className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2rem] p-6 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
-              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">{item.step}</div>
-              <h3 className="text-xl font-black text-slate-900 mt-2">{item.title}</h3>
-              <p className="text-slate-500 font-medium mt-2">{item.copy}</p>
+        <div className="rounded-[2.5rem] border border-slate-200/60 bg-white/70 backdrop-blur p-6 sm:p-8 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-8">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Quality pipeline</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Every role passes a strict review.</h3>
+              <p className="text-slate-500 font-medium mt-2 max-w-2xl">
+                We verify the employer, tighten the scope, and rank roles by fit so you only see signal.
+              </p>
             </div>
-          ))}
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+              Verified listings only
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {[
+              {
+                title: "Review",
+                copy: "We rewrite vague postings, enforce salary ranges, and clarify scope.",
+                tags: ["Clarity", "Salary range", "Scope"],
+              },
+              {
+                title: "Verify",
+                copy: "Employers pass a trust check and commit to response SLAs.",
+                tags: ["Trust check", "SLA", "Quality"],
+              },
+              {
+                title: "Match",
+                copy: "Roles are highlighted by tool stack, seniority, and fit.",
+                tags: ["Stack fit", "Level", "Relevance"],
+              },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className="bg-white rounded-[2rem] border border-slate-200/60 p-6 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
+              >
+                <div className="w-10 h-10 rounded-2xl bg-indigo-600/10 text-indigo-600 flex items-center justify-center font-black">
+                  ✦
+                </div>
+                <h3 className="text-xl font-black text-slate-900 mt-4">{item.title}</h3>
+                <p className="text-slate-500 font-medium mt-2">{item.copy}</p>
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {item.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-slate-500 bg-slate-50 border border-slate-200/60"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
