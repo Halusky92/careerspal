@@ -7,19 +7,29 @@ import { Job } from '../types';
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
 
+type AnalyticsPeriod = {
+  totalViews: number;
+  uniqueVisitors: number;
+  newVisitors: number;
+  returningVisitors: number;
+};
+
+type AnalyticsPoint = { date: string; count: number };
+
+type AnalyticsPayload = {
+  periods: {
+    today: AnalyticsPeriod;
+    week: AnalyticsPeriod;
+    month: AnalyticsPeriod;
+    all: AnalyticsPeriod;
+  };
+  dailyViews: AnalyticsPoint[];
+  dailyPosts: AnalyticsPoint[];
+};
+
 interface AdminDashboardProps {
   onLogout: () => void;
 }
-
-// Mock Data pre Mapu - súradnice upravené pre SVG mapu
-const LOCATIONS = [
-  { id: 1, x: '18%', y: '38%', city: 'San Francisco', ip: '192.168.42.1', count: 420 },
-  { id: 2, x: '26%', y: '35%', city: 'New York', ip: '10.0.0.14', count: 350 },
-  { id: 3, x: '49%', y: '28%', city: 'London', ip: '172.16.0.55', count: 280 },
-  { id: 4, x: '52%', y: '30%', city: 'Berlin', ip: '88.14.22.9', count: 210 },
-  { id: 5, x: '78%', y: '55%', city: 'Singapore', ip: '202.44.11.2', count: 190 },
-  { id: 6, x: '85%', y: '75%', city: 'Sydney', ip: '110.12.99.4', count: 120 },
-];
 
 const getLocalJson = <T,>(key: string, fallback: T): T => {
   if (typeof window === 'undefined') return fallback;
@@ -40,6 +50,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [jobQuery, setJobQuery] = useState("");
   const [showJobSuggestions, setShowJobSuggestions] = useState(false);
   const jobSearchRef = useRef<HTMLDivElement>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsPayload | null>(null);
   const { accessToken } = useSupabaseAuth();
   const formatDate = (value?: number) => {
     if (!value) return "N/A";
@@ -52,27 +63,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     return Number.isNaN(expires.getTime()) ? "N/A" : expires.toLocaleDateString();
   };
 
-  // Stats Counters
-  const [visits, setVisits] = useState({ total: 14502, unique: 8430, returning: 6072 });
-  const sources = useMemo(() => ({ linkedin: 45, google: 30, direct: 25 }), []);
-
   const stats = useMemo(() => {
     const revenue = jobs.reduce((acc, job) => acc + (job.plan?.price || 0), 0);
-    return { revenue, totalViews: jobs.length * 145 };
+    return { revenue };
   }, [jobs]);
-
-  useEffect(() => {
-    // Simulation Interval (len pre jemný pohyb čísel, žiadne skákanie)
-    const interval = setInterval(() => {
-      setVisits(prev => ({
-        ...prev,
-        total: prev.total + Math.floor(Math.random() * 3),
-        unique: prev.unique + (Math.random() > 0.7 ? 1 : 0)
-      }));
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -104,6 +98,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       }
     };
     loadAdminStats();
+  }, [accessToken]);
+
+  useEffect(() => {
+    const loadAnalytics = async () => {
+      try {
+        if (!accessToken) return;
+        const response = await authFetch("/api/admin/analytics", {}, accessToken);
+        if (!response.ok) return;
+        const data = (await response.json()) as AnalyticsPayload;
+        setAnalytics(data);
+      } catch {
+        // noop
+      }
+    };
+    loadAnalytics();
   }, [accessToken]);
 
   useEffect(() => {
@@ -205,6 +214,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     const companies = jobs.filter((j) => j.company?.toLowerCase().includes(lowQuery)).map((j) => j.company);
     return Array.from(new Set([...titles, ...companies])).slice(0, 6);
   }, [jobQuery, jobs]);
+
+  const audienceSplit = useMemo(() => {
+    const period = analytics?.periods?.week;
+    if (!period || !period.uniqueVisitors) {
+      return { newPct: 0, returningPct: 0 };
+    }
+    const newPct = Math.round((period.newVisitors / period.uniqueVisitors) * 100);
+    return { newPct, returningPct: 100 - newPct };
+  }, [analytics]);
+
+  const chartViews = analytics?.dailyViews || [];
+  const chartPosts = analytics?.dailyPosts || [];
+  const maxViews = Math.max(...chartViews.map((item) => item.count), 1);
+  const maxPosts = Math.max(...chartPosts.map((item) => item.count), 1);
 
   const pendingJobs = filteredJobs.filter((job) => job.status === "pending_review");
   const activeJobs = filteredJobs.filter((job) => job.status !== "pending_review");
@@ -337,9 +360,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
            <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 backdrop-blur-sm relative overflow-hidden group">
               <div className="relative z-10">
                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Impressions</p>
-                 <p className="text-4xl font-black text-white">{visits.total.toLocaleString()}</p>
+                 <p className="text-4xl font-black text-white">{(analytics?.periods.all.totalViews || 0).toLocaleString()}</p>
                  <div className="mt-4 flex gap-2 text-[10px] font-bold">
-                    <span className="text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">+12% vs last week</span>
+                    <span className="text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">
+                      {analytics ? `${analytics.periods.week.totalViews.toLocaleString()} last 7d` : "Loading..."}
+                    </span>
                  </div>
               </div>
               <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/20 rounded-full blur-2xl group-hover:bg-indigo-500/30 transition-all"></div>
@@ -350,17 +375,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Audience Split</p>
               <div className="flex items-end justify-between mb-2">
                  <span className="text-indigo-400 font-bold text-xs">New</span>
-                 <span className="text-white font-black">{Math.round((visits.unique / visits.total) * 100)}%</span>
+                 <span className="text-white font-black">{audienceSplit.newPct}%</span>
               </div>
               <div className="w-full bg-slate-800 h-2 rounded-full mb-4 overflow-hidden">
-                 <div className="h-full bg-indigo-500" style={{ width: `${(visits.unique / visits.total) * 100}%` }}></div>
+                 <div className="h-full bg-indigo-500" style={{ width: `${audienceSplit.newPct}%` }}></div>
               </div>
               <div className="flex items-end justify-between mb-2">
                  <span className="text-purple-400 font-bold text-xs">Returning</span>
-                 <span className="text-white font-black">{100 - Math.round((visits.unique / visits.total) * 100)}%</span>
+                 <span className="text-white font-black">{audienceSplit.returningPct}%</span>
               </div>
               <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                 <div className="h-full bg-purple-500" style={{ width: `${100 - Math.round((visits.unique / visits.total) * 100)}%` }}></div>
+                 <div className="h-full bg-purple-500" style={{ width: `${audienceSplit.returningPct}%` }}></div>
               </div>
            </div>
 
@@ -374,105 +399,76 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
            </div>
         </div>
 
-        {/* ROW 1: GLOBAL INTELLIGENCE MAP (Center - Bigger) */}
+        {/* ROW 1: TRAFFIC CHARTS */}
         <div className="lg:col-span-6 order-7 lg:order-none">
            <div className="bg-[#0F172A] rounded-[2.5rem] border border-slate-800 h-full relative overflow-hidden flex flex-col min-h-[500px]">
               <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/30">
-                 <h3 className="text-sm font-black text-white uppercase tracking-widest">Global Live Traffic</h3>
+                 <h3 className="text-sm font-black text-white uppercase tracking-widest">Traffic & Job Posts</h3>
                  <div className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                    <span className="text-[10px] font-mono text-emerald-400">MONITORING</span>
+                    <span className="text-[10px] font-mono text-emerald-400">REAL-TIME</span>
                  </div>
               </div>
               
-              <div className="flex-1 relative w-full h-full">
-                 {/* World Map SVG (Simplified Path) */}
-                 <svg viewBox="0 0 1000 500" className="absolute inset-0 w-full h-full pointer-events-none" style={{ filter: 'drop-shadow(0 0 10px rgba(79, 70, 229, 0.2))' }}>
-                    <defs>
-                      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                        <circle cx="1" cy="1" r="1" fill="rgba(255, 255, 255, 0.05)" />
-                      </pattern>
-                    </defs>
-                    
-                    {/* Background Grid */}
-                    <rect width="100%" height="100%" fill="url(#grid)" />
-
-                    {/* Continents Paths */}
-                    <g fill="rgba(79, 70, 229, 0.15)" stroke="rgba(79, 70, 229, 0.3)" strokeWidth="1">
-                       {/* North America */}
-                       <path d="M 150 100 L 250 80 L 300 150 L 280 200 L 200 220 L 100 150 Z" />
-                       {/* South America */}
-                       <path d="M 220 230 L 300 230 L 320 300 L 280 400 L 220 350 Z" />
-                       {/* Europe */}
-                       <path d="M 450 100 L 520 80 L 550 130 L 480 150 L 440 130 Z" />
-                       {/* Africa */}
-                       <path d="M 440 160 L 550 160 L 580 250 L 520 350 L 460 300 L 420 200 Z" />
-                       {/* Asia */}
-                       <path d="M 560 80 L 750 80 L 850 150 L 800 250 L 650 250 L 600 150 Z" />
-                       {/* Australia */}
-                       <path d="M 780 300 L 880 300 L 880 380 L 780 380 Z" />
-                    </g>
-                 </svg>
-
-                 {/* Locations */}
-                 {LOCATIONS.map(loc => (
-                    <div key={loc.id} className="absolute group" style={{ left: loc.x, top: loc.y }}>
-                       <div className="relative flex items-center justify-center">
-                          <div className="w-2 h-2 bg-white rounded-full relative z-10"></div>
-                          <div className="absolute w-6 h-6 bg-indigo-500/60 rounded-full animate-ping"></div>
-                          <div className="absolute w-12 h-12 bg-indigo-500/20 rounded-full"></div>
-                          {/* Tooltip */}
-                          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 border border-indigo-500/50 px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none shadow-xl backdrop-blur-md">
-                             <p className="text-[10px] font-black text-white uppercase tracking-widest">{loc.city}</p>
-                             <p className="text-[9px] font-mono text-indigo-400">{loc.ip}</p>
-                          </div>
-                       </div>
-                    </div>
-                 ))}
+              <div className="flex-1 p-6 grid grid-cols-1 gap-6">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Page views · last 30 days</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300">
+                      {analytics ? analytics.periods.month.totalViews.toLocaleString() : "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-end gap-1 h-28">
+                    {chartViews.map((point) => (
+                      <div
+                        key={`views-${point.date}`}
+                        className="flex-1 rounded-sm bg-indigo-500/70"
+                        style={{ height: `${Math.max(8, (point.count / maxViews) * 100)}%` }}
+                        title={`${point.date}: ${point.count}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Job posts · last 30 days</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-300">
+                      {chartPosts.reduce((sum, point) => sum + point.count, 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex items-end gap-1 h-28">
+                    {chartPosts.map((point) => (
+                      <div
+                        key={`posts-${point.date}`}
+                        className="flex-1 rounded-sm bg-emerald-500/70"
+                        style={{ height: `${Math.max(8, (point.count / maxPosts) * 100)}%` }}
+                        title={`${point.date}: ${point.count}`}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
            </div>
         </div>
 
-        {/* ROW 1: TRAFFIC SOURCES (Right) */}
+        {/* ROW 1: TRAFFIC SUMMARY (Right) */}
         <div className="lg:col-span-3 space-y-6 order-8 lg:order-none">
-           {/* Sources */}
-           <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 backdrop-blur-sm h-full flex flex-col justify-center">
-              <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-8">Acquisition Channels</h3>
-              
-              <div className="space-y-8">
-                 <div>
-                    <div className="flex justify-between text-xs font-bold mb-2">
-                       <span className="text-blue-400">LinkedIn</span>
-                       <span className="text-slate-400">{sources.linkedin}%</span>
-                    </div>
-                    <div className="w-full bg-slate-800 h-2 rounded-full"><div className="bg-blue-500 h-full rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={{width: `${sources.linkedin}%`}}></div></div>
-                 </div>
-                 <div>
-                    <div className="flex justify-between text-xs font-bold mb-2">
-                       <span className="text-emerald-400">Google Search</span>
-                       <span className="text-slate-400">{sources.google}%</span>
-                    </div>
-                    <div className="w-full bg-slate-800 h-2 rounded-full"><div className="bg-emerald-500 h-full rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" style={{width: `${sources.google}%`}}></div></div>
-                 </div>
-                 <div>
-                    <div className="flex justify-between text-xs font-bold mb-2">
-                       <span className="text-amber-400">Direct / API</span>
-                       <span className="text-slate-400">{sources.direct}%</span>
-                    </div>
-                    <div className="w-full bg-slate-800 h-2 rounded-full"><div className="bg-amber-500 h-full rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)]" style={{width: `${sources.direct}%`}}></div></div>
-                 </div>
-              </div>
-
-              <div className="mt-12 p-4 bg-slate-950 rounded-xl border border-slate-800">
-                 <div className="flex items-center gap-2 mb-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-[10px] font-black text-green-500 uppercase">Status: Optimal</span>
-                 </div>
-                 <p className="text-xs text-slate-500 font-mono">
-                    Tracking {subscribers.length} agents across global nodes.
-                 </p>
-              </div>
-           </div>
+          <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 backdrop-blur-sm h-full flex flex-col justify-center">
+            <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Traffic Summary</h3>
+            <div className="space-y-4">
+              {[
+                { label: "Today", value: analytics?.periods.today.totalViews ?? 0 },
+                { label: "Last 7 days", value: analytics?.periods.week.totalViews ?? 0 },
+                { label: "Last 30 days", value: analytics?.periods.month.totalViews ?? 0 },
+                { label: "All time", value: analytics?.periods.all.totalViews ?? 0 },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{item.label}</span>
+                  <span className="text-sm font-black text-slate-100">{item.value.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
 
