@@ -120,9 +120,10 @@ export async function POST(request: Request) {
               const buyerResult = await resend.emails.send({
                 from,
                 to: buyerEmail,
-                subject: "Payment received — your job is under review",
+                subject: "Thanks for your payment — review in progress",
                 html: `
-                  <p>Thanks for your payment. ${jobLine} is now pending review.</p>
+                  <p>Thanks for your trust.</p>
+                  <p>Your job listing ${jobLine} is now under review and will be published within 24 hours.</p>
                   <p>You can track the status in your dashboard:</p>
                   <p><a href="${dashboardUrl}">${dashboardUrl}</a></p>
                 `,

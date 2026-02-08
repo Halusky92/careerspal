@@ -174,6 +174,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
+  const pendingJobs = jobs.filter((job) => job.status === "pending_review");
+  const activeJobs = jobs.filter((job) => job.status !== "pending_review");
+
   return (
     <div className="min-h-screen bg-[#0B1120] text-slate-200 font-sans p-4 sm:p-6 md:p-10 animate-in fade-in">
       {/* Top Bar */}
@@ -436,6 +439,56 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </div>
         </div>
 
+        {/* ROW 2: PENDING REVIEW */}
+        <div className="lg:col-span-4 order-4 lg:order-none">
+          <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden h-full flex flex-col">
+            <div className="p-8 border-b border-slate-800 bg-slate-900">
+              <h3 className="text-lg font-black text-white">Pending Review</h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-2">
+                {pendingJobs.length} waiting
+              </p>
+            </div>
+            <div className="p-4 space-y-3 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120]">
+              {pendingJobs.length > 0 ? pendingJobs.map((job) => (
+                <div key={job.id} className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center text-lg">
+                        {job.planType === 'Elite Managed' ? '💎' : '💼'}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-white text-sm line-clamp-1 group-hover:text-indigo-400 transition-colors">{job.title}</h4>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">{job.company}</p>
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded border border-amber-600/40 text-amber-300 bg-amber-600/10">
+                      pending
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => updateJobStatus(job.id, "published")}
+                      className="flex-1 bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/30"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => updateJobStatus(job.id, "private")}
+                      className="flex-1 bg-red-600/10 text-red-400 border border-red-600/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              )) : (
+                <div className="text-center py-10 text-slate-600 text-sm italic">
+                  Nothing to review right now.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* ROW 2: ACTIVE JOBS */}
         <div className="lg:col-span-4 order-4 lg:order-none">
           <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden h-full flex flex-col">
@@ -443,7 +496,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               <h3 className="text-lg font-black text-white">Active Deployments</h3>
             </div>
             <div className="p-4 space-y-3 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120]">
-              {jobs.length > 0 ? jobs.map(job => (
+              {activeJobs.length > 0 ? activeJobs.map(job => (
                 <div key={job.id} className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
