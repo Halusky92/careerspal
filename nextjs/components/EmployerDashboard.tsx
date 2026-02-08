@@ -4,6 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { Job } from '../types';
 import { createJobSlug } from '../lib/jobs';
+import CompanyLogo from './CompanyLogo';
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
 
@@ -188,8 +189,15 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           return (
           <div key={job.id} className="bg-white p-8 rounded-[3.5rem] border border-slate-50 shadow-sm hover:shadow-2xl transition-all flex flex-col lg:flex-row items-center justify-between gap-8 group">
             <div className="flex items-center gap-8 flex-1 w-full">
-              <div className="w-20 h-20 bg-slate-50 rounded-[1.8rem] flex items-center justify-center border border-slate-100 overflow-hidden flex-shrink-0">
-                 <img src={job.logo || `https://picsum.photos/seed/${job.id}/100/100`} alt="" className="w-full h-full object-contain p-2" />
+              <div className="w-20 h-20 bg-slate-50 rounded-[1.8rem] flex items-center justify-center border border-slate-100 overflow-hidden flex-shrink-0 p-2">
+                 <CompanyLogo
+                   name={job.company}
+                   logoUrl={job.logo}
+                   website={job.companyWebsite || job.applyUrl}
+                   className="w-full h-full rounded-2xl overflow-hidden bg-white"
+                   imageClassName="w-full h-full object-contain"
+                   fallbackClassName="text-sm"
+                 />
               </div>
               <div className="flex-1">
                 <h4 className="text-2xl font-black text-slate-900 mb-1 group-hover:text-indigo-600 transition-colors line-clamp-1">{job.title}</h4>

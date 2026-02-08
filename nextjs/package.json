@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed:supabase": "tsx scripts/seed-supabase.ts",
-    "import:jobs": "tsx scripts/import-jobs-csv.ts"
+    "import:jobs": "tsx scripts/import-jobs-csv.ts",
+    "cleanup:jobs": "tsx scripts/cleanup-stale-jobs.ts"
   },
   "dependencies": {
     "@google/genai": "^1.39.0",

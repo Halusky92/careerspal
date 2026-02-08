@@ -4,6 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Job } from '../types';
+import CompanyLogo from './CompanyLogo';
 
 interface JobDetailProps {
   job: Job;
@@ -190,7 +191,14 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
                <div className={`w-24 h-24 md:w-32 md:h-32 rounded-[2rem] flex items-center justify-center p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] ${isElite ? 'bg-yellow-50 border-2 border-yellow-200' : 'bg-white border border-slate-200/60'}`}>
-                  <img src={job.logo} alt={job.company} className="w-full h-full object-contain" />
+                  <CompanyLogo
+                    name={job.company}
+                    logoUrl={job.logo}
+                    website={job.companyWebsite || job.applyUrl}
+                    className="w-full h-full rounded-2xl overflow-hidden bg-white"
+                    imageClassName="w-full h-full object-contain"
+                    fallbackClassName="text-xl"
+                  />
                </div>
                <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-3 mb-3">
@@ -319,8 +327,15 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                            className="bg-white p-5 sm:p-6 rounded-[2rem] border border-slate-200/60 hover:border-indigo-200 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all cursor-pointer flex items-center justify-between group"
                         >
                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 bg-white rounded-xl p-2 flex items-center justify-center border border-slate-200/60">
-                                 <img src={simJob.logo} className="max-w-full max-h-full" alt="" />
+                             <div className="w-12 h-12 bg-white rounded-xl p-2 flex items-center justify-center border border-slate-200/60">
+                                 <CompanyLogo
+                                   name={simJob.company}
+                                   logoUrl={simJob.logo}
+                                   website={simJob.companyWebsite || simJob.applyUrl}
+                                   className="w-full h-full rounded-lg overflow-hidden"
+                                   imageClassName="w-full h-full object-contain"
+                                   fallbackClassName="text-[10px]"
+                                 />
                               </div>
                               <div>
                                  <h4 className="font-black text-slate-900 group-hover:text-indigo-600 transition-colors">{simJob.title}</h4>
@@ -405,7 +420,14 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                   <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200/60 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
                      <div className="flex items-center gap-4 mb-6">
                         <div className="w-12 h-12 bg-white rounded-xl p-1 border border-slate-200/60">
-                           <img src={job.logo} alt="" className="w-full h-full object-contain" />
+                           <CompanyLogo
+                             name={job.company}
+                             logoUrl={job.logo}
+                             website={job.companyWebsite || job.applyUrl}
+                             className="w-full h-full rounded-lg overflow-hidden"
+                             imageClassName="w-full h-full object-contain"
+                             fallbackClassName="text-[10px]"
+                           />
                         </div>
                         <div>
                            <h4 className="font-black text-lg text-slate-900">{job.company}</h4>

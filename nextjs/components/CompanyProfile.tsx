@@ -3,6 +3,7 @@
 
 import React, { useEffect } from 'react';
 import { Company, Job } from '../types';
+import CompanyLogo from './CompanyLogo';
 
 interface CompanyProfileProps {
   company: Company;
@@ -63,7 +64,14 @@ const CompanyProfile: React.FC<CompanyProfileProps> = ({ company, companyJobs, o
           <div className="w-full lg:w-1/3 space-y-8">
             <div className="bg-white p-8 rounded-[3rem] shadow-xl border border-slate-50 text-center">
                <div className="w-32 h-32 bg-white rounded-[2rem] p-4 shadow-lg mx-auto -mt-20 mb-6 flex items-center justify-center">
-                  <img src={company.logo} alt={company.name} className="w-full h-full object-contain" />
+                  <CompanyLogo
+                    name={company.name}
+                    logoUrl={company.logo}
+                    website={company.website}
+                    className="w-full h-full rounded-2xl overflow-hidden"
+                    imageClassName="w-full h-full object-contain"
+                    fallbackClassName="text-2xl"
+                  />
                </div>
                <div className="flex items-center justify-center gap-2 mb-2">
                  <h1 className="text-3xl font-black text-slate-900 tracking-tight">{company.name}</h1>

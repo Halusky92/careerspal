@@ -8,6 +8,7 @@ import { createCompanySlug, createJobSlug } from '../lib/jobs';
 import { CATEGORIES } from '../constants';
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
+import CompanyLogo from "./CompanyLogo";
 
 interface FindJobsProps {
   jobs: Job[];
@@ -805,17 +806,20 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   </button>
 
                   <div className="flex items-center gap-4 w-full md:w-auto">
-                    <div className={`
+                    <div
+                      className={`
                       w-11 h-11 sm:w-14 sm:h-14 rounded-[1rem] sm:rounded-[1.3rem] flex items-center justify-center overflow-hidden p-1 flex-shrink-0
                       ${isElite ? 'bg-yellow-100 border border-yellow-200' : 'bg-gray-50 border border-gray-100'}
-                    `}>
-                      {job.logo ? (
-                        <img src={job.logo} alt="" className="w-full h-full object-contain" />
-                      ) : (
-                        <div className="w-full h-full rounded-lg bg-white flex items-center justify-center text-[10px] font-black text-slate-400">
-                          LOGO
-                        </div>
-                      )}
+                    `}
+                    >
+                      <CompanyLogo
+                        name={job.company}
+                        logoUrl={job.logo}
+                        website={job.companyWebsite || job.applyUrl}
+                        className="w-full h-full rounded-lg overflow-hidden bg-white"
+                        imageClassName="w-full h-full object-contain"
+                        fallbackClassName="text-[10px]"
+                      />
                     </div>
                     
                     {/* Added pr-12 to prevent text overlap with heart button */}
