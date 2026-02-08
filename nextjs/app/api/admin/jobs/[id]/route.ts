@@ -15,15 +15,18 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }
 
-  const body = (await request.json()) as { status?: string };
-  if (!body.status) {
-    return NextResponse.json({ error: "Missing status." }, { status: 400 });
-  }
-
-  const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review"]);
-  if (!allowedStatuses.has(body.status)) {
-    return NextResponse.json({ error: "Invalid status." }, { status: 400 });
-  }
+  const body = (await request.json()) as {
+    status?: string;
+    title?: string;
+    description?: string;
+    location?: string;
+    remotePolicy?: string;
+    type?: string;
+    salary?: string;
+    applyUrl?: string;
+    companyWebsite?: string;
+    keywords?: string;
+  };
 
   const { data: existing } = await supabaseAdmin
     .from("jobs")
@@ -33,19 +36,41 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   if (!existing) {
     return NextResponse.json({ error: "Job not found." }, { status: 404 });
   }
-  if (body.status === "published" && existing.stripe_payment_status !== "paid") {
-    return NextResponse.json({ error: "Payment not confirmed." }, { status: 400 });
+
+  const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review"]);
+  if (body.status && !allowedStatuses.has(body.status)) {
+    return NextResponse.json({ error: "Invalid status." }, { status: 400 });
   }
 
-  const now = new Date();
-  const updateData: Record<string, unknown> = { status: body.status };
-  if (body.status === "published") {
-    updateData.published_at = now.toISOString();
-    updateData.posted_at_text = "Just now";
-    updateData.timestamp = Date.now();
+  const updateData: Record<string, unknown> = {};
+  if (typeof body.title === "string") updateData.title = body.title;
+  if (typeof body.description === "string") updateData.description = body.description;
+  if (typeof body.location === "string") updateData.location = body.location;
+  if (typeof body.remotePolicy === "string") updateData.remote_policy = body.remotePolicy;
+  if (typeof body.type === "string") updateData.type = body.type;
+  if (typeof body.salary === "string") updateData.salary = body.salary;
+  if (typeof body.applyUrl === "string") updateData.apply_url = body.applyUrl;
+  if (typeof body.companyWebsite === "string") updateData.company_website = body.companyWebsite;
+  if (typeof body.keywords === "string") updateData.keywords = body.keywords;
+
+  if (body.status) {
+    if (body.status === "published" && existing.stripe_payment_status !== "paid") {
+      return NextResponse.json({ error: "Payment not confirmed." }, { status: 400 });
+    }
+    updateData.status = body.status;
+    const now = new Date();
+    if (body.status === "published") {
+      updateData.published_at = now.toISOString();
+      updateData.posted_at_text = "Just now";
+      updateData.timestamp = Date.now();
+    }
+    if (existing.status === "published" && body.status !== "published") {
+      updateData.published_at = null;
+    }
   }
-  if (existing.status === "published" && body.status !== "published") {
-    updateData.published_at = null;
+
+  if (Object.keys(updateData).length === 0) {
+    return NextResponse.json({ error: "Missing update fields." }, { status: 400 });
   }
 
   const { data: updated } = await supabaseAdmin
@@ -59,10 +84,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   const profileId = auth.profile.id;
   await supabaseAdmin.from("audit_logs").insert({
-    action: "status_updated",
+    action: body.status ? "status_updated" : "job_updated",
     job_id: updated?.id || id,
     actor_id: profileId || null,
-    metadata: { status: body.status, previousStatus: existing.status },
+    metadata: body.status ? { status: body.status, previousStatus: existing.status } : { fields: Object.keys(updateData) },
   });
 
   return NextResponse.json({ job: updated ? mapSupabaseJob(updated as SupabaseJobRow) : null });

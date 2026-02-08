@@ -18,6 +18,12 @@ const COLORS = [
   "bg-violet-500",
   "bg-teal-500",
 ];
+const KNOWN_LOGOS: Record<string, string> = {
+  linear: "https://logo.clearbit.com/linear.app",
+  canva: "https://logo.clearbit.com/canva.com",
+  webflow: "https://logo.clearbit.com/webflow.com",
+  ramp: "https://logo.clearbit.com/ramp.com",
+};
 
 const getInitials = (value: string) => {
   const words = value
@@ -61,8 +67,9 @@ const CompanyLogo: React.FC<CompanyLogoProps> = ({
   const [failed, setFailed] = useState(false);
   const fallback = useMemo(() => getInitials(name || "Company"), [name]);
   const fallbackColor = useMemo(() => COLORS[hashString(name || "Company") % COLORS.length], [name]);
+  const nameLogo = useMemo(() => KNOWN_LOGOS[(name || "").trim().toLowerCase()] || "", [name]);
   const domainLogo = useMemo(() => getDomainLogo(website || logoUrl), [website, logoUrl]);
-  const src = !failed ? (logoUrl || domainLogo) : "";
+  const src = !failed ? (logoUrl || nameLogo || domainLogo) : "";
   const shouldShowImage = Boolean(src);
 
   return (

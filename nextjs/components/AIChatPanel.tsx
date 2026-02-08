@@ -50,7 +50,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ jobs }) => {
   };
 
   return (
-    <div className={`bg-white rounded-2xl shadow-xl border border-indigo-100 overflow-hidden transition-all duration-300 ${isExpanded ? 'h-[500px]' : 'h-auto'}`}>
+    <div className="bg-white rounded-2xl shadow-xl border border-indigo-100 overflow-hidden">
       {/* Header / Toggle Bar */}
       <div 
         className="bg-indigo-600 p-4 flex items-center justify-between cursor-pointer lg:cursor-default"
@@ -77,7 +77,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ jobs }) => {
       {/* Chat Content - Hidden when collapsed */}
       {isExpanded && (
         <>
-          <div ref={scrollRef} className="h-[calc(500px-130px)] overflow-y-auto p-4 space-y-4 bg-gray-50">
+          <div ref={scrollRef} className="p-4 space-y-4 bg-gray-50">
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm shadow-sm ${

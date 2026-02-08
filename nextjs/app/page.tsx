@@ -88,13 +88,50 @@ export default function HomePage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 pb-10">
         <div className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2.5rem] p-6 sm:p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Trusted by systems-first teams</p>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {["Notion Labs", "Linear", "Canva", "Ramp", "Webflow", "Airtable"].map((name) => (
-                <span key={name} className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-50 border border-slate-200/60">
-                  {name}
-                </span>
-              ))}
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Trusted by systems-first teams</p>
+            </div>
+            <div className="relative w-full sm:w-[420px] overflow-hidden">
+              <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-white/90 to-transparent pointer-events-none"></div>
+              <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white/90 to-transparent pointer-events-none"></div>
+              <div className="flex items-center gap-6 animate-nav-loop pr-6">
+                {[
+                  { name: "Notion", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg", glow: "shadow-[0_0_18px_rgba(0,0,0,0.15)]" },
+                  { name: "Linear", logoUrl: "https://logo.clearbit.com/linear.app", glow: "shadow-[0_0_18px_rgba(99,102,241,0.25)]" },
+                  { name: "Canva", logoUrl: "https://public.canva.site/logo/media/82983fc70ff088d1a1a2277f75f1c64d.svg", glow: "shadow-[0_0_18px_rgba(0,180,216,0.25)]" },
+                  { name: "Ramp", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4e/Ramp_Business_Corporation_Logo.svg", glow: "shadow-[0_0_18px_rgba(16,185,129,0.25)]" },
+                  { name: "Webflow", logoUrl: "https://dhygzobemt712.cloudfront.net/Logo/Full_Logo_Blue_Black.svg", glow: "shadow-[0_0_18px_rgba(59,130,246,0.25)]" },
+                  { name: "Airtable", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4b/Airtable_Logo.svg", glow: "shadow-[0_0_18px_rgba(250,204,21,0.25)]" },
+                ].map((item, idx) => (
+                  <div key={`${item.name}-${idx}`} className={`h-9 w-24 rounded-full bg-white/90 border border-slate-200/70 flex items-center justify-center ${item.glow}`}>
+                    <CompanyLogo
+                      name={item.name}
+                      logoUrl={item.logoUrl}
+                      className="h-5 w-16 flex items-center justify-center"
+                      imageClassName="h-4 w-auto object-contain"
+                      fallbackClassName="text-[9px]"
+                    />
+                  </div>
+                ))}
+                {[
+                  { name: "Notion", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg", glow: "shadow-[0_0_18px_rgba(0,0,0,0.15)]" },
+                  { name: "Linear", logoUrl: "https://logo.clearbit.com/linear.app", glow: "shadow-[0_0_18px_rgba(99,102,241,0.25)]" },
+                  { name: "Canva", logoUrl: "https://public.canva.site/logo/media/82983fc70ff088d1a1a2277f75f1c64d.svg", glow: "shadow-[0_0_18px_rgba(0,180,216,0.25)]" },
+                  { name: "Ramp", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4e/Ramp_Business_Corporation_Logo.svg", glow: "shadow-[0_0_18px_rgba(16,185,129,0.25)]" },
+                  { name: "Webflow", logoUrl: "https://dhygzobemt712.cloudfront.net/Logo/Full_Logo_Blue_Black.svg", glow: "shadow-[0_0_18px_rgba(59,130,246,0.25)]" },
+                  { name: "Airtable", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4b/Airtable_Logo.svg", glow: "shadow-[0_0_18px_rgba(250,204,21,0.25)]" },
+                ].map((item, idx) => (
+                  <div key={`${item.name}-dup-${idx}`} className={`h-9 w-24 rounded-full bg-white/90 border border-slate-200/70 flex items-center justify-center ${item.glow}`}>
+                    <CompanyLogo
+                      name={item.name}
+                      logoUrl={item.logoUrl}
+                      className="h-5 w-16 flex items-center justify-center"
+                      imageClassName="h-4 w-auto object-contain"
+                      fallbackClassName="text-[9px]"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -186,9 +223,15 @@ export default function HomePage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-10 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-6">
-            <div className="flex items-center justify-between px-2 mb-2">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Featured & Latest Roles</h3>
-              <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Top 5</span>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-2 mb-3">
+              <div>
+                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Featured & latest roles</p>
+                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Top picks from the Elite Board</h3>
+                <p className="text-sm text-slate-500 font-medium mt-1">Hand-reviewed, ranked by impact and freshness.</p>
+              </div>
+              <span className="inline-flex items-center justify-center rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                Top 5
+              </span>
             </div>
 
             {topJobs.slice(0, 5).map((job) => {

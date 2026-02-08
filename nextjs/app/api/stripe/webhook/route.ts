@@ -118,18 +118,25 @@ export async function POST(request: Request) {
           const jobLine = jobRow ? `${jobRow.title}${companyName ? ` at ${companyName}` : ""}` : "your job listing";
           const planLine = jobRow?.plan_type ? `${jobRow.plan_type}${jobRow.plan_price ? ` ($${jobRow.plan_price})` : ""}` : "Standard";
           const dashboardUrl = `${baseUrl}/dashboard/employer`;
+          const adminDashboardUrl = `${baseUrl}/dashboard/admin`;
+          const supportEmail = "info@careerspal.com";
 
           try {
             if (buyerEmail) {
               const buyerResult = await resend.emails.send({
                 from,
                 to: buyerEmail,
-                subject: "Thanks for your payment — review in progress",
+                subject: "Payment confirmed — your job listing is under review",
                 html: `
-                  <p>Thanks for your trust.</p>
-                  <p>Your job listing ${jobLine} is now under review and will be published within 24 hours.</p>
-                  <p>You can track the status in your dashboard:</p>
+                  <p>Hi there,</p>
+                  <p>Your payment was confirmed and we’ve received your job listing.</p>
+                  <p><strong>Listing:</strong> ${jobLine}</p>
+                  <p><strong>Plan:</strong> ${planLine}</p>
+                  <p>Your listing is now under review and will go live after approval.</p>
+                  <p>You can track the status here:</p>
                   <p><a href="${dashboardUrl}">${dashboardUrl}</a></p>
+                  <p>If you need to update the listing or have any questions, reply to this email or contact us at <a href="mailto:${supportEmail}">${supportEmail}</a>.</p>
+                  <p>Thank you for choosing CareersPal.</p>
                 `,
               });
               if (buyerResult?.error) {
@@ -141,16 +148,17 @@ export async function POST(request: Request) {
             const adminResult = await resend.emails.send({
               from,
               to: getAdminEmails(),
-              subject: "New paid job pending review",
+              subject: "New paid job received — review required",
               html: `
                 <p>A new job has been paid and is waiting for review.</p>
                 <ul>
                   <li>Listing: ${jobLine}</li>
                   <li>Plan: ${planLine}</li>
                   <li>Stripe session: ${session.id}</li>
+                  <li>Buyer email: ${buyerEmail ?? "Unknown"}</li>
                 </ul>
-                <p>Review it in the admin dashboard:</p>
-                <p><a href="${baseUrl}/dashboard/admin">${baseUrl}/dashboard/admin</a></p>
+                <p>Please review and accept it in the admin dashboard to publish:</p>
+                <p><a href="${adminDashboardUrl}">${adminDashboardUrl}</a></p>
               `,
             });
             if (adminResult?.error) {

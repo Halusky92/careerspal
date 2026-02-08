@@ -49,9 +49,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [jobQuery, setJobQuery] = useState("");
   const [showJobSuggestions, setShowJobSuggestions] = useState(false);
+  const [jobSort, setJobSort] = useState<"newest" | "oldest">("newest");
   const jobSearchRef = useRef<HTMLDivElement>(null);
   const [analytics, setAnalytics] = useState<AnalyticsPayload | null>(null);
   const { accessToken } = useSupabaseAuth();
+  const [editingJobId, setEditingJobId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<{
+    title: string;
+    description: string;
+    location: string;
+    remotePolicy: string;
+    type: string;
+    salary: string;
+  } | null>(null);
   const formatDate = (value?: number) => {
     if (!value) return "N/A";
     const date = new Date(value);
@@ -74,6 +84,43 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     if (Number.isNaN(expires.getTime())) return null;
     const diffMs = expires.getTime() - Date.now();
     return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  };
+  const startEditJob = (job: Job) => {
+    setEditingJobId(job.id);
+    setEditDraft({
+      title: job.title || "",
+      description: job.description || "",
+      location: job.location || "",
+      remotePolicy: job.remotePolicy || "",
+      type: job.type || "",
+      salary: job.salary || "",
+    });
+  };
+  const cancelEditJob = () => {
+    setEditingJobId(null);
+    setEditDraft(null);
+  };
+  const saveJobEdits = async (id: string) => {
+    if (!accessToken || !editDraft) return;
+    try {
+      const response = await authFetch(
+        `/api/admin/jobs/${id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(editDraft),
+        },
+        accessToken,
+      );
+      if (!response.ok) return;
+      const data = (await response.json()) as { job?: Job };
+      if (data.job) {
+        setJobs((prev) => prev.map((j) => (j.id === id ? data.job! : j)));
+      }
+      cancelEditJob();
+    } catch {
+      // noop
+    }
   };
 
   const stats = useMemo(() => {
@@ -217,6 +264,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       return title.includes(query);
     });
   }, [jobs, jobQuery]);
+  const sortedJobs = useMemo(() => {
+    const direction = jobSort === "newest" ? -1 : 1;
+    return [...filteredJobs].sort((a, b) => {
+      const aTime = a.timestamp ?? 0;
+      const bTime = b.timestamp ?? 0;
+      return aTime === bTime ? 0 : aTime > bTime ? direction : -direction;
+    });
+  }, [filteredJobs, jobSort]);
 
   const jobSuggestions = useMemo(() => {
     if (!jobQuery.trim() || jobQuery.length < 1) return [];
@@ -239,9 +294,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const maxViews = Math.max(...chartViews.map((item) => item.count), 1);
   const maxPosts = Math.max(...chartPosts.map((item) => item.count), 1);
 
-  const pendingJobs = filteredJobs.filter((job) => job.status === "pending_review");
-  const archivedJobs = filteredJobs.filter((job) => job.status === "private");
-  const activeJobs = filteredJobs.filter((job) => job.status !== "pending_review" && job.status !== "private");
+  const pendingJobs = sortedJobs.filter((job) => job.status === "pending_review");
+  const archivedJobs = sortedJobs.filter((job) => job.status === "private");
+  const activeJobs = sortedJobs.filter((job) => job.status !== "pending_review" && job.status !== "private");
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-slate-200 font-sans p-4 sm:p-6 md:p-10 animate-in fade-in">
@@ -358,6 +413,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   ))}
                 </div>
               )}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Sort</span>
+              <button
+                onClick={() => setJobSort("newest")}
+                className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                  jobSort === "newest"
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "bg-slate-950 text-slate-400 border-slate-800 hover:border-indigo-500/40"
+                }`}
+              >
+                Newest
+              </button>
+              <button
+                onClick={() => setJobSort("oldest")}
+                className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                  jobSort === "oldest"
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "bg-slate-950 text-slate-400 border-slate-800 hover:border-indigo-500/40"
+                }`}
+              >
+                Oldest
+              </button>
             </div>
             <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
               Showing {filteredJobs.length} / {jobs.length} jobs
@@ -600,13 +678,79 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-xs text-slate-300 space-y-3">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</p>
-                        <p className="mt-2 text-slate-300 whitespace-pre-wrap">{job.description || "No description provided."}</p>
+                        {editingJobId === job.id && editDraft ? (
+                          <textarea
+                            value={editDraft.description}
+                            onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
+                            className="mt-2 w-full min-h-[120px] rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                          />
+                        ) : (
+                          <p className="mt-2 text-slate-300 whitespace-pre-wrap max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                            {job.description || "No description provided."}
+                          </p>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 gap-2">
-                        <p><span className="text-slate-500 font-bold">Location:</span> {job.location || "N/A"}</p>
-                        <p><span className="text-slate-500 font-bold">Remote policy:</span> {job.remotePolicy || "N/A"}</p>
-                        <p><span className="text-slate-500 font-bold">Type:</span> {job.type || "N/A"}</p>
-                        <p><span className="text-slate-500 font-bold">Salary:</span> {job.salary || "N/A"}</p>
+                        <p>
+                          <span className="text-slate-500 font-bold">Title:</span>{" "}
+                          {editingJobId === job.id && editDraft ? (
+                            <input
+                              value={editDraft.title}
+                              onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })}
+                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                            />
+                          ) : (
+                            job.title || "N/A"
+                          )}
+                        </p>
+                        <p>
+                          <span className="text-slate-500 font-bold">Location:</span>{" "}
+                          {editingJobId === job.id && editDraft ? (
+                            <input
+                              value={editDraft.location}
+                              onChange={(event) => setEditDraft({ ...editDraft, location: event.target.value })}
+                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                            />
+                          ) : (
+                            job.location || "N/A"
+                          )}
+                        </p>
+                        <p>
+                          <span className="text-slate-500 font-bold">Remote policy:</span>{" "}
+                          {editingJobId === job.id && editDraft ? (
+                            <input
+                              value={editDraft.remotePolicy}
+                              onChange={(event) => setEditDraft({ ...editDraft, remotePolicy: event.target.value })}
+                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                            />
+                          ) : (
+                            job.remotePolicy || "N/A"
+                          )}
+                        </p>
+                        <p>
+                          <span className="text-slate-500 font-bold">Type:</span>{" "}
+                          {editingJobId === job.id && editDraft ? (
+                            <input
+                              value={editDraft.type}
+                              onChange={(event) => setEditDraft({ ...editDraft, type: event.target.value })}
+                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                            />
+                          ) : (
+                            job.type || "N/A"
+                          )}
+                        </p>
+                        <p>
+                          <span className="text-slate-500 font-bold">Salary:</span>{" "}
+                          {editingJobId === job.id && editDraft ? (
+                            <input
+                              value={editDraft.salary}
+                              onChange={(event) => setEditDraft({ ...editDraft, salary: event.target.value })}
+                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                            />
+                          ) : (
+                            job.salary || "N/A"
+                          )}
+                        </p>
                       </div>
                       <div className="grid grid-cols-1 gap-2">
                         <p><span className="text-slate-500 font-bold">Apply URL:</span> {job.applyUrl || "N/A"}</p>
@@ -626,6 +770,40 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                           ))}
                         </div>
                       ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        {editingJobId === job.id ? (
+                          <>
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                saveJobEdits(job.id);
+                              }}
+                              className="flex-1 bg-indigo-600/20 text-indigo-300 border border-indigo-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600/30"
+                            >
+                              Save changes
+                            </button>
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                cancelEditJob();
+                              }}
+                              className="flex-1 bg-slate-950 text-slate-400 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-white"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              startEditJob(job);
+                            }}
+                            className="w-full bg-slate-950 text-slate-400 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-indigo-300"
+                          >
+                            Edit text
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -701,13 +879,79 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-xs text-slate-300 space-y-3">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</p>
-                        <p className="mt-2 text-slate-300 whitespace-pre-wrap">{job.description || "No description provided."}</p>
+                        {editingJobId === job.id && editDraft ? (
+                          <textarea
+                            value={editDraft.description}
+                            onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
+                            className="mt-2 w-full min-h-[120px] rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                          />
+                        ) : (
+                          <p className="mt-2 text-slate-300 whitespace-pre-wrap max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                            {job.description || "No description provided."}
+                          </p>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 gap-2">
-                        <p><span className="text-slate-500 font-bold">Location:</span> {job.location || "N/A"}</p>
-                        <p><span className="text-slate-500 font-bold">Remote policy:</span> {job.remotePolicy || "N/A"}</p>
-                        <p><span className="text-slate-500 font-bold">Type:</span> {job.type || "N/A"}</p>
-                        <p><span className="text-slate-500 font-bold">Salary:</span> {job.salary || "N/A"}</p>
+                        <p>
+                          <span className="text-slate-500 font-bold">Title:</span>{" "}
+                          {editingJobId === job.id && editDraft ? (
+                            <input
+                              value={editDraft.title}
+                              onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })}
+                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                            />
+                          ) : (
+                            job.title || "N/A"
+                          )}
+                        </p>
+                        <p>
+                          <span className="text-slate-500 font-bold">Location:</span>{" "}
+                          {editingJobId === job.id && editDraft ? (
+                            <input
+                              value={editDraft.location}
+                              onChange={(event) => setEditDraft({ ...editDraft, location: event.target.value })}
+                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                            />
+                          ) : (
+                            job.location || "N/A"
+                          )}
+                        </p>
+                        <p>
+                          <span className="text-slate-500 font-bold">Remote policy:</span>{" "}
+                          {editingJobId === job.id && editDraft ? (
+                            <input
+                              value={editDraft.remotePolicy}
+                              onChange={(event) => setEditDraft({ ...editDraft, remotePolicy: event.target.value })}
+                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                            />
+                          ) : (
+                            job.remotePolicy || "N/A"
+                          )}
+                        </p>
+                        <p>
+                          <span className="text-slate-500 font-bold">Type:</span>{" "}
+                          {editingJobId === job.id && editDraft ? (
+                            <input
+                              value={editDraft.type}
+                              onChange={(event) => setEditDraft({ ...editDraft, type: event.target.value })}
+                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                            />
+                          ) : (
+                            job.type || "N/A"
+                          )}
+                        </p>
+                        <p>
+                          <span className="text-slate-500 font-bold">Salary:</span>{" "}
+                          {editingJobId === job.id && editDraft ? (
+                            <input
+                              value={editDraft.salary}
+                              onChange={(event) => setEditDraft({ ...editDraft, salary: event.target.value })}
+                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                            />
+                          ) : (
+                            job.salary || "N/A"
+                          )}
+                        </p>
                       </div>
                       <div className="grid grid-cols-1 gap-2">
                         <p><span className="text-slate-500 font-bold">Apply URL:</span> {job.applyUrl || "N/A"}</p>
@@ -727,6 +971,40 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                           ))}
                         </div>
                       ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        {editingJobId === job.id ? (
+                          <>
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                saveJobEdits(job.id);
+                              }}
+                              className="flex-1 bg-indigo-600/20 text-indigo-300 border border-indigo-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600/30"
+                            >
+                              Save changes
+                            </button>
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                cancelEditJob();
+                              }}
+                              className="flex-1 bg-slate-950 text-slate-400 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-white"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              startEditJob(job);
+                            }}
+                            className="w-full bg-slate-950 text-slate-400 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-indigo-300"
+                          >
+                            Edit text
+                          </button>
+                        )}
+                      </div>
                       <button
                         onClick={(event) => {
                           event.stopPropagation();
@@ -829,13 +1107,79 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-xs text-slate-300 space-y-3">
                           <div>
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</p>
-                            <p className="mt-2 text-slate-300 whitespace-pre-wrap">{job.description || "No description provided."}</p>
+                            {editingJobId === job.id && editDraft ? (
+                              <textarea
+                                value={editDraft.description}
+                                onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
+                                className="mt-2 w-full min-h-[120px] rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                              />
+                            ) : (
+                              <p className="mt-2 text-slate-300 whitespace-pre-wrap max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                                {job.description || "No description provided."}
+                              </p>
+                            )}
                           </div>
                           <div className="grid grid-cols-1 gap-2">
-                            <p><span className="text-slate-500 font-bold">Location:</span> {job.location || "N/A"}</p>
-                            <p><span className="text-slate-500 font-bold">Remote policy:</span> {job.remotePolicy || "N/A"}</p>
-                            <p><span className="text-slate-500 font-bold">Type:</span> {job.type || "N/A"}</p>
-                            <p><span className="text-slate-500 font-bold">Salary:</span> {job.salary || "N/A"}</p>
+                            <p>
+                              <span className="text-slate-500 font-bold">Title:</span>{" "}
+                              {editingJobId === job.id && editDraft ? (
+                                <input
+                                  value={editDraft.title}
+                                  onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })}
+                                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                                />
+                              ) : (
+                                job.title || "N/A"
+                              )}
+                            </p>
+                            <p>
+                              <span className="text-slate-500 font-bold">Location:</span>{" "}
+                              {editingJobId === job.id && editDraft ? (
+                                <input
+                                  value={editDraft.location}
+                                  onChange={(event) => setEditDraft({ ...editDraft, location: event.target.value })}
+                                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                                />
+                              ) : (
+                                job.location || "N/A"
+                              )}
+                            </p>
+                            <p>
+                              <span className="text-slate-500 font-bold">Remote policy:</span>{" "}
+                              {editingJobId === job.id && editDraft ? (
+                                <input
+                                  value={editDraft.remotePolicy}
+                                  onChange={(event) => setEditDraft({ ...editDraft, remotePolicy: event.target.value })}
+                                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                                />
+                              ) : (
+                                job.remotePolicy || "N/A"
+                              )}
+                            </p>
+                            <p>
+                              <span className="text-slate-500 font-bold">Type:</span>{" "}
+                              {editingJobId === job.id && editDraft ? (
+                                <input
+                                  value={editDraft.type}
+                                  onChange={(event) => setEditDraft({ ...editDraft, type: event.target.value })}
+                                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                                />
+                              ) : (
+                                job.type || "N/A"
+                              )}
+                            </p>
+                            <p>
+                              <span className="text-slate-500 font-bold">Salary:</span>{" "}
+                              {editingJobId === job.id && editDraft ? (
+                                <input
+                                  value={editDraft.salary}
+                                  onChange={(event) => setEditDraft({ ...editDraft, salary: event.target.value })}
+                                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
+                                />
+                              ) : (
+                                job.salary || "N/A"
+                              )}
+                            </p>
                           </div>
                           <div className="grid grid-cols-1 gap-2">
                             <p><span className="text-slate-500 font-bold">Apply URL:</span> {job.applyUrl || "N/A"}</p>
@@ -855,6 +1199,40 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                               ))}
                             </div>
                           ) : null}
+                          <div className="flex flex-wrap gap-2">
+                            {editingJobId === job.id ? (
+                              <>
+                                <button
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    saveJobEdits(job.id);
+                                  }}
+                                  className="flex-1 bg-indigo-600/20 text-indigo-300 border border-indigo-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600/30"
+                                >
+                                  Save changes
+                                </button>
+                                <button
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    cancelEditJob();
+                                  }}
+                                  className="flex-1 bg-slate-950 text-slate-400 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-white"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  startEditJob(job);
+                                }}
+                                className="w-full bg-slate-950 text-slate-400 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-indigo-300"
+                              >
+                                Edit text
+                              </button>
+                            )}
+                          </div>
                           <button
                             onClick={(event) => {
                               event.stopPropagation();
