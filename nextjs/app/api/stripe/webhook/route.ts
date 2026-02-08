@@ -3,6 +3,14 @@ import Stripe from "stripe";
 import { Resend } from "resend";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 
+type StripeEmailJobRow = {
+  id: string;
+  title: string;
+  plan_type: string | null;
+  plan_price: number | null;
+  companies?: { name?: string | null } | Array<{ name?: string | null }> | null;
+};
+
 export const runtime = "nodejs";
 
 const getBaseUrl = () => {
@@ -99,11 +107,12 @@ export async function POST(request: Request) {
             .select("id,title,plan_type,plan_price,companies(name)")
             .eq("id", jobId)
             .single();
-          const companyName = Array.isArray(job?.companies) ? job?.companies[0]?.name : job?.companies?.name;
+          const jobRow = (job ?? null) as StripeEmailJobRow | null;
+          const companyName = Array.isArray(jobRow?.companies) ? jobRow?.companies[0]?.name : jobRow?.companies?.name;
           const buyerEmail = session.customer_details?.email || session.customer_email;
           const from = getFromEmail();
-          const jobLine = job ? `${job.title}${companyName ? ` at ${companyName}` : ""}` : "your job listing";
-          const planLine = job?.plan_type ? `${job.plan_type}${job.plan_price ? ` ($${job.plan_price})` : ""}` : "Standard";
+          const jobLine = jobRow ? `${jobRow.title}${companyName ? ` at ${companyName}` : ""}` : "your job listing";
+          const planLine = jobRow?.plan_type ? `${jobRow.plan_type}${jobRow.plan_price ? ` ($${jobRow.plan_price})` : ""}` : "Standard";
           const dashboardUrl = `${baseUrl}/dashboard/employer`;
 
           try {
