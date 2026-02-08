@@ -31,8 +31,12 @@ const getFromEmail = () => {
   return process.env.RESEND_FROM || "CareersPal <onboarding@resend.dev>";
 };
 
-const getAdminEmail = () => {
-  return process.env.ADMIN_NOTIFICATION_EMAIL || "info@careerspal.com";
+const getAdminEmails = () => {
+  const raw = process.env.ADMIN_NOTIFICATION_EMAIL || "info@careerspal.com";
+  return raw
+    .split(",")
+    .map((email) => email.trim())
+    .filter(Boolean);
 };
 
 const logEmailIssue = async (jobId: string, context: Record<string, unknown>) => {
@@ -136,7 +140,7 @@ export async function POST(request: Request) {
 
             const adminResult = await resend.emails.send({
               from,
-              to: getAdminEmail(),
+              to: getAdminEmails(),
               subject: "New paid job pending review",
               html: `
                 <p>A new job has been paid and is waiting for review.</p>
