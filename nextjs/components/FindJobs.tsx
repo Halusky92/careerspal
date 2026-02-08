@@ -314,7 +314,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
   );
 
   const FilterContent = () => (
-    <div className="space-y-10 sticky top-24">
+    <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-hidden rounded-[2.75rem] border border-transparent">
+      <div className="space-y-10 pr-2 max-h-[calc(100vh-7rem)] overflow-y-auto scroll-smooth">
       <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
         <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Expertise Segments</h3>
         <div className="space-y-1.5">
@@ -397,6 +398,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
             </button>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );
