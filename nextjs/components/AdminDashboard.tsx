@@ -1,7 +1,7 @@
 "use client";
 
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Subscriber } from '../services/notificationService';
 import { Job } from '../types';
 import { useSupabaseAuth } from "./Providers";
@@ -37,6 +37,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [adminStats, setAdminStats] = useState({ users: 0, jobs: 0, savedJobs: 0, files: 0 });
   const [roleSummary, setRoleSummary] = useState<Record<string, number>>({});
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const [jobQuery, setJobQuery] = useState("");
+  const [showJobSuggestions, setShowJobSuggestions] = useState(false);
+  const jobSearchRef = useRef<HTMLDivElement>(null);
   const { accessToken } = useSupabaseAuth();
   const formatDate = (value?: number) => {
     if (!value) return "N/A";
@@ -69,6 +72,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }, 3000);
 
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (jobSearchRef.current && !jobSearchRef.current.contains(event.target as Node)) {
+        setShowJobSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -174,8 +187,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const pendingJobs = jobs.filter((job) => job.status === "pending_review");
-  const activeJobs = jobs.filter((job) => job.status !== "pending_review");
+  const filteredJobs = useMemo(() => {
+    const query = jobQuery.trim().toLowerCase();
+    if (!query) return jobs;
+    return jobs.filter((job) => {
+      const title = job.title?.toLowerCase() || "";
+      const company = job.company?.toLowerCase() || "";
+      const keywords = job.keywords?.toLowerCase() || "";
+      return title.includes(query) || company.includes(query) || keywords.includes(query);
+    });
+  }, [jobs, jobQuery]);
+
+  const jobSuggestions = useMemo(() => {
+    if (!jobQuery.trim() || jobQuery.length < 1) return [];
+    const lowQuery = jobQuery.toLowerCase();
+    const titles = jobs.filter((j) => j.title?.toLowerCase().includes(lowQuery)).map((j) => j.title);
+    const companies = jobs.filter((j) => j.company?.toLowerCase().includes(lowQuery)).map((j) => j.company);
+    return Array.from(new Set([...titles, ...companies])).slice(0, 6);
+  }, [jobQuery, jobs]);
+
+  const pendingJobs = filteredJobs.filter((job) => job.status === "pending_review");
+  const activeJobs = filteredJobs.filter((job) => job.status !== "pending_review");
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-slate-200 font-sans p-4 sm:p-6 md:p-10 animate-in fade-in">
@@ -241,6 +273,62 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               {item.label}
             </button>
           ))}
+        </div>
+
+        <div className="lg:col-span-12 order-4">
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl px-4 py-4 sm:px-6">
+            <div ref={jobSearchRef} className="relative">
+              <div className="relative flex items-center bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3">
+                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={jobQuery}
+                  onChange={(event) => {
+                    setJobQuery(event.target.value);
+                    setShowJobSuggestions(true);
+                  }}
+                  onFocus={() => setShowJobSuggestions(true)}
+                  placeholder="Search jobs by title or company..."
+                  className="w-full bg-transparent px-3 text-sm font-bold text-slate-200 outline-none placeholder:text-slate-600"
+                />
+                {jobQuery && (
+                  <button
+                    onClick={() => {
+                      setJobQuery("");
+                      setShowJobSuggestions(false);
+                    }}
+                    className="text-slate-500 hover:text-indigo-400"
+                    aria-label="Clear search"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {showJobSuggestions && jobSuggestions.length > 0 && (
+                <div className="absolute left-0 right-0 mt-2 bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-30">
+                  {jobSuggestions.map((suggestion, idx) => (
+                    <button
+                      key={`${suggestion}-${idx}`}
+                      onClick={() => {
+                        setJobQuery(suggestion);
+                        setShowJobSuggestions(false);
+                      }}
+                      className="w-full text-left px-4 py-3 text-sm font-bold text-slate-300 hover:bg-slate-900 hover:text-white transition-colors border-b border-slate-800 last:border-none"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+              Showing {filteredJobs.length} / {jobs.length} jobs
+            </div>
+          </div>
         </div>
         
         {/* ROW 1: ANALYTICS CARDS (Left) */}
@@ -389,7 +477,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
 
         {/* ROW 2: SUBSCRIBERS */}
-        <div className="lg:col-span-8 order-5 lg:order-none">
+        <div className="lg:col-span-8 order-6 lg:order-none">
           <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden shadow-2xl">
             <div className="p-8 border-b border-slate-800 flex justify-between items-center bg-slate-900">
               <div className="flex items-center gap-3">
@@ -440,7 +528,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
 
         {/* ROW 2: PENDING REVIEW */}
-        <div className="lg:col-span-4 order-4 lg:order-none">
+        <div className="lg:col-span-4 order-5 lg:order-none">
           <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden h-full flex flex-col">
             <div className="p-8 border-b border-slate-800 bg-slate-900">
               <h3 className="text-lg font-black text-white">Pending Review</h3>
@@ -448,20 +536,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 {pendingJobs.length} waiting
               </p>
             </div>
-            <div className="p-4 space-y-3 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120]">
-              {pendingJobs.length > 0 ? pendingJobs.map((job) => (
-                <div
-                  key={job.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setExpandedJobId((prev) => (prev === job.id ? null : job.id))}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter" && event.key !== " ") return;
-                    event.preventDefault();
-                    setExpandedJobId((prev) => (prev === job.id ? null : job.id));
-                  }}
-                  className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all cursor-pointer"
-                >
+            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120]">
+              {pendingJobs.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {pendingJobs.map((job) => (
+                    <div
+                      key={job.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setExpandedJobId((prev) => (prev === job.id ? null : job.id))}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        setExpandedJobId((prev) => (prev === job.id ? null : job.id));
+                      }}
+                      className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all cursor-pointer"
+                    >
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center text-lg">
@@ -527,7 +617,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     </div>
                   )}
                 </div>
-              )) : (
+                  ))}
+                </div>
+              ) : (
                 <div className="text-center py-10 text-slate-600 text-sm italic">
                   Nothing to review right now.
                 </div>
@@ -542,20 +634,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <div className="p-8 border-b border-slate-800 bg-slate-900">
               <h3 className="text-lg font-black text-white">Active Deployments</h3>
             </div>
-            <div className="p-4 space-y-3 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120]">
-              {activeJobs.length > 0 ? activeJobs.map(job => (
-                <div
-                  key={job.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setExpandedJobId((prev) => (prev === job.id ? null : job.id))}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter" && event.key !== " ") return;
-                    event.preventDefault();
-                    setExpandedJobId((prev) => (prev === job.id ? null : job.id));
-                  }}
-                  className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all cursor-pointer"
-                >
+            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120]">
+              {activeJobs.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {activeJobs.map(job => (
+                    <div
+                      key={job.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setExpandedJobId((prev) => (prev === job.id ? null : job.id))}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        setExpandedJobId((prev) => (prev === job.id ? null : job.id));
+                      }}
+                      className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all cursor-pointer"
+                    >
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
                        <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center text-lg">
@@ -649,7 +743,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     </button>
                   </div>
                 </div>
-              )) : (
+                  ))}
+                </div>
+              ) : (
                  <div className="h-full flex flex-col items-center justify-center text-slate-600 text-sm italic">
                     <p>No active ops deployed.</p>
                  </div>
