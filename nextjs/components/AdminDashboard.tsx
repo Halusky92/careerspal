@@ -450,7 +450,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </div>
             <div className="p-4 space-y-3 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120]">
               {pendingJobs.length > 0 ? pendingJobs.map((job) => (
-                <div key={job.id} className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all">
+                <div
+                  key={job.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setExpandedJobId((prev) => (prev === job.id ? null : job.id))}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    setExpandedJobId((prev) => (prev === job.id ? null : job.id));
+                  }}
+                  className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all cursor-pointer"
+                >
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center text-lg">
@@ -467,18 +478,54 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => updateJobStatus(job.id, "published")}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        updateJobStatus(job.id, "published");
+                      }}
                       className="flex-1 bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/30"
                     >
                       Accept
                     </button>
                     <button
-                      onClick={() => updateJobStatus(job.id, "private")}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        updateJobStatus(job.id, "private");
+                      }}
                       className="flex-1 bg-red-600/10 text-red-400 border border-red-600/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
                     >
                       Decline
                     </button>
                   </div>
+                  {expandedJobId === job.id && (
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-xs text-slate-300 space-y-3">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</p>
+                        <p className="mt-2 text-slate-300 whitespace-pre-wrap">{job.description || "No description provided."}</p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        <p><span className="text-slate-500 font-bold">Location:</span> {job.location || "N/A"}</p>
+                        <p><span className="text-slate-500 font-bold">Remote policy:</span> {job.remotePolicy || "N/A"}</p>
+                        <p><span className="text-slate-500 font-bold">Type:</span> {job.type || "N/A"}</p>
+                        <p><span className="text-slate-500 font-bold">Salary:</span> {job.salary || "N/A"}</p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        <p><span className="text-slate-500 font-bold">Apply URL:</span> {job.applyUrl || "N/A"}</p>
+                        <p><span className="text-slate-500 font-bold">Company website:</span> {job.companyWebsite || "N/A"}</p>
+                        <p><span className="text-slate-500 font-bold">Keywords:</span> {job.keywords || "N/A"}</p>
+                        <p><span className="text-slate-500 font-bold">Posted:</span> {formatDate(job.timestamp)}</p>
+                        <p><span className="text-slate-500 font-bold">Expires:</span> {getExpiryDate(job)}</p>
+                      </div>
+                      {job.tags?.length ? (
+                        <div className="flex flex-wrap gap-2">
+                          {job.tags.map((tag) => (
+                            <span key={tag} className="px-2 py-1 rounded-lg bg-slate-800 text-slate-200 text-[10px] font-black uppercase tracking-widest">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               )) : (
                 <div className="text-center py-10 text-slate-600 text-sm italic">
@@ -497,7 +544,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </div>
             <div className="p-4 space-y-3 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120]">
               {activeJobs.length > 0 ? activeJobs.map(job => (
-                <div key={job.id} className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all">
+                <div
+                  key={job.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setExpandedJobId((prev) => (prev === job.id ? null : job.id))}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    setExpandedJobId((prev) => (prev === job.id ? null : job.id));
+                  }}
+                  className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all cursor-pointer"
+                >
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
                        <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center text-lg">
@@ -519,7 +577,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     </div>
                   )}
                   <button
-                    onClick={() => setExpandedJobId((prev) => (prev === job.id ? null : job.id))}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setExpandedJobId((prev) => (prev === job.id ? null : job.id));
+                    }}
                     className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-300 text-left"
                   >
                     {expandedJobId === job.id ? "Hide details" : "View details"}
@@ -553,7 +614,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         </div>
                       ) : null}
                       <button
-                        onClick={() => handleDeleteJob(job.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteJob(job.id);
+                        }}
                         className="w-full bg-red-600/10 text-red-400 border border-red-600/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
                       >
                         Delete job
@@ -563,14 +627,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   <div className="flex gap-2">
                     {job.stripePaymentStatus === "paid" && job.status !== "published" && (
                       <button
-                        onClick={() => updateJobStatus(job.id, "published")}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          updateJobStatus(job.id, "published");
+                        }}
                         className="flex-1 bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/30"
                       >
                         Accept
                       </button>
                     )}
                     <button
-                      onClick={() => updateJobStatus(job.id, "private")}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        updateJobStatus(job.id, "private");
+                      }}
                       className={`${
                         job.stripePaymentStatus === "paid" && job.status !== "published" ? "flex-1" : "w-full"
                       } bg-slate-950 text-slate-500 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-red-400 hover:border-red-600/40`}
