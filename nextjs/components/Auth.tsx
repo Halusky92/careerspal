@@ -14,6 +14,8 @@ const Auth: React.FC<AuthProps> = () => {
   const initialRole = searchParams.get("role") === "employer" ? "employer" : "candidate";
   const [role, setRole] = useState<'candidate' | 'employer'>(initialRole);
   const [isLoading, setIsLoading] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<"idle" | "sent" | "error">("idle");
+  const [emailMessage, setEmailMessage] = useState("");
   const [email, setEmail] = useState("");
 
   useEffect(() => {
@@ -29,7 +31,14 @@ const Auth: React.FC<AuthProps> = () => {
     if (!email.trim()) return;
     setIsLoading(true);
     try {
-      await signInWithEmail(email.trim(), { role });
+      const result = await signInWithEmail(email.trim(), { role });
+      if (result.error) {
+        setEmailStatus("error");
+        setEmailMessage(result.error);
+      } else {
+        setEmailStatus("sent");
+        setEmailMessage("Magic link sent. Check your inbox.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -108,8 +117,10 @@ const Auth: React.FC<AuthProps> = () => {
           >
             {isLoading ? "Sending link..." : "Email me a sign-in link"}
           </button>
-          <p className="text-[10px] text-slate-400 font-bold text-center">
-            We will send a magic link to your email.
+          <p className={`text-[10px] font-bold text-center ${
+            emailStatus === "error" ? "text-red-500" : emailStatus === "sent" ? "text-emerald-500" : "text-slate-400"
+          }`}>
+            {emailMessage || "We will send a magic link to your email."}
           </p>
         </div>
 

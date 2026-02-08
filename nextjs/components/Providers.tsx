@@ -23,7 +23,7 @@ type AuthContextValue = {
   loading: boolean;
   refreshProfile: () => Promise<void>;
   signInWithGoogle: (options?: { role?: AuthRole }) => Promise<void>;
-  signInWithEmail: (email: string, options?: { role?: AuthRole }) => Promise<void>;
+  signInWithEmail: (email: string, options?: { role?: AuthRole }) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 };
 
@@ -138,10 +138,14 @@ const Providers = ({ children }: ProvidersProps) => {
 
   const signInWithEmail = useCallback(
     async (email: string, options?: { role?: AuthRole }) => {
-      await supabase.auth.signInWithOtp({
+      const { error } = await supabase.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: buildRedirect(options?.role) },
       });
+      if (error) {
+        return { error: error.message };
+      }
+      return {};
     },
     [buildRedirect],
   );
