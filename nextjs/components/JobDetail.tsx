@@ -52,6 +52,12 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
   const isPrivate = job.status === 'private' || job.status === 'invite_only';
   const stack = job.tools && job.tools.length > 0 ? job.tools : job.tags;
   const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl !== '#');
+  const formatDate = (value?: number) => {
+    if (!value) return job.postedAt;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? job.postedAt : date.toLocaleDateString();
+  };
+  const postedDate = formatDate(job.timestamp);
 
   const handleApply = async () => {
     if (isPrivate) {
@@ -204,6 +210,9 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                      {job.planType && job.planType !== 'Standard' && (
                        <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-indigo-100">Response SLA 7d</span>
                      )}
+                     <span className="px-3 py-1 bg-slate-50 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200/70">
+                       Posted {postedDate}
+                     </span>
                   </div>
                   <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-2">{job.title}</h1>
                   <div className="flex items-center gap-2 text-lg font-bold text-slate-500">
@@ -365,7 +374,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                            </div>
                            <div>
                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Date Posted</p>
-                              <p className="font-black text-slate-900 text-lg">{job.postedAt}</p>
+                              <p className="font-black text-slate-900 text-lg">{postedDate}</p>
                            </div>
                         </li>
                      </ul>

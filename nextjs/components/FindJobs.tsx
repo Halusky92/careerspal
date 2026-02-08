@@ -235,6 +235,12 @@ const FindJobs: React.FC<FindJobsProps> = ({
     return lower.includes('just now') || lower.includes('hour') || lower.includes('min');
   };
 
+  const formatPostedDate = (job: Job) => {
+    if (!job.timestamp) return job.postedAt;
+    const date = new Date(job.timestamp);
+    return Number.isNaN(date.getTime()) ? job.postedAt : date.toLocaleDateString();
+  };
+
   const handleLoadMore = () => {
     setVisibleCount(prev => prev + JOBS_PER_PAGE);
   };
@@ -902,7 +908,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     </button>
 
                     <div className="flex items-center justify-start md:justify-end gap-3">
-                      <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-widest ${isElite ? 'text-yellow-700' : 'text-slate-300'}`}>{job.postedAt}</span>
+                      <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-widest ${isElite ? 'text-yellow-700' : 'text-slate-300'}`}>{formatPostedDate(job)}</span>
                       {job.matchScore && (
                         <span className={`text-[7px] sm:text-[8px] font-black px-2 py-1 rounded-lg border ${isElite ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}>Match {job.matchScore}%</span>
                       )}

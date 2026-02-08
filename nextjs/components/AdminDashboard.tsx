@@ -38,6 +38,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [roleSummary, setRoleSummary] = useState<Record<string, number>>({});
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const { accessToken } = useSupabaseAuth();
+  const formatDate = (value?: number) => {
+    if (!value) return "N/A";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString();
+  };
+  const getExpiryDate = (job: Job) => {
+    if (!job.timestamp) return "N/A";
+    const expires = new Date(job.timestamp + 30 * 24 * 60 * 60 * 1000);
+    return Number.isNaN(expires.getTime()) ? "N/A" : expires.toLocaleDateString();
+  };
 
   // Stats Counters
   const [visits, setVisits] = useState({ total: 14502, unique: 8430, returning: 6072 });
@@ -117,6 +127,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       if (data.job) {
         setJobs((prev) => prev.map((j) => (j.id === id ? data.job! : j)));
       }
+    } catch {
+      // noop
+    }
+  };
+
+  const handleDeleteJob = async (id: string) => {
+    if (!accessToken) return;
+    if (!confirm("Delete this job permanently?")) return;
+    try {
+      const response = await authFetch(
+        `/api/admin/jobs/${id}`,
+        { method: "DELETE" },
+        accessToken,
+      );
+      if (!response.ok) return;
+      setJobs((prev) => prev.filter((job) => job.id !== id));
+      setExpandedJobId((prev) => (prev === id ? null : prev));
     } catch {
       // noop
     }
@@ -454,6 +481,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         <p><span className="text-slate-500 font-bold">Apply URL:</span> {job.applyUrl || "N/A"}</p>
                         <p><span className="text-slate-500 font-bold">Company website:</span> {job.companyWebsite || "N/A"}</p>
                         <p><span className="text-slate-500 font-bold">Keywords:</span> {job.keywords || "N/A"}</p>
+                        <p><span className="text-slate-500 font-bold">Posted:</span> {formatDate(job.timestamp)}</p>
+                        <p><span className="text-slate-500 font-bold">Expires:</span> {getExpiryDate(job)}</p>
                       </div>
                       {job.tags?.length ? (
                         <div className="flex flex-wrap gap-2">
@@ -464,6 +493,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                           ))}
                         </div>
                       ) : null}
+                      <button
+                        onClick={() => handleDeleteJob(job.id)}
+                        className="w-full bg-red-600/10 text-red-400 border border-red-600/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
+                      >
+                        Delete job
+                      </button>
                     </div>
                   )}
                   {job.status === "pending_review" ? (

@@ -90,6 +90,18 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
     }
   };
 
+  const formatDate = (value?: number) => {
+    if (!value) return "N/A";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString();
+  };
+
+  const getExpiryDate = (job: Job) => {
+    if (!job.timestamp) return null;
+    const expires = new Date(job.timestamp + 30 * 24 * 60 * 60 * 1000);
+    return Number.isNaN(expires.getTime()) ? null : expires.toLocaleDateString();
+  };
+
   return (
     <div className="relative overflow-hidden">
       <div className="absolute top-[-20%] left-[-15%] w-[70%] h-[70%] bg-indigo-300/20 rounded-full blur-[140px]"></div>
@@ -188,6 +200,11 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
                   <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-lg border ${getStatusTone(job.status)}`}>
                     {job.status || "draft"}
                   </span>
+                  {getExpiryDate(job) && (
+                    <span className="text-[9px] font-black uppercase px-3 py-1 rounded-lg bg-slate-50 text-slate-500 border border-slate-200">
+                      Expires: {getExpiryDate(job)}
+                    </span>
+                  )}
                   <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest italic">
                     Applications: {job.matches ?? 0}
                   </span>

@@ -67,3 +67,23 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   return NextResponse.json({ job: updated ? mapSupabaseJob(updated as SupabaseJobRow) : null });
 }
+
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
+  const auth = await getSupabaseProfile(request);
+  if (auth?.profile?.role !== "admin") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
+  }
+
+  await supabaseAdmin.from("jobs").delete().eq("id", id);
+  await supabaseAdmin.from("audit_logs").insert({
+    action: "job_deleted",
+    job_id: id,
+    actor_id: auth.profile.id || null,
+  });
+
+  return NextResponse.json({ success: true });
+}
