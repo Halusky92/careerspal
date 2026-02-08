@@ -470,13 +470,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       onClick={() => updateJobStatus(job.id, "published")}
                       className="flex-1 bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/30"
                     >
-                      Approve
+                      Accept
                     </button>
                     <button
                       onClick={() => updateJobStatus(job.id, "private")}
                       className="flex-1 bg-red-600/10 text-red-400 border border-red-600/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
                     >
-                      Reject
+                      Decline
                     </button>
                   </div>
                 </div>
@@ -560,13 +560,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         onClick={() => updateJobStatus(job.id, "published")}
                         className="flex-1 bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/30"
                       >
-                        Approve
+                        Accept
                       </button>
                       <button
                         onClick={() => updateJobStatus(job.id, "private")}
                         className="flex-1 bg-red-600/10 text-red-400 border border-red-600/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
                       >
-                        Reject
+                        Decline
                       </button>
                     </div>
                   ) : (
