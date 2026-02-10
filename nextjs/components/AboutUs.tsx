@@ -114,7 +114,7 @@ const AboutUs: React.FC = () => {
           <div className="space-y-8">
             <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">
               Why are we here? <br />
-              <span className="text-indigo-400">Because systems win wars.</span>
+              <span className="text-indigo-400">Because systems compound results.</span>
             </h2>
             <div className="space-y-6 text-lg text-slate-400 font-medium leading-relaxed">
               <p>

@@ -90,7 +90,7 @@ export default function HomePage() {
         <div className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2.5rem] p-6 sm:p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Trusted by systems-first teams</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Built for teams using</p>
             </div>
             <div className="relative w-full sm:w-[420px] overflow-hidden">
               <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-white/90 to-transparent pointer-events-none"></div>
@@ -135,6 +135,9 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+          <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            Tool-stack logos shown for ecosystem context, not endorsements.
+          </p>
         </div>
       </section>
 
@@ -191,6 +194,39 @@ export default function HomePage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        <div className="bg-white border border-slate-200/60 rounded-[3rem] p-8 sm:p-12 shadow-[0_25px_70px_rgba(15,23,42,0.08)]">
+          <div className="text-center mb-10">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">How it works</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-3">Clear flow for talent and employers.</h2>
+            <p className="text-slate-500 font-medium mt-3 max-w-2xl mx-auto">
+              We review every submission, enforce response SLAs, and protect candidates from ghosting.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="rounded-[2.5rem] border border-slate-200/60 bg-slate-50/70 p-8">
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Talent</h3>
+              <ol className="mt-6 space-y-4 text-sm text-slate-600 font-medium">
+                <li><span className="text-slate-900 font-black">1. Apply</span> — request access and share your role focus.</li>
+                <li><span className="text-slate-900 font-black">2. Review</span> — we verify fit and confirm your stack.</li>
+                <li><span className="text-slate-900 font-black">3. Match</span> — get early access roles and direct apply links.</li>
+              </ol>
+            </div>
+            <div className="rounded-[2.5rem] border border-slate-200/60 bg-white p-8">
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Employers</h3>
+              <ol className="mt-6 space-y-4 text-sm text-slate-600 font-medium">
+                <li><span className="text-slate-900 font-black">1. Submit</span> — post a role with salary range and scope.</li>
+                <li><span className="text-slate-900 font-black">2. Verify</span> — we check legitimacy and set response SLA.</li>
+                <li><span className="text-slate-900 font-black">3. Publish</span> — approved roles go live and are promoted.</li>
+              </ol>
+              <p className="mt-6 text-xs text-slate-500 font-bold uppercase tracking-widest">
+                SLA = response within 7 days • No-ghosting enforcement
+              </p>
+            </div>
           </div>
         </div>
       </section>

@@ -21,6 +21,8 @@ const PrivacyPolicy: React.FC = () => {
             The data controller responsible for your personal information is <strong>Mgr. Marek Bilek</strong> (CEO & Founder of CareersPal Elite). We process data in accordance with the GDPR and other local data protection laws.
             <br /><br />
             <strong>Contact:</strong> <a href="mailto:info@careerspal.com" className="text-indigo-600 font-bold hover:underline">info@careerspal.com</a>
+            <br />
+            <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">Registered address and company ID available upon request.</span>
           </p>
         </section>
 
@@ -67,7 +69,55 @@ const PrivacyPolicy: React.FC = () => {
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
             </div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">4. Your Rights</h2>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">4. Legal Basis</h2>
+          </div>
+          <p className="text-slate-600 leading-relaxed font-medium">
+            We process personal data based on consent (newsletter, alerts), legitimate interest (platform security, analytics, product improvement), and contract performance (job postings, employer tools, candidate services).
+          </p>
+        </section>
+
+        <section className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">5. Data Retention</h2>
+          </div>
+          <p className="text-slate-600 leading-relaxed font-medium">
+            We retain account and job data for as long as your account is active or as needed to provide services. You can request deletion at any time. Backup logs are retained for security and compliance for a limited period.
+          </p>
+        </section>
+
+        <section className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 7h18M6 7v10a2 2 0 002 2h8a2 2 0 002-2V7" /></svg>
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">6. Processors & Data Transfers</h2>
+          </div>
+          <p className="text-slate-600 leading-relaxed font-medium">
+            We use vetted processors to deliver the service, including Supabase (database/auth), Stripe (payments), Resend (email delivery), and Vercel (hosting). These providers process data under contractual safeguards and data processing agreements where applicable.
+          </p>
+        </section>
+
+        <section className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">7. Cookies & Analytics</h2>
+          </div>
+          <p className="text-slate-600 leading-relaxed font-medium">
+            We use essential cookies to maintain sessions and security. We also collect basic analytics for site performance. You can disable non-essential cookies in your browser.
+          </p>
+        </section>
+
+        <section className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" /></svg>
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">8. Your Rights</h2>
           </div>
           <p className="text-slate-600 leading-relaxed font-medium">
             You have the right to access, correct, or delete your personal data at any time. You can also object to processing or request data portability. To exercise these rights, please contact us at the email above.

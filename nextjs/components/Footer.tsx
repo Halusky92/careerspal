@@ -56,6 +56,7 @@ const Footer = () => {
               <li><Link href="/about" className="hover:text-indigo-600">About</Link></li>
               <li><Link href="/pricing" className="hover:text-indigo-600">Pricing</Link></li>
               <li><Link href="/hire-talent" className="hover:text-indigo-600">Hire Talent</Link></li>
+              <li><a href="mailto:support@careerspal.com" className="hover:text-indigo-600">Support</a></li>
             </ul>
           </div>
 
@@ -74,7 +75,7 @@ const Footer = () => {
             © 2026 CareersPal Elite. All rights reserved.
           </p>
           <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center md:justify-end gap-2 sm:gap-4 text-xs text-slate-400 font-medium text-center md:text-left">
-            <span className="leading-relaxed">Built for teams who value clarity, speed, and quality.</span>
+            <span className="leading-relaxed">Support: <a href="mailto:support@careerspal.com" className="font-black text-slate-500 hover:text-indigo-600">support@careerspal.com</a> • Response SLA 2 business days.</span>
             <span className="hidden md:inline text-slate-300">•</span>
             <Link href="/privacy" className="text-slate-400 hover:text-indigo-600 font-bold uppercase tracking-widest text-[10px]">
               Privacy
@@ -92,6 +93,9 @@ const Footer = () => {
             </span>
           </div>
         </div>
+        <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-center">
+          CareersPal Elite is an independent platform and is not affiliated with similarly named entities.
+        </p>
       </div>
     </footer>
   );

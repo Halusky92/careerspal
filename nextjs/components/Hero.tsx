@@ -91,7 +91,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onJoinPool, onSearch, jobs }) => 
           <div className="flex-1 w-full">
             <div className="inline-flex items-center space-x-2 bg-white/70 backdrop-blur border border-slate-200/60 px-4 py-2 rounded-full mb-6 sm:mb-8 shadow-sm">
               <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em]">Private Roles • Verified Employers</span>
+              <span className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em]">Invite-only access • Verified employers</span>
             </div>
             
             <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-slate-900 tracking-tight leading-[1.1] sm:leading-[0.9] mb-6 sm:mb-8">
@@ -183,11 +183,15 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onJoinPool, onSearch, jobs }) => 
               </button>
             </div>
 
+            <p className="mt-4 text-xs sm:text-sm text-slate-500 font-medium max-w-xl mx-auto lg:mx-0">
+              Invite-only means we review every profile and employer submission before access. Approvals typically take 24–72 hours; approved members get early access roles, saved alerts, and direct apply links.
+            </p>
+
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-xl mx-auto lg:mx-0">
               {[
-                { label: "Verified employers", value: "100%" },
-                { label: "Median response", value: "6 days" },
-                { label: "Private roles", value: "Invite-only" },
+                { label: "Verified employers", value: "Screened" },
+                { label: "Response SLA", value: "7 days" },
+                { label: "Access", value: "Invite-only" },
               ].map((item) => (
                 <div key={item.label} className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-2xl px-4 py-3 text-center">
                   <div className="text-base font-black text-slate-900">{item.value}</div>
