@@ -42,7 +42,7 @@ const getLocalJson = <T,>(key: string, fallback: T): T => {
 };
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
-  const [subscribers, setSubscribers] = useState<Subscriber[]>(() => getLocalJson<Subscriber[]>('cp_subscribers_db', []));
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [jobs, setJobs] = useState<Job[]>(() => getLocalJson<Job[]>('cp_my_jobs', []));
   const [adminStats, setAdminStats] = useState({ users: 0, jobs: 0, savedJobs: 0, files: 0 });
   const [roleSummary, setRoleSummary] = useState<Record<string, number>>({});
@@ -161,6 +161,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   }, [accessToken]);
 
   useEffect(() => {
+    const loadSubscribers = async () => {
+      try {
+        if (!accessToken) return;
+        const response = await authFetch("/api/admin/subscribers", {}, accessToken);
+        if (!response.ok) return;
+        const data = (await response.json()) as { subscribers?: Subscriber[] };
+        setSubscribers(data.subscribers || []);
+      } catch {
+        // noop
+      }
+    };
+    loadSubscribers();
+  }, [accessToken]);
+
+  useEffect(() => {
     const loadAnalytics = async () => {
       try {
         if (!accessToken) return;
@@ -231,11 +246,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const handleDeleteSubscriber = (email: string) => {
-    if (confirm(`Remove ${email} from list?`)) {
-      const updatedSubs = subscribers.filter(s => s.email !== email);
-      setSubscribers(updatedSubs);
-      localStorage.setItem('cp_subscribers_db', JSON.stringify(updatedSubs));
+  const handleDeleteSubscriber = async (email: string) => {
+    if (!accessToken) return;
+    if (!confirm(`Remove ${email} from list?`)) return;
+    try {
+      const response = await authFetch(
+        "/api/admin/subscribers",
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        },
+        accessToken,
+      );
+      if (!response.ok) return;
+      setSubscribers((prev) => prev.filter((s) => s.email !== email));
+    } catch {
+      // noop
     }
   };
 

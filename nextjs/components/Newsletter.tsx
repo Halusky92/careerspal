@@ -14,10 +14,10 @@ const Newsletter: React.FC = () => {
   // Vyfiltrujeme kategórie pre dropdown (odstránime 'All Roles' a pridáme 'All')
   const options = ['All', ...CATEGORIES.filter(c => c !== 'All Roles')];
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const result = subscribeUser(email, preference);
+    const result = await subscribeUser(email, preference);
     
     if (result.success) {
       setStatus('success');
