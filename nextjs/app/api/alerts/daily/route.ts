@@ -59,13 +59,18 @@ const getTags = (tags: unknown) => {
   return [];
 };
 
+const getCompanyName = (job: JobRow) => {
+  if (Array.isArray(job.companies)) {
+    return job.companies[0]?.name || "Company";
+  }
+  return job.companies?.name || "Company";
+};
+
 const matchesAlert = (job: JobRow, query: string) => {
   const { search, location } = splitQuery(query);
   const searchNeedle = normalize(search);
   const locationNeedle = normalize(location);
-  const companyName = Array.isArray(job.companies)
-    ? job.companies[0]?.name || ""
-    : job.companies?.name || "";
+  const companyName = getCompanyName(job);
   const tags = getTags(job.tags);
 
   const haystack = normalize(
@@ -144,15 +149,14 @@ export async function GET(request: Request) {
       .eq("status", "published")
       .gte("timestamp", sinceMs);
 
-    const matches = (jobs || []).filter((job) => matchesAlert(job as JobRow, alert.query || ""));
+    const jobRows = (jobs || []) as JobRow[];
+    const matches = jobRows.filter((job) => matchesAlert(job, alert.query || ""));
 
     if (matches.length > 0 && !dryRun) {
       const rows = matches
         .slice(0, 10)
         .map((job) => {
-          const companyName = Array.isArray(job.companies)
-            ? job.companies[0]?.name || "Company"
-            : job.companies?.name || "Company";
+          const companyName = getCompanyName(job);
           const jobUrl = `${baseUrl}/jobs/${createJobSlug({ title: job.title || "role", id: job.id })}`;
           return `
             <li>
