@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import PostJob from "../../components/PostJob";
 import { Job, PlanType } from "../../types";
 import { useSupabaseAuth } from "../../components/Providers";
@@ -21,10 +21,12 @@ const getStoredPlan = () => {
 
 const PostJobPage = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { profile, accessToken, loading: authLoading } = useSupabaseAuth();
   const [selectedPlan, setSelectedPlan] = useState<{ type: PlanType; price: number }>(() => {
     return getStoredPlan() || { type: "Standard", price: 79 };
   });
+  const enableTestPrice = process.env.NEXT_PUBLIC_ENABLE_TEST_PRICE === "true";
 
   useEffect(() => {
     if (authLoading) return;
@@ -36,6 +38,15 @@ const PostJobPage = () => {
       router.replace("/dashboard/candidate");
     }
   }, [authLoading, profile, router]);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    const testPriceRaw = searchParams.get("testPrice");
+    const testPrice = testPriceRaw ? Number(testPriceRaw) : NaN;
+    if (!Number.isFinite(testPrice) || testPrice <= 0) return;
+    if (!enableTestPrice && profile?.role !== "admin") return;
+    setSelectedPlan({ type: "Standard", price: testPrice });
+  }, [enableTestPrice, profile?.role, searchParams]);
 
   if (authLoading) {
     return (

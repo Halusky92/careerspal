@@ -17,6 +17,8 @@ type JobFormData = Omit<Job, 'id' | 'postedAt' | 'isFeatured' | 'planType' | 'pl
 const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan }) => {
   const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
+  const formatPrice = (value: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
   
   const [formData, setFormData] = useState<JobFormData>({
     title: '',
@@ -141,7 +143,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
         <div className="lg:col-span-8">
           <div className="mb-10 flex items-center justify-between">
             <div>
-              <div className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-2">Selected Package: {selectedPlan.type} (${selectedPlan.price} / 30 days)</div>
+              <div className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-2">
+                Selected Package: {selectedPlan.type} ({formatPrice(selectedPlan.price)} / 30 days)
+              </div>
               <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Post a Role.</h1>
             </div>
             <div className="flex gap-2">
@@ -354,7 +358,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 </div>
                 <div className="flex flex-col gap-4">
                 <button onClick={handleFinalSubmit} className="w-full bg-slate-900 text-white font-black py-4 sm:py-6 rounded-2xl hover:bg-black shadow-[0_25px_70px_rgba(15,23,42,0.35)] active:scale-[0.98] transition-all text-base sm:text-xl">
-                    Proceed to Payment (${selectedPlan.price})
+                    Proceed to Payment ({formatPrice(selectedPlan.price)})
                   </button>
                   <button onClick={() => setStep(2)} className="text-slate-400 font-bold hover:text-indigo-600 transition-colors">Edit details</button>
                 </div>
@@ -376,7 +380,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 shadow-sm relative z-20">
               <h3 className="text-lg font-black text-slate-900 mb-2">Selected Plan</h3>
               <div className="text-3xl font-black text-indigo-600 mb-4">
-                ${selectedPlan.price}
+                {formatPrice(selectedPlan.price)}
                 <span className="text-lg text-slate-400 font-bold"> / 30 days</span>
               </div>
               <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">{selectedPlan.type}</div>

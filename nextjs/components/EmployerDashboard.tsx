@@ -2,6 +2,7 @@
 
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from "next/navigation";
 import { Job } from '../types';
 import { createJobSlug } from '../lib/jobs';
 import CompanyLogo from './CompanyLogo';
@@ -17,6 +18,8 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   const [myJobs, setMyJobs] = useState<Job[]>([]);
   const [summary, setSummary] = useState<Record<string, number>>({});
   const { accessToken } = useSupabaseAuth();
+  const router = useRouter();
+  const enableTestPrice = process.env.NEXT_PUBLIC_ENABLE_TEST_PRICE === "true";
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -114,7 +117,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           <h1 className="text-5xl sm:text-6xl font-black text-slate-900 tracking-tighter mb-4">Dashboard.</h1>
           <p className="text-xl text-slate-500 font-medium italic">Manage your roles and analyze candidate flow.</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 flex-wrap">
           <div className="bg-white/80 backdrop-blur p-8 rounded-[2.5rem] border border-slate-200/60 shadow-xl flex items-center gap-10">
             <div className="text-center">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Views</p>
@@ -132,6 +135,14 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           >
             Upgrade Plan
           </button>
+          {enableTestPrice && (
+            <button
+              onClick={() => router.push("/post-a-job?testPrice=0.5")}
+              className="bg-emerald-50 text-emerald-700 px-8 py-6 rounded-[2rem] font-black text-xs uppercase tracking-widest border border-emerald-200 shadow-sm hover:border-emerald-300 hover:text-emerald-800 transition-all"
+            >
+              Test payment $0.50
+            </button>
+          )}
           <button 
             onClick={onPostJob}
             className="bg-indigo-600 text-white px-10 py-6 rounded-[2rem] font-black text-xl shadow-2xl shadow-indigo-100 hover:scale-105 transition-transform"

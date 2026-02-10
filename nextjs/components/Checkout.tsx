@@ -32,6 +32,8 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
 
   const price = jobData?.plan?.price || 79;
   const planName = jobData?.plan?.type || 'Standard';
+  const formatPrice = (value: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 
   const handlePay = async () => {
     setStep('processing');
@@ -144,7 +146,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
                 onClick={handlePay}
                 className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all text-xl active:scale-[0.98]"
               >
-                Continue to Stripe (${price}.00)
+                Continue to Stripe ({formatPrice(price)})
               </button>
               {error && (
                 <p className="text-center text-red-500 text-sm font-bold mt-4">{error}</p>
@@ -169,11 +171,11 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
                        <p className="font-black text-white">{jobData?.title || "New Listing"}</p>
                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{planName} 30-Day Listing</p>
                     </div>
-                    <span className="font-black">${price}.00</span>
+                    <span className="font-black">{formatPrice(price)}</span>
                  </div>
                  <div className="pt-6 border-t border-white/10 flex justify-between items-center">
                     <span className="text-lg font-black uppercase tracking-widest text-slate-400">Total</span>
-                    <span className="text-3xl font-black text-indigo-400">${price}.00</span>
+                    <span className="text-3xl font-black text-indigo-400">{formatPrice(price)}</span>
                  </div>
               </div>
            </div>
