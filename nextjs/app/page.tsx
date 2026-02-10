@@ -45,6 +45,7 @@ export default function HomePage() {
       return (b.timestamp ?? 0) - (a.timestamp ?? 0);
     });
   }, [jobs]);
+  const hasJobs = jobs.length > 0;
   const companyCount = useMemo(() => new Set(jobs.map((job) => job.company)).size, [jobs]);
   const matchTotal = useMemo(() => jobs.reduce((sum, job) => sum + (job.matches || 0), 0), [jobs]);
 
@@ -205,11 +206,18 @@ export default function HomePage() {
               </p>
             </div>
             <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: "Live roles", value: jobs.length },
-                { label: "Teams", value: companyCount },
-                { label: "Matches", value: matchTotal || 0 },
-              ].map((item) => (
+              {(hasJobs
+                ? [
+                    { label: "Live roles", value: jobs.length },
+                    { label: "Teams", value: companyCount },
+                    { label: "Matches", value: matchTotal || 0 },
+                  ]
+                : [
+                    { label: "Live roles", value: "Launching" },
+                    { label: "Teams", value: "Onboarding" },
+                    { label: "Matches", value: "Starting soon" },
+                  ]
+              ).map((item) => (
                 <div key={item.label} className="bg-white/10 border border-white/10 rounded-2xl px-4 py-4 text-center">
                   <div className="text-2xl font-black">{item.value}</div>
                   <div className="text-[10px] font-black uppercase tracking-widest text-indigo-100 mt-1">{item.label}</div>
@@ -226,15 +234,46 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-2 mb-3">
               <div>
                 <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Featured & latest roles</p>
-                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Top picks from the Elite Board</h3>
-                <p className="text-sm text-slate-500 font-medium mt-1">Hand-reviewed, ranked by impact and freshness.</p>
+                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+                  {hasJobs ? "Top picks from the Elite Board" : "Early access roles coming soon"}
+                </h3>
+                <p className="text-sm text-slate-500 font-medium mt-1">
+                  {hasJobs
+                    ? "Hand-reviewed, ranked by impact and freshness."
+                    : "We are onboarding verified teams now. Be first in line."}
+                </p>
               </div>
-              <span className="inline-flex items-center justify-center rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-600">
-                Top 5
-              </span>
+              {hasJobs && (
+                <span className="inline-flex items-center justify-center rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                  Top 5
+                </span>
+              )}
             </div>
 
-            {topJobs.slice(0, 5).map((job) => {
+            {!hasJobs && (
+              <div className="rounded-[2.5rem] border border-slate-200/70 bg-white p-8 text-center shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+                <div className="text-2xl font-black text-slate-900">Roles are launching soon.</div>
+                <p className="text-sm text-slate-500 font-medium mt-2">
+                  We are curating the first cohort of verified employers and listings.
+                </p>
+                <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={() => router.push('/post-a-job')}
+                    className="px-5 py-3 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase tracking-widest hover:bg-indigo-700"
+                  >
+                    Post a role
+                  </button>
+                  <button
+                    onClick={() => router.push('/jobs')}
+                    className="px-5 py-3 rounded-2xl bg-white border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600"
+                  >
+                    Browse jobs
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {hasJobs && topJobs.slice(0, 5).map((job) => {
               const isElite = job.planType === 'Elite Managed';
               const isPro = job.planType === 'Featured Pro';
               const isNew = isNewListing(job.postedAt);
@@ -369,7 +408,7 @@ export default function HomePage() {
                 onClick={() => router.push('/jobs')}
                 className="w-full py-4 rounded-[2rem] bg-white border-2 border-slate-100 text-slate-600 font-black uppercase tracking-widest text-xs hover:border-indigo-600 hover:text-indigo-600 transition-all shadow-sm"
               >
-                View All {jobs.length} Open Positions →
+                {hasJobs ? `View All ${jobs.length} Open Positions →` : "Browse jobs →"}
               </button>
             </div>
 

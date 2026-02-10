@@ -49,6 +49,7 @@ export default function JobsPage() {
   const [totalJobs, setTotalJobs] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [savedJobIds, setSavedJobIds] = useState<string[]>(() => getSaved());
+  const hasJobs = jobs.length > 0;
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -199,11 +200,18 @@ export default function JobsPage() {
               )}
             </div>
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {[
-                { label: "Verified employers", value: "100%" },
-                { label: "Median response", value: "6 days" },
-                { label: "Remote-friendly", value: "92%" },
-              ].map((item) => (
+              {(hasJobs
+                ? [
+                    { label: "Verified employers", value: "Screened" },
+                    { label: "Response SLA", value: "7 days" },
+                    { label: "Remote-friendly", value: "Remote-first" },
+                  ]
+                : [
+                    { label: "Verified employers", value: "Onboarding" },
+                    { label: "Response SLA", value: "Launching" },
+                    { label: "Remote-friendly", value: "Curated" },
+                  ]
+              ).map((item) => (
                 <div key={item.label} className="bg-white border border-slate-200/60 rounded-2xl px-4 py-4 text-center">
                   <div className="text-2xl font-black text-slate-900">{item.value}</div>
                   <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{item.label}</div>

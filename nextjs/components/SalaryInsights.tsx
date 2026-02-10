@@ -25,25 +25,33 @@ const SalaryInsights: React.FC<SalaryInsightsProps> = ({ onBrowse }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 animate-in fade-in relative z-10">
       <div className="mb-16 text-center">
         <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur border border-slate-200/60 px-4 py-2 rounded-full mb-6">
-          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Verified data</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Methodology notes</span>
         </div>
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight mb-6">Market <span className="text-indigo-600">Intelligence.</span></h1>
         <p className="text-base sm:text-xl text-slate-500 font-medium max-w-3xl mx-auto">
-          Real-time salary benchmarks for elite Operations & Notion professionals. Stop guessing your worth.
+          Salary benchmarks based on public listings and partner-submitted ranges. Directional guidance, not guarantees.
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
         {[
-          { label: "Roles tracked", value: "120+" },
-          { label: "Median delta", value: "+18%" },
-          { label: "Data freshness", value: "Weekly" },
+          { label: "Regions", value: "NA + EU" },
+          { label: "Sources", value: "Public + partner" },
+          { label: "Update cadence", value: "Monthly" },
         ].map((item) => (
           <div key={item.label} className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-2xl px-4 py-4 text-center shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
             <div className="text-2xl font-black text-slate-900">{item.value}</div>
             <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{item.label}</div>
           </div>
         ))}
+      </div>
+
+      <div className="mb-12 bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2rem] p-6 text-left shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Methodology</h3>
+        <p className="text-sm text-slate-500 font-medium mt-3">
+          Ranges are aggregated from public job listings, verified employer submissions, and internal benchmarks.
+          Sample sizes vary by role and region. Use as directional guidance while negotiating.
+        </p>
       </div>
 
       <div className="flex flex-col items-center gap-4 mb-12">

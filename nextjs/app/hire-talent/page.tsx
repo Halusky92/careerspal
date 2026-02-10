@@ -9,22 +9,11 @@ const HireTalentPage = () => {
   const router = useRouter();
   const { profile, loading } = useSupabaseAuth();
 
-  if (loading) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-24 text-center">
-        <div className="inline-flex items-center gap-3 text-slate-500 font-bold">
-          <span className="h-3 w-3 rounded-full bg-indigo-500 animate-pulse"></span>
-          Loading...
-        </div>
-      </div>
-    );
-  }
-
   useEffect(() => {
-    if (profile?.role === "candidate") {
+    if (!loading && profile?.role === "candidate") {
       router.replace("/jobs");
     }
-  }, [profile?.role, router]);
+  }, [loading, profile?.role, router]);
 
   return (
     <div className="pt-6">

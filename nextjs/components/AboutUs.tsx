@@ -25,9 +25,9 @@ const AboutUs: React.FC = () => {
         {/* Premium Metrics */}
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {[
-            { label: "Curated roles", value: "2,400+", note: "Reviewed weekly" },
-            { label: "Response rate", value: "87%", note: "Employer SLA" },
-            { label: "Top-tier matches", value: "14,000+", note: "Last 12 months" },
+            { label: "Curated roles", value: "Launching 2026", note: "Founding cohort" },
+            { label: "Response SLA", value: "7 days", note: "Verified employers" },
+            { label: "Matches", value: "In progress", note: "Rolling onboarding" },
           ].map((item) => (
             <div
               key={item.label}
