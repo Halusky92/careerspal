@@ -143,90 +143,41 @@ export default function HomePage() {
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
         <div className="rounded-[2.5rem] border border-slate-200/60 bg-white/70 backdrop-blur p-6 sm:p-8 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-8">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-6">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Quality pipeline</p>
               <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Every role passes a strict review.</h3>
               <p className="text-slate-500 font-medium mt-2 max-w-2xl">
-                We verify the employer, tighten the scope, and rank roles by fit so you only see signal.
+                We verify the employer, tighten scope, and rank roles by fit so you only see signal.
               </p>
             </div>
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700">
               Verified listings only
             </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
               {
                 title: "Review",
                 copy: "We rewrite vague postings, enforce salary ranges, and clarify scope.",
-                tags: ["Clarity", "Salary range", "Scope"],
               },
               {
                 title: "Verify",
                 copy: "Employers pass a trust check and commit to response SLAs.",
-                tags: ["Trust check", "SLA", "Quality"],
               },
               {
                 title: "Match",
                 copy: "Roles are highlighted by tool stack, seniority, and fit.",
-                tags: ["Stack fit", "Level", "Relevance"],
               },
             ].map((item) => (
               <div
                 key={item.title}
-                className="bg-white rounded-[2rem] border border-slate-200/60 p-6 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
+                className="bg-white rounded-[1.8rem] border border-slate-200/60 p-5 shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
               >
-                <div className="w-10 h-10 rounded-2xl bg-indigo-600/10 text-indigo-600 flex items-center justify-center font-black">
-                  ✦
-                </div>
-                <h3 className="text-xl font-black text-slate-900 mt-4">{item.title}</h3>
-                <p className="text-slate-500 font-medium mt-2">{item.copy}</p>
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {item.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-slate-500 bg-slate-50 border border-slate-200/60"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
+                <div className="text-[11px] font-black uppercase tracking-widest text-indigo-500">{item.title}</div>
+                <p className="text-sm text-slate-500 font-medium mt-2">{item.copy}</p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        <div className="bg-white border border-slate-200/60 rounded-[3rem] p-8 sm:p-12 shadow-[0_25px_70px_rgba(15,23,42,0.08)]">
-          <div className="text-center mb-10">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">How it works</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-3">Clear flow for talent and employers.</h2>
-            <p className="text-slate-500 font-medium mt-3 max-w-2xl mx-auto">
-              We review every submission, enforce response SLAs, and protect candidates from ghosting.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="rounded-[2.5rem] border border-slate-200/60 bg-slate-50/70 p-8">
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Talent</h3>
-              <ol className="mt-6 space-y-4 text-sm text-slate-600 font-medium">
-                <li><span className="text-slate-900 font-black">1. Apply</span> — request access and share your role focus.</li>
-                <li><span className="text-slate-900 font-black">2. Review</span> — we verify fit and confirm your stack.</li>
-                <li><span className="text-slate-900 font-black">3. Match</span> — get early access roles and direct apply links.</li>
-              </ol>
-            </div>
-            <div className="rounded-[2.5rem] border border-slate-200/60 bg-white p-8">
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Employers</h3>
-              <ol className="mt-6 space-y-4 text-sm text-slate-600 font-medium">
-                <li><span className="text-slate-900 font-black">1. Submit</span> — post a role with salary range and scope.</li>
-                <li><span className="text-slate-900 font-black">2. Verify</span> — we check legitimacy and set response SLA.</li>
-                <li><span className="text-slate-900 font-black">3. Publish</span> — approved roles go live and are promoted.</li>
-              </ol>
-              <p className="mt-6 text-xs text-slate-500 font-bold uppercase tracking-widest">
-                SLA = response within 7 days • No-ghosting enforcement
-              </p>
-            </div>
           </div>
         </div>
       </section>
@@ -505,7 +456,44 @@ export default function HomePage() {
           </div>
 
           <div className="lg:col-span-4">
-            <AIChatPanel jobs={jobs} />
+            <div className="lg:sticky lg:top-24">
+              <AIChatPanel jobs={jobs} />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-14">
+        <div className="bg-white border border-slate-200/60 rounded-[2.5rem] p-6 sm:p-8 shadow-[0_20px_55px_rgba(15,23,42,0.08)]">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-6">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">How it works</p>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Clear flow for talent and employers.</h2>
+            </div>
+            <p className="text-slate-500 font-medium max-w-2xl">
+              We review every submission, enforce response SLAs, and protect candidates from ghosting.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="rounded-[2rem] border border-slate-200/60 bg-slate-50/70 p-6">
+              <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">Talent</h3>
+              <ol className="mt-4 space-y-3 text-sm text-slate-600 font-medium">
+                <li><span className="text-slate-900 font-black">1. Apply</span> — request access and share your role focus.</li>
+                <li><span className="text-slate-900 font-black">2. Review</span> — we verify fit and confirm your stack.</li>
+                <li><span className="text-slate-900 font-black">3. Match</span> — get early access roles and direct apply links.</li>
+              </ol>
+            </div>
+            <div className="rounded-[2rem] border border-slate-200/60 bg-white p-6">
+              <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">Employers</h3>
+              <ol className="mt-4 space-y-3 text-sm text-slate-600 font-medium">
+                <li><span className="text-slate-900 font-black">1. Submit</span> — post a role with salary range and scope.</li>
+                <li><span className="text-slate-900 font-black">2. Verify</span> — we check legitimacy and set response SLA.</li>
+                <li><span className="text-slate-900 font-black">3. Publish</span> — approved roles go live and are promoted.</li>
+              </ol>
+              <p className="mt-4 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                SLA = response within 7 days • No-ghosting enforcement
+              </p>
+            </div>
           </div>
         </div>
       </section>
