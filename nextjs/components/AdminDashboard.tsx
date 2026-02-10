@@ -256,6 +256,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const startTestCheckout = async () => {
     if (!accessToken) return;
     setTestPaymentState({ loading: true, error: null });
+    const readJson = async <T,>(response: Response): Promise<T | null> => {
+      const text = await response.text();
+      if (!text) return null;
+      try {
+        return JSON.parse(text) as T;
+      } catch {
+        return { error: text } as T;
+      }
+    };
     const runCheckout = async (jobId: string) => {
       const response = await authFetch(
         "/api/stripe/checkout",
@@ -266,9 +275,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         },
         accessToken,
       );
-      const data = (await response.json()) as { url?: string; error?: string };
-      if (!response.ok || !data.url) {
-        throw new Error(data.error || "Failed to start checkout.");
+      const data = (await readJson<{ url?: string; error?: string }>(response)) || {};
+      if (!response.ok || !data?.url) {
+        throw new Error(data?.error || `Failed to start checkout (status ${response.status}).`);
       }
       window.location.href = data.url;
     };
@@ -307,9 +316,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         },
         accessToken,
       );
-      const created = (await createResponse.json()) as { job?: Job; error?: string };
+      const created =
+        (await readJson<{ job?: Job; error?: string }>(createResponse)) || {};
       if (!createResponse.ok || !created.job?.id) {
-        throw new Error(created.error || "Failed to create test job.");
+        throw new Error(created.error || `Failed to create test job (status ${createResponse.status}).`);
       }
       try {
         sessionStorage.setItem("cp_test_job_id", created.job.id);
