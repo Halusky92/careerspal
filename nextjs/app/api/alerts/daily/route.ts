@@ -63,7 +63,9 @@ const matchesAlert = (job: JobRow, query: string) => {
   const { search, location } = splitQuery(query);
   const searchNeedle = normalize(search);
   const locationNeedle = normalize(location);
-  const companyName = job.companies?.name || "";
+  const companyName = Array.isArray(job.companies)
+    ? job.companies[0]?.name || ""
+    : job.companies?.name || "";
   const tags = getTags(job.tags);
 
   const haystack = normalize(

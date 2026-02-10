@@ -347,7 +347,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </div>
 
       <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4 order-1">
+        <div className="lg:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4 order-6">
           {[
             { label: "Users", value: adminStats.users },
             { label: "Jobs", value: adminStats.jobs },
@@ -360,7 +360,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </div>
           ))}
         </div>
-        <div className="lg:col-span-12 flex flex-wrap gap-2 order-2">
+        <div className="lg:col-span-12 flex flex-wrap gap-2 order-7">
           {Object.entries(roleSummary).map(([role, count]) => (
             <span
               key={role}
@@ -370,7 +370,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </span>
           ))}
         </div>
-        <div className="lg:col-span-12 flex flex-wrap gap-3 order-3">
+        <div className="lg:col-span-12 flex flex-wrap gap-3 order-8">
           {[
             { label: "Users CSV", href: "/api/admin/users/export", file: "users-export.csv" },
             { label: "Jobs CSV", href: "/api/admin/jobs/export", file: "jobs-export.csv" },
@@ -391,8 +391,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           ))}
         </div>
 
-        <div className="lg:col-span-12 order-4">
+        <div className="lg:col-span-12 order-0">
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl px-4 py-4 sm:px-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">Job Board</h3>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-1">
+                  Manage pending approvals and active roles
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-amber-300 border border-amber-600/40 bg-amber-600/10">
+                  Pending {pendingJobs.length}
+                </span>
+                <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-emerald-300 border border-emerald-600/40 bg-emerald-600/10">
+                  Active {activeJobs.length}
+                </span>
+                <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-slate-300 border border-slate-700 bg-slate-800/60">
+                  Archived {archivedJobs.length}
+                </span>
+              </div>
+            </div>
             <div ref={jobSearchRef} className="relative">
               <div className="relative flex items-center bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3">
                 <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -471,7 +490,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
         
         {/* ROW 1: ANALYTICS CARDS (Left) */}
-        <div className="lg:col-span-3 space-y-6 order-6 lg:order-none">
+        <div className="lg:col-span-3 space-y-6 order-10">
            {/* Total Views Card */}
            <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 backdrop-blur-sm relative overflow-hidden group">
               <div className="relative z-10">
@@ -516,7 +535,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
 
         {/* ROW 1: TRAFFIC CHARTS */}
-        <div className="lg:col-span-6 order-7 lg:order-none">
+        <div className="lg:col-span-6 order-11">
            <div className="bg-[#0F172A] rounded-[2.5rem] border border-slate-800 h-full relative overflow-hidden flex flex-col min-h-[500px]">
               <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/30">
                  <h3 className="text-sm font-black text-white uppercase tracking-widest">Traffic & Job Posts</h3>
@@ -568,7 +587,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
 
         {/* ROW 1: TRAFFIC SUMMARY (Right) */}
-        <div className="lg:col-span-3 space-y-6 order-8 lg:order-none">
+        <div className="lg:col-span-3 space-y-6 order-12">
           <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 backdrop-blur-sm h-full flex flex-col justify-center">
             <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Traffic Summary</h3>
             <div className="space-y-4">
@@ -589,7 +608,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
 
         {/* ROW 2: SUBSCRIBERS */}
-        <div className="lg:col-span-8 order-6 lg:order-none">
+        <div className="lg:col-span-12 order-13">
           <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden shadow-2xl">
             <div className="p-8 border-b border-slate-800 flex justify-between items-center bg-slate-900">
               <div className="flex items-center gap-3">
@@ -640,7 +659,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
 
         {/* ROW 2: PENDING REVIEW */}
-        <div className="lg:col-span-12 order-0">
+        <div className="lg:col-span-12 order-1">
           <div className="bg-slate-900 rounded-[2.5rem] border border-amber-500/30 overflow-hidden">
             <div className="p-8 border-b border-slate-800 bg-slate-900 flex items-center justify-between gap-4">
               <div>
@@ -709,12 +728,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 </div>
                   {expandedJobId === job.id && (
                     <div className="sm:col-span-2 xl:col-span-3 rounded-2xl border border-slate-800 bg-slate-950/50 p-5 text-xs text-slate-300 space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            updateJobStatus(job.id, "published");
+                          }}
+                          className="flex-1 bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/30"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            updateJobStatus(job.id, "private");
+                          }}
+                          className="flex-1 bg-red-600/10 text-red-400 border border-red-600/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
+                        >
+                          Decline
+                        </button>
+                      </div>
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</p>
                         {editingJobId === job.id && editDraft ? (
                           <textarea
                             value={editDraft.description}
                             onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
+                            onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => event.stopPropagation()}
                             className="mt-2 w-full min-h-[160px] rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
                           />
                         ) : (
@@ -730,6 +771,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             <input
                               value={editDraft.title}
                               onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })}
+                              onClick={(event) => event.stopPropagation()}
+                              onKeyDown={(event) => event.stopPropagation()}
                               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                             />
                           ) : (
@@ -742,6 +785,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             <input
                               value={editDraft.location}
                               onChange={(event) => setEditDraft({ ...editDraft, location: event.target.value })}
+                              onClick={(event) => event.stopPropagation()}
+                              onKeyDown={(event) => event.stopPropagation()}
                               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                             />
                           ) : (
@@ -754,6 +799,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             <input
                               value={editDraft.remotePolicy}
                               onChange={(event) => setEditDraft({ ...editDraft, remotePolicy: event.target.value })}
+                              onClick={(event) => event.stopPropagation()}
+                              onKeyDown={(event) => event.stopPropagation()}
                               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                             />
                           ) : (
@@ -766,6 +813,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             <input
                               value={editDraft.type}
                               onChange={(event) => setEditDraft({ ...editDraft, type: event.target.value })}
+                              onClick={(event) => event.stopPropagation()}
+                              onKeyDown={(event) => event.stopPropagation()}
                               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                             />
                           ) : (
@@ -778,6 +827,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             <input
                               value={editDraft.salary}
                               onChange={(event) => setEditDraft({ ...editDraft, salary: event.target.value })}
+                              onClick={(event) => event.stopPropagation()}
+                              onKeyDown={(event) => event.stopPropagation()}
                               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                             />
                           ) : (
@@ -850,7 +901,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
 
         {/* ROW 2: ACTIVE JOBS */}
-        <div className="lg:col-span-4 order-4 lg:order-none">
+        <div className="lg:col-span-6 order-2">
           <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden h-full flex flex-col">
             <div className="p-8 border-b border-slate-800 bg-slate-900">
               <h3 className="text-lg font-black text-white">Active Deployments</h3>
@@ -916,6 +967,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                           <textarea
                             value={editDraft.description}
                             onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
+                                onClick={(event) => event.stopPropagation()}
+                                onKeyDown={(event) => event.stopPropagation()}
                             className="mt-2 w-full min-h-[120px] rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
                           />
                         ) : (
@@ -931,6 +984,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             <input
                               value={editDraft.title}
                               onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onKeyDown={(event) => event.stopPropagation()}
                               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                             />
                           ) : (
@@ -943,6 +998,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             <input
                               value={editDraft.location}
                               onChange={(event) => setEditDraft({ ...editDraft, location: event.target.value })}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onKeyDown={(event) => event.stopPropagation()}
                               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                             />
                           ) : (
@@ -955,6 +1012,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             <input
                               value={editDraft.remotePolicy}
                               onChange={(event) => setEditDraft({ ...editDraft, remotePolicy: event.target.value })}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onKeyDown={(event) => event.stopPropagation()}
                               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                             />
                           ) : (
@@ -967,6 +1026,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             <input
                               value={editDraft.type}
                               onChange={(event) => setEditDraft({ ...editDraft, type: event.target.value })}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onKeyDown={(event) => event.stopPropagation()}
                               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                             />
                           ) : (
@@ -979,6 +1040,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             <input
                               value={editDraft.salary}
                               onChange={(event) => setEditDraft({ ...editDraft, salary: event.target.value })}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onKeyDown={(event) => event.stopPropagation()}
                               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                             />
                           ) : (
@@ -1086,7 +1149,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
 
         {/* ROW 2: ARCHIVED JOBS */}
-        <div className="lg:col-span-4 order-4 lg:order-none">
+        <div className="lg:col-span-6 order-3">
           <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden h-full flex flex-col">
             <div className="p-8 border-b border-slate-800 bg-slate-900">
               <h3 className="text-lg font-black text-white">Archived Jobs</h3>
@@ -1146,6 +1209,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                               <textarea
                                 value={editDraft.description}
                                 onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
+                                onClick={(event) => event.stopPropagation()}
+                                onKeyDown={(event) => event.stopPropagation()}
                                 className="mt-2 w-full min-h-[120px] rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
                               />
                             ) : (
@@ -1161,6 +1226,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                                 <input
                                   value={editDraft.title}
                                   onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onKeyDown={(event) => event.stopPropagation()}
                                   className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                                 />
                               ) : (
@@ -1173,6 +1240,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                                 <input
                                   value={editDraft.location}
                                   onChange={(event) => setEditDraft({ ...editDraft, location: event.target.value })}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onKeyDown={(event) => event.stopPropagation()}
                                   className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                                 />
                               ) : (
@@ -1185,6 +1254,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                                 <input
                                   value={editDraft.remotePolicy}
                                   onChange={(event) => setEditDraft({ ...editDraft, remotePolicy: event.target.value })}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onKeyDown={(event) => event.stopPropagation()}
                                   className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                                 />
                               ) : (
@@ -1197,6 +1268,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                                 <input
                                   value={editDraft.type}
                                   onChange={(event) => setEditDraft({ ...editDraft, type: event.target.value })}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onKeyDown={(event) => event.stopPropagation()}
                                   className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                                 />
                               ) : (
@@ -1209,6 +1282,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                                 <input
                                   value={editDraft.salary}
                                   onChange={(event) => setEditDraft({ ...editDraft, salary: event.target.value })}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onKeyDown={(event) => event.stopPropagation()}
                                   className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
                                 />
                               ) : (
