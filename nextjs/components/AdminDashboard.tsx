@@ -2,6 +2,7 @@
 
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from "next/navigation";
 import { Subscriber } from '../services/notificationService';
 import { Job } from '../types';
 import { useSupabaseAuth } from "./Providers";
@@ -53,6 +54,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const jobSearchRef = useRef<HTMLDivElement>(null);
   const [analytics, setAnalytics] = useState<AnalyticsPayload | null>(null);
   const { accessToken } = useSupabaseAuth();
+  const router = useRouter();
+  const enableTestPrice = process.env.NEXT_PUBLIC_ENABLE_TEST_PRICE === "true";
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<{
     title: string;
@@ -341,9 +344,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </div>
           </div>
         </div>
-        <button onClick={onLogout} className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-slate-900 border border-slate-700 hover:border-red-500 hover:text-red-400 text-slate-400 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all">
-          Terminate Session
-        </button>
+        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+          {enableTestPrice && (
+            <button
+              onClick={() => router.push("/post-a-job?testPrice=0.5")}
+              className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-emerald-500/10 border border-emerald-500/30 hover:border-emerald-400 hover:text-emerald-200 text-emerald-300 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all"
+            >
+              Test payment $0.50
+            </button>
+          )}
+          <button onClick={onLogout} className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-slate-900 border border-slate-700 hover:border-red-500 hover:text-red-400 text-slate-400 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all">
+            Terminate Session
+          </button>
+        </div>
       </div>
 
       <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">

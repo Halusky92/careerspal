@@ -2,7 +2,6 @@
 
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from "next/navigation";
 import { Job } from '../types';
 import { createJobSlug } from '../lib/jobs';
 import CompanyLogo from './CompanyLogo';
@@ -18,8 +17,6 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   const [myJobs, setMyJobs] = useState<Job[]>([]);
   const [summary, setSummary] = useState<Record<string, number>>({});
   const { accessToken } = useSupabaseAuth();
-  const router = useRouter();
-  const enableTestPrice = process.env.NEXT_PUBLIC_ENABLE_TEST_PRICE === "true";
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -135,14 +132,6 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           >
             Upgrade Plan
           </button>
-          {enableTestPrice && (
-            <button
-              onClick={() => router.push("/post-a-job?testPrice=0.5")}
-              className="bg-emerald-50 text-emerald-700 px-8 py-6 rounded-[2rem] font-black text-xs uppercase tracking-widest border border-emerald-200 shadow-sm hover:border-emerald-300 hover:text-emerald-800 transition-all"
-            >
-              Test payment $0.50
-            </button>
-          )}
           <button 
             onClick={onPostJob}
             className="bg-indigo-600 text-white px-10 py-6 rounded-[2rem] font-black text-xl shadow-2xl shadow-indigo-100 hover:scale-105 transition-transform"
