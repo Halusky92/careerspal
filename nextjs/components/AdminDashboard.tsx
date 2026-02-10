@@ -2,7 +2,6 @@
 
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from "next/navigation";
 import { Subscriber } from '../services/notificationService';
 import { Job } from '../types';
 import { useSupabaseAuth } from "./Providers";
@@ -54,12 +53,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const jobSearchRef = useRef<HTMLDivElement>(null);
   const [analytics, setAnalytics] = useState<AnalyticsPayload | null>(null);
   const { accessToken } = useSupabaseAuth();
-  const router = useRouter();
-  const enableTestPrice = process.env.NEXT_PUBLIC_ENABLE_TEST_PRICE === "true";
-  const [testPaymentState, setTestPaymentState] = useState<{ loading: boolean; error: string | null }>({
-    loading: false,
-    error: null,
-  });
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<{
     title: string;
@@ -253,89 +246,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const startTestCheckout = async () => {
-    if (!accessToken) return;
-    setTestPaymentState({ loading: true, error: null });
-    const readJson = async <T,>(response: Response): Promise<T | null> => {
-      const text = await response.text();
-      if (!text) return null;
-      try {
-        return JSON.parse(text) as T;
-      } catch {
-        return { error: text } as T;
-      }
-    };
-    const runCheckout = async (jobId: string) => {
-      const response = await authFetch(
-        "/api/stripe/checkout",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jobId, price: 0.5, planName: "Standard (Test)" }),
-        },
-        accessToken,
-      );
-      const data = (await readJson<{ url?: string; error?: string }>(response)) || {};
-      if (!response.ok || !data?.url) {
-        throw new Error(data?.error || `Failed to start checkout (status ${response.status}).`);
-      }
-      window.location.href = data.url;
-    };
-
-    try {
-      try {
-        const cachedId = sessionStorage.getItem("cp_test_job_id");
-        if (cachedId) {
-          await runCheckout(cachedId);
-          return;
-        }
-      } catch {
-        // ignore cache issues
-      }
-
-      const createResponse = await authFetch(
-        "/api/employer/jobs",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: "Test Payment Listing",
-            description: "Stripe live payment test listing.",
-            company: "CareersPal Test",
-            applyUrl: "https://careerspal.com",
-            location: "Remote",
-            remotePolicy: "Remote",
-            type: "Full-time",
-            salary: "$0.50 test",
-            category: "Operations",
-            tags: ["Test"],
-            planType: "Standard",
-            planPrice: 1,
-            status: "draft",
-          }),
-        },
-        accessToken,
-      );
-      const created =
-        (await readJson<{ job?: Job; error?: string }>(createResponse)) || {};
-      if (!createResponse.ok || !created.job?.id) {
-        throw new Error(created.error || `Failed to create test job (status ${createResponse.status}).`);
-      }
-      try {
-        sessionStorage.setItem("cp_test_job_id", created.job.id);
-      } catch {
-        // ignore
-      }
-      await runCheckout(created.job.id);
-    } catch (error) {
-      setTestPaymentState({
-        loading: false,
-        error: error instanceof Error ? error.message : "Failed to start test checkout.",
-      });
-      return;
-    }
-  };
-
   const handleDeleteSubscriber = async (email: string) => {
     if (!accessToken) return;
     if (!confirm(`Remove ${email} from list?`)) return;
@@ -432,28 +342,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </div>
         </div>
         <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
-          {enableTestPrice && (
-            <button
-              onClick={startTestCheckout}
-              disabled={testPaymentState.loading}
-              className={`w-full sm:w-auto px-6 sm:px-8 py-3 border rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${
-                testPaymentState.loading
-                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-200/60 cursor-wait"
-                  : "bg-emerald-500/10 border-emerald-500/30 hover:border-emerald-400 hover:text-emerald-200 text-emerald-300"
-              }`}
-            >
-              {testPaymentState.loading ? "Starting test checkout..." : "Test payment $0.50"}
-            </button>
-          )}
           <button onClick={onLogout} className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-slate-900 border border-slate-700 hover:border-red-500 hover:text-red-400 text-slate-400 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all">
             Terminate Session
           </button>
         </div>
-        {enableTestPrice && testPaymentState.error && (
-          <div className="w-full text-[10px] sm:text-xs font-black uppercase tracking-widest text-amber-300">
-            Test checkout failed: {testPaymentState.error}
-          </div>
-        )}
       </div>
 
       <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">

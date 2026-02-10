@@ -25,6 +25,22 @@ const normalizeHttpUrl = (value?: string | null) => {
   return trimmed;
 };
 
+const getClientIp = (request: Request) => {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0]?.trim() || null;
+  const realIp = request.headers.get("x-real-ip");
+  return realIp?.trim() || null;
+};
+
+const isIpAllowed = (ip: string | null) => {
+  if (!ip) return false;
+  const allowList = (process.env.ADMIN_TEST_IPS || "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  return allowList.includes(ip);
+};
+
 const ensureEmployer = async (request: Request) => {
   const auth = await getSupabaseProfile(request);
   if (!auth?.profile) {
@@ -108,6 +124,24 @@ export const POST = async (request: Request) => {
   const status = auth.role === "admin" ? body.status || "draft" : "draft";
   const timestamp = body.timestamp || (status === "published" ? Date.now() : null);
   const postedAt = body.postedAt || (status === "published" ? "Just now" : "Draft");
+  const rawPlanPrice =
+    typeof body.plan?.price === "number" ? body.plan.price : body.planPrice;
+  const isTestPrice = typeof rawPlanPrice === "number" && rawPlanPrice < 1;
+  if (isTestPrice) {
+    if (auth.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const ip = getClientIp(request);
+    if (!isIpAllowed(ip)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+  const storedPlanPrice =
+    typeof rawPlanPrice === "number"
+      ? rawPlanPrice < 1
+        ? 1
+        : Math.round(rawPlanPrice)
+      : null;
 
   const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count: recentCount } = await supabaseAdmin
@@ -159,7 +193,7 @@ export const POST = async (request: Request) => {
       is_featured: Boolean(body.isFeatured),
       status,
       plan_type: body.planType || null,
-      plan_price: body.plan?.price || body.planPrice || null,
+      plan_price: storedPlanPrice,
       plan_currency: "USD",
       views: body.views || 0,
       matches: body.matches || 0,

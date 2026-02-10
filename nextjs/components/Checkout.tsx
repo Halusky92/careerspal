@@ -30,11 +30,25 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
     );
   }
 
-  const price = jobData?.plan?.price || 79;
+  const [overridePrice, setOverridePrice] = useState<number | null>(null);
+  const price = overridePrice ?? jobData?.plan?.price || 79;
   const planName = jobData?.plan?.type || 'Standard';
   const formatPrice = (value: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
   const storagePlanPrice = Number.isFinite(price) ? (price < 1 ? 1 : Math.round(price)) : 79;
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("cp_test_plan_price");
+      if (!raw) return;
+      const parsed = Number(raw);
+      if (Number.isFinite(parsed) && parsed > 0 && parsed < 1) {
+        setOverridePrice(parsed);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const handlePay = async () => {
     setStep('processing');

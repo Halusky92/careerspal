@@ -10,11 +10,12 @@ interface PostJobProps {
   onComplete: (data: Job) => void;
   selectedPlan: { type: PlanType; price: number };
   onUpgradePlan: (type: PlanType, price: number) => void;
+  showTestPlan?: boolean;
 }
 
 type JobFormData = Omit<Job, 'id' | 'postedAt' | 'isFeatured' | 'planType' | 'plan' | 'timestamp' | 'status' | 'views' | 'matches'>;
 
-const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan }) => {
+const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan }) => {
   const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const formatPrice = (value: number) =>
@@ -457,6 +458,24 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                    >
                      Upgrade to Elite (+$100)
                    </button>
+                </div>
+              )}
+
+              {showTestPlan && (
+                <div className="mt-6 rounded-2xl border border-emerald-200/60 bg-emerald-50/70 p-5">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Admin test plan</div>
+                  <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <div className="text-xl font-black text-emerald-900">{formatPrice(0.5)}</div>
+                      <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-600">IP allowlisted</div>
+                    </div>
+                    <button
+                      onClick={() => onUpgradePlan("Standard", 0.5)}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-colors"
+                    >
+                      Use test plan
+                    </button>
+                  </div>
                 </div>
               )}
            </div>

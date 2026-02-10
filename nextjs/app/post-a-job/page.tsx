@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import PostJob from "../../components/PostJob";
 import { Job, PlanType } from "../../types";
 import { useSupabaseAuth } from "../../components/Providers";
@@ -21,12 +21,11 @@ const getStoredPlan = () => {
 
 const PostJobPage = () => {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { profile, accessToken, loading: authLoading } = useSupabaseAuth();
   const [selectedPlan, setSelectedPlan] = useState<{ type: PlanType; price: number }>(() => {
     return getStoredPlan() || { type: "Standard", price: 79 };
   });
-  const enableTestPrice = process.env.NEXT_PUBLIC_ENABLE_TEST_PRICE === "true";
+  const [showTestPlan, setShowTestPlan] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -38,15 +37,6 @@ const PostJobPage = () => {
       router.replace("/dashboard/candidate");
     }
   }, [authLoading, profile, router]);
-
-  useEffect(() => {
-    if (!searchParams) return;
-    const testPriceRaw = searchParams.get("testPrice");
-    const testPrice = testPriceRaw ? Number(testPriceRaw) : NaN;
-    if (!Number.isFinite(testPrice) || testPrice <= 0) return;
-    if (!enableTestPrice && profile?.role !== "admin") return;
-    setSelectedPlan({ type: "Standard", price: testPrice });
-  }, [enableTestPrice, profile?.role, searchParams]);
 
   if (authLoading) {
     return (
@@ -61,7 +51,37 @@ const PostJobPage = () => {
 
   useEffect(() => {
     sessionStorage.setItem(PLAN_KEY, JSON.stringify(selectedPlan));
+    try {
+      if (selectedPlan.price < 1) {
+        sessionStorage.setItem("cp_test_plan_price", String(selectedPlan.price));
+      } else {
+        sessionStorage.removeItem("cp_test_plan_price");
+      }
+    } catch {
+      // ignore
+    }
   }, [selectedPlan]);
+
+  useEffect(() => {
+    const checkTestPlanAccess = async () => {
+      if (!accessToken || profile?.role !== "admin") {
+        setShowTestPlan(false);
+        return;
+      }
+      try {
+        const response = await authFetch("/api/admin/test-plan-access", {}, accessToken);
+        if (!response.ok) {
+          setShowTestPlan(false);
+          return;
+        }
+        const data = (await response.json()) as { allowed?: boolean };
+        setShowTestPlan(Boolean(data.allowed));
+      } catch {
+        setShowTestPlan(false);
+      }
+    };
+    checkTestPlanAccess();
+  }, [accessToken, profile?.role]);
 
   const handleJobSubmission = async (data: Job) => {
     const storagePlanPrice = Number.isFinite(selectedPlan.price)
@@ -114,6 +134,7 @@ const PostJobPage = () => {
         onComplete={handleJobSubmission}
         selectedPlan={selectedPlan}
         onUpgradePlan={(type, price) => setSelectedPlan({ type, price })}
+        showTestPlan={showTestPlan}
       />
     </div>
   );

@@ -15,6 +15,22 @@ type StripeJobRow = {
 
 export const runtime = "nodejs";
 
+const getClientIp = (request: Request) => {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0]?.trim() || null;
+  const realIp = request.headers.get("x-real-ip");
+  return realIp?.trim() || null;
+};
+
+const isIpAllowed = (ip: string | null) => {
+  if (!ip) return false;
+  const allowList = (process.env.ADMIN_TEST_IPS || "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  return allowList.includes(ip);
+};
+
 export async function POST(request: Request) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   if (!stripeKey) {
@@ -53,6 +69,15 @@ export async function POST(request: Request) {
   }
   const companyName = Array.isArray(jobRow.companies) ? jobRow.companies[0]?.name : jobRow.companies?.name;
   const price = body.price || jobRow.plan_price || 79;
+  if (price < 1) {
+    if (auth.profile.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const ip = getClientIp(request);
+    if (!isIpAllowed(ip)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
   const planName = body.planName || jobRow.plan_type || "Standard";
   const origin = request.headers.get("origin") || process.env.NEXTAUTH_URL || "http://localhost:3000";
 
