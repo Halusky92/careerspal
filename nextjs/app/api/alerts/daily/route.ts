@@ -23,7 +23,7 @@ type JobRow = {
   tags: unknown;
   category: string | null;
   timestamp: number | null;
-  companies?: { name?: string | null } | null;
+  companies?: { name?: string | null } | Array<{ name?: string | null }> | null;
 };
 
 const getResendClient = () => {
@@ -91,6 +91,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const secret = url.searchParams.get("secret");
+  const dryRun = url.searchParams.get("dryRun") === "1";
   if (process.env.ALERTS_CRON_SECRET && secret !== process.env.ALERTS_CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -126,6 +127,7 @@ export async function GET(request: Request) {
   const from = getFromEmail();
 
   let sent = 0;
+  const attempted: Array<{ alertId: string; email: string; matches: number }> = [];
   for (const alert of (alerts || []) as AlertRow[]) {
     if (!alert.user_id || !alert.query) continue;
     const toEmail = emailByUser.get(alert.user_id);
@@ -142,11 +144,13 @@ export async function GET(request: Request) {
 
     const matches = (jobs || []).filter((job) => matchesAlert(job as JobRow, alert.query || ""));
 
-    if (matches.length > 0) {
+    if (matches.length > 0 && !dryRun) {
       const rows = matches
         .slice(0, 10)
         .map((job) => {
-          const companyName = job.companies?.name || "Company";
+          const companyName = Array.isArray(job.companies)
+            ? job.companies[0]?.name || "Company"
+            : job.companies?.name || "Company";
           const jobUrl = `${baseUrl}/jobs/${createJobSlug({ title: job.title || "role", id: job.id })}`;
           return `
             <li>
@@ -171,11 +175,23 @@ export async function GET(request: Request) {
       sent += 1;
     }
 
+    attempted.push({ alertId: alert.id, email: toEmail, matches: matches.length });
+
     await supabaseAdmin
       .from("alerts")
       .update({ last_run_at: now.toISOString() })
       .eq("id", alert.id);
   }
 
-  return NextResponse.json({ sent });
+  await supabaseAdmin.from("audit_logs").insert({
+    action: dryRun ? "alerts_daily_dry_run" : "alerts_daily_sent",
+    metadata: {
+      totalAlerts: (alerts || []).length,
+      sent,
+      attempted,
+      dryRun,
+    },
+  });
+
+  return NextResponse.json({ sent, dryRun });
 }
