@@ -15,20 +15,13 @@ type StripeJobRow = {
 
 export const runtime = "nodejs";
 
-const getClientIp = (request: Request) => {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0]?.trim() || null;
-  const realIp = request.headers.get("x-real-ip");
-  return realIp?.trim() || null;
-};
-
-const isIpAllowed = (ip: string | null) => {
-  if (!ip) return false;
-  const allowList = (process.env.ADMIN_TEST_IPS || "")
+const isEmailAllowed = (email?: string | null) => {
+  if (!email) return false;
+  const allowList = (process.env.ADMIN_TEST_EMAILS || "mb.bilek@gmail.com")
     .split(",")
-    .map((entry) => entry.trim())
+    .map((entry) => entry.trim().toLowerCase())
     .filter(Boolean);
-  return allowList.includes(ip);
+  return allowList.includes(email.toLowerCase());
 };
 
 export async function POST(request: Request) {
@@ -73,8 +66,7 @@ export async function POST(request: Request) {
     if (auth.profile.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    const ip = getClientIp(request);
-    if (!isIpAllowed(ip)) {
+    if (!isEmailAllowed(auth.profile.email)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }

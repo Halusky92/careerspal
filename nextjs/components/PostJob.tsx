@@ -461,6 +461,15 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 </div>
               )}
 
+              {selectedPlan.type !== 'Standard' && (
+                <button
+                  onClick={() => onUpgradePlan('Standard', 79)}
+                  className="mt-6 w-full px-4 py-3 rounded-xl border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-indigo-200 hover:text-indigo-600 transition-colors"
+                >
+                  Switch to Standard ($79)
+                </button>
+              )}
+
               {showTestPlan && (
                 <div className="mt-6 rounded-2xl border border-emerald-200/60 bg-emerald-50/70 p-5">
                   <div className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Admin test plan</div>
