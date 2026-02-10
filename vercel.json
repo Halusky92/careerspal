@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/alerts/daily?secret=alerts_9f8b3d7c6a1e4f2b9c0d7e6f5a4b3c2d",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}
