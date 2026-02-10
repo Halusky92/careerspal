@@ -31,7 +31,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
   }
 
   const [overridePrice, setOverridePrice] = useState<number | null>(null);
-  const price = overridePrice ?? jobData?.plan?.price || 79;
+  const price = (overridePrice ?? jobData?.plan?.price) || 79;
   const planName = jobData?.plan?.type || 'Standard';
   const formatPrice = (value: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);

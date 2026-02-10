@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabaseProfile } from "../../../../../lib/supabaseServerAuth";
+import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 
 export const runtime = "nodejs";
 
