@@ -1,7 +1,7 @@
 "use client";
 
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Job } from '../types';
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
