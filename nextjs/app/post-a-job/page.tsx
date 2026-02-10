@@ -64,6 +64,11 @@ const PostJobPage = () => {
   }, [selectedPlan]);
 
   const handleJobSubmission = async (data: Job) => {
+    const storagePlanPrice = Number.isFinite(selectedPlan.price)
+      ? selectedPlan.price < 1
+        ? 1
+        : Math.round(selectedPlan.price)
+      : 79;
     const finalJobData = { ...data, plan: selectedPlan, planType: selectedPlan.type, status: "draft" };
     sessionStorage.setItem("cp_pending_job", JSON.stringify(finalJobData));
 
@@ -76,7 +81,8 @@ const PostJobPage = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...finalJobData,
-            planPrice: selectedPlan.price,
+            plan: { ...selectedPlan, price: storagePlanPrice },
+            planPrice: storagePlanPrice,
           }),
         },
         accessToken,

@@ -34,6 +34,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
   const planName = jobData?.plan?.type || 'Standard';
   const formatPrice = (value: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+  const storagePlanPrice = Number.isFinite(price) ? (price < 1 ? 1 : Math.round(price)) : 79;
 
   const handlePay = async () => {
     setStep('processing');
@@ -57,7 +58,8 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               ...jobData,
-              planPrice: jobData?.plan?.price,
+              plan: jobData?.plan ? { ...jobData.plan, price: storagePlanPrice } : jobData?.plan,
+              planPrice: storagePlanPrice,
               status: jobData?.status || "draft",
             }),
           },
