@@ -505,7 +505,7 @@ const sanitizeDescription = (value?: string | null) => {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-12">
+      <div className="flex flex-col lg:flex-row-reverse gap-12">
         <aside className="hidden lg:block lg:w-80 space-y-10 relative">
           <FilterContent />
         </aside>
@@ -823,10 +823,10 @@ const sanitizeDescription = (value?: string | null) => {
                   className={`
                     p-3 sm:p-4 rounded-[1.5rem] sm:rounded-[2rem] transition-all cursor-pointer group flex flex-col items-stretch justify-between gap-3 sm:gap-4 relative active:scale-[0.99] animate-in fade-in slide-in-from-bottom-2
                     ${isElite 
-                      ? 'bg-yellow-50 border-2 border-yellow-200 shadow-xl text-slate-900' 
+                      ? 'bg-amber-50 border-2 border-amber-200 shadow-xl text-slate-900 shadow-[0_0_0_4px_rgba(251,191,36,0.18)]' 
                       : isPro 
-                        ? 'bg-white border-2 border-indigo-200 shadow-xl shadow-indigo-100 ring-4 ring-indigo-50/50' 
-                        : 'bg-white border border-gray-50 shadow-sm hover:shadow-2xl hover:border-indigo-100'}
+                        ? 'bg-white border-2 border-amber-200 shadow-xl ring-4 ring-amber-50/60'
+                        : 'bg-white border-2 border-amber-100 shadow-sm hover:shadow-xl hover:border-amber-200'}
                     ${isPrivate ? 'opacity-70' : ''}
                   `}
                 >
