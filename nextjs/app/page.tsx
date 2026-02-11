@@ -34,6 +34,7 @@ export default function HomePage() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const [jobQuickQuery, setJobQuickQuery] = useState("");
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -64,6 +65,11 @@ export default function HomePage() {
 
   const handleSearch = (query: string) => {
     router.push(`/jobs?query=${encodeURIComponent(query)}`);
+  };
+
+  const goToJobs = (query?: string) => {
+    const q = (query ?? "").trim();
+    router.push(q ? `/jobs?query=${encodeURIComponent(q)}` : "/jobs");
   };
 
   const handleOpenJob = (job: Job) => {
@@ -285,15 +291,17 @@ export default function HomePage() {
                   onClick={() => handleToggleJob(job)}
                   className={`
                     p-6 rounded-[2.5rem] shadow-lg transition-all cursor-pointer flex flex-col items-stretch justify-between group relative gap-4
-                    ${isElite ? 'bg-yellow-50 text-slate-900 border-2 border-yellow-200 shadow-yellow-100/40' : 
-                      isPro ? 'bg-white border-2 border-indigo-100 ring-2 ring-indigo-50' : 
-                      'bg-white border border-transparent hover:border-indigo-100'}
+                    ${isElite
+                      ? 'bg-amber-50 text-slate-900 border-2 border-amber-200 shadow-xl shadow-[0_0_0_4px_rgba(251,191,36,0.18)]'
+                      : isPro
+                        ? 'bg-white border-2 border-amber-200 shadow-xl ring-4 ring-amber-50/60'
+                        : 'bg-white border-2 border-amber-100 shadow-sm hover:shadow-xl hover:border-amber-200'}
                   `}
                 >
                   {(isElite || isPro) && (
                     <div
                       className={`absolute -top-3 left-6 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm
-                        ${isElite ? 'bg-yellow-200 text-yellow-900' : 'bg-indigo-600 text-white'}`}
+                        ${isElite ? 'bg-amber-200 text-amber-900' : 'bg-indigo-600 text-white'}`}
                     >
                       {isElite ? 'Elite' : 'Featured'}
                     </div>
@@ -310,7 +318,7 @@ export default function HomePage() {
                   <div className="flex items-center space-x-4 sm:space-x-6 w-full">
                     <div
                       className={`w-14 h-14 rounded-xl flex items-center justify-center p-1 relative
-                        ${isElite ? 'bg-yellow-100 border border-yellow-200' : 'bg-slate-50 border'}
+                        ${isElite ? 'bg-amber-100 border border-amber-200' : 'bg-slate-50 border'}
                       `}
                     >
                       <CompanyLogo
@@ -337,13 +345,13 @@ export default function HomePage() {
                             handleOpenCompany(job.company);
                           }}
                           className={`font-bold text-[10px] uppercase tracking-wider hover:underline ${
-                            isElite ? 'text-yellow-700' : 'text-indigo-600'
+                            isElite ? 'text-amber-700' : 'text-indigo-600'
                           }`}
                         >
                           {job.company}
                         </button>
-                        <span className={`text-[10px] ${isElite ? 'text-yellow-300' : 'text-slate-300'}`}>•</span>
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${isElite ? 'text-yellow-700' : 'text-slate-400'}`}>
+                        <span className={`text-[10px] ${isElite ? 'text-amber-300' : 'text-slate-300'}`}>•</span>
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${isElite ? 'text-amber-700' : 'text-slate-400'}`}>
                           {job.location}
                         </span>
                       </div>
@@ -351,7 +359,7 @@ export default function HomePage() {
                   </div>
 
                   <div className="flex flex-col items-start sm:items-end sm:text-right w-full">
-                    <span className={`font-black text-lg tracking-tighter whitespace-nowrap ${isElite ? 'text-yellow-900' : 'text-slate-900'}`}>
+                    <span className={`font-black text-lg tracking-tighter whitespace-nowrap ${isElite ? 'text-amber-900' : 'text-slate-900'}`}>
                       {job.salary}
                     </span>
                   </div>
@@ -469,8 +477,51 @@ export default function HomePage() {
           </div>
 
           <div className="lg:col-span-4">
-            <div className="lg:sticky lg:top-24">
+            <div className="lg:sticky lg:top-24 space-y-4">
               <AIChatPanel jobs={jobs} />
+              <div className="bg-white rounded-2xl shadow-xl border border-amber-100 overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 bg-white">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Quick filter</div>
+                  <div className="text-sm font-black text-slate-900 mt-1">Jump to roles on the board</div>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={jobQuickQuery}
+                      onChange={(e) => setJobQuickQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        goToJobs(jobQuickQuery);
+                      }}
+                      placeholder="Search roles (e.g. Ops, Notion, Automation)"
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-full px-4 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    />
+                    <button
+                      onClick={() => goToJobs(jobQuickQuery)}
+                      className="px-4 py-2 rounded-full bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700"
+                    >
+                      View
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {["Operations", "Automation", "Notion", "Remote"].map((chip) => (
+                      <button
+                        key={chip}
+                        onClick={() => goToJobs(chip)}
+                        className="px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-amber-800 text-[10px] font-black uppercase tracking-widest hover:bg-amber-100"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => goToJobs("")}
+                      className="px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-500 text-[10px] font-black uppercase tracking-widest hover:border-indigo-200 hover:text-indigo-600"
+                    >
+                      All jobs →
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
