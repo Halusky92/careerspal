@@ -27,6 +27,13 @@ export const metadata: Metadata = {
   title: "CareersPal Elite | Curated Remote Roles",
   description:
     "Premium job board for Notion-first operations, product, and automation talent. Curated roles, verified employers, transparent salaries.",
+  icons: {
+    icon: [
+      { url: "/icon", type: "image/png" },
+      { url: "/logo.svg", type: "image/svg+xml" },
+    ],
+    shortcut: [{ url: "/icon", type: "image/png" }],
+  },
   openGraph: {
     title: "CareersPal Elite | Curated Remote Roles",
     description:
