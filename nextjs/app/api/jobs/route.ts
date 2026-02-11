@@ -24,7 +24,9 @@ export const GET = async (request: Request) => {
   const skipParam = Number(searchParams.get("skip") || "0");
   const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 100) : undefined;
   const skip = Number.isFinite(skipParam) && skipParam > 0 ? skipParam : undefined;
-  const status = searchParams.get("status") || "published";
+  // Public endpoint: never expose draft/private/pending jobs.
+  const requestedStatus = searchParams.get("status");
+  const status = requestedStatus === "invite_only" ? "invite_only" : "published";
   const company = searchParams.get("company");
   const category = searchParams.get("category");
   const type = searchParams.get("type");
@@ -59,7 +61,8 @@ export const GET = async (request: Request) => {
   const mapped = (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob);
   return NextResponse.json(
     { jobs: mapped, total: count ?? mapped.length },
-    { headers: { "Cache-Control": "s-maxage=60, stale-while-revalidate=300" } },
+    // Ensure public pages reflect archive/delete immediately.
+    { headers: { "Cache-Control": "no-store" } },
   );
 };
 
