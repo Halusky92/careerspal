@@ -17,6 +17,19 @@ const isNewListing = (postedAt: string) => {
   return lower.includes('just now') || lower.includes('hour') || lower.includes('min');
 };
 
+const sanitizeDescription = (value?: string | null) => {
+  if (!value) return "";
+  const lines = value.split("\n");
+  const cleaned = lines.filter((line) => {
+    const trimmed = line.trim().toLowerCase();
+    if (!trimmed) return true;
+    if (trimmed.startsWith("import-") || trimmed.startsWith("import/")) return false;
+    if (trimmed.includes("import-") && !trimmed.includes(" ")) return false;
+    return true;
+  });
+  return cleaned.join("\n").trim();
+};
+
 export default function HomePage() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -347,7 +360,7 @@ export default function HomePage() {
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Role overview</p>
                         <p className="text-sm text-slate-700 mt-2 whitespace-pre-wrap">
-                          {job.description || "Description coming soon."}
+                          {sanitizeDescription(job.description) || "Description coming soon."}
                         </p>
                       </div>
                       <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] font-bold text-slate-600">
@@ -427,7 +440,7 @@ export default function HomePage() {
                       <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-[11px] font-bold text-slate-600 space-y-2">
                         <p className="text-[9px] uppercase tracking-widest text-slate-400">Role overview</p>
                         <p className="text-slate-700 text-xs whitespace-pre-wrap">
-                          {job.description || "Description coming soon."}
+                          {sanitizeDescription(job.description) || "Description coming soon."}
                         </p>
                         <button
                           onClick={(e) => {

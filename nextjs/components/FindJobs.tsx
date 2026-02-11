@@ -260,6 +260,19 @@ const FindJobs: React.FC<FindJobsProps> = ({
     return lower.includes('just now') || lower.includes('hour') || lower.includes('min');
   };
 
+const sanitizeDescription = (value?: string | null) => {
+  if (!value) return "";
+  const lines = value.split("\n");
+  const cleaned = lines.filter((line) => {
+    const trimmed = line.trim().toLowerCase();
+    if (!trimmed) return true;
+    if (trimmed.startsWith("import-") || trimmed.startsWith("import/")) return false;
+    if (trimmed.includes("import-") && !trimmed.includes(" ")) return false;
+    return true;
+  });
+  return cleaned.join("\n").trim();
+};
+
   const formatPostedDate = (job: Job) => {
     if (!job.timestamp) return job.postedAt;
     const date = new Date(job.timestamp);
@@ -970,7 +983,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Role overview</p>
                         <p className="text-sm sm:text-base text-slate-700 mt-2 whitespace-pre-wrap">
-                          {job.description || "Description coming soon."}
+                          {sanitizeDescription(job.description) || "Description coming soon."}
                         </p>
                       </div>
                       <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] font-bold text-slate-600">
