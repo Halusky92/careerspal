@@ -41,7 +41,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Too many checkout attempts." }, { status: 429 });
   }
 
-  const body = (await request.json()) as { jobId?: string; price?: number; planName?: string };
+  const body = (await request.json()) as {
+    jobId?: string;
+    price?: number;
+    planName?: string;
+    adminInternalPlan?: boolean;
+  };
   if (!body?.jobId) {
     return NextResponse.json({ error: "Missing jobId." }, { status: 400 });
   }
@@ -62,7 +67,8 @@ export async function POST(request: Request) {
   }
   const companyName = Array.isArray(jobRow.companies) ? jobRow.companies[0]?.name : jobRow.companies?.name;
   const price = (body.price ?? jobRow.plan_price ?? 79);
-  if (price < 1) {
+  const needsAdminApproval = Boolean(body.adminInternalPlan) || price < 1 || price <= 5;
+  if (needsAdminApproval) {
     if (auth.profile.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

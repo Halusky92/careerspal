@@ -104,6 +104,7 @@ export const POST = async (request: Request) => {
 
   const body = (await request.json()) as Partial<Job> & {
     planPrice?: number;
+    adminInternalPlan?: boolean;
   };
 
   if (!body.title || !body.company || !body.applyUrl || !body.applyUrl.trim()) {
@@ -119,8 +120,8 @@ export const POST = async (request: Request) => {
   const postedAt = body.postedAt || (status === "published" ? "Just now" : "Draft");
   const rawPlanPrice =
     typeof body.plan?.price === "number" ? body.plan.price : body.planPrice;
-  const isTestPrice = typeof rawPlanPrice === "number" && rawPlanPrice < 1;
-  if (isTestPrice) {
+  const isInternalCheapPrice = typeof rawPlanPrice === "number" && rawPlanPrice <= 5;
+  if (body.adminInternalPlan || isInternalCheapPrice) {
     if (auth.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

@@ -63,6 +63,12 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
           return { error: text } as T;
         }
       };
+      let adminInternalPlan = false;
+      try {
+        adminInternalPlan = sessionStorage.getItem("cp_admin_internal_plan") === "1";
+      } catch {
+        adminInternalPlan = false;
+      }
       let effectiveJobId = jobId;
       if (!effectiveJobId && jobData?.id && !jobData.id.startsWith("local-")) {
         effectiveJobId = jobData.id;
@@ -107,7 +113,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jobId: effectiveJobId, price, planName }),
+          body: JSON.stringify({ jobId: effectiveJobId, price, planName, adminInternalPlan }),
         },
         accessToken,
       );

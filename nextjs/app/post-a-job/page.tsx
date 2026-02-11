@@ -52,15 +52,16 @@ const PostJobPage = () => {
   useEffect(() => {
     sessionStorage.setItem(PLAN_KEY, JSON.stringify(selectedPlan));
     try {
-      if (selectedPlan.price < 1) {
-        sessionStorage.setItem("cp_test_plan_price", String(selectedPlan.price));
+      sessionStorage.removeItem("cp_test_plan_price");
+      if (profile?.role === "admin" && showTestPlan && selectedPlan.type === "Standard" && selectedPlan.price === 1) {
+        sessionStorage.setItem("cp_admin_internal_plan", "1");
       } else {
-        sessionStorage.removeItem("cp_test_plan_price");
+        sessionStorage.removeItem("cp_admin_internal_plan");
       }
     } catch {
       // ignore
     }
-  }, [selectedPlan]);
+  }, [selectedPlan, profile?.role, showTestPlan]);
 
   useEffect(() => {
     const checkTestPlanAccess = async () => {
@@ -103,6 +104,7 @@ const PostJobPage = () => {
             ...finalJobData,
             plan: { ...selectedPlan, price: storagePlanPrice },
             planPrice: storagePlanPrice,
+            adminInternalPlan: profile?.role === "admin" && showTestPlan && selectedPlan.type === "Standard" && selectedPlan.price === 1,
           }),
         },
         accessToken,
