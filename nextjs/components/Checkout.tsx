@@ -54,6 +54,15 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
     setStep('processing');
 
     try {
+      const readJson = async <T,>(response: Response): Promise<T | null> => {
+        const text = await response.text();
+        if (!text) return null;
+        try {
+          return JSON.parse(text) as T;
+        } catch {
+          return { error: text } as T;
+        }
+      };
       let effectiveJobId = jobId;
       if (!effectiveJobId && jobData?.id && !jobData.id.startsWith("local-")) {
         effectiveJobId = jobData.id;
@@ -79,7 +88,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
           },
           accessToken,
         );
-        const created = (await createResponse.json()) as { job?: Job; error?: string };
+        const created = (await readJson<{ job?: Job; error?: string }>(createResponse)) || {};
         if (!createResponse.ok || !created.job?.id) {
           setError(created.error || "Failed to create the listing.");
           setStep("form");
@@ -102,12 +111,12 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
         },
         accessToken,
       );
-      const data = (await response.json()) as { url?: string; error?: string };
-      if (data.url) {
+      const data = (await readJson<{ url?: string; error?: string }>(response)) || {};
+      if (data?.url) {
         window.location.href = data.url;
         return;
       }
-      setError(data.error || "Failed to start checkout.");
+      setError(data.error || `Failed to start checkout (status ${response.status}).`);
       setStep("form");
     } catch {
       setError("Failed to start checkout.");

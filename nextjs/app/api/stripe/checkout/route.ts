@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const companyName = Array.isArray(jobRow.companies) ? jobRow.companies[0]?.name : jobRow.companies?.name;
-  const price = body.price || jobRow.plan_price || 79;
+  const price = (body.price ?? jobRow.plan_price ?? 79);
   if (price < 1) {
     if (auth.profile.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -73,37 +73,42 @@ export async function POST(request: Request) {
   const planName = body.planName || jobRow.plan_type || "Standard";
   const origin = request.headers.get("origin") || process.env.NEXTAUTH_URL || "http://localhost:3000";
 
-  const stripe = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    payment_method_types: ["card"],
-    line_items: [
-      {
-        price_data: {
-          currency: "usd",
-          product_data: {
-            name: `${planName} Job Listing`,
-            description: `${jobRow.title} at ${companyName || "Company"}`,
+  try {
+    const stripe = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: `${planName} Job Listing`,
+              description: `${jobRow.title} at ${companyName || "Company"}`,
+            },
+            unit_amount: Math.round(price * 100),
           },
-          unit_amount: Math.round(price * 100),
+          quantity: 1,
         },
-        quantity: 1,
+      ],
+      success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/checkout?jobId=${jobRow.id}`,
+      metadata: {
+        jobId: jobRow.id,
       },
-    ],
-    success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/checkout?jobId=${jobRow.id}`,
-    metadata: {
-      jobId: jobRow.id,
-    },
-  });
+    });
 
-  await supabaseAdmin
-    .from("jobs")
-    .update({
-      stripe_session_id: session.id,
-      stripe_payment_status: "pending",
-    })
-    .eq("id", jobRow.id);
+    await supabaseAdmin
+      .from("jobs")
+      .update({
+        stripe_session_id: session.id,
+        stripe_payment_status: "pending",
+      })
+      .eq("id", jobRow.id);
 
-  return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Stripe checkout failed.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

@@ -674,7 +674,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 Needs approval
               </span>
             </div>
-            <div className="p-4 bg-[#0B1120]">
+            <div className="p-4 bg-[#0B1120] max-h-[520px] overflow-y-auto custom-scrollbar pr-1">
               {pendingJobs.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                   {pendingJobs.map((job) => (
@@ -911,7 +911,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 {activeJobs.length} active · {archivedJobs.length} archived
               </p>
             </div>
-            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120]">
+            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120] max-h-[520px] pr-1">
               {activeJobs.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                   {activeJobs.map(job => (
@@ -1159,7 +1159,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 {archivedJobs.length} archived
               </p>
             </div>
-            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120]">
+            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120] max-h-[520px] pr-1">
               {archivedJobs.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                   {archivedJobs.map((job) => (
