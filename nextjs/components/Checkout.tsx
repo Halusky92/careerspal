@@ -19,6 +19,8 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
   const [step, setStep] = useState<'form' | 'processing' | 'success'>('form');
   const [error, setError] = useState<string | null>(null);
   const { accessToken, profile, loading: authLoading } = useSupabaseAuth();
+  const [autoStartEnabled, setAutoStartEnabled] = useState(false);
+  const [autoStarted, setAutoStarted] = useState(false);
 
   if (!jobData) {
     return (
@@ -57,6 +59,14 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
     }
   }, []);
 
+  useEffect(() => {
+    try {
+      setAutoStartEnabled(sessionStorage.getItem("cp_checkout_autostart") === "1");
+    } catch {
+      setAutoStartEnabled(false);
+    }
+  }, []);
+
   const handlePay = async () => {
     if (authLoading) {
       setError("Preparing session…");
@@ -68,6 +78,12 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
     const hasAccess = Boolean(accessToken && profile?.email);
     const roleOk = !role || role === "employer" || role === "admin";
     if (!hasAccess || !roleOk) {
+      // Remember intent so we can resume after sign-in.
+      try {
+        sessionStorage.setItem("cp_checkout_autostart", "1");
+      } catch {
+        // ignore
+      }
       router.push(authRedirectUrl);
       return;
     }
@@ -139,10 +155,20 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
       );
       const data = (await readJson<{ url?: string; error?: string }>(response)) || {};
       if (data?.url) {
+        try {
+          sessionStorage.removeItem("cp_checkout_autostart");
+        } catch {
+          // ignore
+        }
         window.location.href = data.url;
         return;
       }
       if (response.status === 401 || response.status === 403) {
+        try {
+          sessionStorage.setItem("cp_checkout_autostart", "1");
+        } catch {
+          // ignore
+        }
         router.push(authRedirectUrl);
         return;
       }
@@ -153,6 +179,27 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
       setStep("form");
     }
   };
+
+  useEffect(() => {
+    if (!autoStartEnabled || autoStarted) return;
+    if (step !== "form") return;
+    if (authLoading) return;
+    const role = profile?.role || null;
+    const hasAccess = Boolean(accessToken && profile?.email);
+    const roleOk = !role || role === "employer" || role === "admin";
+    if (!hasAccess || !roleOk) return;
+
+    setAutoStarted(true);
+    try {
+      sessionStorage.removeItem("cp_checkout_autostart");
+    } catch {
+      // ignore
+    }
+    // Let the page settle before navigating away to Stripe.
+    window.setTimeout(() => {
+      handlePay();
+    }, 150);
+  }, [accessToken, authLoading, autoStartEnabled, autoStarted, profile?.email, profile?.role, step]);
 
   if (step === 'success') {
     return (
