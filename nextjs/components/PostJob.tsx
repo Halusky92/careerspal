@@ -21,6 +21,15 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const [logoFileName, setLogoFileName] = useState<string>("");
   const formatPrice = (value: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+
+  const steps = [
+    { id: 1, title: "Role details", desc: "Title, scope, salary" },
+    { id: 2, title: "Company & apply", desc: "Brand + link" },
+    { id: 3, title: "Preview & pay", desc: "Confirm & checkout" },
+  ] as const;
+
+  const stepperProgress = steps.length > 1 ? ((step - 1) / (steps.length - 1)) * 100 : 0;
+  const barProgress = (step / steps.length) * 100;
   
   const [formData, setFormData] = useState<JobFormData>({
     title: '',
@@ -148,19 +157,74 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     <div className="max-w-7xl mx-auto px-4 py-12">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         <div className="lg:col-span-8">
-          <div className="mb-10 flex items-center justify-between">
-            <div>
-              <div className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-2">
-                Selected Package: {selectedPlan.type} ({formatPrice(selectedPlan.price)} / 30 days)
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Post a Role.</h1>
-            </div>
-            <div className="flex gap-2">
-              {[1, 2, 3].map(s => (
-                <div key={s} className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-sm sm:text-base font-bold transition-all ${step === s ? 'bg-indigo-600 text-white shadow-lg' : step > s ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
-                  {s}
+          <div className="mb-10">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <div className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-2">
+                  Selected Package: {selectedPlan.type} ({formatPrice(selectedPlan.price)} / 30 days)
                 </div>
-              ))}
+                <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Post a Role.</h1>
+              </div>
+
+              <div className="sm:hidden">
+                <div className="inline-flex items-center gap-2 rounded-2xl bg-white border border-slate-200/70 px-3 py-2 shadow-sm">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Step</span>
+                  <span className="text-[10px] font-black text-indigo-700">{step} / {steps.length}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <div className="hidden sm:block relative rounded-[1.75rem] bg-white border border-slate-200/60 shadow-sm px-6 py-5">
+                <div className="relative">
+                  <div className="absolute left-6 right-6 top-5 h-[2px] bg-slate-200/70 rounded-full overflow-hidden">
+                    <div className="h-full bg-indigo-600 rounded-full transition-all duration-500" style={{ width: `${stepperProgress}%` }} />
+                  </div>
+                  <div className="flex items-start justify-between relative">
+                    {steps.map((s) => {
+                      const isActive = step === s.id;
+                      const isDone = step > s.id;
+                      return (
+                        <div key={s.id} className="flex flex-col items-center text-center w-1/3">
+                          <div
+                            className={[
+                              "w-11 h-11 rounded-2xl flex items-center justify-center text-sm font-black transition-all",
+                              isActive
+                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 ring-8 ring-indigo-50"
+                                : isDone
+                                  ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
+                                  : "bg-slate-100 text-slate-400 border border-slate-200",
+                            ].join(" ")}
+                            aria-current={isActive ? "step" : undefined}
+                          >
+                            {isDone ? "✓" : s.id}
+                          </div>
+                          <div className="mt-3">
+                            <div className={["text-xs font-black tracking-tight", isActive ? "text-slate-900" : "text-slate-700"].join(" ")}>
+                              {s.title}
+                            </div>
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">
+                              {s.desc}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60">
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-500 rounded-full transition-all duration-500"
+                  style={{ width: `${barProgress}%` }}
+                  aria-hidden="true"
+                />
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <span>{steps[step - 1]?.title ?? "Progress"}</span>
+                <span>{Math.round(barProgress)}%</span>
+              </div>
             </div>
           </div>
 

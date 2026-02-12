@@ -49,6 +49,30 @@ const Providers = ({ children }: ProvidersProps) => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const maybeContinuePendingAuthFlow = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const path = window.location.pathname || "/";
+      // Only auto-navigate when we unexpectedly landed on the homepage.
+      if (path !== "/") return;
+
+      const stored =
+        window.sessionStorage.getItem("cp_auth_from") || window.localStorage.getItem("cp_auth_from");
+      const hasPending = Boolean(
+        window.sessionStorage.getItem("cp_pending_job") || window.sessionStorage.getItem("cp_pending_job_id"),
+      );
+      const safeFrom = stored && stored.startsWith("/") ? stored : null;
+      const target = safeFrom || (hasPending ? "/checkout" : null);
+      if (!target) return;
+
+      window.sessionStorage.removeItem("cp_auth_from");
+      window.localStorage.removeItem("cp_auth_from");
+      window.location.replace(target);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const fetchProfile = useCallback(
     async (token: string | null) => {
       if (!token) {
@@ -84,6 +108,10 @@ const Providers = ({ children }: ProvidersProps) => {
       setUser(session?.user ?? null);
       setAccessToken(session?.access_token ?? null);
       await fetchProfile(session?.access_token ?? null);
+      // If OAuth/magic-link redirect landed on home, continue flow.
+      if (session?.access_token) {
+        maybeContinuePendingAuthFlow();
+      }
       if (!isActive) return;
       setLoading(false);
     };
@@ -96,6 +124,9 @@ const Providers = ({ children }: ProvidersProps) => {
       setUser(session?.user ?? null);
       setAccessToken(session?.access_token ?? null);
       await fetchProfile(session?.access_token ?? null);
+      if (_event === "SIGNED_IN" && session?.access_token) {
+        maybeContinuePendingAuthFlow();
+      }
       if (!isActive) return;
       setLoading(false);
     });
@@ -104,7 +135,7 @@ const Providers = ({ children }: ProvidersProps) => {
       isActive = false;
       subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, [fetchProfile, maybeContinuePendingAuthFlow]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
