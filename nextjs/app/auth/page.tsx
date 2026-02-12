@@ -51,7 +51,9 @@ const AuthPage = () => {
       if (!finalFrom) {
         try {
           const stored = sessionStorage.getItem("cp_auth_from");
+          const storedPersistent = localStorage.getItem("cp_auth_from");
           if (stored && stored.startsWith("/")) finalFrom = stored;
+          if (!finalFrom && storedPersistent && storedPersistent.startsWith("/")) finalFrom = storedPersistent;
           if (!finalFrom) {
             const hasPending = Boolean(sessionStorage.getItem("cp_pending_job") || sessionStorage.getItem("cp_pending_job_id"));
             if (hasPending) finalFrom = "/checkout";
@@ -62,6 +64,7 @@ const AuthPage = () => {
       }
       try {
         sessionStorage.removeItem("cp_auth_from");
+        localStorage.removeItem("cp_auth_from");
       } catch {
         // ignore
       }

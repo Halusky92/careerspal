@@ -125,13 +125,6 @@ const Providers = ({ children }: ProvidersProps) => {
     if (options?.role) {
       url.searchParams.set("role", options.role);
     }
-    const rawFrom =
-      (typeof options?.from === "string" ? options.from : null) ||
-      (typeof window !== "undefined" ? window.sessionStorage?.getItem("cp_auth_from") : null);
-    const safeFrom = rawFrom && rawFrom.startsWith("/") ? rawFrom : null;
-    if (safeFrom) {
-      url.searchParams.set("from", safeFrom);
-    }
     return url.toString();
   }, []);
 

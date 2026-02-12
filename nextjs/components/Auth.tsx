@@ -28,12 +28,14 @@ const Auth: React.FC<AuthProps> = () => {
     try {
       if (desiredFrom) {
         sessionStorage.setItem("cp_auth_from", desiredFrom);
+        localStorage.setItem("cp_auth_from", desiredFrom);
         return;
       }
       // If a user is mid-checkout but the URL lost `from`, keep flow continuity.
       const hasPending = Boolean(sessionStorage.getItem("cp_pending_job") || sessionStorage.getItem("cp_pending_job_id"));
       if (hasPending) {
         sessionStorage.setItem("cp_auth_from", "/checkout");
+        localStorage.setItem("cp_auth_from", "/checkout");
       }
     } catch {
       // ignore
