@@ -190,7 +190,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onJoinPool, onSearch, jobs }) => 
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-xl mx-auto lg:mx-0">
               {[
                 { label: "Verified employers", value: "Screened" },
-                { label: "Response SLA", value: "7 days" },
+                { label: "Response SLA", value: "2 days" },
                 { label: "Access", value: "Invite-only" },
               ].map((item) => (
                 <div key={item.label} className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-2xl px-4 py-3 text-center">

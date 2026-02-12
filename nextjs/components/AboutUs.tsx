@@ -25,9 +25,9 @@ const AboutUs: React.FC = () => {
         {/* Premium Metrics */}
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {[
-            { label: "Curated roles", value: "Launching 2026", note: "Founding cohort" },
-            { label: "Response SLA", value: "7 days", note: "Verified employers" },
-            { label: "Matches", value: "In progress", note: "Rolling onboarding" },
+            { label: "Curated roles", value: "Live board", note: "Updated continuously" },
+            { label: "Response SLA", value: "2 days", note: "Verified employers" },
+            { label: "Matches", value: "Direct apply", note: "Clear links, fast flow" },
           ].map((item) => (
             <div
               key={item.label}
@@ -129,7 +129,7 @@ const AboutUs: React.FC = () => {
             <h4 className="text-xs font-black uppercase tracking-[0.3em] text-indigo-400">Our Talent Promise</h4>
             <ul className="space-y-4">
               {[
-                "Response from companies within 7 days or a report.",
+                "Response from companies within 2 days, or we step in.",
                 "Direct access to founders (C-level).",
                 "Premium roles with education budgets.",
                 "A community of like-minded architects."

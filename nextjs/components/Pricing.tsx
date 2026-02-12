@@ -30,7 +30,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-10 sm:mb-12">
           {[
             { label: "Verified employers", value: "100%" },
-            { label: "Median response", value: "6 days" },
+            { label: "Median response", value: "2 days" },
             { label: "Private roles", value: "Invite-only" },
           ].map((item) => (
             <div key={item.label} className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-2xl px-4 py-4 text-center shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
@@ -74,7 +74,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
           <div className="text-4xl font-black mb-8 tracking-tighter">$149 <span className="text-sm font-normal text-indigo-300">/ 30 days</span></div>
           <div className="flex flex-wrap gap-2 mb-8">
             <span className="text-[9px] font-black uppercase tracking-widest text-white bg-white/10 border border-white/20 px-2 py-1 rounded-full">
-              Response SLA 7d
+              Response SLA 2d
             </span>
             <span className="text-[9px] font-black uppercase tracking-widest text-white bg-white/10 border border-white/20 px-2 py-1 rounded-full">
               Featured placement
@@ -126,7 +126,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
               ["Listing review", "✓", "✓", "✓"],
               ["Newsletter feature", "—", "✓", "✓"],
               ["Dedicated intros", "—", "—", "✓"],
-              ["Response SLA", "—", "7 days", "7 days"],
+              ["Response SLA", "—", "2 days", "2 days"],
             ].map((row) => (
               <div key={row[0]} className="contents">
                 <div className="text-slate-500">{row[0]}</div>
@@ -145,7 +145,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
           {[
             { label: "Avg. agency fee", value: "$8k+" },
             { label: "Median hire time", value: "45 days" },
-            { label: "CareersPal", value: "7 days SLA" },
+            { label: "CareersPal", value: "2 days SLA" },
           ].map((item) => (
             <div key={item.label} className="bg-white/10 border border-white/10 rounded-2xl p-4 text-center">
               <div className="text-2xl font-black">{item.value}</div>

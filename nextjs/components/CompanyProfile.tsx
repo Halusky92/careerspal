@@ -48,7 +48,7 @@ const CompanyProfile: React.FC<CompanyProfileProps> = ({ company, companyJobs, o
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative -mt-32 z-10">
         <div className="mb-10 grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { label: "Response SLA", value: "7 days" },
+            { label: "Response SLA", value: "2 days" },
             { label: "Hiring pace", value: "Verified" },
             { label: "Remote policy", value: company.remoteDNA?.asyncLevel || "Flexible" },
           ].map((item) => (

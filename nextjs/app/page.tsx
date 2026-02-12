@@ -212,18 +212,11 @@ export default function HomePage() {
               </p>
             </div>
             <div className="grid grid-cols-3 gap-4">
-              {(hasJobs
-                ? [
-                    { label: "Live roles", value: jobs.length },
-                    { label: "Teams", value: companyCount },
-                    { label: "Matches", value: matchTotal || 0 },
-                  ]
-                : [
-                    { label: "Live roles", value: "Launching" },
-                    { label: "Teams", value: "Onboarding" },
-                    { label: "Matches", value: "Starting soon" },
-                  ]
-              ).map((item) => (
+              {[
+                { label: "Live roles", value: jobs.length || 0 },
+                { label: "Teams", value: companyCount || 0 },
+                { label: "Matches", value: matchTotal || 0 },
+              ].map((item) => (
                 <div key={item.label} className="bg-white/10 border border-white/10 rounded-2xl px-4 py-4 text-center">
                   <div className="text-2xl font-black">{item.value}</div>
                   <div className="text-[10px] font-black uppercase tracking-widest text-indigo-100 mt-1">{item.label}</div>
@@ -241,12 +234,12 @@ export default function HomePage() {
               <div>
                 <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Featured & latest roles</p>
                 <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
-                  {hasJobs ? "Top picks from the Elite Board" : "Early access roles coming soon"}
+                  {hasJobs ? "Top picks from the Elite Board" : "Curated roles, verified teams"}
                 </h3>
                 <p className="text-sm text-slate-500 font-medium mt-1">
                   {hasJobs
                     ? "Hand-reviewed, ranked by impact and freshness."
-                    : "We are onboarding verified teams now. Be first in line."}
+                    : "Browse the board or post a role — every listing is reviewed before it goes live."}
                 </p>
               </div>
               {hasJobs && (
@@ -258,9 +251,9 @@ export default function HomePage() {
 
             {!hasJobs && (
               <div className="rounded-[2.5rem] border border-slate-200/70 bg-white p-8 text-center shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-                <div className="text-2xl font-black text-slate-900">Roles are launching soon.</div>
+                <div className="text-2xl font-black text-slate-900">No roles available right now.</div>
                 <p className="text-sm text-slate-500 font-medium mt-2">
-                  We are curating the first cohort of verified employers and listings.
+                  Check back soon, or post a role — every listing is reviewed before publishing.
                 </p>
                 <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
                   <button
@@ -555,7 +548,7 @@ export default function HomePage() {
                 <li><span className="text-slate-900 font-black">3. Publish</span> — approved roles go live and are promoted.</li>
               </ol>
               <p className="mt-4 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                SLA = response within 7 days • No-ghosting enforcement
+                SLA = response within 2 days • No-ghosting enforcement
               </p>
             </div>
           </div>
@@ -601,7 +594,7 @@ export default function HomePage() {
           {[
             { label: "Signal Density", value: "High", note: "No spam listings" },
             { label: "Salary Coverage", value: "100%", note: "Ranges required" },
-            { label: "Response SLA", value: "7 days", note: "Verified hiring" },
+            { label: "Response SLA", value: "2 days", note: "Verified hiring" },
           ].map((item) => (
             <div key={item.label} className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2rem] p-6 text-center shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
               <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">{item.label}</div>

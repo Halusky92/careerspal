@@ -155,7 +155,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
         {[
           { label: "Verified board", value: "Enabled" },
-          { label: "Response SLA", value: "7 days" },
+          { label: "Response SLA", value: "2 days" },
           { label: "Support tier", value: "Priority" },
         ].map((item) => (
           <div key={item.label} className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-2xl px-4 py-4 text-center shadow-[0_16px_40px_rgba(15,23,42,0.06)]">

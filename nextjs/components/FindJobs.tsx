@@ -925,7 +925,7 @@ const sanitizeDescription = (value?: string | null) => {
                         </span>
                         {!isStandard && (
                           <span className="text-[7px] font-black uppercase tracking-widest px-2 py-1 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-600">
-                            Response SLA 7d
+                            Response SLA 2d
                           </span>
                         )}
                       </div>

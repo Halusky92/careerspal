@@ -203,13 +203,13 @@ export default function JobsPage() {
               {(hasJobs
                 ? [
                     { label: "Verified employers", value: "Screened" },
-                    { label: "Response SLA", value: "7 days" },
+                    { label: "Response SLA", value: "2 days" },
                     { label: "Remote-friendly", value: "Remote-first" },
                   ]
                 : [
-                    { label: "Verified employers", value: "Onboarding" },
-                    { label: "Response SLA", value: "Launching" },
-                    { label: "Remote-friendly", value: "Curated" },
+                    { label: "Verified employers", value: "Screened" },
+                    { label: "Response SLA", value: "2 days" },
+                    { label: "Remote-friendly", value: "Remote-first" },
                   ]
               ).map((item) => (
                 <div key={item.label} className="bg-white border border-slate-200/60 rounded-2xl px-4 py-4 text-center">
