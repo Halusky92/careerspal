@@ -860,8 +860,8 @@ const sanitizeDescription = (value?: string | null) => {
                     ${isElite 
                       ? 'bg-amber-50 border border-amber-200 shadow-sm text-slate-900 border-l-4 border-l-amber-400' 
                       : isPro 
-                        ? 'bg-white border border-amber-200 shadow-sm border-l-4 border-l-amber-400'
-                        : 'bg-white border border-amber-200 shadow-sm hover:shadow-md border-l-4 border-l-amber-300'}
+                        ? 'bg-amber-50/60 border border-amber-200 shadow-sm hover:shadow-md border-l-4 border-l-amber-400'
+                        : 'bg-amber-50/50 border border-amber-200 shadow-sm hover:shadow-md border-l-4 border-l-amber-300'}
                     ${isPrivate ? 'opacity-70' : ''}
                   `}
                 >

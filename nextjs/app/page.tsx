@@ -158,83 +158,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-        <div className="rounded-[2.5rem] border border-slate-200/60 bg-white/70 backdrop-blur p-6 sm:p-8 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-6">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Quality pipeline</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Every role passes a strict review.</h3>
-              <p className="text-slate-500 font-medium mt-2 max-w-2xl">
-                We verify the employer, tighten scope, and rank roles by fit so you only see signal.
-              </p>
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700">
-              Verified listings only
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              {
-                title: "Review",
-                copy: "We rewrite vague postings, enforce salary ranges, and clarify scope.",
-              },
-              {
-                title: "Verify",
-                copy: "We validate employer identity (domain + contact) and check for red flags before publishing.",
-              },
-              {
-                title: "Match",
-                copy: "Roles are highlighted by tool stack, seniority, and fit.",
-              },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="bg-white rounded-[1.8rem] border border-slate-200/60 p-5 shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
-              >
-                <div className="text-[11px] font-black uppercase tracking-widest text-indigo-500">{item.title}</div>
-                <p className="text-sm text-slate-500 font-medium mt-2">{item.copy}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 rounded-[1.8rem] border border-slate-200/60 bg-white p-5">
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">What we reject</div>
-            <ul className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-slate-600 font-medium">
-              <li className="flex items-center gap-2"><span className="text-rose-500 font-black">×</span> No salary range</li>
-              <li className="flex items-center gap-2"><span className="text-rose-500 font-black">×</span> Vague scope / responsibilities</li>
-              <li className="flex items-center gap-2"><span className="text-rose-500 font-black">×</span> Low-signal spam listings</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        <div className="bg-slate-900 text-white rounded-[3rem] p-8 sm:p-12 shadow-2xl">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200">Live signal</p>
-              <h3 className="text-3xl sm:text-4xl font-black mt-3">High-quality roles, no noise.</h3>
-              <p className="text-slate-300 font-medium mt-2 max-w-2xl">
-                {jobs.length > 0
-                  ? `Real roles from the last 30 days, reviewed before publish${lastUpdatedText ? ` • Updated ${lastUpdatedText}` : ""}.`
-                  : "No live roles right now — new listings are reviewed daily."}
-              </p>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: "Live roles", value: jobs.length || 0 },
-                { label: "Teams", value: companyCount || 0 },
-                { label: "Added (7d)", value: rolesLast7Days || 0 },
-              ].map((item) => (
-                <div key={item.label} className="bg-white/10 border border-white/10 rounded-2xl px-4 py-4 text-center">
-                  <div className="text-2xl font-black">{item.value}</div>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-indigo-100 mt-1">{item.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-10 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-6">
@@ -523,6 +446,83 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+        <div className="rounded-[2.5rem] border border-slate-200/60 bg-white/70 backdrop-blur p-6 sm:p-8 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-6">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Quality pipeline</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Every role passes a strict review.</h3>
+              <p className="text-slate-500 font-medium mt-2 max-w-2xl">
+                We verify the employer, tighten scope, and rank roles by fit so you only see signal.
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+              Verified listings only
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              {
+                title: "Review",
+                copy: "We rewrite vague postings, enforce salary ranges, and clarify scope.",
+              },
+              {
+                title: "Verify",
+                copy: "We validate employer identity (domain + contact) and check for red flags before publishing.",
+              },
+              {
+                title: "Match",
+                copy: "Roles are highlighted by tool stack, seniority, and fit.",
+              },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className="bg-white rounded-[1.8rem] border border-slate-200/60 p-5 shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
+              >
+                <div className="text-[11px] font-black uppercase tracking-widest text-indigo-500">{item.title}</div>
+                <p className="text-sm text-slate-500 font-medium mt-2">{item.copy}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 rounded-[1.8rem] border border-slate-200/60 bg-white p-5">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">What we reject</div>
+            <ul className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-slate-600 font-medium">
+              <li className="flex items-center gap-2"><span className="text-rose-500 font-black">×</span> No salary range</li>
+              <li className="flex items-center gap-2"><span className="text-rose-500 font-black">×</span> Vague scope / responsibilities</li>
+              <li className="flex items-center gap-2"><span className="text-rose-500 font-black">×</span> Low-signal spam listings</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        <div className="bg-slate-900 text-white rounded-[3rem] p-8 sm:p-12 shadow-2xl">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200">Live signal</p>
+              <h3 className="text-3xl sm:text-4xl font-black mt-3">High-quality roles, no noise.</h3>
+              <p className="text-slate-300 font-medium mt-2 max-w-2xl">
+                {jobs.length > 0
+                  ? `Real roles from the last 30 days, reviewed before publish${lastUpdatedText ? ` • Updated ${lastUpdatedText}` : ""}.`
+                  : "No live roles right now — new listings are reviewed daily."}
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: "Live roles", value: jobs.length || 0 },
+                { label: "Teams", value: companyCount || 0 },
+                { label: "Added (7d)", value: rolesLast7Days || 0 },
+              ].map((item) => (
+                <div key={item.label} className="bg-white/10 border border-white/10 rounded-2xl px-4 py-4 text-center">
+                  <div className="text-2xl font-black">{item.value}</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-indigo-100 mt-1">{item.label}</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

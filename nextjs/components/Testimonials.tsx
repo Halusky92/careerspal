@@ -7,18 +7,21 @@ const Testimonials: React.FC = () => {
       name: "Ops Lead",
       role: "EU • Systems & Operations",
       text: "The listings feel edited. Salary ranges + clear scope saved me time compared to generic boards.",
+      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80",
       visualType: "chart"
     },
     {
       name: "Automation Specialist",
       role: "Remote • No-code / Ops",
       text: "Filters by stack (Notion, Zapier, Make) make it fast to spot the roles that match how I actually work.",
+      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
       visualType: "table"
     },
     {
       name: "Hiring Manager",
       role: "B2B • Operations",
       text: "The review step caught missing details before going live. Fewer mismatched applicants, better signal.",
+      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80",
       visualType: "success"
     }
   ];
@@ -80,9 +83,12 @@ const Testimonials: React.FC = () => {
             </p>
 
             <div className="flex items-center gap-4 border-t border-slate-50 pt-6">
-              <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center font-black text-indigo-600">
-                {review.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}
-              </div>
+              <img
+                src={review.image}
+                alt={review.name}
+                loading="lazy"
+                className="w-12 h-12 rounded-xl object-cover shadow-sm border border-slate-100"
+              />
               <div>
                 <h4 className="font-black text-slate-900 text-sm">{review.name}</h4>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{review.role}</p>
