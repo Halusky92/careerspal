@@ -163,9 +163,9 @@ export default function HomePage() {
 
             {!hasJobs && (
               <div className="rounded-[2.5rem] border border-slate-200/70 bg-white p-8 text-center shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-                <div className="text-2xl font-black text-slate-900">No roles available right now.</div>
+                <div className="text-2xl font-black text-slate-900">0 live roles right now.</div>
                 <p className="text-sm text-slate-500 font-medium mt-2">
-                  Check back soon, or post a role — every listing is reviewed before publishing.
+                  New submissions are reviewed daily. Post a role to be first on the board.
                 </p>
                 <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
                   <button
@@ -333,7 +333,7 @@ export default function HomePage() {
               <p className="text-slate-300 font-medium mt-2 max-w-2xl">
                 {jobs.length > 0
                   ? `Real roles from the last 30 days, reviewed before publish${lastUpdatedText ? ` • Updated ${lastUpdatedText}` : ""}.`
-                  : "No live roles right now — new listings are reviewed daily."}
+                  : "New listings are reviewed daily. Check back soon."}
               </p>
             </div>
             <div className="grid grid-cols-3 gap-4">
