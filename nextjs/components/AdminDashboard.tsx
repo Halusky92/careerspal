@@ -62,6 +62,44 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     type: string;
     salary: string;
   } | null>(null);
+  const [showAdminCreate, setShowAdminCreate] = useState(false);
+  const [adminCreateStatus, setAdminCreateStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
+  const [adminCreateMsg, setAdminCreateMsg] = useState<string>("");
+  const [adminCreateDraft, setAdminCreateDraft] = useState<{
+    title: string;
+    company: string;
+    applyUrl: string;
+    companyWebsite: string;
+    logo: string;
+    location: string;
+    remotePolicy: string;
+    type: Job["type"];
+    category: string;
+    salary: string;
+    description: string;
+    tagsCsv: string;
+    toolsCsv: string;
+    status: "published" | "pending_review" | "draft" | "private";
+    planType: "Standard" | "Featured Pro" | "Elite Managed";
+    isFeatured: boolean;
+  }>(() => ({
+    title: "",
+    company: "",
+    applyUrl: "",
+    companyWebsite: "",
+    logo: "",
+    location: "Remote",
+    remotePolicy: "Remote (Global)",
+    type: "Full-time",
+    category: "Operations",
+    salary: "",
+    description: "",
+    tagsCsv: "",
+    toolsCsv: "",
+    status: "published",
+    planType: "Standard",
+    isFeatured: false,
+  }));
   const formatDate = (value?: number) => {
     if (!value) return "N/A";
     const date = new Date(value);
@@ -120,6 +158,73 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       cancelEditJob();
     } catch {
       // noop
+    }
+  };
+
+  const adminCreateJob = async () => {
+    if (!accessToken) return;
+    if (!adminCreateDraft.title.trim() || !adminCreateDraft.company.trim() || !adminCreateDraft.applyUrl.trim()) {
+      setAdminCreateStatus("error");
+      setAdminCreateMsg("Missing required fields: title, company, apply URL.");
+      return;
+    }
+    setAdminCreateStatus("saving");
+    setAdminCreateMsg("");
+    try {
+      const response = await authFetch(
+        "/api/admin/jobs",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: adminCreateDraft.title,
+            company: adminCreateDraft.company,
+            applyUrl: adminCreateDraft.applyUrl,
+            companyWebsite: adminCreateDraft.companyWebsite,
+            logo: adminCreateDraft.logo,
+            location: adminCreateDraft.location,
+            remotePolicy: adminCreateDraft.remotePolicy,
+            type: adminCreateDraft.type,
+            category: adminCreateDraft.category,
+            salary: adminCreateDraft.salary,
+            description: adminCreateDraft.description,
+            tagsCsv: adminCreateDraft.tagsCsv,
+            toolsCsv: adminCreateDraft.toolsCsv,
+            status: adminCreateDraft.status,
+            planType: adminCreateDraft.planType,
+            isFeatured: adminCreateDraft.isFeatured,
+          }),
+        },
+        accessToken,
+      );
+      const payload = (await response.json()) as { job?: Job; error?: string };
+      if (!response.ok || !payload.job) {
+        setAdminCreateStatus("error");
+        setAdminCreateMsg(payload.error || "Failed to create job.");
+        return;
+      }
+      setJobs((prev) => [payload.job!, ...prev]);
+      setAdminCreateStatus("success");
+      setAdminCreateMsg("Job created.");
+      setShowAdminCreate(false);
+      setAdminCreateDraft((prev) => ({
+        ...prev,
+        title: "",
+        company: "",
+        applyUrl: "",
+        companyWebsite: "",
+        logo: "",
+        salary: "",
+        description: "",
+        tagsCsv: "",
+        toolsCsv: "",
+        status: "published",
+        planType: "Standard",
+        isFeatured: false,
+      }));
+    } catch {
+      setAdminCreateStatus("error");
+      setAdminCreateMsg("Failed to create job.");
     }
   };
 
@@ -414,6 +519,227 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 </span>
               </div>
             </div>
+
+            <div className="mb-4">
+              <button
+                onClick={() => {
+                  setShowAdminCreate((prev) => !prev);
+                  setAdminCreateStatus("idle");
+                  setAdminCreateMsg("");
+                }}
+                className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 border border-slate-800 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:border-indigo-500/40 hover:text-indigo-300"
+              >
+                <span className="text-indigo-400">＋</span> Add job (admin, free)
+              </button>
+            </div>
+
+            {showAdminCreate && (
+              <div className="mb-6 rounded-2xl border border-slate-800 bg-slate-950/40 p-4 sm:p-6 space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-xs font-black uppercase tracking-widest text-slate-400">Admin free posting</div>
+                    <div className="text-sm font-black text-white mt-1">Create a role directly on the board</div>
+                  </div>
+                  <button
+                    onClick={() => setShowAdminCreate(false)}
+                    className="text-slate-500 hover:text-slate-200 text-[10px] font-black uppercase tracking-widest"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Title *</label>
+                    <input
+                      value={adminCreateDraft.title}
+                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, title: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      placeholder="e.g. Notion Operations Lead"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Company *</label>
+                    <input
+                      value={adminCreateDraft.company}
+                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, company: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      placeholder="Company name"
+                    />
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Apply URL *</label>
+                    <input
+                      value={adminCreateDraft.applyUrl}
+                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, applyUrl: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Company website</label>
+                    <input
+                      value={adminCreateDraft.companyWebsite}
+                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, companyWebsite: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      placeholder="company.com"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Logo (URL or data:)</label>
+                    <input
+                      value={adminCreateDraft.logo}
+                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, logo: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      placeholder="https://... or data:image/..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Location</label>
+                    <input
+                      value={adminCreateDraft.location}
+                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, location: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      placeholder="Remote / City"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Remote policy</label>
+                    <input
+                      value={adminCreateDraft.remotePolicy}
+                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, remotePolicy: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      placeholder="Remote (Global)"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Type</label>
+                    <select
+                      value={adminCreateDraft.type}
+                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, type: e.target.value as Job["type"] }))}
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none"
+                    >
+                      <option value="Full-time">Full-time</option>
+                      <option value="Contract">Contract</option>
+                      <option value="Part-time">Part-time</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Category</label>
+                    <input
+                      value={adminCreateDraft.category}
+                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, category: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      placeholder="Operations"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Salary</label>
+                    <input
+                      value={adminCreateDraft.salary}
+                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, salary: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      placeholder="$100k–$140k"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Status</label>
+                    <select
+                      value={adminCreateDraft.status}
+                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, status: e.target.value as typeof p.status }))}
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none"
+                    >
+                      <option value="published">Published (live)</option>
+                      <option value="pending_review">Pending review</option>
+                      <option value="draft">Draft</option>
+                      <option value="private">Archived</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Plan</label>
+                    <select
+                      value={adminCreateDraft.planType}
+                      onChange={(e) => {
+                        const next = e.target.value as typeof adminCreateDraft.planType;
+                        setAdminCreateDraft((p) => ({
+                          ...p,
+                          planType: next,
+                          isFeatured: next !== "Standard" ? true : p.isFeatured,
+                        }));
+                      }}
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none"
+                    >
+                      <option value="Standard">Standard</option>
+                      <option value="Featured Pro">Featured Pro</option>
+                      <option value="Elite Managed">Elite Managed</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tags (comma separated)</label>
+                    <input
+                      value={adminCreateDraft.tagsCsv}
+                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, tagsCsv: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      placeholder="Notion, Ops, Remote"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tools (comma separated)</label>
+                    <input
+                      value={adminCreateDraft.toolsCsv}
+                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, toolsCsv: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      placeholder="Notion, Zapier, Make"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</label>
+                  <textarea
+                    value={adminCreateDraft.description}
+                    onChange={(e) => setAdminCreateDraft((p) => ({ ...p, description: e.target.value }))}
+                    className="w-full min-h-[160px] rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-medium text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    placeholder="Role overview, responsibilities, requirements…"
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={adminCreateJob}
+                    disabled={!accessToken || adminCreateStatus === "saving"}
+                    className="flex-1 rounded-2xl bg-indigo-600 text-white px-4 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {adminCreateStatus === "saving" ? "Creating..." : "Create job"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAdminCreate(false);
+                      setAdminCreateStatus("idle");
+                      setAdminCreateMsg("");
+                    }}
+                    className="flex-1 rounded-2xl bg-slate-950 text-slate-400 border border-slate-800 px-4 py-3 text-[10px] font-black uppercase tracking-widest hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                {adminCreateMsg && (
+                  <div
+                    className={`text-[10px] font-black uppercase tracking-widest ${
+                      adminCreateStatus === "error" ? "text-red-400" : "text-emerald-400"
+                    }`}
+                    aria-live="polite"
+                  >
+                    {adminCreateMsg}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div ref={jobSearchRef} className="relative">
               <div className="relative flex items-center bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3">
                 <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
