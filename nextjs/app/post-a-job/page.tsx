@@ -91,12 +91,6 @@ const PostJobPage = () => {
 
     const isAllowedRole = profile?.role === "employer" || profile?.role === "admin" || !profile?.role;
     if (authLoading || !accessToken || !profile?.email || !isAllowedRole) {
-      // After login, continue straight into Stripe checkout.
-      try {
-        sessionStorage.setItem("cp_checkout_autostart", "1");
-      } catch {
-        // ignore
-      }
       router.push(`/auth?role=employer&from=${encodeURIComponent("/checkout")}`);
       return;
     }
@@ -120,11 +114,6 @@ const PostJobPage = () => {
       const payload = (await response.json()) as { job?: Job };
       if (payload.job?.id) {
         sessionStorage.setItem("cp_pending_job_id", payload.job.id);
-        try {
-          sessionStorage.setItem("cp_checkout_autostart", "1");
-        } catch {
-          // ignore
-        }
         router.push(`/checkout?jobId=${payload.job.id}`);
         return;
       }
@@ -132,11 +121,6 @@ const PostJobPage = () => {
       // fallback to checkout without server id
     }
 
-    try {
-      sessionStorage.setItem("cp_checkout_autostart", "1");
-    } catch {
-      // ignore
-    }
     router.push("/checkout");
   };
 
