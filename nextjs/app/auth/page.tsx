@@ -47,8 +47,27 @@ const AuthPage = () => {
 
       const finalRole = desiredRole || currentRole || "candidate";
       if (!isActive) return;
-      if (desiredFrom) {
-        router.replace(desiredFrom);
+      let finalFrom: string | null = desiredFrom;
+      if (!finalFrom) {
+        try {
+          const stored = sessionStorage.getItem("cp_auth_from");
+          if (stored && stored.startsWith("/")) finalFrom = stored;
+          if (!finalFrom) {
+            const hasPending = Boolean(sessionStorage.getItem("cp_pending_job") || sessionStorage.getItem("cp_pending_job_id"));
+            if (hasPending) finalFrom = "/checkout";
+          }
+        } catch {
+          // ignore
+        }
+      }
+      try {
+        sessionStorage.removeItem("cp_auth_from");
+      } catch {
+        // ignore
+      }
+
+      if (finalFrom) {
+        router.replace(finalFrom);
       } else {
         router.replace(finalRole === "employer" ? "/dashboard/employer" : "/dashboard/candidate");
       }

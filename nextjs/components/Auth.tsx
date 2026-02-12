@@ -12,6 +12,8 @@ const Auth: React.FC<AuthProps> = () => {
   const { signInWithGoogle, signInWithEmail } = useSupabaseAuth();
   const searchParams = useSearchParams();
   const initialRole = searchParams.get("role") === "employer" ? "employer" : "candidate";
+  const fromParam = searchParams.get("from");
+  const desiredFrom = fromParam && fromParam.startsWith("/") ? fromParam : null;
   const [role, setRole] = useState<'candidate' | 'employer'>(initialRole);
   const [isLoading, setIsLoading] = useState(false);
   const [emailStatus, setEmailStatus] = useState<"idle" | "sent" | "error">("idle");
@@ -22,16 +24,32 @@ const Auth: React.FC<AuthProps> = () => {
     setRole(initialRole);
   }, [initialRole]);
 
+  useEffect(() => {
+    try {
+      if (desiredFrom) {
+        sessionStorage.setItem("cp_auth_from", desiredFrom);
+        return;
+      }
+      // If a user is mid-checkout but the URL lost `from`, keep flow continuity.
+      const hasPending = Boolean(sessionStorage.getItem("cp_pending_job") || sessionStorage.getItem("cp_pending_job_id"));
+      if (hasPending) {
+        sessionStorage.setItem("cp_auth_from", "/checkout");
+      }
+    } catch {
+      // ignore
+    }
+  }, [desiredFrom]);
+
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    await signInWithGoogle({ role });
+    await signInWithGoogle({ role, from: desiredFrom });
   };
 
   const handleEmailSignIn = async () => {
     if (!email.trim()) return;
     setIsLoading(true);
     try {
-      const result = await signInWithEmail(email.trim(), { role });
+      const result = await signInWithEmail(email.trim(), { role, from: desiredFrom });
       if (result.error) {
         setEmailStatus("error");
         setEmailMessage(result.error);

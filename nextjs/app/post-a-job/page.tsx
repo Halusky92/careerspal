@@ -27,6 +27,24 @@ const PostJobPage = () => {
   });
   const [showTestPlan, setShowTestPlan] = useState(false);
 
+  // Ensure the admin-only $1 plan never leaks to non-admins via sessionStorage.
+  useEffect(() => {
+    const isAdmin = profile?.role === "admin";
+    const isInternalPrice = selectedPlan.type === "Standard" && selectedPlan.price <= 5;
+    if (!isInternalPrice) return;
+
+    // Only allow internal cheap pricing when the backend explicitly allowlists the admin.
+    if (!(isAdmin && showTestPlan)) {
+      setSelectedPlan({ type: "Standard", price: 79 });
+      try {
+        sessionStorage.setItem(PLAN_KEY, JSON.stringify({ type: "Standard", price: 79 }));
+        sessionStorage.removeItem("cp_admin_internal_plan");
+      } catch {
+        // ignore
+      }
+    }
+  }, [profile?.role, selectedPlan.price, selectedPlan.type, showTestPlan]);
+
   useEffect(() => {
     sessionStorage.setItem(PLAN_KEY, JSON.stringify(selectedPlan));
     try {

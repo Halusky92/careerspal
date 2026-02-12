@@ -16,14 +16,16 @@ type Profile = {
 
 type AuthRole = "candidate" | "employer";
 
+type AuthRedirectOptions = { role?: AuthRole; from?: string | null };
+
 type AuthContextValue = {
   user: User | null;
   profile: Profile | null;
   accessToken: string | null;
   loading: boolean;
   refreshProfile: () => Promise<void>;
-  signInWithGoogle: (options?: { role?: AuthRole }) => Promise<void>;
-  signInWithEmail: (email: string, options?: { role?: AuthRole }) => Promise<{ error?: string }>;
+  signInWithGoogle: (options?: AuthRedirectOptions) => Promise<void>;
+  signInWithEmail: (email: string, options?: AuthRedirectOptions) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 };
 
@@ -118,29 +120,36 @@ const Providers = ({ children }: ProvidersProps) => {
     await fetchProfile(accessToken);
   }, [accessToken, fetchProfile]);
 
-  const buildRedirect = useCallback((role?: AuthRole) => {
+  const buildRedirect = useCallback((options?: AuthRedirectOptions) => {
     const url = new URL("/auth", window.location.origin);
-    if (role) {
-      url.searchParams.set("role", role);
+    if (options?.role) {
+      url.searchParams.set("role", options.role);
+    }
+    const rawFrom =
+      (typeof options?.from === "string" ? options.from : null) ||
+      (typeof window !== "undefined" ? window.sessionStorage?.getItem("cp_auth_from") : null);
+    const safeFrom = rawFrom && rawFrom.startsWith("/") ? rawFrom : null;
+    if (safeFrom) {
+      url.searchParams.set("from", safeFrom);
     }
     return url.toString();
   }, []);
 
   const signInWithGoogle = useCallback(
-    async (options?: { role?: AuthRole }) => {
+    async (options?: AuthRedirectOptions) => {
       await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: buildRedirect(options?.role) },
+        options: { redirectTo: buildRedirect(options) },
       });
     },
     [buildRedirect],
   );
 
   const signInWithEmail = useCallback(
-    async (email: string, options?: { role?: AuthRole }) => {
+    async (email: string, options?: AuthRedirectOptions) => {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: buildRedirect(options?.role) },
+        options: { emailRedirectTo: buildRedirect(options) },
       });
       if (error) {
         return { error: error.message };

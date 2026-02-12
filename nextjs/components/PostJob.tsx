@@ -18,6 +18,7 @@ type JobFormData = Omit<Job, 'id' | 'postedAt' | 'isFeatured' | 'planType' | 'pl
 const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan }) => {
   const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [logoFileName, setLogoFileName] = useState<string>("");
   const formatPrice = (value: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
   
@@ -123,11 +124,16 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
   const handleLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      alert("Please upload an image file.");
+    if (!file) {
+      setLogoFileName("");
       return;
     }
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload an image file.");
+      setLogoFileName("");
+      return;
+    }
+    setLogoFileName(file.name);
     const reader = new FileReader();
     reader.onload = () => {
       const result = typeof reader.result === "string" ? reader.result : "";
@@ -289,11 +295,23 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                    </div>
                    <div className="flex flex-wrap items-center gap-3">
                      <input
+                       id="cp-logo-upload"
                        type="file"
                        accept="image/*"
                        onChange={handleLogoFileChange}
-                       className="text-xs font-bold text-slate-500"
+                       className="sr-only"
                      />
+                     <label
+                       htmlFor="cp-logo-upload"
+                       className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-600 cursor-pointer"
+                     >
+                       Upload from computer
+                     </label>
+                     {logoFileName && (
+                       <span className="text-[10px] font-bold text-slate-400 truncate max-w-[220px]" title={logoFileName}>
+                         {logoFileName}
+                       </span>
+                     )}
                      {formData.logo && (
                        <button
                          type="button"
@@ -304,7 +322,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                        </button>
                      )}
                    </div>
-                   <p className="text-[9px] text-slate-400 font-bold">Paste a logo URL or upload an image.</p>
+                   <p className="text-[9px] text-slate-400 font-bold">
+                     Paste a logo URL or upload from your computer (PNG/JPG/SVG).
+                   </p>
                 </div>
 
                 <div className="space-y-4">
