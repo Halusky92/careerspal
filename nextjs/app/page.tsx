@@ -10,6 +10,7 @@ import { Job } from '../types';
 import { createJobSlug, createCompanySlug } from '../lib/jobs';
 import CompanyLogo from '../components/CompanyLogo';
 import JobCard from "../components/JobCard";
+import JobMiniCard from "../components/JobMiniCard";
 
 const planWeight = { 'Elite Managed': 3, 'Featured Pro': 2, Standard: 1 };
 
@@ -217,15 +218,7 @@ export default function HomePage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {topJobs.slice(0, 3).map((job) => (
-                  <JobCard
-                    key={`recent-${job.id}`}
-                    job={job}
-                    expanded={expandedJobId === job.id}
-                    onToggleExpanded={() => handleToggleJob(job)}
-                    onOpenCompany={(companyName) => handleOpenCompany(companyName)}
-                    showBookmark={false}
-                    variant="board"
-                  />
+                  <JobMiniCard key={`recent-${job.id}`} job={job} />
                 ))}
               </div>
             </div>

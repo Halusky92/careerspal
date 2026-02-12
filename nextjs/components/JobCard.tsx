@@ -63,6 +63,7 @@ export default function JobCard({
   className = "",
 }: JobCardProps) {
   const router = useRouter();
+  const isHome = variant === "home";
 
   const isElite = job.planType === "Elite Managed";
   const isPro = job.planType === "Featured Pro";
@@ -79,7 +80,7 @@ export default function JobCard({
 
   const containerClass =
     variant === "home"
-      ? "p-5 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem]"
+      ? "p-4 sm:p-5 rounded-[1.75rem] sm:rounded-[2.25rem]"
       : "p-4 rounded-2xl";
 
   return (
@@ -165,7 +166,7 @@ export default function JobCard({
 
       <div className="flex items-start gap-4 w-full">
         <div
-          className={`w-11 h-11 sm:w-14 sm:h-14 rounded-[1rem] sm:rounded-[1.3rem] flex items-center justify-center overflow-hidden p-1 flex-shrink-0 ${
+          className={`${isHome ? "w-10 h-10 sm:w-12 sm:h-12 rounded-[0.9rem] sm:rounded-[1.1rem]" : "w-11 h-11 sm:w-14 sm:h-14 rounded-[1rem] sm:rounded-[1.3rem]"} flex items-center justify-center overflow-hidden p-1 flex-shrink-0 ${
             isElite ? "bg-yellow-100 border border-yellow-200" : "bg-gray-50 border border-gray-100"
           }`}
         >
@@ -181,7 +182,7 @@ export default function JobCard({
 
         <div className="flex-1 min-w-0 pr-9">
           <h3
-            className={`text-base sm:text-lg font-black tracking-tight leading-tight truncate ${
+            className={`${isHome ? "text-sm sm:text-base" : "text-base sm:text-lg"} font-black tracking-tight leading-tight truncate ${
               isElite ? "text-slate-900 group-hover:text-yellow-700" : "text-slate-900 group-hover:text-indigo-600"
             } transition-colors`}
           >
@@ -205,7 +206,7 @@ export default function JobCard({
             </button>
             <span className={`text-[8px] flex-shrink-0 ${isElite ? "text-yellow-300" : "text-slate-300"}`}>•</span>
             <span
-              className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest truncate ${
+              className={`${isHome ? "text-[8px]" : "text-[8px] sm:text-[9px]"} font-black uppercase tracking-widest truncate ${
                 isElite ? "text-yellow-700" : "text-slate-400"
               }`}
             >
@@ -258,7 +259,7 @@ export default function JobCard({
       </div>
 
       <div className="w-full border-t border-slate-100 pt-3 flex items-center justify-between gap-3">
-        <div className={`text-base sm:text-lg font-black tracking-tight whitespace-nowrap ${isElite ? "text-yellow-900" : "text-slate-900"}`}>
+        <div className={`${isHome ? "text-sm sm:text-base" : "text-base sm:text-lg"} font-black tracking-tight whitespace-nowrap ${isElite ? "text-yellow-900" : "text-slate-900"}`}>
           {job.salary}
         </div>
 
@@ -278,7 +279,7 @@ export default function JobCard({
             window.open(job.applyUrl, "_blank", "noopener,noreferrer");
           }}
           disabled={!isPrivate && !hasApplyUrl}
-          className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-[9px] font-black uppercase tracking-widest transition-all w-full md:w-auto ${
+          className={`inline-flex items-center justify-center rounded-full ${isHome ? "px-3 py-1.5" : "px-4 py-2"} text-[9px] font-black uppercase tracking-widest transition-all w-full md:w-auto ${
             isElite
               ? "bg-yellow-200 text-yellow-900 hover:bg-yellow-300"
               : hasApplyUrl
