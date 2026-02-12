@@ -218,8 +218,8 @@ export default function HomePage() {
                     ${isElite
                       ? 'bg-amber-50 text-slate-900 border-2 border-amber-200 shadow-xl shadow-[0_0_0_4px_rgba(251,191,36,0.18)]'
                       : isPro
-                        ? 'bg-white border-2 border-amber-200 shadow-xl ring-4 ring-amber-50/60'
-                        : 'bg-white border-2 border-amber-100 shadow-sm hover:shadow-xl hover:border-amber-200'}
+                        ? 'bg-amber-50/60 border-2 border-amber-200 shadow-xl ring-4 ring-amber-50/60'
+                        : 'bg-amber-50/50 border-2 border-amber-200 shadow-sm hover:shadow-xl hover:border-amber-300'}
                   `}
                 >
                   {(isElite || isPro) && (
@@ -362,7 +362,7 @@ export default function HomePage() {
                       <div
                     key={`recent-${job.id}`}
                     onClick={() => handleToggleJob(job)}
-                    className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-2xl p-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] hover:shadow-xl transition-all cursor-pointer"
+                    className="bg-amber-50/50 backdrop-blur border border-amber-200/60 rounded-2xl p-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] hover:shadow-xl transition-all cursor-pointer"
                   >
                     <div className="text-xs font-black text-slate-900 truncate">{job.title}</div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 truncate">
