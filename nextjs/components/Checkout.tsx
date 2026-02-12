@@ -1,7 +1,8 @@
 "use client";
 
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter } from "next/navigation";
 import { Job } from '../types';
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
@@ -14,9 +15,10 @@ interface CheckoutProps {
 }
 
 const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel }) => {
+  const router = useRouter();
   const [step, setStep] = useState<'form' | 'processing' | 'success'>('form');
   const [error, setError] = useState<string | null>(null);
-  const { accessToken } = useSupabaseAuth();
+  const { accessToken, profile, loading: authLoading } = useSupabaseAuth();
 
   if (!jobData) {
     return (
@@ -37,6 +39,11 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
   const storagePlanPrice = Number.isFinite(price) ? (price < 1 ? 1 : Math.round(price)) : 79;
 
+  const authRedirectUrl = useMemo(() => {
+    const from = jobId ? `/checkout?jobId=${encodeURIComponent(jobId)}` : "/checkout";
+    return `/auth?role=employer&from=${encodeURIComponent(from)}`;
+  }, [jobId]);
+
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("cp_test_plan_price");
@@ -51,6 +58,20 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
   }, []);
 
   const handlePay = async () => {
+    if (authLoading) {
+      setError("Preparing session…");
+      setStep("form");
+      return;
+    }
+
+    const role = profile?.role || null;
+    const hasAccess = Boolean(accessToken && profile?.email);
+    const roleOk = !role || role === "employer" || role === "admin";
+    if (!hasAccess || !roleOk) {
+      router.push(authRedirectUrl);
+      return;
+    }
+
     setStep('processing');
 
     try {
@@ -76,8 +97,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
 
       if (!effectiveJobId) {
         if (!accessToken) {
-          setError("Missing auth. Please sign in again.");
-          setStep("form");
+          router.push(authRedirectUrl);
           return;
         }
         const createResponse = await authFetch(
@@ -120,6 +140,10 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
       const data = (await readJson<{ url?: string; error?: string }>(response)) || {};
       if (data?.url) {
         window.location.href = data.url;
+        return;
+      }
+      if (response.status === 401 || response.status === 403) {
+        router.push(authRedirectUrl);
         return;
       }
       setError(data.error || `Failed to start checkout (status ${response.status}).`);

@@ -164,7 +164,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
            <img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg" className="h-5 sm:h-6" alt="Slack" />
         </div>
         <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-          Tool-stack logos shown for ecosystem context, not endorsements.
+          Logos are trademarks of their owners. Shown to help identify common tool stacks — no affiliation implied.
         </p>
       </div>
 

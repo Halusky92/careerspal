@@ -155,7 +155,7 @@ export default function HomePage() {
             </div>
           </div>
           <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-            Tool-stack logos shown for ecosystem context, not endorsements.
+            Logos are trademarks of their owners. Shown to help identify common tool stacks — no affiliation implied.
           </p>
         </div>
       </section>

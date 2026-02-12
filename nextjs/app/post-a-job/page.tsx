@@ -28,28 +28,6 @@ const PostJobPage = () => {
   const [showTestPlan, setShowTestPlan] = useState(false);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!profile?.email) {
-      router.replace("/auth?role=employer&from=/post-a-job");
-      return;
-    }
-    if (profile.role && profile.role !== "employer" && profile.role !== "admin") {
-      router.replace("/dashboard/candidate");
-    }
-  }, [authLoading, profile, router]);
-
-  if (authLoading) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-24 text-center">
-        <div className="inline-flex items-center gap-3 text-slate-500 font-bold">
-          <span className="h-3 w-3 rounded-full bg-indigo-500 animate-pulse"></span>
-          Loading employer console...
-        </div>
-      </div>
-    );
-  }
-
-  useEffect(() => {
     sessionStorage.setItem(PLAN_KEY, JSON.stringify(selectedPlan));
     try {
       sessionStorage.removeItem("cp_test_plan_price");
@@ -92,6 +70,12 @@ const PostJobPage = () => {
       : 79;
     const finalJobData = { ...data, plan: selectedPlan, planType: selectedPlan.type, status: "draft" };
     sessionStorage.setItem("cp_pending_job", JSON.stringify(finalJobData));
+
+    const isAllowedRole = profile?.role === "employer" || profile?.role === "admin" || !profile?.role;
+    if (authLoading || !accessToken || !profile?.email || !isAllowedRole) {
+      router.push(`/auth?role=employer&from=${encodeURIComponent("/checkout")}`);
+      return;
+    }
 
     try {
       if (!accessToken) throw new Error("Missing auth");

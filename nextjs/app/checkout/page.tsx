@@ -4,27 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Checkout from "../../components/Checkout";
 import { Job } from "../../types";
-import { useSupabaseAuth } from "../../components/Providers";
 
 const CheckoutPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { profile, loading: authLoading } = useSupabaseAuth();
   const [pendingJob, setPendingJob] = useState<Job | null>(null);
   const [resolvedJobId, setResolvedJobId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const jobId = searchParams.get("jobId");
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!profile?.email) {
-      router.replace("/auth");
-      return;
-    }
-    if (profile.role && profile.role !== "employer" && profile.role !== "admin") {
-      router.replace("/dashboard/candidate");
-    }
-  }, [authLoading, profile, router]);
 
   useEffect(() => {
     const loadJob = async () => {
