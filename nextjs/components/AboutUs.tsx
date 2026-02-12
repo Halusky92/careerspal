@@ -18,7 +18,7 @@ const AboutUs: React.FC = () => {
             <span className="text-indigo-600 text-gradient">Quality over Noise.</span>
           </h1>
           <p className="text-lg md:text-2xl text-slate-500 max-w-3xl mx-auto font-medium leading-relaxed">
-            We are the filter between a chaotic job market and elite Notion architects. CareersPal is the ecosystem for those who build the infrastructure of tomorrow.
+            We are the filter between a chaotic job market and systems-first operators. CareersPal reviews every listing, enforces clarity (salary + scope), and keeps the board high-signal.
           </p>
         </section>
 

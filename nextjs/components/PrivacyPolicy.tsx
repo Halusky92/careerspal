@@ -83,9 +83,25 @@ const PrivacyPolicy: React.FC = () => {
             </div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">5. Data Retention</h2>
           </div>
-          <p className="text-slate-600 leading-relaxed font-medium">
-            We retain account and job data for as long as your account is active or as needed to provide services. You can request deletion at any time. Backup logs are retained for security and compliance for a limited period.
-          </p>
+          <div className="text-slate-600 leading-relaxed font-medium space-y-4">
+            <p>
+              We keep personal data only as long as necessary for the purpose it was collected for, and longer where we have legal obligations (e.g., accounting).
+            </p>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Retention overview (typical)</p>
+              <ul className="mt-3 list-disc pl-5 space-y-2 text-sm">
+                <li><strong>Account profile</strong>: while your account is active; deleted upon request or after prolonged inactivity (typically up to 24 months), unless we must retain certain records.</li>
+                <li><strong>Candidate profile / CV / portfolio links</strong>: while you keep the profile active; deleted upon request (we may retain minimal audit/security logs).</li>
+                <li><strong>Employer job listings</strong>: while live + archived history for operational recordkeeping (typically up to 24 months), unless deletion is requested and not required by law.</li>
+                <li><strong>Payment records</strong>: retained for legal/financial compliance (typically up to 7 years, depending on jurisdiction).</li>
+                <li><strong>Email delivery logs</strong>: typically up to 12 months for deliverability, abuse prevention, and troubleshooting.</li>
+                <li><strong>Security/audit logs</strong>: typically up to 12–24 months (fraud prevention, incident response).</li>
+              </ul>
+            </div>
+            <p className="text-xs text-slate-500">
+              Exact retention may vary based on legal requirements and the nature of your request (e.g., disputes, fraud prevention).
+            </p>
+          </div>
         </section>
 
         <section className="space-y-6">
@@ -95,9 +111,24 @@ const PrivacyPolicy: React.FC = () => {
             </div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">6. Processors & Data Transfers</h2>
           </div>
-          <p className="text-slate-600 leading-relaxed font-medium">
-            We use vetted processors to deliver the service, including Supabase (database/auth), Stripe (payments), Resend (email delivery), and Vercel (hosting). These providers process data under contractual safeguards and data processing agreements where applicable.
-          </p>
+          <div className="text-slate-600 leading-relaxed font-medium space-y-4">
+            <p>
+              We use vetted service providers (“processors”) to run the platform. Where applicable, they act under a Data Processing Agreement (DPA) and contractual safeguards (e.g., Standard Contractual Clauses for cross‑border transfers).
+            </p>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Main subprocessors</p>
+              <ul className="mt-3 list-disc pl-5 space-y-2 text-sm">
+                <li><strong>Supabase</strong> — database, storage, authentication.</li>
+                <li><strong>Vercel</strong> — hosting, CDN, serverless compute.</li>
+                <li><strong>Stripe</strong> — payments and invoicing.</li>
+                <li><strong>Resend</strong> — transactional and alert emails.</li>
+                <li><strong>Google</strong> — OAuth sign‑in (if you use Google login) and AI features (Gemini) when explicitly triggered.</li>
+              </ul>
+            </div>
+            <p className="text-xs text-slate-500">
+              Some providers may process data outside the EEA/UK. We rely on appropriate safeguards and contractual controls to protect your data.
+            </p>
+          </div>
         </section>
 
         <section className="space-y-6">
@@ -119,9 +150,20 @@ const PrivacyPolicy: React.FC = () => {
             </div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">8. Your Rights</h2>
           </div>
-          <p className="text-slate-600 leading-relaxed font-medium">
-            You have the right to access, correct, or delete your personal data at any time. You can also object to processing or request data portability. To exercise these rights, please contact us at the email above.
-          </p>
+          <div className="text-slate-600 leading-relaxed font-medium space-y-4">
+            <p>
+              You have the right to access, correct, delete, or export your personal data, and to object or restrict certain processing (subject to legal limitations).
+            </p>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">DSR process (access / delete / export)</p>
+              <ol className="mt-3 list-decimal pl-5 space-y-2 text-sm">
+                <li>Email your request to <a href="mailto:info@careerspal.com" className="text-indigo-600 font-black hover:underline">info@careerspal.com</a> from the address linked to your account.</li>
+                <li>We may ask for additional verification to protect your data.</li>
+                <li><strong>Acknowledgement SLA:</strong> typically within <strong>2 business days</strong>.</li>
+                <li><strong>Completion target:</strong> we aim to complete requests within <strong>30 days</strong> (GDPR standard), or sooner where possible.</li>
+              </ol>
+            </div>
+          </div>
         </section>
 
         <div className="pt-10 border-t border-slate-50 flex justify-between items-center">

@@ -48,7 +48,7 @@ const Newsletter: React.FC = () => {
               <span className="text-indigo-400">Elite Opportunity.</span>
             </h2>
             <p className="text-slate-400 text-lg font-medium">
-              Join 4,500+ professionals. Select your expertise and get notified instantly when a matching role drops.
+              Get curated role alerts. Select your expertise and we’ll notify you when a matching role drops.
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
               {["Verified employers", "Invite-only roles", "Response SLA"].map((label) => (
@@ -102,7 +102,7 @@ const Newsletter: React.FC = () => {
             We respect your inbox. Unsubscribe anytime. Data stored securely.
           </p>
           <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest">
-            Zero spam. One email per week.
+            Zero spam. You control frequency.
           </p>
         </div>
       </div>

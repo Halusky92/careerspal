@@ -156,13 +156,16 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
       </div>
 
       <div className="mt-12 sm:mt-20 text-center">
-        <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em] mb-4">Trusted by Founders at</p>
-        <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-12 opacity-30 grayscale hover:grayscale-0 transition-all duration-700">
+        <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em] mb-4">Built for teams using</p>
+        <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-12 opacity-40 grayscale hover:grayscale-0 transition-all duration-700">
            <img src="https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg" className="h-5 sm:h-6" alt="Notion" />
            <img src="https://cdn.worldvectorlogo.com/logos/zapier.svg" className="h-5 sm:h-6" alt="Zapier" />
            <img src="https://upload.wikimedia.org/wikipedia/commons/4/4b/Airtable_Logo.svg" className="h-5 sm:h-6" alt="Airtable" />
            <img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg" className="h-5 sm:h-6" alt="Slack" />
         </div>
+        <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          Tool-stack logos shown for ecosystem context, not endorsements.
+        </p>
       </div>
 
       <div className="mt-10 sm:mt-16 bg-white/80 backdrop-blur border border-slate-200/60 rounded-[3rem] p-8 sm:p-12 shadow-[0_25px_70px_rgba(15,23,42,0.08)]">
