@@ -3,22 +3,12 @@
 import { useRouter } from "next/navigation";
 import Pricing from "../../components/Pricing";
 import { PlanType } from "../../types";
-import { useSupabaseAuth } from "../../components/Providers";
 
 const PricingPage = () => {
   const router = useRouter();
-  const { profile, loading: authLoading } = useSupabaseAuth();
 
   const handleSelectPlan = (type: PlanType, price: number) => {
     sessionStorage.setItem("cp_selected_plan", JSON.stringify({ type, price }));
-    if (!profile?.email) {
-      router.push("/auth");
-      return;
-    }
-    if (profile?.role && profile.role !== "employer" && profile.role !== "admin") {
-      router.push("/dashboard/candidate");
-      return;
-    }
     router.push("/post-a-job");
   };
 

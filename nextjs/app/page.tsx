@@ -214,7 +214,9 @@ export default function HomePage() {
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200">Live signal</p>
               <h3 className="text-3xl sm:text-4xl font-black mt-3">High-quality roles, no noise.</h3>
               <p className="text-slate-300 font-medium mt-2 max-w-2xl">
-                Real roles from the last 30 days, reviewed before publish{lastUpdatedText ? ` • Updated ${lastUpdatedText}` : ""}.
+                {jobs.length > 0
+                  ? `Real roles from the last 30 days, reviewed before publish${lastUpdatedText ? ` • Updated ${lastUpdatedText}` : ""}.`
+                  : "No live roles right now — new listings are reviewed daily."}
               </p>
             </div>
             <div className="grid grid-cols-3 gap-4">

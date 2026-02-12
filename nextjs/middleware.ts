@@ -3,7 +3,9 @@ import type { NextRequest } from "next/server";
 import { supabaseAdmin } from "./lib/supabaseAdmin";
 
 const adminPaths = ["/dashboard/admin"];
-const employerPaths = ["/dashboard/employer", "/post-a-job", "/checkout"];
+// Note: /post-a-job and /checkout are intentionally public.
+// Auth is requested only at submission/payment time inside the UI.
+const employerPaths = ["/dashboard/employer"];
 const candidatePaths = ["/dashboard/candidate"];
 
 const matchesPath = (pathname: string, paths: string[]) =>
@@ -70,5 +72,5 @@ export async function middleware(_request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/account/:path*", "/post-a-job", "/checkout"],
+  matcher: ["/dashboard/:path*", "/account/:path*"],
 };

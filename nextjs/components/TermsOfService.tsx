@@ -2,6 +2,11 @@
 import React from 'react';
 
 const TermsOfService: React.FC = () => {
+  const operatorName = process.env.NEXT_PUBLIC_OPERATOR_NAME || "Mgr. Marek Bilek";
+  const operatorAddress = process.env.NEXT_PUBLIC_OPERATOR_ADDRESS || "";
+  const operatorCompanyId = process.env.NEXT_PUBLIC_OPERATOR_COMPANY_ID || "";
+  const operatorVatId = process.env.NEXT_PUBLIC_OPERATOR_VAT_ID || "";
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-24 animate-in fade-in slide-in-from-bottom-4">
       <div className="mb-12">
@@ -62,8 +67,13 @@ const TermsOfService: React.FC = () => {
 
         <div className="pt-10 border-t border-slate-50">
           <p className="text-sm font-black text-slate-900 uppercase tracking-widest mb-2">Legal Representative:</p>
-          <p className="text-slate-500 font-bold">Mgr. Marek Bilek • CEO & Founder</p>
+          <p className="text-slate-500 font-bold">{operatorName} • Operator</p>
           <p className="text-slate-500 font-bold">Email: info@careerspal.com</p>
+          <p className="mt-2 text-xs font-black uppercase tracking-widest text-slate-400">
+            {operatorCompanyId ? `Company ID ${operatorCompanyId}` : "Company ID not set"} •{" "}
+            {operatorVatId ? `VAT ${operatorVatId}` : "VAT not set"} •{" "}
+            {operatorAddress ? operatorAddress : "Address not set"}
+          </p>
         </div>
       </div>
     </div>

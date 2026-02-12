@@ -2,6 +2,11 @@
 import React from 'react';
 
 const PrivacyPolicy: React.FC = () => {
+  const operatorName = process.env.NEXT_PUBLIC_OPERATOR_NAME || "Mgr. Marek Bilek";
+  const operatorAddress = process.env.NEXT_PUBLIC_OPERATOR_ADDRESS || "";
+  const operatorCompanyId = process.env.NEXT_PUBLIC_OPERATOR_COMPANY_ID || "";
+  const operatorVatId = process.env.NEXT_PUBLIC_OPERATOR_VAT_ID || "";
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-24 animate-in fade-in slide-in-from-bottom-4">
       <div className="mb-12">
@@ -18,11 +23,15 @@ const PrivacyPolicy: React.FC = () => {
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">1. Data Controller</h2>
           </div>
           <p className="text-slate-600 leading-relaxed font-medium">
-            The data controller responsible for your personal information is <strong>Mgr. Marek Bilek</strong> (CEO & Founder of CareersPal Elite). We process data in accordance with the GDPR and other local data protection laws.
+            The data controller responsible for your personal information is <strong>{operatorName}</strong>. We process data in accordance with the GDPR and other local data protection laws.
             <br /><br />
             <strong>Contact:</strong> <a href="mailto:info@careerspal.com" className="text-indigo-600 font-bold hover:underline">info@careerspal.com</a>
             <br />
-            <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">Registered address and company ID available upon request.</span>
+            <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">
+              Operator details: {operatorCompanyId ? `Company ID ${operatorCompanyId}` : "Company ID not set"} •{" "}
+              {operatorVatId ? `VAT ${operatorVatId}` : "VAT not set"} •{" "}
+              {operatorAddress ? operatorAddress : "Address not set"}
+            </span>
           </p>
         </section>
 
@@ -159,7 +168,7 @@ const PrivacyPolicy: React.FC = () => {
               <ol className="mt-3 list-decimal pl-5 space-y-2 text-sm">
                 <li>Email your request to <a href="mailto:info@careerspal.com" className="text-indigo-600 font-black hover:underline">info@careerspal.com</a> from the address linked to your account.</li>
                 <li>We may ask for additional verification to protect your data.</li>
-                <li><strong>Acknowledgement SLA:</strong> typically within <strong>2 business days</strong>.</li>
+                <li><strong>Acknowledgement SLA:</strong> typically within <strong>2 days</strong>.</li>
                 <li><strong>Completion target:</strong> we aim to complete requests within <strong>30 days</strong> (GDPR standard), or sooner where possible.</li>
               </ol>
             </div>
