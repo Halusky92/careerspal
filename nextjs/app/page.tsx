@@ -9,26 +9,9 @@ import AIChatPanel from '../components/AIChatPanel';
 import { Job } from '../types';
 import { createJobSlug, createCompanySlug } from '../lib/jobs';
 import CompanyLogo from '../components/CompanyLogo';
+import JobCard from "../components/JobCard";
 
 const planWeight = { 'Elite Managed': 3, 'Featured Pro': 2, Standard: 1 };
-
-const isNewListing = (postedAt: string) => {
-  const lower = postedAt.toLowerCase();
-  return lower.includes('just now') || lower.includes('hour') || lower.includes('min');
-};
-
-const sanitizeDescription = (value?: string | null) => {
-  if (!value) return "";
-  const lines = value.split("\n");
-  const cleaned = lines.filter((line) => {
-    const trimmed = line.trim().toLowerCase();
-    if (!trimmed) return true;
-    if (trimmed.startsWith("import-") || trimmed.startsWith("import/")) return false;
-    if (trimmed.includes("import-") && !trimmed.includes(" ")) return false;
-    return true;
-  });
-  return cleaned.join("\n").trim();
-};
 
 export default function HomePage() {
   const router = useRouter();
@@ -85,9 +68,6 @@ export default function HomePage() {
     router.push(q ? `/jobs?query=${encodeURIComponent(q)}` : "/jobs");
   };
 
-  const handleOpenJob = (job: Job) => {
-    router.push(`/jobs/${createJobSlug(job)}`);
-  };
   const handleToggleJob = (job: Job) => {
     if (job.status === 'private' || job.status === 'invite_only') return;
     setExpandedJobId((prev) => (prev === job.id ? null : job.id));
@@ -203,137 +183,18 @@ export default function HomePage() {
               </div>
             )}
 
-            {hasJobs && topJobs.slice(0, 5).map((job) => {
-              const isElite = job.planType === 'Elite Managed';
-              const isPro = job.planType === 'Featured Pro';
-              const isNew = isNewListing(job.postedAt);
-              const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl !== '#');
-
-              return (
-                <div
+            {hasJobs &&
+              topJobs.slice(0, 5).map((job) => (
+                <JobCard
                   key={job.id}
-                  onClick={() => handleToggleJob(job)}
-                  className={`
-                    p-6 rounded-[2.5rem] shadow-lg transition-all cursor-pointer flex flex-col items-stretch justify-between group relative gap-4
-                    ${isElite
-                      ? 'bg-amber-50 text-slate-900 border-2 border-amber-200 shadow-xl shadow-[0_0_0_4px_rgba(251,191,36,0.18)]'
-                      : isPro
-                        ? 'bg-amber-50/60 border-2 border-amber-200 shadow-xl ring-4 ring-amber-50/60'
-                        : 'bg-amber-50/50 border-2 border-amber-200 shadow-sm hover:shadow-xl hover:border-amber-300'}
-                  `}
-                >
-                  {(isElite || isPro) && (
-                    <div
-                      className={`absolute -top-3 left-6 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm
-                        ${isElite ? 'bg-amber-200 text-amber-900' : 'bg-indigo-600 text-white'}`}
-                    >
-                      {isElite ? 'Elite' : 'Featured'}
-                    </div>
-                  )}
-
-                  {isNew && (
-                    <div className="absolute -top-3 right-8 animate-pulse">
-                      <span className="bg-red-500 text-white text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-red-200 shadow-lg border-2 border-white">
-                        New Drop
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center space-x-4 sm:space-x-6 w-full">
-                    <div
-                      className={`w-14 h-14 rounded-xl flex items-center justify-center p-1 relative
-                        ${isElite ? 'bg-amber-100 border border-amber-200' : 'bg-slate-50 border'}
-                      `}
-                    >
-                      <CompanyLogo
-                        name={job.company}
-                        logoUrl={job.logo}
-                        website={job.companyWebsite || job.applyUrl}
-                        className="w-full h-full rounded-lg overflow-hidden bg-white"
-                        imageClassName="w-full h-full object-contain"
-                        fallbackClassName="text-[10px]"
-                      />
-                    </div>
-                    <div>
-                      <h4
-                        className={`font-black transition-colors ${
-                          isElite ? 'text-slate-900 group-hover:text-yellow-700' : 'text-slate-900 group-hover:text-indigo-600'
-                        }`}
-                      >
-                        {job.title}
-                      </h4>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenCompany(job.company);
-                          }}
-                          className={`font-bold text-[10px] uppercase tracking-wider hover:underline ${
-                            isElite ? 'text-amber-700' : 'text-indigo-600'
-                          }`}
-                        >
-                          {job.company}
-                        </button>
-                        <span className={`text-[10px] ${isElite ? 'text-amber-300' : 'text-slate-300'}`}>•</span>
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${isElite ? 'text-amber-700' : 'text-slate-400'}`}>
-                          {job.location}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-start sm:items-end sm:text-right w-full">
-                    <span className={`font-black text-lg tracking-tighter whitespace-nowrap ${isElite ? 'text-amber-900' : 'text-slate-900'}`}>
-                      {job.salary}
-                    </span>
-                  </div>
-                  {expandedJobId === job.id && (
-                    <div className="w-full bg-white/90 border border-slate-200/70 rounded-[2rem] p-5 sm:p-6 text-left">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Role overview</p>
-                        <p className="text-sm text-slate-700 mt-2 whitespace-pre-wrap">
-                          {sanitizeDescription(job.description) || "Description coming soon."}
-                        </p>
-                      </div>
-                      <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] font-bold text-slate-600">
-                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                          <span className="text-[9px] uppercase tracking-widest text-slate-400">Company</span>
-                          <div className="mt-1">{job.company || "N/A"}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                          <span className="text-[9px] uppercase tracking-widest text-slate-400">Location</span>
-                          <div className="mt-1">{job.location || "N/A"}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                          <span className="text-[9px] uppercase tracking-widest text-slate-400">Type</span>
-                          <div className="mt-1">{job.type || "N/A"}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                          <span className="text-[9px] uppercase tracking-widest text-slate-400">Posted</span>
-                          <div className="mt-1">{job.postedAt}</div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!hasApplyUrl) return;
-                          window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
-                        }}
-                        disabled={!hasApplyUrl}
-                        className={`mt-4 inline-flex items-center justify-center rounded-full px-4 py-2 text-[9px] font-black uppercase tracking-widest transition-all w-full sm:w-auto ${
-                          hasApplyUrl
-                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                        }`}
-                      >
-                        {hasApplyUrl ? 'Quick apply' : 'Apply soon'}
-                      </button>
-                      {/* Full details CTA temporarily hidden; keep placement for later */}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                  job={job}
+                  expanded={expandedJobId === job.id}
+                  onToggleExpanded={() => handleToggleJob(job)}
+                  onOpenCompany={(companyName) => handleOpenCompany(companyName)}
+                  showBookmark={false}
+                  variant="home"
+                />
+              ))}
 
             <div className="pt-4">
               <button
@@ -356,45 +217,15 @@ export default function HomePage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {topJobs.slice(0, 3).map((job) => (
-                  (() => {
-                    const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl !== '#');
-                    return (
-                      <div
+                  <JobCard
                     key={`recent-${job.id}`}
-                    onClick={() => handleToggleJob(job)}
-                    className="bg-amber-50/50 backdrop-blur border border-amber-200/60 rounded-2xl p-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] hover:shadow-xl transition-all cursor-pointer"
-                  >
-                    <div className="text-xs font-black text-slate-900 truncate">{job.title}</div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 truncate">
-                      {job.company}
-                    </div>
-                    {expandedJobId === job.id && (
-                      <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-[11px] font-bold text-slate-600 space-y-2">
-                        <p className="text-[9px] uppercase tracking-widest text-slate-400">Role overview</p>
-                        <p className="text-slate-700 text-xs whitespace-pre-wrap">
-                          {sanitizeDescription(job.description) || "Description coming soon."}
-                        </p>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!hasApplyUrl) return;
-                            window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
-                          }}
-                          disabled={!hasApplyUrl}
-                          className={`mt-2 inline-flex items-center justify-center rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest transition-all w-full ${
-                            hasApplyUrl
-                              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                              : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                          }`}
-                        >
-                          {hasApplyUrl ? 'Quick apply' : 'Apply soon'}
-                        </button>
-                        {/* Full details CTA temporarily hidden; keep placement for later */}
-                      </div>
-                    )}
-                      </div>
-                    );
-                  })()
+                    job={job}
+                    expanded={expandedJobId === job.id}
+                    onToggleExpanded={() => handleToggleJob(job)}
+                    onOpenCompany={(companyName) => handleOpenCompany(companyName)}
+                    showBookmark={false}
+                    variant="board"
+                  />
                 ))}
               </div>
             </div>
