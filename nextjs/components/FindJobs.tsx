@@ -358,9 +358,108 @@ const sanitizeDescription = (value?: string | null) => {
     <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-hidden rounded-[2.75rem] border border-transparent relative">
       <div
         ref={filterScrollRef}
-        className="space-y-10 pr-2 pb-24 max-h-[calc(100vh-7rem)] overflow-y-auto scroll-smooth"
+        className="space-y-6 pr-2 pb-24 max-h-[calc(100vh-7rem)] overflow-y-auto scroll-smooth"
       >
-      <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
+      <div ref={searchRef} className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
+        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-2xl">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Search</h3>
+        </div>
+        <div className="space-y-3">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search role, company, tool…"
+              className="w-full rounded-xl border border-slate-200/70 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 pr-10"
+              inputMode="search"
+              autoComplete="off"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setQuery("");
+                  setShowSuggestions(false);
+                }
+                if (e.key === "Enter") {
+                  setShowSuggestions(false);
+                }
+              }}
+            />
+            {query && (
+              <button
+                onClick={() => {
+                  setQuery("");
+                  setShowSuggestions(false);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600"
+                aria-label="Clear search"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-indigo-50 rounded-2xl shadow-2xl overflow-hidden z-40">
+                {suggestions.map((suggestion, idx) => (
+                  <button
+                    key={`${suggestion}-${idx}`}
+                    onClick={() => {
+                      setQuery(suggestion);
+                      setShowSuggestions(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-indigo-50/50 last:border-none"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Location (optional)…"
+              className="w-full rounded-xl border border-slate-200/70 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 pr-10"
+              autoComplete="off"
+              value={locationQuery}
+              onChange={(e) => setLocationQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setLocationQuery("");
+              }}
+            />
+            {locationQuery && (
+              <button
+                onClick={() => setLocationQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600"
+                aria-label="Clear location"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400" aria-live="polite">
+              {filteredAndSorted.length} roles
+            </span>
+            <button
+              onClick={clearAllFilters}
+              className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
         <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
           <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Expertise Segments</h3>
         </div>
@@ -380,7 +479,7 @@ const sanitizeDescription = (value?: string | null) => {
         </div>
       </div>
 
-      <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
         <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
           <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Work Mode</h3>
         </div>
@@ -399,7 +498,7 @@ const sanitizeDescription = (value?: string | null) => {
         </div>
       </div>
 
-      <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
         <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
           <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Employment Type</h3>
         </div>
@@ -418,7 +517,7 @@ const sanitizeDescription = (value?: string | null) => {
         </div>
       </div>
 
-      <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
         <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
           <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Minimum Salary</h3>
         </div>
@@ -437,7 +536,7 @@ const sanitizeDescription = (value?: string | null) => {
         </div>
       </div>
 
-      <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
         <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
           <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Systems Stack</h3>
         </div>
@@ -472,35 +571,35 @@ const sanitizeDescription = (value?: string | null) => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <div className="mb-12 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
-        <div>
-          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight mb-4">
-            Browse the <span className="text-indigo-600 text-gradient">Elite Board.</span>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="px-2">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Jobs
           </h1>
-          <p className="text-base sm:text-xl text-slate-500 font-medium italic">
-            The home of elite Operations, Product & Automation talent.
+          <p className="text-sm text-slate-500 font-medium mt-1">
+            {filteredAndSorted.length} roles • screened employers • response SLA 2 days
           </p>
         </div>
 
-        <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm self-center lg:self-end">
-          <button 
-            onClick={() => setSortBy('newest')}
-            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${sortBy === 'newest' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:text-slate-600'}`}
+        <div className="flex items-center gap-3 px-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sort</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
+            >
+              <option value="newest">Newest</option>
+              <option value="salary">Highest salary</option>
+              <option value="match">Best match</option>
+            </select>
+          </div>
+          <button
+            onClick={clearAllFilters}
+            className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800"
           >
-            Newest
-          </button>
-          <button 
-            onClick={() => setSortBy('salary')}
-            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${sortBy === 'salary' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            Salary
-          </button>
-          <button 
-            onClick={() => setSortBy('match')}
-            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${sortBy === 'match' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            Match
+            Clear
           </button>
         </div>
       </div>
@@ -510,15 +609,7 @@ const sanitizeDescription = (value?: string | null) => {
           <FilterContent />
         </aside>
 
-        <div className="flex-1 space-y-8">
-          <div className="flex items-center justify-between px-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700">
-              Verified board • response SLA
-            </div>
-            <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Invite-only roles available
-            </div>
-          </div>
+        <div className="flex-1 space-y-6">
 
           <div className="flex flex-wrap items-center gap-2 px-2">
             {CATEGORIES.filter((c) => c !== "All Roles").slice(0, 6).map((cat) => (
@@ -562,62 +653,6 @@ const sanitizeDescription = (value?: string | null) => {
               </button>
             )}
           </div>
-          <div ref={searchRef} className="relative group sticky top-24 z-30">
-            <div className="relative flex items-center bg-white/90 backdrop-blur-md border border-slate-100 rounded-[2.5rem] shadow-lg focus-within:ring-4 focus-within:ring-indigo-100 transition-all overflow-hidden">
-              <div className="pl-8 text-slate-300">
-                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-              </div>
-              <input 
-                type="text" 
-                placeholder="Search by role, company or tool (e.g. Notion, Make)..." 
-                className="w-full px-6 py-5 sm:py-7 bg-transparent outline-none text-base sm:text-xl font-medium placeholder:text-slate-300"
-                inputMode="search"
-                autoComplete="off"
-                autoFocus={Boolean(initialQuery || initialLocationQuery)}
-                value={query}
-                onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); }}
-                onFocus={() => setShowSuggestions(true)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    setQuery('');
-                    setShowSuggestions(false);
-                  }
-                  if (e.key === 'Enter') {
-                    setShowSuggestions(false);
-                  }
-                }}
-              />
-              {query && (
-                <button 
-                  onClick={() => { setQuery(''); setShowSuggestions(false); }}
-                  className="p-2.5 sm:p-3 mr-4 text-slate-300 hover:text-indigo-600 transition-colors"
-                  aria-label="Clear search"
-                >
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-              )}
-            </div>
-
-            {/* PREDICTIVE SUGGESTIONS */}
-            {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-indigo-50 rounded-[2rem] shadow-2xl overflow-hidden z-40">
-                {suggestions.map((suggestion, idx) => (
-                  <button 
-                    key={idx}
-                    onClick={() => {
-                      setQuery(suggestion);
-                      setShowSuggestions(false);
-                    }}
-                    className="w-full text-left px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-indigo-50/50 last:border-none flex items-center gap-4"
-                  >
-                    <svg className="w-4 h-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
           <div className="lg:hidden">
             <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm px-5 py-4 space-y-4">
               <div ref={mobileTitleRef} className="relative">
@@ -821,12 +856,12 @@ const sanitizeDescription = (value?: string | null) => {
                   handleToggleJob(job);
                 }}
                   className={`
-                    p-3 sm:p-4 rounded-[1.5rem] sm:rounded-[2rem] transition-all cursor-pointer group flex flex-col items-stretch justify-between gap-3 sm:gap-4 relative active:scale-[0.99] animate-in fade-in slide-in-from-bottom-2
+                    p-4 rounded-2xl transition-all cursor-pointer group flex flex-col items-stretch justify-between gap-3 relative active:scale-[0.99] animate-in fade-in slide-in-from-bottom-2
                     ${isElite 
-                      ? 'bg-amber-50 border-2 border-amber-200 shadow-xl text-slate-900 shadow-[0_0_0_4px_rgba(251,191,36,0.18)]' 
+                      ? 'bg-amber-50 border border-amber-200 shadow-sm text-slate-900 border-l-4 border-l-amber-400' 
                       : isPro 
-                        ? 'bg-white border-2 border-amber-200 shadow-xl ring-4 ring-amber-50/60'
-                        : 'bg-white border-2 border-amber-100 shadow-sm hover:shadow-xl hover:border-amber-200'}
+                        ? 'bg-white border border-amber-200 shadow-sm border-l-4 border-l-amber-400'
+                        : 'bg-white border border-amber-200 shadow-sm hover:shadow-md border-l-4 border-l-amber-300'}
                     ${isPrivate ? 'opacity-70' : ''}
                   `}
                 >
@@ -865,7 +900,7 @@ const sanitizeDescription = (value?: string | null) => {
                      <svg className="w-3.5 h-3.5" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
                   </button>
 
-                  <div className="flex items-center gap-4 w-full">
+                  <div className="flex items-start gap-4 w-full">
                     <div
                       className={`
                       w-11 h-11 sm:w-14 sm:h-14 rounded-[1rem] sm:rounded-[1.3rem] flex items-center justify-center overflow-hidden p-1 flex-shrink-0
@@ -882,7 +917,7 @@ const sanitizeDescription = (value?: string | null) => {
                       />
                     </div>
                     
-                    {/* Added pr-12 to prevent text overlap with heart button */}
+                    {/* Added pr to prevent overlap with heart button */}
                     <div className="flex-1 min-w-0 pr-9">
                       <h3 className={`text-base sm:text-lg font-black tracking-tight leading-tight truncate ${isElite ? 'text-slate-900 group-hover:text-yellow-700' : 'text-slate-900 group-hover:text-indigo-600'} transition-colors`}>
                         {job.title}
@@ -910,7 +945,7 @@ const sanitizeDescription = (value?: string | null) => {
                         </span>
                       </div>
                       <div className="flex gap-2 mt-2.5 flex-wrap">
-                        {job.tools?.map(tool => (
+                        {(job.tools || []).slice(0, 3).map((tool) => (
                           <span key={tool} className={`
                             text-[7px] font-black px-2 py-1 rounded-lg border uppercase tracking-widest
                             ${isElite ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-slate-50 text-slate-400 border-slate-100'}
@@ -918,6 +953,15 @@ const sanitizeDescription = (value?: string | null) => {
                             {tool}
                           </span>
                         ))}
+                        {(job.tools || []).length > 3 && (
+                          <span
+                            className={`text-[7px] font-black px-2 py-1 rounded-lg border uppercase tracking-widest ${
+                              isElite ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-slate-50 text-slate-400 border-slate-100'
+                            }`}
+                          >
+                            +{(job.tools || []).length - 3}
+                          </span>
+                        )}
                       </div>
                       <div className="flex flex-wrap gap-2 mt-2">
                         <span className="text-[7px] font-black uppercase tracking-widest px-2 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700">
@@ -931,17 +975,9 @@ const sanitizeDescription = (value?: string | null) => {
                       </div>
                     </div>
                   </div>
-                  <div className="w-full border-t md:border-none pt-3 md:pt-0 border-slate-100/10 flex flex-col items-start md:items-end text-left md:text-right gap-2">
-                    <div className={`text-lg sm:text-xl font-black tracking-tighter whitespace-nowrap ${isElite ? 'text-yellow-900' : 'text-slate-900'}`}>
+                  <div className="w-full border-t border-slate-100 pt-3 flex items-center justify-between gap-3">
+                    <div className={`text-base sm:text-lg font-black tracking-tight whitespace-nowrap ${isElite ? 'text-yellow-900' : 'text-slate-900'}`}>
                       {job.salary}
-                    </div>
-                    
-                    {/* Salary Competitiveness Meter */}
-                    <div className="flex items-center justify-end gap-2">
-                       <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${salaryStats.color}`} style={{ width: salaryStats.width }}></div>
-                       </div>
-                       <span className={`text-[7px] font-black uppercase tracking-widest ${isElite ? 'text-yellow-700' : 'text-slate-400'}`}>{salaryStats.label}</span>
                     </div>
 
                     <button
@@ -970,13 +1006,12 @@ const sanitizeDescription = (value?: string | null) => {
                     >
                       {isPrivate ? 'Request access' : hasApplyUrl ? 'Quick apply' : 'Apply soon'}
                     </button>
-
-                    <div className="flex items-center justify-start md:justify-end gap-3">
-                      <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-widest ${isElite ? 'text-yellow-700' : 'text-slate-300'}`}>{formatPostedDate(job)}</span>
-                      {job.matchScore && (
-                        <span className={`text-[7px] sm:text-[8px] font-black px-2 py-1 rounded-lg border ${isElite ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}>Match {job.matchScore}%</span>
-                      )}
-                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 mt-1">
+                    <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-widest ${isElite ? 'text-yellow-700' : 'text-slate-300'}`}>{formatPostedDate(job)}</span>
+                    {job.matchScore && (
+                      <span className={`text-[7px] sm:text-[8px] font-black px-2 py-1 rounded-lg border ${isElite ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}>Match {job.matchScore}%</span>
+                    )}
                   </div>
                   {expandedJobId === job.id && (
                     <div className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 text-left">
