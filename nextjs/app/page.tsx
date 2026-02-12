@@ -62,6 +62,19 @@ export default function HomePage() {
   const hasJobs = jobs.length > 0;
   const companyCount = useMemo(() => new Set(jobs.map((job) => job.company)).size, [jobs]);
   const matchTotal = useMemo(() => jobs.reduce((sum, job) => sum + (job.matches || 0), 0), [jobs]);
+  const rolesLast7Days = useMemo(() => {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return jobs.filter((job) => (job.timestamp ?? 0) >= cutoff).length;
+  }, [jobs]);
+  const lastUpdatedText = useMemo(() => {
+    const maxTs = jobs.reduce((max, job) => Math.max(max, job.timestamp ?? 0), 0);
+    if (!maxTs) return null;
+    try {
+      return new Date(maxTs).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    } catch {
+      return null;
+    }
+  }, [jobs]);
 
   const handleSearch = (query: string) => {
     router.push(`/jobs?query=${encodeURIComponent(query)}`);
@@ -93,60 +106,48 @@ export default function HomePage() {
         jobs={jobs}
       />
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 pb-8">
-        <div className="bg-indigo-600 text-white rounded-[2rem] px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl shadow-indigo-200">
-          <span className="text-[10px] font-black uppercase tracking-widest">Invite-only roles just opened</span>
-          <button
-            onClick={() => router.push('/jobs')}
-            className="px-4 py-2 rounded-full bg-white text-indigo-600 text-[10px] font-black uppercase tracking-widest"
-          >
-            Explore now
-          </button>
-        </div>
-      </section>
-
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 pb-10">
         <div className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2.5rem] p-6 sm:p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Built for teams using</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Optimized for modern ops stacks</p>
             </div>
             <div className="relative w-full sm:w-[420px] overflow-hidden">
               <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-white/90 to-transparent pointer-events-none"></div>
               <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white/90 to-transparent pointer-events-none"></div>
               <div className="flex items-center gap-6 animate-nav-loop pr-6">
                 {[
-                  { name: "Notion", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg", glow: "shadow-[0_0_18px_rgba(0,0,0,0.15)]" },
-                  { name: "Linear", logoUrl: "/logos/linear.png", glow: "shadow-[0_0_18px_rgba(99,102,241,0.25)]" },
-                  { name: "Canva", logoUrl: "https://public.canva.site/logo/media/82983fc70ff088d1a1a2277f75f1c64d.svg", glow: "shadow-[0_0_18px_rgba(0,180,216,0.25)]" },
-                  { name: "Ramp", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4e/Ramp_Business_Corporation_Logo.svg", glow: "shadow-[0_0_18px_rgba(16,185,129,0.25)]" },
-                  { name: "Webflow", logoUrl: "https://dhygzobemt712.cloudfront.net/Logo/Full_Logo_Blue_Black.svg", glow: "shadow-[0_0_18px_rgba(59,130,246,0.25)]" },
-                  { name: "Airtable", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4b/Airtable_Logo.svg", glow: "shadow-[0_0_18px_rgba(250,204,21,0.25)]" },
+                  { name: "Notion", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg" },
+                  { name: "Linear", logoUrl: "/logos/linear.png" },
+                  { name: "Canva", logoUrl: "https://public.canva.site/logo/media/82983fc70ff088d1a1a2277f75f1c64d.svg" },
+                  { name: "Ramp", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4e/Ramp_Business_Corporation_Logo.svg" },
+                  { name: "Webflow", logoUrl: "https://dhygzobemt712.cloudfront.net/Logo/Full_Logo_Blue_Black.svg" },
+                  { name: "Airtable", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4b/Airtable_Logo.svg" },
                 ].map((item, idx) => (
-                  <div key={`${item.name}-${idx}`} className={`h-9 w-24 rounded-full bg-white/90 border border-slate-200/70 flex items-center justify-center ${item.glow}`}>
+                  <div key={`${item.name}-${idx}`} className="h-8 w-20 rounded-full bg-white/90 border border-slate-200/70 flex items-center justify-center">
                     <CompanyLogo
                       name={item.name}
                       logoUrl={item.logoUrl}
                       className="h-5 w-16 flex items-center justify-center"
-                      imageClassName="h-4 w-auto object-contain"
+                      imageClassName="h-4 w-auto object-contain grayscale opacity-80"
                       fallbackClassName="text-[9px]"
                     />
                   </div>
                 ))}
                 {[
-                  { name: "Notion", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg", glow: "shadow-[0_0_18px_rgba(0,0,0,0.15)]" },
-                  { name: "Linear", logoUrl: "/logos/linear.png", glow: "shadow-[0_0_18px_rgba(99,102,241,0.25)]" },
-                  { name: "Canva", logoUrl: "https://public.canva.site/logo/media/82983fc70ff088d1a1a2277f75f1c64d.svg", glow: "shadow-[0_0_18px_rgba(0,180,216,0.25)]" },
-                  { name: "Ramp", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4e/Ramp_Business_Corporation_Logo.svg", glow: "shadow-[0_0_18px_rgba(16,185,129,0.25)]" },
-                  { name: "Webflow", logoUrl: "https://dhygzobemt712.cloudfront.net/Logo/Full_Logo_Blue_Black.svg", glow: "shadow-[0_0_18px_rgba(59,130,246,0.25)]" },
-                  { name: "Airtable", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4b/Airtable_Logo.svg", glow: "shadow-[0_0_18px_rgba(250,204,21,0.25)]" },
+                  { name: "Notion", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg" },
+                  { name: "Linear", logoUrl: "/logos/linear.png" },
+                  { name: "Canva", logoUrl: "https://public.canva.site/logo/media/82983fc70ff088d1a1a2277f75f1c64d.svg" },
+                  { name: "Ramp", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4e/Ramp_Business_Corporation_Logo.svg" },
+                  { name: "Webflow", logoUrl: "https://dhygzobemt712.cloudfront.net/Logo/Full_Logo_Blue_Black.svg" },
+                  { name: "Airtable", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4b/Airtable_Logo.svg" },
                 ].map((item, idx) => (
-                  <div key={`${item.name}-dup-${idx}`} className={`h-9 w-24 rounded-full bg-white/90 border border-slate-200/70 flex items-center justify-center ${item.glow}`}>
+                  <div key={`${item.name}-dup-${idx}`} className="h-8 w-20 rounded-full bg-white/90 border border-slate-200/70 flex items-center justify-center">
                     <CompanyLogo
                       name={item.name}
                       logoUrl={item.logoUrl}
                       className="h-5 w-16 flex items-center justify-center"
-                      imageClassName="h-4 w-auto object-contain"
+                      imageClassName="h-4 w-auto object-contain grayscale opacity-80"
                       fallbackClassName="text-[9px]"
                     />
                   </div>
@@ -154,9 +155,6 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-          <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-            Logos are trademarks of their owners. Shown to help identify common tool stacks — no affiliation implied.
-          </p>
         </div>
       </section>
 
@@ -182,7 +180,7 @@ export default function HomePage() {
               },
               {
                 title: "Verify",
-                copy: "Employers pass a trust check and commit to response SLAs.",
+                copy: "We validate employer identity (domain + contact) and check for red flags before publishing.",
               },
               {
                 title: "Match",
@@ -198,6 +196,14 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+          <div className="mt-6 rounded-[1.8rem] border border-slate-200/60 bg-white p-5">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">What we reject</div>
+            <ul className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-slate-600 font-medium">
+              <li className="flex items-center gap-2"><span className="text-rose-500 font-black">×</span> No salary range</li>
+              <li className="flex items-center gap-2"><span className="text-rose-500 font-black">×</span> Vague scope / responsibilities</li>
+              <li className="flex items-center gap-2"><span className="text-rose-500 font-black">×</span> Low-signal spam listings</li>
+            </ul>
+          </div>
         </div>
       </section>
 
@@ -208,14 +214,14 @@ export default function HomePage() {
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200">Live signal</p>
               <h3 className="text-3xl sm:text-4xl font-black mt-3">High-quality roles, no noise.</h3>
               <p className="text-slate-300 font-medium mt-2 max-w-2xl">
-                We keep the board tight so each click feels worth it.
+                Real roles from the last 30 days, reviewed before publish{lastUpdatedText ? ` • Updated ${lastUpdatedText}` : ""}.
               </p>
             </div>
             <div className="grid grid-cols-3 gap-4">
               {[
                 { label: "Live roles", value: jobs.length || 0 },
                 { label: "Teams", value: companyCount || 0 },
-                { label: "Matches", value: matchTotal || 0 },
+                { label: "Added (7d)", value: rolesLast7Days || 0 },
               ].map((item) => (
                 <div key={item.label} className="bg-white/10 border border-white/10 rounded-2xl px-4 py-4 text-center">
                   <div className="text-2xl font-black">{item.value}</div>

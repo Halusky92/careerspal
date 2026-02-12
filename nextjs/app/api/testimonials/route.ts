@@ -3,9 +3,9 @@ import { NextResponse } from "next/server";
 export async function GET() {
   return NextResponse.json({
     reviews: [
-      { name: "Sarah Jenkins", role: "Notion Ops Manager", rating: 5 },
-      { name: "David Chen", role: "Systems Architect", rating: 5 },
-      { name: "Elena Rodriguez", role: "Head of Remote", rating: 5 },
+      { name: "Ops Lead", role: "EU • Systems & Operations", note: "Early member feedback" },
+      { name: "Automation Specialist", role: "Remote • No-code / Ops", note: "Early member feedback" },
+      { name: "Hiring Manager", role: "B2B • Operations", note: "Early member feedback" },
     ],
   });
 }

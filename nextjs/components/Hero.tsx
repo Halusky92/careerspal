@@ -100,11 +100,48 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onJoinPool, onSearch, jobs }) => 
             </h1>
             
             <p className="max-w-xl mx-auto lg:mx-0 text-base sm:text-lg md:text-xl text-slate-500 font-medium leading-relaxed mb-8 sm:mb-10">
-              The premier board for Notion Architects, Ops Leaders, and Automation experts building the future with clarity and signal.
+              Curated remote roles for operations, automation, and systems leaders — reviewed for clarity (salary + scope) before they go live.
             </p>
+
+            <div className="max-w-xl mx-auto lg:mx-0 mb-8 sm:mb-10">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-3 sm:gap-4">
+                <button
+                  onClick={onBrowse}
+                  className="w-full sm:w-auto bg-indigo-600 text-white px-8 sm:px-10 py-4 sm:py-5 rounded-2xl sm:rounded-[1.8rem] font-black text-base sm:text-lg hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 active:scale-95"
+                >
+                  Browse Roles
+                </button>
+                <a
+                  href="/post-a-job"
+                  className="w-full sm:w-auto text-center px-8 sm:px-10 py-4 sm:py-5 rounded-2xl sm:rounded-[1.8rem] font-black text-base sm:text-lg bg-white/70 backdrop-blur text-slate-900 border border-slate-200 hover:bg-indigo-50 transition-all active:scale-95 shadow-sm"
+                >
+                  Post a job
+                </a>
+              </div>
+              <div className="mt-4 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 text-xs sm:text-sm font-bold text-slate-500">
+                <span className="inline-flex items-center gap-2">
+                  <span className="text-emerald-600">✓</span> Salary ranges required
+                </span>
+                <span className="hidden sm:inline text-slate-300">•</span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="text-emerald-600">✓</span> Verified employers
+                </span>
+                <span className="hidden sm:inline text-slate-300">•</span>
+                <button
+                  type="button"
+                  onClick={onJoinPool}
+                  className="text-indigo-600 hover:text-indigo-800 font-black uppercase tracking-widest text-[10px]"
+                >
+                  Join talent pool →
+                </button>
+              </div>
+            </div>
             
             {/* ENHANCED SEARCH BAR */}
             <div ref={searchRef} className="max-w-xl mx-auto lg:mx-0 relative mb-8 sm:mb-10 group">
+              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-3 text-center lg:text-left">
+                Search the board
+              </div>
               <div className="relative flex items-center bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden focus-within:ring-4 focus-within:ring-indigo-100 transition-all">
                 <div className="pl-5 text-slate-300">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -166,21 +203,6 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onJoinPool, onSearch, jobs }) => 
                   {tag}
                 </button>
               ))}
-            </div>
-            
-            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 sm:gap-5">
-              <button 
-                onClick={onBrowse}
-                className="w-full sm:w-auto bg-indigo-600 text-white px-8 sm:px-10 py-4 sm:py-5 rounded-2xl sm:rounded-[1.8rem] font-black text-base sm:text-lg hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 active:scale-95"
-              >
-                Browse Roles
-              </button>
-              <button 
-                onClick={onJoinPool}
-                className="w-full sm:w-auto bg-white/80 backdrop-blur text-slate-900 border border-slate-200 px-8 sm:px-10 py-4 sm:py-5 rounded-2xl sm:rounded-[1.8rem] font-black text-base sm:text-lg hover:bg-indigo-50 transition-all active:scale-95 shadow-sm"
-              >
-                Join Talent Pool
-              </button>
             </div>
 
             <p className="mt-4 text-xs sm:text-sm text-slate-500 font-medium max-w-xl mx-auto lg:mx-0">

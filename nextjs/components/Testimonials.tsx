@@ -4,24 +4,21 @@ import React from 'react';
 const Testimonials: React.FC = () => {
   const reviews = [
     {
-      name: "Sarah Jenkins",
-      role: "Notion Ops Manager",
-      text: "Finally, a job board that respects the importance of data. The salary comparison charts helped me negotiate a 20% raise.",
-      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80",
+      name: "Ops Lead",
+      role: "EU • Systems & Operations",
+      text: "The listings feel edited. Salary ranges + clear scope saved me time compared to generic boards.",
       visualType: "chart"
     },
     {
-      name: "David Chen",
-      role: "Systems Architect",
-      text: "The 'Operational DNA' tables are genius. I knew exactly which companies had the async culture I was looking for. Zero wasted interviews.",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+      name: "Automation Specialist",
+      role: "Remote • No-code / Ops",
+      text: "Filters by stack (Notion, Zapier, Make) make it fast to spot the roles that match how I actually work.",
       visualType: "table"
     },
     {
-      name: "Elena Rodriguez",
-      role: "Head of Remote",
-      text: "Thank you for the seamless hiring process. We filled our Lead Consultant role in 4 days thanks to the elite filtering.",
-      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80",
+      name: "Hiring Manager",
+      role: "B2B • Operations",
+      text: "The review step caught missing details before going live. Fewer mismatched applicants, better signal.",
       visualType: "success"
     }
   ];
@@ -33,12 +30,10 @@ const Testimonials: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
       <div className="text-center mb-16">
         <h2 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-4">Community Feedback</h2>
-        <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">Built for <span className="text-gradient">Data Lovers.</span></h3>
-        <p className="text-slate-500 font-medium mt-4 max-w-2xl mx-auto">Signal-first experiences for candidates and hiring teams who value clarity and response.</p>
-        <div className="mt-6 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-600">
-          <span>★★★★★</span>
-          <span>4.9 average rating</span>
-        </div>
+        <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">What members <span className="text-gradient">actually say.</span></h3>
+        <p className="text-slate-500 font-medium mt-4 max-w-2xl mx-auto">
+          Early feedback from operators and hiring teams using CareersPal in real searches and postings.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -85,13 +80,15 @@ const Testimonials: React.FC = () => {
             </p>
 
             <div className="flex items-center gap-4 border-t border-slate-50 pt-6">
-              <img src={review.image} alt={review.name} className="w-12 h-12 rounded-xl object-cover shadow-sm" />
+              <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center font-black text-indigo-600">
+                {review.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}
+              </div>
               <div>
                 <h4 className="font-black text-slate-900 text-sm">{review.name}</h4>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{review.role}</p>
               </div>
-              <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-full">
-                Verified
+              <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-600 bg-slate-50 border border-slate-200 px-2 py-1 rounded-full">
+                Member
               </span>
             </div>
           </div>
