@@ -445,6 +445,19 @@ const sanitizeDescription = (value?: string | null) => {
             )}
           </div>
 
+          <div className="grid grid-cols-1 gap-1">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sort</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
+            >
+              <option value="newest">Newest</option>
+              <option value="salary">Highest salary</option>
+              <option value="match">Best match</option>
+            </select>
+          </div>
+
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400" aria-live="polite">
               {filteredAndSorted.length} roles
@@ -571,39 +584,7 @@ const sanitizeDescription = (value?: string | null) => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div className="px-2">
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Jobs
-          </h1>
-          <p className="text-sm text-slate-500 font-medium mt-1">
-            {filteredAndSorted.length} roles • screened employers • response SLA 2 days
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 px-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sort</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
-            >
-              <option value="newest">Newest</option>
-              <option value="salary">Highest salary</option>
-              <option value="match">Best match</option>
-            </select>
-          </div>
-          <button
-            onClick={clearAllFilters}
-            className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800"
-          >
-            Clear
-          </button>
-        </div>
-      </div>
-
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <div className="flex flex-col lg:flex-row-reverse gap-12">
         <aside className="hidden lg:block lg:w-80 space-y-10 relative">
           <FilterContent />
@@ -763,6 +744,18 @@ const sanitizeDescription = (value?: string | null) => {
                       {mode}
                     </option>
                   ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sort</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                  className="mt-2 w-full rounded-xl border border-slate-200/70 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
+                >
+                  <option value="newest">Newest</option>
+                  <option value="salary">Highest salary</option>
+                  <option value="match">Best match</option>
                 </select>
               </div>
               <div className="flex items-center justify-between">

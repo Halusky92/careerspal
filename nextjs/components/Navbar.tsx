@@ -54,7 +54,19 @@ const Navbar: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             {/* Logo */}
-            <Link href="/" className="flex items-center space-x-3 cursor-pointer group relative z-[102]">
+            <Link
+              href="/"
+              scroll
+              onClick={(event) => {
+                // When already on home, Next.js won't navigate.
+                // Make the logo behave like "scroll to top".
+                if (pathname === "/") {
+                  event.preventDefault();
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }
+              }}
+              className="flex items-center space-x-3 cursor-pointer group relative z-[102]"
+            >
               <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center transition-transform group-hover:rotate-6 shadow-xl shadow-indigo-100">
                 <span className="text-white font-black text-lg">C</span>
               </div>
