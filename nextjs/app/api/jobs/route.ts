@@ -32,7 +32,9 @@ export const GET = async (request: Request) => {
   const type = searchParams.get("type");
   const planType = searchParams.get("planType");
   const remote = searchParams.get("remote");
-  const publishedCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // Note: we use `timestamp` (ms) for recency filtering because it's reliably set on publish.
+  // Some legacy/imported records may have `published_at` missing, which would incorrectly hide live roles.
+  const publishedCutoffMs = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
   let query = supabaseAdmin
     .from("jobs")
@@ -43,9 +45,7 @@ export const GET = async (request: Request) => {
     .order("timestamp", { ascending: false });
 
   query = query.eq("status", status);
-  if (status === "published") {
-    query = query.gte("published_at", publishedCutoff);
-  }
+  if (status === "published") query = query.gte("timestamp", publishedCutoffMs);
   if (category) query = query.eq("category", category);
   if (type) query = query.eq("type", type);
   if (planType) query = query.eq("plan_type", planType);

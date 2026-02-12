@@ -18,7 +18,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
   const router = useRouter();
   const [step, setStep] = useState<'form' | 'processing' | 'success'>('form');
   const [error, setError] = useState<string | null>(null);
-  const { accessToken, profile, loading: authLoading } = useSupabaseAuth();
+  const { accessToken, profile, loading: authLoading, refreshProfile } = useSupabaseAuth();
 
   if (!jobData) {
     return (
@@ -64,12 +64,32 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
       return;
     }
 
-    const role = profile?.role || null;
-    const hasAccess = Boolean(accessToken && profile?.email);
-    const roleOk = !role || role === "employer" || role === "admin";
-    if (!hasAccess || !roleOk) {
+    const hasAccess = Boolean(accessToken);
+    if (!hasAccess) {
       router.push(authRedirectUrl);
       return;
+    }
+
+    // If user is signed in but role is not employer/admin (or profile not loaded yet),
+    // upgrade role to employer so they can create/pay for a listing.
+    const currentRole = profile?.role || null;
+    const roleOk = currentRole === "employer" || currentRole === "admin";
+    if (!roleOk) {
+      try {
+        await authFetch(
+          "/api/account/role",
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role: "employer" }),
+          },
+          accessToken,
+        );
+        await refreshProfile();
+      } catch {
+        router.push(authRedirectUrl);
+        return;
+      }
     }
 
     setStep('processing');

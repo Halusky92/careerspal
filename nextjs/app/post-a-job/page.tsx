@@ -21,7 +21,7 @@ const getStoredPlan = () => {
 
 const PostJobPage = () => {
   const router = useRouter();
-  const { profile, accessToken, loading: authLoading } = useSupabaseAuth();
+  const { profile, accessToken, loading: authLoading, refreshProfile } = useSupabaseAuth();
   const [selectedPlan, setSelectedPlan] = useState<{ type: PlanType; price: number }>(() => {
     return getStoredPlan() || { type: "Standard", price: 79 };
   });
@@ -89,10 +89,29 @@ const PostJobPage = () => {
     const finalJobData = { ...data, plan: selectedPlan, planType: selectedPlan.type, status: "draft" };
     sessionStorage.setItem("cp_pending_job", JSON.stringify(finalJobData));
 
-    const isAllowedRole = profile?.role === "employer" || profile?.role === "admin" || !profile?.role;
-    if (authLoading || !accessToken || !profile?.email || !isAllowedRole) {
+    if (authLoading || !accessToken) {
       router.push(`/auth?role=employer&from=${encodeURIComponent("/checkout")}`);
       return;
+    }
+
+    const role = profile?.role || null;
+    const roleOk = role === "employer" || role === "admin";
+    if (!roleOk) {
+      try {
+        await authFetch(
+          "/api/account/role",
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role: "employer" }),
+          },
+          accessToken,
+        );
+        await refreshProfile();
+      } catch {
+        router.push(`/auth?role=employer&from=${encodeURIComponent("/checkout")}`);
+        return;
+      }
     }
 
     try {
