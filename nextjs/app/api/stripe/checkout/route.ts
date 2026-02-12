@@ -63,17 +63,20 @@ export async function POST(request: Request) {
   const jobRow = job as StripeJobRow;
   const isOwner = jobRow.created_by && jobRow.created_by === auth.profile.id;
   if (!isOwner && auth.profile.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json(
+      { error: "This listing is linked to a different account. Please resubmit the role from your account." },
+      { status: 403 },
+    );
   }
   const companyName = Array.isArray(jobRow.companies) ? jobRow.companies[0]?.name : jobRow.companies?.name;
   const price = (body.price ?? jobRow.plan_price ?? 79);
   const needsAdminApproval = Boolean(body.adminInternalPlan) || price < 1 || price <= 5;
   if (needsAdminApproval) {
     if (auth.profile.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Internal plan is restricted." }, { status: 403 });
     }
     if (!isEmailAllowed(auth.profile.email)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Internal plan is restricted." }, { status: 403 });
     }
   }
   const planName = body.planName || jobRow.plan_type || "Standard";

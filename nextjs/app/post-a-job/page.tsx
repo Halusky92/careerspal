@@ -98,7 +98,7 @@ const PostJobPage = () => {
     const roleOk = role === "employer" || role === "admin";
     if (!roleOk) {
       try {
-        await authFetch(
+        const roleResp = await authFetch(
           "/api/account/role",
           {
             method: "PATCH",
@@ -107,6 +107,10 @@ const PostJobPage = () => {
           },
           accessToken,
         );
+        if (!roleResp.ok) {
+          router.push(`/auth?role=employer&from=${encodeURIComponent("/checkout")}`);
+          return;
+        }
         await refreshProfile();
       } catch {
         router.push(`/auth?role=employer&from=${encodeURIComponent("/checkout")}`);

@@ -19,6 +19,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
   const [step, setStep] = useState<'form' | 'processing' | 'success'>('form');
   const [error, setError] = useState<string | null>(null);
   const { accessToken, profile, loading: authLoading, refreshProfile } = useSupabaseAuth();
+  const [ownershipRecoveryAttempted, setOwnershipRecoveryAttempted] = useState(false);
 
   if (!jobData) {
     return (
@@ -76,7 +77,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
     const roleOk = currentRole === "employer" || currentRole === "admin";
     if (!roleOk) {
       try {
-        await authFetch(
+        const roleResp = await authFetch(
           "/api/account/role",
           {
             method: "PATCH",
@@ -85,6 +86,11 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
           },
           accessToken,
         );
+        if (!roleResp.ok) {
+          setError("Please sign in as an employer to continue.");
+          setStep("form");
+          return;
+        }
         await refreshProfile();
       } catch {
         router.push(authRedirectUrl);
@@ -162,8 +168,78 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
         window.location.href = data.url;
         return;
       }
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         router.push(authRedirectUrl);
+        return;
+      }
+      if (response.status === 403) {
+        const message = data.error || "You don’t have permission to pay for this listing. Please resubmit the role.";
+        const looksLikeOwnershipMismatch =
+          message.toLowerCase().includes("different account") ||
+          message.toLowerCase().includes("linked to a different account");
+
+        // Recovery: if a stale/shared jobId is linked to a different account, recreate the listing under the
+        // currently signed-in employer and retry checkout once.
+        if (looksLikeOwnershipMismatch && !ownershipRecoveryAttempted && accessToken) {
+          setOwnershipRecoveryAttempted(true);
+          try {
+            const createResponse = await authFetch(
+              "/api/employer/jobs",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  ...jobData,
+                  plan: jobData?.plan ? { ...jobData.plan, price: storagePlanPrice } : jobData?.plan,
+                  planPrice: storagePlanPrice,
+                  status: jobData?.status || "draft",
+                }),
+              },
+              accessToken,
+            );
+            const created = (await readJson<{ job?: Job; error?: string }>(createResponse)) || {};
+            if (!createResponse.ok || !created.job?.id) {
+              setError(created.error || "Could not link the listing to your account. Please resubmit the role.");
+              setStep("form");
+              return;
+            }
+            const recoveredJobId = created.job.id;
+            try {
+              sessionStorage.setItem("cp_pending_job_id", recoveredJobId);
+            } catch {
+              // ignore
+            }
+
+            const retryResponse = await authFetch(
+              "/api/stripe/checkout",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jobId: recoveredJobId, price, planName, adminInternalPlan }),
+              },
+              accessToken,
+            );
+            const retryData = (await readJson<{ url?: string; error?: string }>(retryResponse)) || {};
+            if (retryData?.url) {
+              window.location.href = retryData.url;
+              return;
+            }
+            if (retryResponse.status === 401) {
+              router.push(authRedirectUrl);
+              return;
+            }
+            setError(retryData.error || `Failed to start checkout (status ${retryResponse.status}).`);
+            setStep("form");
+            return;
+          } catch {
+            setError("Could not link the listing to your account. Please resubmit the role.");
+            setStep("form");
+            return;
+          }
+        }
+
+        setError(message);
+        setStep("form");
         return;
       }
       setError(data.error || `Failed to start checkout (status ${response.status}).`);
