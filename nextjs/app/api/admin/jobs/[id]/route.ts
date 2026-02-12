@@ -30,7 +30,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   const { data: existing } = await supabaseAdmin
     .from("jobs")
-    .select("id,status,stripe_payment_status")
+    .select("id,status,stripe_payment_status,plan_price,created_by")
     .eq("id", id)
     .single();
   if (!existing) {
@@ -54,8 +54,18 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   if (typeof body.keywords === "string") updateData.keywords = body.keywords;
 
   if (body.status) {
-    if (body.status === "published" && existing.stripe_payment_status !== "paid") {
-      return NextResponse.json({ error: "Payment not confirmed." }, { status: 400 });
+    if (body.status === "published") {
+      const isPaid = existing.stripe_payment_status === "paid";
+      const planPrice = typeof (existing as { plan_price?: unknown }).plan_price === "number" ? (existing as { plan_price: number }).plan_price : null;
+      const isFree = planPrice === 0;
+      const createdBy = (existing as { created_by?: string | null }).created_by || null;
+      const isAdminCreated = Boolean(createdBy && auth.profile.id && createdBy === auth.profile.id);
+
+      // Admin restore/publish should work for free/admin-created/imported roles.
+      // Paid employer listings still require Stripe payment confirmation.
+      if (!isPaid && !isFree && !isAdminCreated) {
+        return NextResponse.json({ error: "Payment not confirmed." }, { status: 400 });
+      }
     }
     updateData.status = body.status;
     const now = new Date();

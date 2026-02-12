@@ -65,6 +65,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [showAdminCreate, setShowAdminCreate] = useState(false);
   const [adminCreateStatus, setAdminCreateStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [adminCreateMsg, setAdminCreateMsg] = useState<string>("");
+  const [jobActionTone, setJobActionTone] = useState<"idle" | "success" | "error">("idle");
+  const [jobActionMsg, setJobActionMsg] = useState<string>("");
   const [adminCreateDraft, setAdminCreateDraft] = useState<{
     title: string;
     company: string;
@@ -324,13 +326,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         },
         accessToken,
       );
-      if (!response.ok) return;
-      const data = (await response.json()) as { job?: Job };
+      const data = (await response.json()) as { job?: Job; error?: string };
+      if (!response.ok) {
+        const msg = data.error || "Action failed.";
+        setJobActionTone("error");
+        setJobActionMsg(msg);
+        window.setTimeout(() => {
+          setJobActionTone("idle");
+          setJobActionMsg("");
+        }, 3500);
+        return;
+      }
       if (data.job) {
         setJobs((prev) => prev.map((j) => (j.id === id ? data.job! : j)));
       }
+      setJobActionTone("success");
+      setJobActionMsg(status === "published" ? "Role published." : status === "private" ? "Role archived." : "Updated.");
+      window.setTimeout(() => {
+        setJobActionTone("idle");
+        setJobActionMsg("");
+      }, 2500);
     } catch {
-      // noop
+      setJobActionTone("error");
+      setJobActionMsg("Action failed.");
+      window.setTimeout(() => {
+        setJobActionTone("idle");
+        setJobActionMsg("");
+      }, 3500);
     }
   };
 
@@ -519,6 +541,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 </span>
               </div>
             </div>
+
+            {jobActionMsg && (
+              <div
+                className={`mb-4 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
+                  jobActionTone === "error"
+                    ? "border-red-600/30 bg-red-600/10 text-red-300"
+                    : "border-emerald-600/30 bg-emerald-600/10 text-emerald-300"
+                }`}
+                role="status"
+                aria-live="polite"
+              >
+                {jobActionMsg}
+              </div>
+            )}
 
             <div className="mb-4">
               <button
