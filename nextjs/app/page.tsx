@@ -184,18 +184,21 @@ export default function HomePage() {
               </div>
             )}
 
-            {hasJobs &&
-              topJobs.slice(0, 5).map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  expanded={expandedJobId === job.id}
-                  onToggleExpanded={() => handleToggleJob(job)}
-                  onOpenCompany={(companyName) => handleOpenCompany(companyName)}
-                  showBookmark={false}
-                  variant="home"
-                />
-              ))}
+            {hasJobs && (
+              <div className="space-y-4">
+                {topJobs.slice(0, 5).map((job) => (
+                  <JobCard
+                    key={job.id}
+                    job={job}
+                    expanded={expandedJobId === job.id}
+                    onToggleExpanded={() => handleToggleJob(job)}
+                    onOpenCompany={(companyName) => handleOpenCompany(companyName)}
+                    showBookmark={false}
+                    variant="home"
+                  />
+                ))}
+              </div>
+            )}
 
             <div className="pt-4">
               <button

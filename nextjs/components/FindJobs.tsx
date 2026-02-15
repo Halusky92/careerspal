@@ -772,7 +772,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
             </div>
           )}
 
-          <div className="space-y-5">
+          <div className="space-y-4">
             {filteredAndSorted.slice(0, visibleCount).map(job => {
               const isSaved = user?.savedJobIds?.includes(job.id);
 

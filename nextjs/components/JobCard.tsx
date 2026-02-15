@@ -80,8 +80,8 @@ export default function JobCard({
 
   const containerClass =
     variant === "home"
-      ? "p-4 sm:p-5 rounded-[1.75rem] sm:rounded-[2.25rem]"
-      : "p-4 rounded-2xl";
+      ? "p-3.5 sm:p-4 rounded-[1.5rem] sm:rounded-[2rem]"
+      : "p-3.5 sm:p-4 rounded-2xl";
 
   return (
     <div
@@ -95,7 +95,7 @@ export default function JobCard({
       }}
       className={[
         containerClass,
-        "transition-all cursor-pointer group flex flex-col items-stretch justify-between gap-3 relative active:scale-[0.99] animate-in fade-in slide-in-from-bottom-2",
+        "transition-all cursor-pointer group flex flex-col items-stretch justify-between gap-2.5 relative active:scale-[0.99] animate-in fade-in slide-in-from-bottom-2",
         isElite
           ? "bg-amber-50 border border-amber-200 shadow-sm text-slate-900 border-l-4 border-l-amber-400"
           : isPro
@@ -166,7 +166,11 @@ export default function JobCard({
 
       <div className="flex items-start gap-4 w-full">
         <div
-          className={`${isHome ? "w-10 h-10 sm:w-12 sm:h-12 rounded-[0.9rem] sm:rounded-[1.1rem]" : "w-11 h-11 sm:w-14 sm:h-14 rounded-[1rem] sm:rounded-[1.3rem]"} flex items-center justify-center overflow-hidden p-1 flex-shrink-0 ${
+          className={`${
+            isHome
+              ? "w-9 h-9 sm:w-11 sm:h-11 rounded-[0.85rem] sm:rounded-[1.05rem]"
+              : "w-10 h-10 sm:w-12 sm:h-12 rounded-[0.9rem] sm:rounded-[1.1rem]"
+          } flex items-center justify-center overflow-hidden p-1 flex-shrink-0 ${
             isElite ? "bg-yellow-100 border border-yellow-200" : "bg-gray-50 border border-gray-100"
           }`}
         >
@@ -182,7 +186,7 @@ export default function JobCard({
 
         <div className="flex-1 min-w-0 pr-9">
           <h3
-            className={`${isHome ? "text-sm sm:text-base" : "text-base sm:text-lg"} font-black tracking-tight leading-tight truncate ${
+            className={`${isHome ? "text-sm sm:text-base" : "text-sm sm:text-base"} font-black tracking-tight leading-tight truncate ${
               isElite ? "text-slate-900 group-hover:text-yellow-700" : "text-slate-900 group-hover:text-indigo-600"
             } transition-colors`}
           >
@@ -223,23 +227,23 @@ export default function JobCard({
 
           {tools.length > 0 && (
             <div className="flex gap-2 mt-2.5 flex-wrap">
-              {tools.slice(0, 3).map((tool) => (
+              {tools.slice(0, isHome ? 2 : 2).map((tool) => (
                 <span
                   key={tool}
-                  className={`text-[7px] font-black px-2 py-1 rounded-lg border uppercase tracking-widest ${
+                  className={`text-[6px] font-black px-2 py-1 rounded-lg border uppercase tracking-widest ${
                     isElite ? "bg-yellow-100 text-yellow-800 border-yellow-200" : "bg-slate-50 text-slate-400 border-slate-100"
                   }`}
                 >
                   {tool}
                 </span>
               ))}
-              {tools.length > 3 && (
+              {tools.length > 2 && (
                 <span
-                  className={`text-[7px] font-black px-2 py-1 rounded-lg border uppercase tracking-widest ${
+                  className={`text-[6px] font-black px-2 py-1 rounded-lg border uppercase tracking-widest ${
                     isElite ? "bg-yellow-100 text-yellow-800 border-yellow-200" : "bg-slate-50 text-slate-400 border-slate-100"
                   }`}
                 >
-                  +{tools.length - 3}
+                  +{tools.length - 2}
                 </span>
               )}
             </div>
@@ -258,8 +262,12 @@ export default function JobCard({
         </div>
       </div>
 
-      <div className="w-full border-t border-slate-100 pt-3 flex items-center justify-between gap-3">
-        <div className={`${isHome ? "text-sm sm:text-base" : "text-base sm:text-lg"} font-black tracking-tight whitespace-nowrap ${isElite ? "text-yellow-900" : "text-slate-900"}`}>
+      <div className="w-full border-t border-slate-100 pt-2 flex items-center justify-between gap-3">
+        <div
+          className={`${isHome ? "text-sm sm:text-base" : "text-sm sm:text-base"} font-black tracking-tight whitespace-nowrap ${
+            isElite ? "text-yellow-900" : "text-slate-900"
+          }`}
+        >
           {job.salary}
         </div>
 
@@ -279,7 +287,9 @@ export default function JobCard({
             window.open(job.applyUrl, "_blank", "noopener,noreferrer");
           }}
           disabled={!isPrivate && !hasApplyUrl}
-          className={`inline-flex items-center justify-center rounded-full ${isHome ? "px-3 py-1.5" : "px-4 py-2"} text-[9px] font-black uppercase tracking-widest transition-all w-full md:w-auto ${
+          className={`inline-flex items-center justify-center rounded-full ${
+            isHome ? "px-4 py-2 text-[10px]" : "px-5 py-2.5 text-[10px]"
+          } font-black uppercase tracking-widest transition-all w-auto ${
             isElite
               ? "bg-yellow-200 text-yellow-900 hover:bg-yellow-300"
               : hasApplyUrl
