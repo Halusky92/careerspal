@@ -17,6 +17,7 @@ const planWeight = { 'Elite Managed': 3, 'Featured Pro': 2, Standard: 1 };
 export default function HomePage() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [jobQuickQuery, setJobQuickQuery] = useState("");
 
@@ -30,6 +31,8 @@ export default function HomePage() {
         }
       } catch {
         // keep fallback
+      } finally {
+        setJobsLoading(false);
       }
     };
     loadJobs();
@@ -44,6 +47,7 @@ export default function HomePage() {
     });
   }, [jobs]);
   const hasJobs = jobs.length > 0;
+  const showJobCounts = !jobsLoading && hasJobs;
   const companyCount = useMemo(() => new Set(jobs.map((job) => job.company)).size, [jobs]);
   const matchTotal = useMemo(() => jobs.reduce((sum, job) => sum + (job.matches || 0), 0), [jobs]);
   const rolesLast7Days = useMemo(() => {
@@ -161,11 +165,22 @@ export default function HomePage() {
               )}
             </div>
 
-            {!hasJobs && (
+            {jobsLoading && (
+              <div className="rounded-[2.5rem] border border-slate-200/70 bg-white p-8 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+                <div className="h-6 w-56 bg-slate-100 rounded-xl mx-auto mb-3"></div>
+                <div className="h-4 w-80 max-w-full bg-slate-100 rounded-xl mx-auto mb-6"></div>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <div className="h-10 w-40 bg-slate-100 rounded-2xl"></div>
+                  <div className="h-10 w-40 bg-slate-100 rounded-2xl"></div>
+                </div>
+              </div>
+            )}
+
+            {!jobsLoading && !hasJobs && (
               <div className="rounded-[2.5rem] border border-slate-200/70 bg-white p-8 text-center shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-                <div className="text-2xl font-black text-slate-900">0 live roles right now.</div>
+                <div className="text-2xl font-black text-slate-900">New roles are reviewed daily.</div>
                 <p className="text-sm text-slate-500 font-medium mt-2">
-                  New submissions are reviewed daily. Post a role to be first on the board.
+                  Post a role now and we’ll review it before it goes live.
                 </p>
                 <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
                   <button
@@ -334,17 +349,24 @@ export default function HomePage() {
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200">Live signal</p>
               <h3 className="text-3xl sm:text-4xl font-black mt-3">High-quality roles, no noise.</h3>
               <p className="text-slate-300 font-medium mt-2 max-w-2xl">
-                {jobs.length > 0
+                {showJobCounts
                   ? `Real roles from the last 30 days, reviewed before publish${lastUpdatedText ? ` • Updated ${lastUpdatedText}` : ""}.`
                   : "New listings are reviewed daily. Check back soon."}
               </p>
             </div>
             <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: "Live roles", value: jobs.length || 0 },
-                { label: "Teams", value: companyCount || 0 },
-                { label: "Added (7d)", value: rolesLast7Days || 0 },
-              ].map((item) => (
+              {(showJobCounts
+                ? [
+                    { label: "Live roles", value: String(jobs.length) },
+                    { label: "Teams", value: String(companyCount) },
+                    { label: "Added (7d)", value: String(rolesLast7Days) },
+                  ]
+                : [
+                    { label: "Review speed", value: "Daily" },
+                    { label: "Response SLA", value: "2 days" },
+                    { label: "Quality", value: "Verified" },
+                  ]
+              ).map((item) => (
                 <div key={item.label} className="bg-white/10 border border-white/10 rounded-2xl px-4 py-4 text-center">
                   <div className="text-2xl font-black">{item.value}</div>
                   <div className="text-[10px] font-black uppercase tracking-widest text-indigo-100 mt-1">{item.label}</div>
