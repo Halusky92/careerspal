@@ -1,0 +1,160 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import FindJobs from "../../components/FindJobs";
+import { Job, UserSession } from "../../types";
+import { useSupabaseAuth } from "../../components/Providers";
+import { authFetch } from "../../lib/authFetch";
+
+const STORAGE_KEY = "cp_saved_jobs";
+
+const getSaved = () => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const setSaved = (ids: string[]) => {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+};
+
+export default function JobsClient({
+  initialJobs,
+  initialTotal,
+  initialQuery,
+  initialLocation,
+}: {
+  initialJobs: Job[];
+  initialTotal: number;
+  initialQuery: string;
+  initialLocation: string;
+}) {
+  const router = useRouter();
+  const { profile, accessToken, loading: authLoading } = useSupabaseAuth();
+  const [jobs] = useState<Job[]>(() => initialJobs || []);
+  const [totalJobs] = useState<number | null>(() => (typeof initialTotal === "number" ? initialTotal : null));
+  const [savedJobIds, setSavedJobIds] = useState<string[]>(() => getSaved());
+
+  useEffect(() => {
+    const loadSaved = async () => {
+      if (authLoading || !accessToken) return;
+      try {
+        const response = await authFetch("/api/saved-jobs", {}, accessToken);
+        if (!response.ok) return;
+        const data = (await response.json()) as { savedJobs?: { jobId: string }[] };
+        const serverSaved = data.savedJobs?.map((item) => item.jobId) || [];
+        const localSaved = getSaved();
+        const merged = Array.from(new Set([...serverSaved, ...localSaved]));
+        setSavedJobIds(merged);
+        const missing = localSaved.filter((id) => !serverSaved.includes(id));
+        if (missing.length > 0) {
+          await Promise.all(
+            missing.map((jobId) =>
+              authFetch(
+                "/api/saved-jobs",
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ jobId }),
+                },
+                accessToken,
+              ),
+            ),
+          );
+          setSaved([]);
+        }
+      } catch {
+        // noop
+      }
+    };
+    loadSaved();
+  }, [accessToken, authLoading]);
+
+  const user = useMemo<UserSession>(
+    () => ({
+      email: profile?.email || "guest@careerspal.com",
+      role: (profile?.role as UserSession["role"]) || "candidate",
+      savedJobIds,
+    }),
+    [profile?.email, profile?.role, savedJobIds],
+  );
+
+  const syncSaved = async (jobId: string, isSaved: boolean, previous: string[]) => {
+    try {
+      if (!accessToken) return;
+      await authFetch(
+        "/api/saved-jobs",
+        {
+          method: isSaved ? "DELETE" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId }),
+        },
+        accessToken,
+      );
+    } catch {
+      setSavedJobIds(previous);
+    }
+  };
+
+  const handleToggleBookmark = (jobId: string) => {
+    setSavedJobIds((prev) => {
+      const isSaved = prev.includes(jobId);
+      const next = isSaved ? prev.filter((id) => id !== jobId) : [...prev, jobId];
+      if (!accessToken) {
+        setSaved(next);
+      } else {
+        syncSaved(jobId, isSaved, prev);
+      }
+      return next;
+    });
+  };
+
+  return (
+    <>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between gap-3">
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600"
+          >
+            <span>← Back</span>
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600">
+              {(totalJobs ?? jobs.length) > 0 ? `${totalJobs ?? jobs.length} roles` : "Roles reviewed daily"}
+            </div>
+            {profile?.role !== "employer" && (
+              <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                Saved {savedJobIds.length}
+              </div>
+            )}
+            <button
+              onClick={() =>
+                router.push(profile?.role === "employer" ? "/post-a-job" : accessToken ? "/account" : "/auth")
+              }
+              disabled={authLoading}
+              className="h-10 px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black disabled:opacity-60"
+            >
+              {profile?.role === "employer" ? "Post a job" : "Job alerts"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <FindJobs
+        jobs={jobs}
+        initialQuery={initialQuery}
+        initialLocationQuery={initialLocation}
+        user={user}
+        onToggleBookmark={handleToggleBookmark}
+      />
+    </>
+  );
+}
+
