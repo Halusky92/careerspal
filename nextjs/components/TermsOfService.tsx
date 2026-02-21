@@ -6,6 +6,11 @@ const TermsOfService: React.FC = () => {
   const operatorAddress = process.env.NEXT_PUBLIC_OPERATOR_ADDRESS || "";
   const operatorCompanyId = process.env.NEXT_PUBLIC_OPERATOR_COMPANY_ID || "";
   const operatorVatId = process.env.NEXT_PUBLIC_OPERATOR_VAT_ID || "";
+  const operatorDetails = [
+    operatorCompanyId ? `Company ID ${operatorCompanyId}` : null,
+    operatorVatId ? `VAT ${operatorVatId}` : null,
+    operatorAddress ? operatorAddress : null,
+  ].filter(Boolean) as string[];
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-24 animate-in fade-in slide-in-from-bottom-4">
@@ -53,7 +58,7 @@ const TermsOfService: React.FC = () => {
               Job posting fees start at <strong>$79 per 30-day listing</strong> (Standard). We also offer Featured Pro ($149) and Elite Managed ($249) tiers with additional visibility benefits.
             </p>
             <p>
-              <strong>Refund Policy:</strong> If your job listing is not published to our board within 24 hours of successful payment submission, you are entitled to a full refund. However, once a listing has been live and active on the platform for more than 7 days, no refunds or cancellations will be issued.
+              <strong>Refund Policy:</strong> If your job listing is not published to our board within <strong>2 days</strong> of successful payment submission, you are entitled to a full refund. However, once a listing has been live and active on the platform for more than 7 days, no refunds or cancellations will be issued.
             </p>
           </div>
         </section>
@@ -70,9 +75,9 @@ const TermsOfService: React.FC = () => {
           <p className="text-slate-500 font-bold">{operatorName} • Operator</p>
           <p className="text-slate-500 font-bold">Email: info@careerspal.com</p>
           <p className="mt-2 text-xs font-black uppercase tracking-widest text-slate-400">
-            {operatorCompanyId ? `Company ID ${operatorCompanyId}` : "Company ID not set"} •{" "}
-            {operatorVatId ? `VAT ${operatorVatId}` : "VAT not set"} •{" "}
-            {operatorAddress ? operatorAddress : "Address not set"}
+            {operatorDetails.length > 0
+              ? operatorDetails.join(" • ")
+              : "Operator details provided on invoice or available on request."}
           </p>
         </div>
       </div>

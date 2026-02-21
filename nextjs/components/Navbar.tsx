@@ -193,24 +193,32 @@ const Navbar: React.FC = () => {
         {/* Mobile Quick Nav */}
         <div className="md:hidden border-t border-slate-100">
           <div className="px-4 sm:px-6 py-3">
-            <div className="relative overflow-hidden">
-              <div className="flex gap-2 whitespace-nowrap animate-nav-loop">
-                {[...navItems, ...navItems].map((item, idx) => (
-                  <Link
-                    key={`${item.href}-${idx}`}
-                    href={item.href}
-                    className={`whitespace-nowrap rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
-                      pathname === item.href
-                        ? "bg-indigo-600 text-white shadow-md"
-                        : "bg-white text-slate-500 border border-slate-100"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white via-white/90 to-transparent"></div>
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white via-white/90 to-transparent"></div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`whitespace-nowrap rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
+                    pathname === item.href
+                      ? "bg-indigo-600 text-white shadow-md"
+                      : "bg-white text-slate-500 border border-slate-100"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+              {dashboardHref && (
+                <Link
+                  href={dashboardHref}
+                  className={`whitespace-nowrap rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
+                    pathname?.startsWith("/dashboard")
+                      ? "bg-indigo-600 text-white shadow-md"
+                      : "bg-white text-slate-500 border border-slate-100"
+                  }`}
+                >
+                  Dashboard
+                </Link>
+              )}
             </div>
           </div>
         </div>

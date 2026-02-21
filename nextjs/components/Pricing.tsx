@@ -23,7 +23,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
           </p>
           
           <div className="mt-8 inline-flex items-center gap-2 bg-white/80 backdrop-blur text-slate-600 px-6 py-3 rounded-full border border-slate-200/60">
-              <span className="text-[10px] font-black uppercase tracking-widest">Guarantee: Full refund if not published within 24h • No cancellation 7 days post-launch</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">Guarantee: Full refund if not published within 2 days • No cancellation 7 days post-launch</span>
           </div>
         </div>
 
@@ -51,7 +51,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
               Verified board
             </span>
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 bg-slate-50 border border-slate-200 px-2 py-1 rounded-full">
-              24h review
+              2 day review
             </span>
           </div>
           <ul className="space-y-4 mb-10 text-gray-600 font-bold text-sm flex-1">
@@ -189,7 +189,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
             },
             {
               q: "How fast do listings go live?",
-              a: "Most roles are reviewed and published within 24 hours.",
+              a: "Most roles are reviewed and published within 2 days.",
             },
           ].map((item) => (
             <div key={item.q} className="bg-white border border-slate-200/60 rounded-2xl p-5">
@@ -202,7 +202,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
 
       <div className="mt-8 sm:mt-10 text-center">
         <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700">
-          24h review • Verified employers • SLA protected
+          2 day review • Verified employers • SLA protected
         </span>
       </div>
       </div>

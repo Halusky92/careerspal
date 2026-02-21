@@ -206,7 +206,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onJoinPool, onSearch, jobs }) => 
             </div>
 
             <p className="mt-4 text-xs sm:text-sm text-slate-500 font-medium max-w-xl mx-auto lg:mx-0">
-              Invite-only means we review every profile and employer submission before access. Approvals typically take 24–72 hours; approved members get early access roles, saved alerts, and direct apply links.
+              Invite-only means we review every profile and employer submission before access. Approvals typically take up to <strong>2 days</strong>; approved members get early access roles, saved alerts, and direct apply links.
             </p>
 
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-xl mx-auto lg:mx-0">

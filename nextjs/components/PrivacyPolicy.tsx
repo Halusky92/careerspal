@@ -6,6 +6,11 @@ const PrivacyPolicy: React.FC = () => {
   const operatorAddress = process.env.NEXT_PUBLIC_OPERATOR_ADDRESS || "";
   const operatorCompanyId = process.env.NEXT_PUBLIC_OPERATOR_COMPANY_ID || "";
   const operatorVatId = process.env.NEXT_PUBLIC_OPERATOR_VAT_ID || "";
+  const operatorDetails = [
+    operatorCompanyId ? `Company ID ${operatorCompanyId}` : null,
+    operatorVatId ? `VAT ${operatorVatId}` : null,
+    operatorAddress ? operatorAddress : null,
+  ].filter(Boolean) as string[];
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-24 animate-in fade-in slide-in-from-bottom-4">
@@ -28,9 +33,9 @@ const PrivacyPolicy: React.FC = () => {
             <strong>Contact:</strong> <a href="mailto:info@careerspal.com" className="text-indigo-600 font-bold hover:underline">info@careerspal.com</a>
             <br />
             <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">
-              Operator details: {operatorCompanyId ? `Company ID ${operatorCompanyId}` : "Company ID not set"} •{" "}
-              {operatorVatId ? `VAT ${operatorVatId}` : "VAT not set"} •{" "}
-              {operatorAddress ? operatorAddress : "Address not set"}
+              {operatorDetails.length > 0
+                ? `Operator details: ${operatorDetails.join(" • ")}`
+                : "Operator details: provided on invoice or available on request."}
             </span>
           </p>
         </section>
