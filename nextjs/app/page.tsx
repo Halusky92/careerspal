@@ -9,8 +9,8 @@ import AIChatPanel from '../components/AIChatPanel';
 import { Job } from '../types';
 import { createJobSlug, createCompanySlug } from '../lib/jobs';
 import CompanyLogo from '../components/CompanyLogo';
-import JobCard from "../components/JobCard";
 import JobMiniCard from "../components/JobMiniCard";
+import JobRow from "../components/JobRow";
 
 const planWeight = { 'Elite Managed': 3, 'Featured Pro': 2, Standard: 1 };
 
@@ -18,7 +18,6 @@ export default function HomePage() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
-  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [jobQuickQuery, setJobQuickQuery] = useState("");
 
   useEffect(() => {
@@ -73,13 +72,27 @@ export default function HomePage() {
     router.push(q ? `/jobs?query=${encodeURIComponent(q)}` : "/jobs");
   };
 
-  const handleToggleJob = (job: Job) => {
-    if (job.status === 'private' || job.status === 'invite_only') return;
-    setExpandedJobId((prev) => (prev === job.id ? null : job.id));
-  };
-
   const handleOpenCompany = (companyName: string) => {
     router.push(`/companies/${createCompanySlug({ name: companyName } as { name: string })}`);
+  };
+
+  const handleApply = async (job: Job) => {
+    const isPrivate = job.status === "private" || job.status === "invite_only";
+    const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl !== "#");
+    if (isPrivate) {
+      router.push("/auth");
+      return;
+    }
+    if (!hasApplyUrl) {
+      alert("Apply link is not available yet.");
+      return;
+    }
+    try {
+      await fetch(`/api/jobs/${job.id}/match`, { method: "POST" });
+    } catch {
+      // no-op
+    }
+    window.open(job.applyUrl, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -202,14 +215,15 @@ export default function HomePage() {
             {hasJobs && (
               <div className="space-y-4">
                 {topJobs.slice(0, 5).map((job) => (
-                  <JobCard
+                  <JobRow
                     key={job.id}
                     job={job}
-                    expanded={expandedJobId === job.id}
-                    onToggleExpanded={() => handleToggleJob(job)}
-                    onOpenCompany={(companyName) => handleOpenCompany(companyName)}
-                    showBookmark={false}
                     variant="home"
+                    showSave={false}
+                    showMenu={false}
+                    onOpenCompany={(companyName) => handleOpenCompany(companyName)}
+                    onSelect={() => router.push(`/jobs/${createJobSlug(job)}`)}
+                    onApply={() => handleApply(job)}
                   />
                 ))}
               </div>

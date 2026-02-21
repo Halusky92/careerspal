@@ -8,11 +8,15 @@ import { createCompanySlug, createJobSlug } from "../lib/jobs";
 
 export type JobRowAction = "copy_link" | "open_new_tab";
 
+export type JobRowVariant = "board" | "home";
+
 type JobRowProps = {
   job: Job;
+  variant?: JobRowVariant;
   selected?: boolean;
   isSaved?: boolean;
   showSave?: boolean;
+  showMenu?: boolean;
   onSelect: () => void;
   onToggleSave?: () => void;
   onApply: () => void;
@@ -35,9 +39,11 @@ const formatPosted = (job: Job) => {
 
 export default function JobRow({
   job,
+  variant = "board",
   selected = false,
   isSaved = false,
   showSave = true,
+  showMenu = true,
   onSelect,
   onToggleSave,
   onApply,
@@ -59,6 +65,8 @@ export default function JobRow({
   }, [job.tags, job.tools]);
 
   const href = `/jobs/${createJobSlug(job)}`;
+
+  const isHome = variant === "home";
 
   return (
     <div
@@ -97,8 +105,13 @@ export default function JobRow({
         </div>
       )}
 
-      <div className="flex items-start gap-3 px-4 py-3.5">
-        <div className="mt-0.5 w-11 h-11 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0">
+      <div className={["flex items-start gap-3", isHome ? "px-3.5 py-3" : "px-4 py-3.5"].join(" ")}>
+        <div
+          className={[
+            "mt-0.5 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0",
+            isHome ? "w-10 h-10" : "w-11 h-11",
+          ].join(" ")}
+        >
           <CompanyLogo
             name={job.company}
             logoUrl={job.logo}
@@ -113,7 +126,7 @@ export default function JobRow({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2 min-w-0">
-                <h3 className="text-sm sm:text-base font-black text-slate-900 truncate">
+                <h3 className={[isHome ? "text-sm" : "text-sm sm:text-base", "font-black text-slate-900 truncate"].join(" ")}>
                   {job.title}
                 </h3>
                 {isPrivate && (
@@ -180,6 +193,7 @@ export default function JobRow({
                 </button>
               )}
 
+              {showMenu && (
               <div className="relative">
                 <button
                   onClick={(e) => {
@@ -231,6 +245,7 @@ export default function JobRow({
                   </div>
                 )}
               </div>
+              )}
             </div>
           </div>
 
@@ -260,7 +275,10 @@ export default function JobRow({
                   e.stopPropagation();
                   onApply();
                 }}
-                className="h-11 px-5 rounded-2xl bg-indigo-600 text-white text-[11px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
+                className={[
+                  isHome ? "h-10 px-4 text-[10px]" : "h-11 px-5 text-[11px]",
+                  "rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100",
+                ].join(" ")}
               >
                 Quick apply
               </button>
