@@ -49,7 +49,6 @@ export default function JobsPage() {
   const [totalJobs, setTotalJobs] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [savedJobIds, setSavedJobIds] = useState<string[]>(() => getSaved());
-  const hasJobs = jobs.length > 0;
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -146,95 +145,34 @@ export default function JobsPage() {
   };
 
   return (
-    <div className="pt-8">
+    <div className="pt-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <button
-          onClick={() => router.back()}
-          className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600"
-        >
-          <span>← Back</span>
-        </button>
-      </div>
-      <section className="relative overflow-hidden">
-        <div className="absolute top-[-20%] left-[-15%] w-[70%] h-[70%] bg-indigo-300/20 rounded-full blur-[140px]"></div>
-        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-violet-400/20 rounded-full blur-[140px]"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 relative z-10">
-          <div className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2.5rem] p-8 sm:p-12 shadow-[0_25px_70px_rgba(15,23,42,0.08)]">
-            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Premium job board</p>
-            <h1 className="text-3xl sm:text-5xl font-black text-slate-900 mt-3 tracking-tight">
-              Curated roles for systems-first teams.
-            </h1>
-            <p className="text-slate-500 font-medium mt-3 max-w-2xl">
-              Every listing is reviewed, salary-transparent, and mapped to the tools you use. Build your next chapter with confidence.
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700">
-                {isLoading ? 'Loading…' : `${totalJobs ?? jobs.length} live roles`}
-              </div>
-              {profile?.role !== "employer" && (
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500" aria-live="polite">
-                  Saved {savedJobIds.length}
-                </div>
-              )}
+        <div className="flex items-center justify-between gap-3">
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600"
+          >
+            <span>← Back</span>
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600">
+              {isLoading ? "Loading…" : (totalJobs ?? jobs.length) > 0 ? `${totalJobs ?? jobs.length} roles` : "Roles reviewed daily"}
             </div>
-            <div className="mt-6 text-[11px] font-bold text-slate-500">
-              Use the filters below to search by title, location, and tools.
-            </div>
-            <div className="mt-6">
-              {profile?.role === "employer" ? (
-                <button
-                  onClick={() => router.push("/post-a-job")}
-                  disabled={authLoading}
-                  className="px-6 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-black"
-                >
-                  Post a job
-                </button>
-              ) : (
-                <button
-                  onClick={() => router.push(accessToken ? "/account" : "/auth")}
-                  disabled={authLoading}
-                  className="px-6 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-black"
-                >
-                  Create job alert
-                </button>
-              )}
-            </div>
-            <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {(hasJobs
-                ? [
-                    { label: "Verified employers", value: "Screened" },
-                    { label: "Response SLA", value: "2 days" },
-                    { label: "Remote-friendly", value: "Remote-first" },
-                  ]
-                : [
-                    { label: "Verified employers", value: "Screened" },
-                    { label: "Response SLA", value: "2 days" },
-                    { label: "Remote-friendly", value: "Remote-first" },
-                  ]
-              ).map((item) => (
-                <div key={item.label} className="bg-white border border-slate-200/60 rounded-2xl px-4 py-4 text-center">
-                  <div className="text-2xl font-black text-slate-900">{item.value}</div>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{item.label}</div>
-                </div>
-              ))}
-            </div>
-            {!accessToken && !authLoading && (
-              <div className="mt-8 rounded-2xl border border-indigo-100 bg-indigo-50/60 px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Sync saved roles</p>
-                  <p className="text-sm font-bold text-slate-700">Sign in to keep your saved roles across devices.</p>
-                </div>
-                <button
-                  onClick={() => router.push("/auth")}
-                  className="px-4 py-2 rounded-full bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest"
-                >
-                  Sign in
-                </button>
+            {profile?.role !== "employer" && (
+              <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                Saved {savedJobIds.length}
               </div>
             )}
+            <button
+              onClick={() => router.push(profile?.role === "employer" ? "/post-a-job" : accessToken ? "/account" : "/auth")}
+              disabled={authLoading}
+              className="h-10 px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black disabled:opacity-60"
+            >
+              {profile?.role === "employer" ? "Post a job" : "Job alerts"}
+            </button>
           </div>
         </div>
-      </section>
+      </div>
 
       <FindJobs
         jobs={jobs}

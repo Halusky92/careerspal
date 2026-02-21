@@ -8,8 +8,8 @@ import { createCompanySlug, createJobSlug } from '../lib/jobs';
 import { CATEGORIES } from '../constants';
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
-import CompanyLogo from "./CompanyLogo";
-import JobCard from "./JobCard";
+import JobRow from "./JobRow";
+import JobDetailPanel from "./JobDetailPanel";
 
 interface FindJobsProps {
   jobs: Job[];
@@ -46,15 +46,14 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [minSalary, setMinSalary] = useState(0);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [showTitleSuggestions, setShowTitleSuggestions] = useState(false);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedNotice, setSavedNotice] = useState('');
-  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
-  const searchRef = useRef<HTMLDivElement>(null);
-  const mobileTitleRef = useRef<HTMLDivElement>(null);
-  const mobileLocationRef = useRef<HTMLDivElement>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const titleRef = useRef<HTMLDivElement>(null);
+  const locationRef = useRef<HTMLDivElement>(null);
   const filterScrollRef = useRef<HTMLDivElement>(null);
   const [showFilterTopShadow, setShowFilterTopShadow] = useState(false);
   const [showFilterBottomShadow, setShowFilterBottomShadow] = useState(false);
@@ -93,14 +92,26 @@ const FindJobs: React.FC<FindJobsProps> = ({
   }, [query, locationQuery, category, system, sortBy, workMode, employmentType, minSalary]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    try {
+      mq.addEventListener("change", update);
+      return () => mq.removeEventListener("change", update);
+    } catch {
+      // Safari fallback
+      mq.addListener(update);
+      return () => mq.removeListener(update);
+    }
+  }, []);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-      if (mobileTitleRef.current && !mobileTitleRef.current.contains(event.target as Node)) {
+      if (titleRef.current && !titleRef.current.contains(event.target as Node)) {
         setShowTitleSuggestions(false);
       }
-      if (mobileLocationRef.current && !mobileLocationRef.current.contains(event.target as Node)) {
+      if (locationRef.current && !locationRef.current.contains(event.target as Node)) {
         setShowLocationSuggestions(false);
       }
     };
@@ -258,9 +269,24 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const handleLoadMore = () => {
     setVisibleCount(prev => prev + JOBS_PER_PAGE);
   };
-  const handleToggleJob = (job: Job) => {
-    if (job.status === 'private' || job.status === 'invite_only') return;
-    setExpandedJobId((prev) => (prev === job.id ? null : job.id));
+
+  const handleApply = async (job: Job) => {
+    const isPrivate = job.status === "private" || job.status === "invite_only";
+    const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl !== "#");
+    if (isPrivate) {
+      router.push("/auth");
+      return;
+    }
+    if (!hasApplyUrl) {
+      alert("Apply link is not available yet.");
+      return;
+    }
+    try {
+      await fetch(`/api/jobs/${job.id}/match`, { method: "POST" });
+    } catch {
+      // no-op
+    }
+    window.open(job.applyUrl, "_blank", "noopener,noreferrer");
   };
 
   const handleSaveSearch = async () => {
@@ -305,7 +331,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
     setMinSalary(0);
     setSortBy('newest');
     setShowSavedOnly(false);
-    setShowSuggestions(false);
+    setShowTitleSuggestions(false);
+    setShowLocationSuggestions(false);
   };
 
   const activeFilterChips = useMemo(
@@ -330,124 +357,43 @@ const FindJobs: React.FC<FindJobsProps> = ({
     [query, locationQuery, category, system, workMode, employmentType, minSalary, showSavedOnly],
   );
 
-  const FilterContent = () => (
-    <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-hidden rounded-[2.75rem] border border-transparent relative">
+  useEffect(() => {
+    if (!isDesktop) return;
+    if (filteredAndSorted.length === 0) {
+      setSelectedJobId(null);
+      return;
+    }
+    if (!selectedJobId) {
+      setSelectedJobId(filteredAndSorted[0].id);
+      return;
+    }
+    const stillVisible = filteredAndSorted.some((j) => j.id === selectedJobId);
+    if (!stillVisible) {
+      setSelectedJobId(filteredAndSorted[0].id);
+    }
+  }, [filteredAndSorted, isDesktop, selectedJobId]);
+
+  const selectedJob = useMemo(
+    () => filteredAndSorted.find((j) => j.id === selectedJobId) || null,
+    [filteredAndSorted, selectedJobId],
+  );
+
+  const FilterContent = ({ variant }: { variant: "sidebar" | "sheet" }) => (
+    <div
+      className={[
+        variant === "sidebar"
+          ? "sticky top-40 max-h-[calc(100vh-10rem)]"
+          : "max-h-[70vh]",
+        "overflow-hidden rounded-[2.75rem] border border-transparent relative",
+      ].join(" ")}
+    >
       <div
         ref={filterScrollRef}
-        className="space-y-6 pr-2 pb-24 max-h-[calc(100vh-7rem)] overflow-y-auto scroll-smooth"
+        className={[
+          "space-y-6 pr-2 pb-24 overflow-y-auto scroll-smooth",
+          variant === "sidebar" ? "max-h-[calc(100vh-10rem)]" : "max-h-[70vh]",
+        ].join(" ")}
       >
-      <div ref={searchRef} className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
-        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-2xl">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Search</h3>
-        </div>
-        <div className="space-y-3">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search role, company, tool…"
-              className="w-full rounded-xl border border-slate-200/70 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 pr-10"
-              inputMode="search"
-              autoComplete="off"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setShowSuggestions(true);
-              }}
-              onFocus={() => setShowSuggestions(true)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setQuery("");
-                  setShowSuggestions(false);
-                }
-                if (e.key === "Enter") {
-                  setShowSuggestions(false);
-                }
-              }}
-            />
-            {query && (
-              <button
-                onClick={() => {
-                  setQuery("");
-                  setShowSuggestions(false);
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600"
-                aria-label="Clear search"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-            {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-indigo-50 rounded-2xl shadow-2xl overflow-hidden z-40">
-                {suggestions.map((suggestion, idx) => (
-                  <button
-                    key={`${suggestion}-${idx}`}
-                    onClick={() => {
-                      setQuery(suggestion);
-                      setShowSuggestions(false);
-                    }}
-                    className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-indigo-50/50 last:border-none"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Location (optional)…"
-              className="w-full rounded-xl border border-slate-200/70 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 pr-10"
-              autoComplete="off"
-              value={locationQuery}
-              onChange={(e) => setLocationQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") setLocationQuery("");
-              }}
-            />
-            {locationQuery && (
-              <button
-                onClick={() => setLocationQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600"
-                aria-label="Clear location"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-1">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sort</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
-            >
-              <option value="newest">Newest</option>
-              <option value="salary">Highest salary</option>
-              <option value="match">Best match</option>
-            </select>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400" aria-live="polite">
-              {filteredAndSorted.length} roles
-            </span>
-            <button
-              onClick={clearAllFilters}
-              className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
         <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
           <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Expertise Segments</h3>
@@ -560,279 +506,356 @@ const FindJobs: React.FC<FindJobsProps> = ({
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-      <div className="flex flex-col lg:flex-row-reverse gap-12">
-        <aside className="hidden lg:block lg:w-80 space-y-10 relative">
-          <FilterContent />
-        </aside>
-
-        <div className="flex-1 space-y-6">
-
-          <div className="flex flex-wrap items-center gap-2 px-2">
-            {canUseSaved && (
-              <button
-                onClick={() => setShowSavedOnly((prev) => !prev)}
-                disabled={savedCount === 0}
-                aria-pressed={showSavedOnly}
-                className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border transition-colors ${
-                  showSavedOnly
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-200 hover:text-indigo-600'
-                } ${savedCount === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {showSavedOnly ? 'Showing saved' : `Saved (${savedCount})`}
-              </button>
-            )}
-          </div>
-          <div className="lg:hidden">
-            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm px-5 py-4 space-y-4">
-              <div ref={mobileTitleRef} className="relative">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Job title</label>
-                <div className="relative mt-2">
-                  <input
-                    type="text"
-                    placeholder="e.g. Operations Manager"
-                    value={query}
-                    onChange={(e) => { setQuery(e.target.value); setShowTitleSuggestions(true); }}
-                    onFocus={() => setShowTitleSuggestions(true)}
-                    autoComplete="off"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') {
-                        setQuery('');
-                        setShowTitleSuggestions(false);
-                      }
-                      if (e.key === 'Enter') {
-                        setShowTitleSuggestions(false);
-                      }
-                    }}
-                    className="w-full rounded-xl border border-slate-200/70 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 pr-10"
-                  />
-                  {query && (
-                    <button
-                      onClick={() => { setQuery(''); setShowTitleSuggestions(false); }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600"
-                      aria-label="Clear job title"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  )}
-                </div>
-                {showTitleSuggestions && suggestions.length > 0 && (
-                  <div className="absolute left-0 right-0 mt-2 bg-white border border-indigo-50 rounded-2xl shadow-2xl overflow-hidden z-40">
-                    {suggestions.map((suggestion, idx) => (
+    <div className="bg-[#F8F9FD]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="sticky top-20 z-40">
+          <div className="rounded-[2.25rem] border border-slate-200/60 bg-white/90 backdrop-blur shadow-sm px-4 sm:px-5 py-4">
+            <div className="flex flex-col lg:flex-row lg:items-end gap-3 lg:gap-4">
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div ref={titleRef} className="relative">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    Search
+                  </label>
+                  <div className="relative mt-1.5">
+                    <input
+                      type="text"
+                      placeholder="Role, company, tool…"
+                      value={query}
+                      onChange={(e) => {
+                        setQuery(e.target.value);
+                        setShowTitleSuggestions(true);
+                      }}
+                      onFocus={() => setShowTitleSuggestions(true)}
+                      autoComplete="off"
+                      inputMode="search"
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          setQuery("");
+                          setShowTitleSuggestions(false);
+                        }
+                        if (e.key === "Enter") setShowTitleSuggestions(false);
+                      }}
+                      className="w-full rounded-2xl border border-slate-200/70 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 pr-10"
+                    />
+                    {query && (
                       <button
-                        key={`${suggestion}-${idx}`}
                         onClick={() => {
-                          setQuery(suggestion);
+                          setQuery("");
                           setShowTitleSuggestions(false);
                         }}
-                        className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-indigo-50/50 last:border-none"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600"
+                        aria-label="Clear search"
                       >
-                        {suggestion}
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                       </button>
-                    ))}
+                    )}
+                    {showTitleSuggestions && suggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 mt-2 bg-white border border-indigo-50 rounded-2xl shadow-2xl overflow-hidden z-40">
+                        {suggestions.map((suggestion, idx) => (
+                          <button
+                            key={`${suggestion}-${idx}`}
+                            onClick={() => {
+                              setQuery(suggestion);
+                              setShowTitleSuggestions(false);
+                            }}
+                            className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-indigo-50/50 last:border-none"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div ref={mobileLocationRef} className="relative">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Location</label>
-                <div className="relative mt-2">
-                  <input
-                    type="text"
-                    placeholder="City, country or remote"
-                    value={locationQuery}
-                    onChange={(e) => { setLocationQuery(e.target.value); setShowLocationSuggestions(true); }}
-                    onFocus={() => setShowLocationSuggestions(true)}
-                    autoComplete="off"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') {
-                        setLocationQuery('');
-                        setShowLocationSuggestions(false);
-                      }
-                      if (e.key === 'Enter') {
-                        setShowLocationSuggestions(false);
-                      }
-                    }}
-                    className="w-full rounded-xl border border-slate-200/70 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 pr-10"
-                  />
-                  {locationQuery && (
-                    <button
-                      onClick={() => { setLocationQuery(''); setShowLocationSuggestions(false); }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600"
-                      aria-label="Clear location"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  )}
                 </div>
-                {showLocationSuggestions && locationSuggestions.length > 0 && (
-                  <div className="absolute left-0 right-0 mt-2 bg-white border border-indigo-50 rounded-2xl shadow-2xl overflow-hidden z-40">
-                    {locationSuggestions.map((suggestion, idx) => (
+
+                <div ref={locationRef} className="relative">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    Location
+                  </label>
+                  <div className="relative mt-1.5">
+                    <input
+                      type="text"
+                      placeholder="City, country, or remote"
+                      value={locationQuery}
+                      onChange={(e) => {
+                        setLocationQuery(e.target.value);
+                        setShowLocationSuggestions(true);
+                      }}
+                      onFocus={() => setShowLocationSuggestions(true)}
+                      autoComplete="off"
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          setLocationQuery("");
+                          setShowLocationSuggestions(false);
+                        }
+                        if (e.key === "Enter") setShowLocationSuggestions(false);
+                      }}
+                      className="w-full rounded-2xl border border-slate-200/70 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 pr-10"
+                    />
+                    {locationQuery && (
                       <button
-                        key={`${suggestion}-${idx}`}
                         onClick={() => {
-                          setLocationQuery(suggestion);
+                          setLocationQuery("");
                           setShowLocationSuggestions(false);
                         }}
-                        className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-indigo-50/50 last:border-none"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600"
+                        aria-label="Clear location"
                       >
-                        {suggestion}
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                       </button>
-                    ))}
+                    )}
+                    {showLocationSuggestions && locationSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 mt-2 bg-white border border-indigo-50 rounded-2xl shadow-2xl overflow-hidden z-40">
+                        {locationSuggestions.map((suggestion, idx) => (
+                          <button
+                            key={`${suggestion}-${idx}`}
+                            onClick={() => {
+                              setLocationQuery(suggestion);
+                              setShowLocationSuggestions(false);
+                            }}
+                            className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-indigo-50/50 last:border-none"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+
+                <div className="lg:col-start-3">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    Sort
+                  </label>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                    className="mt-1.5 w-full rounded-2xl border border-slate-200/70 bg-white px-4 py-3 text-sm font-black text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="salary">Highest salary</option>
+                    <option value="match">Best match</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Work mode</label>
-                <select
-                  value={workMode}
-                  onChange={(e) => setWorkMode(e.target.value as typeof workMode)}
-                  className="mt-2 w-full rounded-xl border border-slate-200/70 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
-                >
-                  {workModes.map((mode) => (
-                    <option key={mode} value={mode}>
-                      {mode}
-                    </option>
-                  ))}
-                </select>
+
+              <div className="flex items-center justify-between lg:justify-end gap-3">
+                <div className="flex items-center gap-2">
+                  {canUseSaved && (
+                    <button
+                      onClick={() => setShowSavedOnly((prev) => !prev)}
+                      disabled={savedCount === 0}
+                      aria-pressed={showSavedOnly}
+                      className={`h-11 px-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                        showSavedOnly
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-white text-slate-600 border-slate-200/70 hover:border-indigo-200 hover:text-indigo-700"
+                      } ${savedCount === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      {showSavedOnly ? "Saved" : `Saved (${savedCount})`}
+                    </button>
+                  )}
+                  <button
+                    onClick={clearAllFilters}
+                    className="h-11 px-4 rounded-2xl border border-slate-200/70 bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    onClick={() => setIsFilterOpen(true)}
+                    className="lg:hidden h-11 px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black"
+                  >
+                    Filters
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sort</label>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                  className="mt-2 w-full rounded-xl border border-slate-200/70 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
-                >
-                  <option value="newest">Newest</option>
-                  <option value="salary">Highest salary</option>
-                  <option value="match">Best match</option>
-                </select>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            </div>
+
+            <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400" aria-live="polite">
                   {filteredAndSorted.length} roles
                 </span>
+                {(query.trim() || locationQuery.trim()) && (
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                    Showing {query.trim() || "all roles"}{locationQuery.trim() ? ` in ${locationQuery.trim()}` : ""}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {savedNotice && (
+                  <span className="text-indigo-600 font-bold text-xs" aria-live="polite">
+                    {savedNotice}
+                  </span>
+                )}
                 <button
-                  onClick={clearAllFilters}
-                  className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800"
+                  onClick={handleSaveSearch}
+                  disabled={(!query.trim() && !locationQuery.trim()) || isSaving}
+                  className="text-indigo-600 font-black uppercase tracking-widest text-[10px] hover:text-indigo-800 disabled:text-slate-300"
                 >
-                  Clear filters
+                  {isSaving ? "Saving..." : accessToken ? "Save alert" : "Sign in to save"}
                 </button>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-500 px-2">
-            <span className="font-semibold" aria-live="polite">
-              {filteredAndSorted.length} roles found
-            </span>
-            <div className="flex items-center gap-3">
-              {savedNotice && (
-                <span className="text-indigo-600 font-bold" aria-live="polite">
-                  {savedNotice}
-                </span>
-              )}
-              <button
-                onClick={handleSaveSearch}
-                disabled={(!query.trim() && !locationQuery.trim()) || isSaving}
-                className="text-indigo-600 font-black uppercase tracking-widest text-[10px] hover:text-indigo-800 disabled:text-slate-300"
-              >
-                {isSaving ? 'Saving...' : 'Save search'}
-              </button>
-            </div>
+            {activeFilterChips.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {activeFilterChips.slice(0, 6).map((chip, index) => (
+                  <button
+                    key={`${chip.label}-${index}`}
+                    onClick={chip.onClear}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-indigo-200 hover:text-indigo-600"
+                  >
+                    {chip.label}
+                    <span className="text-[10px]">×</span>
+                  </button>
+                ))}
+                {activeFilterChips.length > 6 && (
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                    +{activeFilterChips.length - 6} more
+                  </span>
+                )}
+              </div>
+            )}
           </div>
-          <div className="px-2 mt-2 text-[10px] font-black uppercase tracking-widest text-slate-300">
-            Tip: Use two keywords for sharper matches.
-          </div>
-          {(query.trim() || locationQuery.trim()) && (
-            <div className="px-2 mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Showing results for {query.trim() || 'all roles'}
-              {locationQuery.trim() ? ` in ${locationQuery.trim()}` : ''}
-            </div>
-          )}
+        </div>
 
-          {activeFilterChips.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 px-2">
-              {activeFilterChips.map((chip, index) => (
-                <button
-                  key={`${chip.label}-${index}`}
-                  onClick={chip.onClear}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-indigo-200 hover:text-indigo-600"
-                >
-                  {chip.label}
-                  <span className="text-[10px]">×</span>
-                </button>
-              ))}
-              <button
-                onClick={clearAllFilters}
-                className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800"
-              >
-                Clear all
-              </button>
-            </div>
-          )}
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <aside className="hidden lg:block lg:col-span-3">
+            <FilterContent variant="sidebar" />
+          </aside>
 
-          <div className="space-y-4">
-            {filteredAndSorted.slice(0, visibleCount).map(job => {
+          <div className="lg:col-span-5 space-y-3">
+            {filteredAndSorted.slice(0, visibleCount).map((job) => {
               const isSaved = user?.savedJobIds?.includes(job.id);
+              const selected = isDesktop && selectedJobId === job.id;
 
               return (
-                <JobCard
+                <JobRow
                   key={job.id}
                   job={job}
-                  expanded={expandedJobId === job.id}
-                  onToggleExpanded={() => handleToggleJob(job)}
+                  selected={selected}
+                  isSaved={Boolean(isSaved)}
+                  showSave={Boolean(canUseSaved)}
+                  onToggleSave={() => onToggleBookmark(job.id)}
                   onOpenCompany={(companyName) => {
                     if (onSelectCompany) onSelectCompany(companyName);
                     else router.push(`/companies/${createCompanySlug({ name: companyName })}`);
                   }}
-                  showBookmark={Boolean(canUseSaved)}
-                  isSaved={Boolean(isSaved)}
-                  onToggleBookmark={() => onToggleBookmark(job.id)}
-                  variant="board"
+                  onSelect={() => {
+                    if (isDesktop) {
+                      setSelectedJobId(job.id);
+                      return;
+                    }
+                    router.push(`/jobs/${createJobSlug(job)}`);
+                  }}
+                  onApply={() => handleApply(job)}
                 />
               );
             })}
 
-            {/* Load More Button */}
             {filteredAndSorted.length > visibleCount && (
-               <div className="pt-8 pb-4 text-center">
-                  <button 
-                     onClick={handleLoadMore}
-                     className="bg-white border-2 border-slate-100 text-slate-600 px-6 sm:px-8 py-3 sm:py-4 rounded-[2rem] font-black uppercase tracking-widest text-[10px] sm:text-xs hover:border-indigo-600 hover:text-indigo-600 transition-all shadow-sm active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100"
-                  >
-                     Show More Roles ({filteredAndSorted.length - visibleCount} remaining)
-                  </button>
-               </div>
+              <div className="pt-4 pb-2 text-center">
+                <button
+                  onClick={handleLoadMore}
+                  className="bg-white border border-slate-200/70 text-slate-700 px-6 py-3 rounded-[2rem] font-black uppercase tracking-widest text-[10px] hover:border-indigo-200 hover:text-indigo-700 transition-all shadow-sm active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100"
+                >
+                  Show more ({filteredAndSorted.length - visibleCount} remaining)
+                </button>
+              </div>
             )}
 
             {filteredAndSorted.length === 0 && (
-              <div className="bg-white py-16 rounded-[3.5rem] text-center border-2 border-dashed border-slate-100">
-                <p className="text-slate-400 font-bold italic">
-                  {showSavedOnly ? 'No saved roles yet.' : 'No elite roles found matching your current search.'}
+              <div className="bg-white py-12 rounded-[3rem] text-center border border-dashed border-slate-200/70">
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                  No matches
+                </div>
+                <p className="mt-3 text-slate-700 font-black text-lg">
+                  {showSavedOnly ? "No saved roles yet." : "No roles match your current filters."}
+                </p>
+                <p className="mt-2 text-slate-500 font-medium">
+                  Try fewer keywords, broaden location, or reset filters. You can also save this search as an alert.
                 </p>
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                  {["Notion", "Ops Manager", "Remote", "Automation", "Zapier"].map((tag) => (
+                  {["Notion", "RevOps", "Automation", "Remote", "Airtable"].map((tag) => (
                     <button
                       key={tag}
                       onClick={() => setQuery(tag)}
-                      className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-slate-500 border border-slate-200 bg-slate-50 hover:border-indigo-200 hover:text-indigo-600"
+                      className="px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest text-slate-600 border border-slate-200 bg-slate-50 hover:border-indigo-200 hover:text-indigo-700"
                     >
                       {tag}
                     </button>
                   ))}
                 </div>
-                <button
-                  onClick={clearAllFilters}
-                  className="mt-6 text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800"
-                >
-                  Clear all filters
-                </button>
+                <div className="mt-6 flex items-center justify-center gap-3">
+                  <button
+                    onClick={clearAllFilters}
+                    className="h-11 px-5 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black"
+                  >
+                    Reset filters
+                  </button>
+                  <button
+                    onClick={() => (accessToken ? handleSaveSearch() : router.push("/auth"))}
+                    className="h-11 px-5 rounded-2xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100"
+                  >
+                    {accessToken ? "Save alert" : "Sign in for alerts"}
+                  </button>
+                </div>
               </div>
             )}
           </div>
+
+          <aside className="hidden lg:block lg:col-span-4">
+            <JobDetailPanel
+              job={selectedJob}
+              allJobs={filteredAndSorted}
+              onClose={() => setSelectedJobId(null)}
+              onApply={handleApply}
+              onToggleSave={canUseSaved ? onToggleBookmark : undefined}
+              isSaved={(jobId) => Boolean(user?.savedJobIds?.includes(jobId))}
+            />
+          </aside>
         </div>
       </div>
+
+      {isFilterOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Filters"
+          onClick={() => setIsFilterOpen(false)}
+        >
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-2xl rounded-t-[2.75rem] border border-slate-200 bg-[#F8F9FD] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 pt-5 pb-4 flex items-center justify-between">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Filters</div>
+                <div className="text-sm font-black text-slate-900 mt-1">{filteredAndSorted.length} roles</div>
+              </div>
+              <button
+                onClick={() => setIsFilterOpen(false)}
+                className="h-11 w-11 rounded-2xl border border-slate-200/70 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-700 flex items-center justify-center"
+                aria-label="Close filters"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-4 pb-4">
+              <FilterContent variant="sheet" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
