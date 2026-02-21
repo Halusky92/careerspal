@@ -67,6 +67,7 @@ export default function JobRow({
   const href = `/jobs/${createJobSlug(job)}`;
 
   const isHome = variant === "home";
+  const maxTags = isHome ? 3 : 4;
 
   return (
     <div
@@ -251,7 +252,7 @@ export default function JobRow({
 
           <div className="mt-3 flex items-center justify-between gap-3">
             <div className="min-w-0 flex items-center gap-2 flex-wrap">
-              {(stack || []).slice(0, 4).map((tag) => (
+              {(stack || []).slice(0, maxTags).map((tag) => (
                 <span
                   key={tag}
                   className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-slate-500"
@@ -259,9 +260,9 @@ export default function JobRow({
                   {tag}
                 </span>
               ))}
-              {stack.length > 4 && (
+              {stack.length > maxTags && (
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  +{stack.length - 4}
+                  +{stack.length - maxTags}
                 </span>
               )}
             </div>
@@ -276,7 +277,8 @@ export default function JobRow({
                   onApply();
                 }}
                 className={[
-                  isHome ? "h-10 px-4 text-[10px]" : "h-11 px-5 text-[11px]",
+                  "h-11",
+                  isHome ? "px-4 text-[10px]" : "px-5 text-[11px]",
                   "rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100",
                 ].join(" ")}
               >
