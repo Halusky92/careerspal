@@ -30,21 +30,6 @@ export default function JobsPage() {
   const { profile, accessToken, loading: authLoading } = useSupabaseAuth();
   const initialQuery = searchParams.get('query') || '';
   const initialLocation = searchParams.get('location') || '';
-  const handleQueryUpdate = (nextQuery: string, nextLocation: string) => {
-    const params = new URLSearchParams(window.location.search);
-    if (nextQuery) {
-      params.set('query', nextQuery);
-    } else {
-      params.delete('query');
-    }
-    if (nextLocation) {
-      params.set('location', nextLocation);
-    } else {
-      params.delete('location');
-    }
-    const qs = params.toString();
-    router.replace(qs ? `/jobs?${qs}` : '/jobs', { scroll: false });
-  };
   const [jobs, setJobs] = useState<Job[]>([]);
   const [totalJobs, setTotalJobs] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -180,7 +165,6 @@ export default function JobsPage() {
         initialLocationQuery={initialLocation}
         user={user}
         onToggleBookmark={handleToggleBookmark}
-        onQueryUpdate={handleQueryUpdate}
       />
     </div>
   );

@@ -5,6 +5,7 @@ export type SupabaseCompanyRow = {
   logo_url?: string | null;
   website?: string | null;
   description?: string | null;
+  verified?: boolean | null;
 } | null;
 
 export type SupabaseJobRow = {
@@ -52,6 +53,7 @@ export const mapSupabaseJob = (row: SupabaseJobRow): Job => ({
   description: row.description || "",
   tags: (row.tags as string[]) || [],
   tools: (row.tools as string[]) || [],
+  companyVerified: Boolean(row.companies?.verified),
   isFeatured: Boolean(row.is_featured),
   planType: (row.plan_type || undefined) as Job["planType"],
   plan: row.plan_price

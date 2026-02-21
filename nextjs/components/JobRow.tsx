@@ -156,8 +156,18 @@ export default function JobRow({
                 <span className="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200/70 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">
                   {workMode}
                 </span>
+                {job.companyVerified && (
+                  <>
+                    <span className="text-slate-300">•</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-emerald-700">
+                      Verified
+                    </span>
+                  </>
+                )}
                 <span className="text-slate-300">•</span>
-                <span className="truncate">{job.salary}</span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200/70 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                  Posted {posted}
+                </span>
               </div>
             </div>
 
@@ -268,8 +278,8 @@ export default function JobRow({
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="hidden sm:inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                Posted {posted}
+              <span className="text-[12px] sm:text-sm font-black text-slate-900 whitespace-nowrap">
+                {job.salary || "Salary listed"}
               </span>
               <button
                 onClick={(e) => {

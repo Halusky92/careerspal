@@ -19,10 +19,55 @@ interface FindJobsProps {
   initialLocationQuery?: string;
   user?: UserSession | null;
   onToggleBookmark: (jobId: string) => void;
-  onQueryUpdate?: (query: string, locationQuery: string) => void;
 }
 
 const JOBS_PER_PAGE = 7;
+
+const TOOL_OPTIONS = ["Notion", "Airtable", "Zapier", "Make"] as const;
+const SENIORITY_OPTIONS = ["any", "junior", "mid", "senior", "lead"] as const;
+const TZ_OPTIONS = ["any", "eu", "us"] as const;
+
+type SortOption = "newest" | "salary" | "relevant";
+type SeniorityOption = (typeof SENIORITY_OPTIONS)[number];
+type TzOption = (typeof TZ_OPTIONS)[number];
+
+const parseNumberParam = (value: string | null, fallback: number) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+const parseCsvParam = (value: string | null) => {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+};
+
+const inferSeniority = (job: Job): Exclude<SeniorityOption, "any"> | "unknown" => {
+  const t = (job.title || "").toLowerCase();
+  if (t.includes("intern") || t.includes("junior") || t.includes("jr")) return "junior";
+  if (t.includes("principal") || t.includes("head") || t.includes("director") || t.includes("vp ")) return "lead";
+  if (t.includes("lead") || t.includes("staff")) return "lead";
+  if (t.includes("senior") || t.includes("sr")) return "senior";
+  if (t.includes("mid")) return "mid";
+  return "unknown";
+};
+
+const inferTimezoneBucket = (job: Job): Exclude<TzOption, "any"> | "unknown" => {
+  const text = `${job.location || ""} ${job.remotePolicy || ""} ${(job.description || "").slice(0, 1200)}`.toLowerCase();
+  const euHints = ["europe", "emea", "eu ", "uk", "gmt", "cet", "cest", "eet", "bst", "london", "berlin", "paris", "amsterdam", "dublin"];
+  const usHints = ["united states", "usa", "us ", "america", "est", "edt", "pst", "pdt", "cst", "cdt", "mst", "mdt", " et", " pt", "nyc", "san francisco"];
+  if (euHints.some((h) => text.includes(h))) return "eu";
+  if (usHints.some((h) => text.includes(h))) return "us";
+  return "unknown";
+};
+
+const getToolSignals = (job: Job) => {
+  const raw = [...(job.tools || []), ...(job.tags || [])].filter(Boolean);
+  const normalized = raw.map((v) => v.toLowerCase());
+  return new Set(normalized);
+};
 
 const FindJobs: React.FC<FindJobsProps> = ({
   jobs,
@@ -32,18 +77,21 @@ const FindJobs: React.FC<FindJobsProps> = ({
   initialLocationQuery = '',
   user,
   onToggleBookmark,
-  onQueryUpdate,
 }) => {
   const router = useRouter();
   const { accessToken } = useSupabaseAuth();
   const [query, setQuery] = useState(initialQuery);
   const [locationQuery, setLocationQuery] = useState(initialLocationQuery);
   const [category, setCategory] = useState('All Roles');
-  const [system, setSystem] = useState('All Systems');
   const [workMode, setWorkMode] = useState<'All' | 'Remote' | 'Hybrid' | 'Onsite'>('All');
   const [employmentType, setEmploymentType] = useState<'All' | Job['type']>('All');
-  const [sortBy, setSortBy] = useState<'newest' | 'salary' | 'match'>('newest');
-  const [minSalary, setMinSalary] = useState(0);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [salaryMin, setSalaryMin] = useState(0);
+  const [salaryMax, setSalaryMax] = useState(0);
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
+  const [timezone, setTimezone] = useState<TzOption>("any");
+  const [seniority, setSeniority] = useState<SeniorityOption>("any");
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [showTitleSuggestions, setShowTitleSuggestions] = useState(false);
@@ -57,11 +105,11 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const filterScrollRef = useRef<HTMLDivElement>(null);
   const [showFilterTopShadow, setShowFilterTopShadow] = useState(false);
   const [showFilterBottomShadow, setShowFilterBottomShadow] = useState(false);
+  const hydratedRef = useRef(false);
   
   // Pagination State
   const [visibleCount, setVisibleCount] = useState(JOBS_PER_PAGE);
 
-  const systems = ['All Systems', 'Notion', 'Zapier', 'Make.com', 'Airtable'];
   const workModes: Array<'All' | 'Remote' | 'Hybrid' | 'Onsite'> = ['All', 'Remote', 'Hybrid', 'Onsite'];
   const employmentTypes: Array<'All' | Job['type']> = ['All', 'Full-time', 'Contract', 'Part-time'];
   const salaryFloors = [
@@ -81,15 +129,102 @@ const FindJobs: React.FC<FindJobsProps> = ({
   }, [initialLocationQuery]);
 
   useEffect(() => {
-    if (!onQueryUpdate) return;
-    const timer = window.setTimeout(() => onQueryUpdate(query, locationQuery), 300);
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const urlQuery = params.get("query");
+    const urlLocation = params.get("location");
+    const urlCategory = params.get("category");
+    const urlWorkMode = params.get("workMode");
+    const urlType = params.get("type");
+    const urlSort = params.get("sort");
+    const urlSalaryMin = params.get("salaryMin");
+    const urlSalaryMax = params.get("salaryMax");
+    const urlTools = params.get("tools");
+    const urlTz = params.get("tz");
+    const urlSeniority = params.get("seniority");
+    const urlVerified = params.get("verified");
+    const urlSaved = params.get("saved");
+
+    if (typeof urlQuery === "string" && urlQuery !== query) setQuery(urlQuery);
+    if (typeof urlLocation === "string" && urlLocation !== locationQuery) setLocationQuery(urlLocation);
+    if (urlCategory && CATEGORIES.includes(urlCategory)) setCategory(urlCategory);
+    if (urlWorkMode && workModes.includes(urlWorkMode as any)) setWorkMode(urlWorkMode as any);
+    if (urlType && employmentTypes.includes(urlType as any)) setEmploymentType(urlType as any);
+    if (urlSort && (urlSort === "newest" || urlSort === "salary" || urlSort === "relevant")) setSortBy(urlSort);
+    setSalaryMin(Math.max(0, parseNumberParam(urlSalaryMin, 0)));
+    setSalaryMax(Math.max(0, parseNumberParam(urlSalaryMax, 0)));
+    const tools = parseCsvParam(urlTools).filter((t) => TOOL_OPTIONS.includes(t as any));
+    setSelectedTools(tools);
+    if (urlTz && (urlTz === "any" || urlTz === "eu" || urlTz === "us")) setTimezone(urlTz);
+    if (urlSeniority && SENIORITY_OPTIONS.includes(urlSeniority as any)) setSeniority(urlSeniority as any);
+    setVerifiedOnly(urlVerified === "1");
+    setShowSavedOnly(urlSaved === "1");
+
+    hydratedRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!hydratedRef.current) return;
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const setOrDelete = (key: string, value: string | null) => {
+        if (value && value.trim()) params.set(key, value);
+        else params.delete(key);
+      };
+      setOrDelete("query", query.trim() || null);
+      setOrDelete("location", locationQuery.trim() || null);
+      setOrDelete("category", category !== "All Roles" ? category : null);
+      setOrDelete("workMode", workMode !== "All" ? workMode : null);
+      setOrDelete("type", employmentType !== "All" ? employmentType : null);
+      setOrDelete("sort", sortBy !== "newest" ? sortBy : null);
+      setOrDelete("salaryMin", salaryMin > 0 ? String(salaryMin) : null);
+      setOrDelete("salaryMax", salaryMax > 0 ? String(salaryMax) : null);
+      setOrDelete("tools", selectedTools.length > 0 ? selectedTools.join(",") : null);
+      setOrDelete("tz", timezone !== "any" ? timezone : null);
+      setOrDelete("seniority", seniority !== "any" ? seniority : null);
+      setOrDelete("verified", verifiedOnly ? "1" : null);
+      setOrDelete("saved", showSavedOnly ? "1" : null);
+      const qs = params.toString();
+      router.replace(qs ? `/jobs?${qs}` : "/jobs", { scroll: false });
+    }, 250);
     return () => window.clearTimeout(timer);
-  }, [query, locationQuery, onQueryUpdate]);
+  }, [
+    query,
+    locationQuery,
+    category,
+    workMode,
+    employmentType,
+    sortBy,
+    salaryMin,
+    salaryMax,
+    selectedTools,
+    timezone,
+    seniority,
+    verifiedOnly,
+    showSavedOnly,
+    router,
+  ]);
 
   // Reset pagination when filters change
   useEffect(() => {
     setVisibleCount(JOBS_PER_PAGE);
-  }, [query, locationQuery, category, system, sortBy, workMode, employmentType, minSalary]);
+  }, [
+    query,
+    locationQuery,
+    category,
+    sortBy,
+    workMode,
+    employmentType,
+    salaryMin,
+    salaryMax,
+    selectedTools,
+    timezone,
+    seniority,
+    verifiedOnly,
+    showSavedOnly,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -200,6 +335,22 @@ const FindJobs: React.FC<FindJobsProps> = ({
     }, {});
   }, [jobs]);
 
+  const toolCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    TOOL_OPTIONS.forEach((tool) => {
+      counts[tool] = 0;
+    });
+    jobs.forEach((job) => {
+      const signals = getToolSignals(job);
+      TOOL_OPTIONS.forEach((tool) => {
+        const low = tool.toLowerCase();
+        const hit = low === "make" ? (signals.has("make") || signals.has("make.com")) : signals.has(low);
+        if (hit) counts[tool] = (counts[tool] || 0) + 1;
+      });
+    });
+    return counts;
+  }, [jobs]);
+
   const savedIds = useMemo(() => new Set(user?.savedJobIds || []), [user?.savedJobIds]);
   const savedCount = savedIds.size;
   const canUseSaved = user?.role !== "employer";
@@ -212,13 +363,41 @@ const FindJobs: React.FC<FindJobsProps> = ({
       const matchesLocation =
         !locationQuery.trim() || j.location.toLowerCase().includes(locationQuery.toLowerCase());
       const matchesCat = category === 'All Roles' || j.category === category;
-      const matchesSystem = system === 'All Systems' || j.tags.some(t => t.includes(system));
       const matchesWorkMode = workMode === 'All' || getWorkMode(j) === workMode;
       const matchesEmployment = employmentType === 'All' || j.type === employmentType;
       const salaryRange = parseSalaryRange(j.salary);
-      const matchesSalary = minSalary === 0 || salaryRange.max >= minSalary;
       const matchesSaved = !showSavedOnly || savedIds.has(j.id);
-      return matchesQuery && matchesLocation && matchesCat && matchesSystem && matchesWorkMode && matchesEmployment && matchesSalary && matchesSaved;
+      const matchesSalaryMin = salaryMin === 0 || salaryRange.max >= salaryMin;
+      const matchesSalaryMax = salaryMax === 0 || salaryRange.min <= salaryMax;
+      const toolSignals = getToolSignals(j);
+      const matchesTools =
+        selectedTools.length === 0 ||
+        selectedTools.some((tool) => {
+          const low = tool.toLowerCase();
+          if (low === "make") return toolSignals.has("make") || toolSignals.has("make.com");
+          return toolSignals.has(low);
+        });
+      const bucket = inferTimezoneBucket(j);
+      const matchesTz = timezone === "any" ? true : bucket === timezone || bucket === "unknown";
+      const inferredSeniority = inferSeniority(j);
+      const matchesSeniority =
+        seniority === "any" ? true : inferredSeniority === seniority || inferredSeniority === "unknown";
+      const matchesVerified = !verifiedOnly || Boolean(j.companyVerified);
+
+      return (
+        matchesQuery &&
+        matchesLocation &&
+        matchesCat &&
+        matchesWorkMode &&
+        matchesEmployment &&
+        matchesSalaryMin &&
+        matchesSalaryMax &&
+        matchesSaved &&
+        matchesTools &&
+        matchesTz &&
+        matchesSeniority &&
+        matchesVerified
+      );
     });
 
     // Sort order: Elite -> Featured -> Standard, then by user sort
@@ -233,8 +412,25 @@ const FindJobs: React.FC<FindJobsProps> = ({
         return getSalaryValue(b.salary) - getSalaryValue(a.salary);
       }
 
-      if (sortBy === 'match') {
-        return (b.matchScore ?? 0) - (a.matchScore ?? 0);
+      if (sortBy === 'relevant') {
+        const q = query.trim().toLowerCase();
+        const tokens = q ? q.split(/\s+/).filter(Boolean) : [];
+        const score = (job: Job) => {
+          const base = job.matchScore ?? 0;
+          if (tokens.length === 0) return base;
+          const hay = `${job.title} ${job.company} ${(job.tags || []).join(" ")} ${(job.tools || []).join(" ")}`.toLowerCase();
+          const hit = tokens.reduce((acc, t) => (hay.includes(t) ? acc + 10 : acc), 0);
+          const toolBonus = selectedTools.reduce((acc, t) => {
+            const low = t.toLowerCase();
+            const signals = getToolSignals(job);
+            if (low === "make") return acc + (signals.has("make") || signals.has("make.com") ? 6 : 0);
+            return acc + (signals.has(low) ? 6 : 0);
+          }, 0);
+          const seniorityBonus =
+            seniority !== "any" && inferSeniority(job) === seniority ? 6 : 0;
+          return base + hit + toolBonus + seniorityBonus;
+        };
+        return score(b) - score(a);
       }
       
       // Secondary Sort: Date (Newest First) if weights are equal and not sorting by salary
@@ -244,7 +440,22 @@ const FindJobs: React.FC<FindJobsProps> = ({
     });
     
     return result;
-  }, [jobs, query, locationQuery, category, system, sortBy, workMode, employmentType, minSalary]);
+  }, [
+    jobs,
+    query,
+    locationQuery,
+    category,
+    sortBy,
+    workMode,
+    employmentType,
+    salaryMin,
+    salaryMax,
+    selectedTools,
+    timezone,
+    seniority,
+    verifiedOnly,
+    showSavedOnly,
+  ]);
 
   const suggestions = useMemo(() => {
     if (!query.trim() || query.length < 1) return [];
@@ -325,11 +536,15 @@ const FindJobs: React.FC<FindJobsProps> = ({
     setQuery('');
     setLocationQuery('');
     setCategory('All Roles');
-    setSystem('All Systems');
     setWorkMode('All');
     setEmploymentType('All');
-    setMinSalary(0);
     setSortBy('newest');
+    setSalaryMin(0);
+    setSalaryMax(0);
+    setSelectedTools([]);
+    setTimezone("any");
+    setSeniority("any");
+    setVerifiedOnly(false);
     setShowSavedOnly(false);
     setShowTitleSuggestions(false);
     setShowLocationSuggestions(false);
@@ -347,14 +562,18 @@ const FindJobs: React.FC<FindJobsProps> = ({
         chips.push({ label: `Location: ${display}`, onClear: () => setLocationQuery('') });
       }
       if (category !== 'All Roles') chips.push({ label: category, onClear: () => setCategory('All Roles') });
-      if (system !== 'All Systems') chips.push({ label: system, onClear: () => setSystem('All Systems') });
       if (workMode !== 'All') chips.push({ label: workMode, onClear: () => setWorkMode('All') });
       if (employmentType !== 'All') chips.push({ label: employmentType, onClear: () => setEmploymentType('All') });
-      if (minSalary > 0) chips.push({ label: `Min ${formatSalaryFloor(minSalary)}`, onClear: () => setMinSalary(0) });
+      if (salaryMin > 0) chips.push({ label: `Min ${formatSalaryFloor(salaryMin)}`, onClear: () => setSalaryMin(0) });
+      if (salaryMax > 0) chips.push({ label: `Max ${formatSalaryFloor(salaryMax)}`, onClear: () => setSalaryMax(0) });
+      if (selectedTools.length > 0) chips.push({ label: `Tools: ${selectedTools.join(", ")}`, onClear: () => setSelectedTools([]) });
+      if (timezone !== "any") chips.push({ label: timezone === "eu" ? "EU-friendly" : "US-friendly", onClear: () => setTimezone("any") });
+      if (seniority !== "any") chips.push({ label: `Seniority: ${seniority}`, onClear: () => setSeniority("any") });
+      if (verifiedOnly) chips.push({ label: "Verified only", onClear: () => setVerifiedOnly(false) });
       if (showSavedOnly) chips.push({ label: 'Saved', onClear: () => setShowSavedOnly(false) });
       return chips;
     },
-    [query, locationQuery, category, system, workMode, employmentType, minSalary, showSavedOnly],
+    [query, locationQuery, category, workMode, employmentType, salaryMin, salaryMax, selectedTools, timezone, seniority, verifiedOnly, showSavedOnly],
   );
 
   useEffect(() => {
@@ -454,18 +673,121 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
       <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
         <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Minimum Salary</h3>
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Salary range</h3>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3">
+            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Min</div>
+            <div className="text-sm font-black text-slate-900 mt-1">{formatSalaryFloor(salaryMin)}</div>
+          </div>
+          <div className="rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3">
+            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Max</div>
+            <div className="text-sm font-black text-slate-900 mt-1">{salaryMax > 0 ? formatSalaryFloor(salaryMax) : "Any"}</div>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {salaryFloors.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setSalaryMin(option.value)}
+                className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-colors ${
+                  salaryMin === option.value
+                    ? "bg-slate-900 text-white border-slate-900"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-indigo-200 hover:text-indigo-700"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <div>
+            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Min slider</label>
+            <input
+              type="range"
+              min={0}
+              max={250000}
+              step={5000}
+              value={salaryMin}
+              onChange={(e) => {
+                const next = Math.max(0, Number(e.target.value) || 0);
+                setSalaryMin(next);
+                if (salaryMax > 0 && next > salaryMax) setSalaryMax(next);
+              }}
+              className="mt-2 w-full accent-indigo-600"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-1">
+            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Max cap</label>
+            <select
+              value={salaryMax}
+              onChange={(e) => {
+                const next = Number(e.target.value) || 0;
+                setSalaryMax(next);
+                if (next > 0 && salaryMin > next) setSalaryMin(next);
+              }}
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
+            >
+              <option value={0}>Any</option>
+              <option value={100000}>$100k</option>
+              <option value={120000}>$120k</option>
+              <option value={150000}>$150k</option>
+              <option value={180000}>$180k</option>
+              <option value={200000}>$200k</option>
+              <option value={250000}>$250k</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
+        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Tools</h3>
         </div>
         <div className="space-y-2">
-          {salaryFloors.map((option) => (
+          {TOOL_OPTIONS.map((tool) => {
+            const active = selectedTools.includes(tool);
+            return (
+              <button
+                key={tool}
+                onClick={() => {
+                  setSelectedTools((prev) => (prev.includes(tool) ? prev.filter((t) => t !== tool) : [...prev, tool]));
+                }}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
+                  active ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100" : "text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                <span>{tool}</span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-400"}`}>
+                  {toolCounts[tool] || 0}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
+        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Timezone overlap</h3>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { id: "any" as const, label: "Any" },
+            { id: "eu" as const, label: "EU-friendly" },
+            { id: "us" as const, label: "US-friendly" },
+          ].map((opt) => (
             <button
-              key={option.value}
-              onClick={() => setMinSalary(option.value)}
-              className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
-                minSalary === option.value ? 'bg-slate-900 text-white' : 'text-gray-500 hover:bg-gray-50'
+              key={opt.id}
+              onClick={() => setTimezone(opt.id)}
+              className={`rounded-2xl px-3 py-3 text-[10px] font-black uppercase tracking-widest border transition-colors ${
+                timezone === opt.id ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-indigo-200 hover:text-indigo-700"
               }`}
             >
-              {option.label}
+              {opt.label}
             </button>
           ))}
         </div>
@@ -473,19 +795,45 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
       <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
         <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Systems Stack</h3>
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Seniority</h3>
         </div>
-        <div className="space-y-2">
-          {systems.map(s => (
-            <button 
-              key={s} 
-              onClick={() => setSystem(s)}
-              className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-bold transition-all ${system === s ? 'bg-slate-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { id: "any" as const, label: "Any" },
+            { id: "junior" as const, label: "Junior" },
+            { id: "mid" as const, label: "Mid" },
+            { id: "senior" as const, label: "Senior" },
+            { id: "lead" as const, label: "Lead+" },
+          ].map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => setSeniority(opt.id)}
+              className={`rounded-2xl px-3 py-3 text-[10px] font-black uppercase tracking-widest border transition-colors ${
+                seniority === opt.id ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-indigo-200 hover:text-indigo-700"
+              }`}
             >
-              {s}
+              {opt.label}
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
+        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Trust</h3>
+        </div>
+        <button
+          onClick={() => setVerifiedOnly((prev) => !prev)}
+          className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
+            verifiedOnly ? "bg-emerald-600 text-white shadow-xl shadow-emerald-100" : "text-gray-500 hover:bg-gray-50"
+          }`}
+          aria-pressed={verifiedOnly}
+        >
+          <span>Verified only</span>
+          <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${verifiedOnly ? "bg-white/20 text-white" : "bg-gray-100 text-gray-400"}`}>
+            {jobs.filter((j) => j.companyVerified).length}
+          </span>
+        </button>
       </div>
       </div>
       {showFilterTopShadow && (
@@ -638,7 +986,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   >
                     <option value="newest">Newest</option>
                     <option value="salary">Highest salary</option>
-                    <option value="match">Best match</option>
+                    <option value="relevant">Most relevant</option>
                   </select>
                 </div>
               </div>

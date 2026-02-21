@@ -33,6 +33,7 @@ export interface Job {
   description: string;
   tags: string[];
   tools?: string[]; // Pridané pre technický stack (Notion, Zapier, atď.)
+  companyVerified?: boolean;
   isFeatured?: boolean;
   planType?: PlanType; // Nové pole pre vizuálne rozlíšenie
   plan?: { type: PlanType; price: number };
