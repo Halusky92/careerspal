@@ -152,8 +152,8 @@ export default function JobRow({
                 </button>
                 <span className="text-slate-300">•</span>
                 <span className="truncate">{job.location}</span>
-                <span className="text-slate-300">•</span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200/70 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                <span className="hidden sm:inline text-slate-300">•</span>
+                <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-white border border-slate-200/70 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">
                   {workMode}
                 </span>
                 {job.companyVerified && (
@@ -164,14 +164,14 @@ export default function JobRow({
                     </span>
                   </>
                 )}
-                <span className="text-slate-300">•</span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200/70 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                <span className="hidden sm:inline text-slate-300">•</span>
+                <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-white border border-slate-200/70 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-slate-400">
                   Posted {posted}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
               {showSave && onToggleSave && (
                 <button
                   onClick={(e) => {
@@ -205,7 +205,7 @@ export default function JobRow({
               )}
 
               {showMenu && (
-              <div className="relative">
+              <div className="relative hidden sm:block">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -260,8 +260,8 @@ export default function JobRow({
             </div>
           </div>
 
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="min-w-0 flex items-center gap-2 flex-wrap">
+          <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="hidden sm:flex min-w-0 items-center gap-2 flex-wrap">
               {(stack || []).slice(0, maxTags).map((tag) => (
                 <span
                   key={tag}
@@ -277,7 +277,7 @@ export default function JobRow({
               )}
             </div>
 
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-start">
               <span className="text-[12px] sm:text-sm font-black text-slate-900 whitespace-nowrap">
                 {job.salary || "Salary listed"}
               </span>
