@@ -32,10 +32,48 @@ const getWorkMode = (job: Job) => {
   return "Onsite";
 };
 
-const formatPosted = (job: Job) => {
-  if (!job.timestamp) return job.postedAt;
-  const date = new Date(job.timestamp);
-  return Number.isNaN(date.getTime()) ? job.postedAt : date.toLocaleDateString();
+const formatTimeAgo = (job: Job) => {
+  if (!job.timestamp) return job.postedAt || "";
+  const diffMs = Date.now() - job.timestamp;
+  if (!Number.isFinite(diffMs) || diffMs < 0) return job.postedAt || "";
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  try {
+    return new Date(job.timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  } catch {
+    return job.postedAt || "";
+  }
+};
+
+const getRemoteMeta = (job: Job, workMode: string) => {
+  const loc = (job.location || "").trim();
+  const lower = loc.toLowerCase();
+  const looksRemote = lower.includes("remote");
+  const clean = loc
+    .replace(/remote/gi, "")
+    .replace(/[()]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const region =
+    lower.includes("world") || lower.includes("global")
+      ? "Worldwide"
+      : lower.includes("europe") || lower.includes("emea") || lower.includes("eu")
+        ? "Europe"
+        : lower.includes("us") || lower.includes("usa") || lower.includes("united states")
+          ? "US"
+          : clean && clean.toLowerCase() !== "remote" && !looksRemote
+            ? clean
+            : "";
+
+  if (workMode === "Remote") return region ? `Remote • ${region}` : "Remote";
+  if (workMode === "Hybrid") return region ? `Hybrid • ${region}` : "Hybrid";
+  return region ? `Onsite • ${region}` : "Onsite";
 };
 
 export default function JobRow({
@@ -59,7 +97,7 @@ export default function JobRow({
   const isPro = job.planType === "Featured Pro";
   const isPrivate = job.status === "private" || job.status === "invite_only";
   const workMode = useMemo(() => getWorkMode(job), [job.remotePolicy]);
-  const posted = useMemo(() => formatPosted(job), [job.timestamp, job.postedAt]);
+  const timeAgo = useMemo(() => formatTimeAgo(job), [job.timestamp, job.postedAt]);
   const stack = useMemo(() => {
     const tools = (job.tools || []).filter(Boolean);
     if (tools.length > 0) return tools;
@@ -69,10 +107,20 @@ export default function JobRow({
   const href = `/jobs/${createJobSlug(job)}`;
 
   const isHome = variant === "home";
-  const maxTags = isHome ? 2 : 2;
+  const maxTags = 2;
   const descriptionText = (job.description || "").replace(/\s+/g, " ").trim();
   const descriptionPreview =
     descriptionText.length > 520 ? `${descriptionText.slice(0, 520).trim()}…` : descriptionText;
+  const remoteMeta = useMemo(() => getRemoteMeta(job, workMode), [job.location, workMode]);
+
+  const chips = useMemo(() => {
+    const out: string[] = [];
+    if (job.type) out.push(job.type);
+    const toolList = (stack || []).filter(Boolean);
+    out.push(...toolList.slice(0, 2));
+    if (out.length < 3 && job.category) out.push(job.category);
+    return out.slice(0, 3);
+  }, [job.type, job.category, stack]);
 
   return (
     <div
@@ -101,17 +149,6 @@ export default function JobRow({
       aria-current={selected ? "true" : undefined}
       aria-expanded={expanded ? "true" : "false"}
     >
-      {(isElite || isPro) && (
-        <div
-          className={[
-            "absolute -top-2 left-4 px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm",
-            isElite ? "bg-yellow-200 text-yellow-900" : "bg-indigo-600 text-white",
-          ].join(" ")}
-        >
-          {isElite ? "Elite Managed" : "Featured"}
-        </div>
-      )}
-
       <div className={["flex items-start gap-3", isHome ? "px-3.5 py-3" : "px-4 py-3.5"].join(" ")}>
         <div
           className={[
@@ -132,17 +169,11 @@ export default function JobRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <h3 className={[isHome ? "text-sm" : "text-sm sm:text-base", "font-black text-slate-900 truncate"].join(" ")}>
-                  {job.title}
-                </h3>
-                {isPrivate && (
-                  <span className="hidden sm:inline-flex items-center rounded-full bg-slate-900 text-white px-2 py-0.5 text-[8px] font-black uppercase tracking-widest">
-                    Invite only
-                  </span>
-                )}
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-slate-600">
+              <h3 className={[isHome ? "text-[15px]" : "text-[15px] sm:text-base", "font-black text-slate-900 leading-snug truncate"].join(" ")}>
+                {job.title}
+              </h3>
+
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-bold text-slate-700">
                 <button
                   className="hover:text-indigo-600 hover:underline decoration-indigo-300 underline-offset-2 truncate"
                   onClick={(e) => {
@@ -153,27 +184,54 @@ export default function JobRow({
                     }
                     router.push(`/companies/${createCompanySlug({ name: job.company })}`);
                   }}
+                  title={job.company}
                 >
                   {job.company}
                 </button>
-                <span className="text-slate-300">•</span>
-                <span className="truncate">{job.location}</span>
-                <span className="hidden sm:inline text-slate-300">•</span>
-                <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-white border border-slate-200/70 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                  {workMode}
-                </span>
-                {job.companyVerified && (
-                  <>
-                    <span className="text-slate-300">•</span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-emerald-700">
-                      Verified
-                    </span>
-                  </>
+
+                {(isElite || isPro) && (
+                  <span
+                    className={[
+                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest",
+                      isElite
+                        ? "bg-amber-200/70 text-amber-950 border border-amber-300"
+                        : "bg-amber-100 text-amber-900 border border-amber-200",
+                    ].join(" ")}
+                  >
+                    <span aria-hidden="true">★</span>
+                    {isElite ? "Featured" : "Featured"}
+                  </span>
                 )}
-                <span className="hidden sm:inline text-slate-300">•</span>
-                <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-white border border-slate-200/70 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                  Posted {posted}
+
+                {isPrivate && (
+                  <span className="inline-flex items-center rounded-full bg-slate-900 text-white px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
+                    Invite only
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-bold text-slate-600">
+                <span className="inline-flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 21s7-4.35 7-11a7 7 0 10-14 0c0 6.65 7 11 7 11z" />
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 10a2 2 0 110-4 2 2 0 010 4z" />
+                  </svg>
+                  <span className="truncate">{remoteMeta}</span>
                 </span>
+                {timeAgo && (
+                  <span className="inline-flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
+                      <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M22 12a10 10 0 11-20 0 10 10 0 0120 0z" />
+                    </svg>
+                    <span>{timeAgo}</span>
+                  </span>
+                )}
+                {job.companyVerified && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                    Verified
+                  </span>
+                )}
               </div>
             </div>
 
@@ -267,18 +325,18 @@ export default function JobRow({
           </div>
 
           <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="hidden sm:flex min-w-0 items-center gap-2 flex-wrap">
-              {(stack || []).slice(0, maxTags).map((tag) => (
+            <div className="min-w-0 flex items-center gap-2 flex-wrap">
+              {chips.slice(0, 3).map((chip) => (
                 <span
-                  key={tag}
-                  className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1 text-[10px] font-bold tracking-normal text-slate-600"
+                  key={chip}
+                  className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1 text-[11px] font-bold text-slate-700"
                 >
-                  {tag}
+                  {chip}
                 </span>
               ))}
-              {stack.length > maxTags && (
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  +{stack.length - maxTags}
+              {stack.length > 2 && (
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
+                  +{stack.length - 2}
                 </span>
               )}
             </div>
@@ -296,9 +354,8 @@ export default function JobRow({
                 }}
                 className={[
                   "h-11",
-                  isHome ? "px-4 text-[10px]" : "px-5 text-[11px]",
-                  "min-w-[124px] sm:min-w-[132px] flex-shrink-0 whitespace-nowrap",
                   "px-4 text-[10px] sm:px-5 sm:text-[11px]",
+                  "min-w-[124px] sm:min-w-[132px] flex-shrink-0 whitespace-nowrap",
                   "rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100",
                 ].join(" ")}
               >
