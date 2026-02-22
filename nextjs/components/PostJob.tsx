@@ -1,7 +1,7 @@
 "use client";
 
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { generateJobDescription } from '../services/geminiService';
 import { Job, PlanType } from '../types';
 import { CATEGORIES } from '../constants';
@@ -19,6 +19,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [logoFileName, setLogoFileName] = useState<string>("");
+  const [infoTab, setInfoTab] = useState<"get" | "requirements" | "review" | "support">("get");
+  const [openInfoId, setOpenInfoId] = useState<"get" | "requirements" | "review" | "support">("get");
   const formatPrice = (value: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 
@@ -46,6 +48,58 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     applyUrl: '',
     tags: ['Notion', 'Remote']
   });
+
+  const planHighlights = useMemo(() => {
+    const base = [
+      "Listing reviewed before publish",
+      "30 days live on the board",
+      "Included in search + filters",
+      "Support via info@careerspal.com",
+    ];
+    if (selectedPlan.type === "Featured Pro") {
+      return [
+        ...base,
+        "Featured badge + boosted visibility",
+        "Top placement for 7 days",
+        "Newsletter feature",
+      ];
+    }
+    if (selectedPlan.type === "Elite Managed") {
+      return [
+        ...base,
+        "Featured badge + priority review",
+        "Permanent top-of-board placement",
+        "Curated candidate intros",
+      ];
+    }
+    return base;
+  }, [selectedPlan.type]);
+
+  const AccordionRow = ({
+    id,
+    title,
+    children,
+  }: {
+    id: "get" | "requirements" | "review" | "support";
+    title: string;
+    children: React.ReactNode;
+  }) => {
+    const isOpen = openInfoId === id;
+    return (
+      <div className="rounded-2xl border border-slate-200/60 bg-white overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setOpenInfoId((prev) => (prev === id ? "get" : id))}
+          className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left"
+          aria-expanded={isOpen}
+        >
+          <span className="text-sm font-black text-slate-900">{title}</span>
+          <span className="text-slate-400 font-black">{isOpen ? "−" : "+"}</span>
+        </button>
+        {isOpen && <div className="px-5 pb-5">{children}</div>}
+      </div>
+    );
+  };
 
   const handleAI = async () => {
     if (!formData.title) return alert("Please enter a job title first.");
@@ -295,7 +349,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Remote Policy</label>
+                    <label className="text-[11px] font-bold text-slate-700">Work mode</label>
                     <select
                       className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
                       value={formData.remotePolicy}
@@ -308,10 +362,10 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Location</label>
+                    <label className="text-[11px] font-bold text-slate-700">Region / time zone (optional)</label>
                     <input
                       type="text"
-                      placeholder="e.g. Remote (EU), Berlin, London"
+                      placeholder="e.g. Worldwide, Europe, US, CET±2"
                       className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
                       value={formData.location}
                       onChange={e => setFormData({...formData, location: e.target.value})}
@@ -454,12 +508,88 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
         <div className="lg:col-span-4 space-y-8">
            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200/60 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
-              <h3 className="text-xl font-black text-indigo-900 mb-4">Post Tips.</h3>
-              <ul className="space-y-4 text-sm font-medium text-indigo-700/80 leading-relaxed">
-                 <li className="flex gap-3"><span className="text-indigo-500">⚡</span> Be specific about your Notion workspace setup.</li>
-                 <li className="flex gap-3"><span className="text-indigo-500">⚡</span> Mention automation tools like Zapier or Make.</li>
-                 <li className="flex gap-3"><span className="text-indigo-500">⚡</span> Transparency with salary attracts 3x more talent.</li>
-              </ul>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-wide text-indigo-600">For employers</div>
+                  <h3 className="text-xl font-black text-slate-900 mt-2">Everything you need to post confidently.</h3>
+                  <p className="mt-2 text-sm font-medium text-slate-600">
+                    Clear rules, fast review, and premium visibility options.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 -mx-1 flex gap-2 overflow-x-auto pb-1">
+                {[
+                  { id: "get" as const, label: "What you get" },
+                  { id: "requirements" as const, label: "Requirements" },
+                  { id: "review" as const, label: "Review" },
+                  { id: "support" as const, label: "Support" },
+                ].map((t) => {
+                  const active = infoTab === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setInfoTab(t.id);
+                        setOpenInfoId(t.id);
+                      }}
+                      className={[
+                        "flex-shrink-0 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-wide transition-colors",
+                        active
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-600 border-slate-200 hover:border-indigo-200 hover:text-indigo-700",
+                      ].join(" ")}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <AccordionRow id="get" title={`What you get (${selectedPlan.type})`}>
+                  <ul className="space-y-2 text-sm font-medium text-slate-700">
+                    {planHighlights.map((x) => (
+                      <li key={x} className="flex items-start gap-2">
+                        <span className="text-emerald-600 font-black mt-0.5">✓</span>
+                        <span>{x}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </AccordionRow>
+
+                <AccordionRow id="requirements" title="Requirements (for approval)">
+                  <ul className="space-y-2 text-sm font-medium text-slate-700">
+                    <li className="flex items-start gap-2"><span className="text-slate-900 font-black mt-0.5">•</span> Salary range included</li>
+                    <li className="flex items-start gap-2"><span className="text-slate-900 font-black mt-0.5">•</span> Clear scope + responsibilities</li>
+                    <li className="flex items-start gap-2"><span className="text-slate-900 font-black mt-0.5">•</span> Working apply link (URL or email)</li>
+                    <li className="flex items-start gap-2"><span className="text-slate-900 font-black mt-0.5">•</span> No spam / vague listings</li>
+                  </ul>
+                </AccordionRow>
+
+                <AccordionRow id="review" title="Review & publish timeline">
+                  <div className="space-y-2 text-sm font-medium text-slate-700">
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-black mt-0.5">1</span> Submit + pay</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-black mt-0.5">2</span> Review for quality + clarity</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-black mt-0.5">3</span> Publish when approved</div>
+                    <p className="mt-3 text-xs text-slate-600">
+                      We aim to review quickly. Response SLA: 2 days.
+                    </p>
+                  </div>
+                </AccordionRow>
+
+                <AccordionRow id="support" title="Support & changes">
+                  <div className="space-y-2 text-sm font-medium text-slate-700">
+                    <p>
+                      Need edits after posting? Email <span className="font-black">info@careerspal.com</span> and we’ll help.
+                    </p>
+                    <p className="text-xs text-slate-600">
+                      If a listing can’t be approved, we’ll follow up with next steps.
+                    </p>
+                  </div>
+                </AccordionRow>
+              </div>
            </div>
            
            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 shadow-sm relative z-20">
