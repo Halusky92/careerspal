@@ -284,9 +284,11 @@ export default function JobRow({
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-start">
-              <span className="text-[12px] sm:text-sm font-black text-slate-900 whitespace-nowrap">
-                {job.salary || "Salary listed"}
-              </span>
+              <div className="flex-1 min-w-0">
+                <span className="block truncate text-[12px] sm:text-sm font-black text-slate-900">
+                  {job.salary || "Salary listed"}
+                </span>
+              </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -295,7 +297,8 @@ export default function JobRow({
                 className={[
                   "h-11",
                   isHome ? "px-4 text-[10px]" : "px-5 text-[11px]",
-                  "min-w-[124px] flex-shrink-0 whitespace-nowrap",
+                  "min-w-[124px] sm:min-w-[132px] flex-shrink-0 whitespace-nowrap",
+                  "px-4 text-[10px] sm:px-5 sm:text-[11px]",
                   "rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100",
                 ].join(" ")}
               >
@@ -334,6 +337,10 @@ export default function JobRow({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (job.applyUrl && job.applyUrl !== "#") {
+                      onApply();
+                      return;
+                    }
                     router.push(href);
                   }}
                   className="h-11 flex-1 rounded-2xl border border-slate-200/80 bg-white text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
