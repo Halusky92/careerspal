@@ -19,8 +19,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [logoFileName, setLogoFileName] = useState<string>("");
-  const [infoTab, setInfoTab] = useState<"get" | "requirements" | "review" | "support">("get");
-  const [openInfoId, setOpenInfoId] = useState<"get" | "requirements" | "review" | "support">("get");
+  const [openInfoId, setOpenInfoId] = useState<("get" | "requirements" | "review") | null>("get");
   const formatPrice = (value: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 
@@ -80,7 +79,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     title,
     children,
   }: {
-    id: "get" | "requirements" | "review" | "support";
+    id: "get" | "requirements" | "review";
     title: string;
     children: React.ReactNode;
   }) => {
@@ -89,7 +88,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
       <div className="rounded-2xl border border-slate-200/60 bg-white overflow-hidden">
         <button
           type="button"
-          onClick={() => setOpenInfoId((prev) => (prev === id ? "get" : id))}
+          onClick={() => setOpenInfoId((prev) => (prev === id ? null : id))}
           className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left"
           aria-expanded={isOpen}
         >
@@ -518,35 +517,6 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 </div>
               </div>
 
-              <div className="mt-6 -mx-1 flex gap-2 overflow-x-auto pb-1">
-                {[
-                  { id: "get" as const, label: "What you get" },
-                  { id: "requirements" as const, label: "Requirements" },
-                  { id: "review" as const, label: "Review" },
-                  { id: "support" as const, label: "Support" },
-                ].map((t) => {
-                  const active = infoTab === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => {
-                        setInfoTab(t.id);
-                        setOpenInfoId(t.id);
-                      }}
-                      className={[
-                        "flex-shrink-0 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-wide transition-colors",
-                        active
-                          ? "bg-slate-900 text-white border-slate-900"
-                          : "bg-white text-slate-600 border-slate-200 hover:border-indigo-200 hover:text-indigo-700",
-                      ].join(" ")}
-                    >
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-
               <div className="mt-4 space-y-3">
                 <AccordionRow id="get" title={`What you get (${selectedPlan.type})`}>
                   <ul className="space-y-2 text-sm font-medium text-slate-700">
@@ -578,17 +548,10 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     </p>
                   </div>
                 </AccordionRow>
+              </div>
 
-                <AccordionRow id="support" title="Support & changes">
-                  <div className="space-y-2 text-sm font-medium text-slate-700">
-                    <p>
-                      Need edits after posting? Email <span className="font-black">info@careerspal.com</span> and we’ll help.
-                    </p>
-                    <p className="text-xs text-slate-600">
-                      If a listing can’t be approved, we’ll follow up with next steps.
-                    </p>
-                  </div>
-                </AccordionRow>
+              <div className="mt-5 text-xs font-medium text-slate-600">
+                Questions or edits? Email <span className="font-black text-slate-800">info@careerspal.com</span>.
               </div>
            </div>
            

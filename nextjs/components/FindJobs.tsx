@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Job, UserSession } from '../types';
-import { createCompanySlug, createJobSlug } from '../lib/jobs';
+import { createCompanySlug } from '../lib/jobs';
 import { CATEGORIES } from '../constants';
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
@@ -101,6 +101,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
+  const initialJobIdRef = useRef<string | null>(null);
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const titleRef = useRef<HTMLDivElement>(null);
   const locationRef = useRef<HTMLDivElement>(null);
   const filterScrollRef = useRef<HTMLDivElement>(null);
@@ -145,6 +147,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     const urlSeniority = params.get("seniority");
     const urlVerified = params.get("verified");
     const urlSaved = params.get("saved");
+    const urlJobId = params.get("jobId");
 
     if (typeof urlQuery === "string" && urlQuery !== query) setQuery(urlQuery);
     if (typeof urlLocation === "string" && urlLocation !== locationQuery) setLocationQuery(urlLocation);
@@ -160,6 +163,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     if (urlSeniority && SENIORITY_OPTIONS.includes(urlSeniority as any)) setSeniority(urlSeniority as any);
     setVerifiedOnly(urlVerified === "1");
     setShowSavedOnly(urlSaved === "1");
+    if (urlJobId && urlJobId.trim()) initialJobIdRef.current = urlJobId.trim();
 
     hydratedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -187,6 +191,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
       setOrDelete("seniority", seniority !== "any" ? seniority : null);
       setOrDelete("verified", verifiedOnly ? "1" : null);
       setOrDelete("saved", showSavedOnly ? "1" : null);
+      const activeJobId = (isDesktop ? selectedJobId : expandedJobId) || null;
+      setOrDelete("jobId", activeJobId);
       const qs = params.toString();
       router.replace(qs ? `/jobs?${qs}` : "/jobs", { scroll: false });
     }, 250);
@@ -205,6 +211,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
     seniority,
     verifiedOnly,
     showSavedOnly,
+    selectedJobId,
+    expandedJobId,
+    isDesktop,
     router,
   ]);
 
@@ -578,8 +587,48 @@ const FindJobs: React.FC<FindJobsProps> = ({
     [query, locationQuery, category, workMode, employmentType, salaryMin, salaryMax, selectedTools, timezone, seniority, verifiedOnly, showSavedOnly],
   );
 
+  const scrollToJob = (jobId: string) => {
+    if (typeof window === "undefined") return;
+    window.requestAnimationFrame(() => {
+      const el = rowRefs.current[jobId];
+      if (el && typeof el.scrollIntoView === "function") {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
+    });
+  };
+
+  useEffect(() => {
+    const initial = initialJobIdRef.current;
+    if (!initial) return;
+    const exists = filteredAndSorted.some((j) => j.id === initial);
+    if (!exists) return;
+
+    const idx = filteredAndSorted.findIndex((j) => j.id === initial);
+    if (idx >= 0 && idx + 1 > visibleCount) {
+      setVisibleCount(Math.min(filteredAndSorted.length, idx + 1));
+    }
+
+    if (isDesktop) setSelectedJobId(initial);
+    else setExpandedJobId(initial);
+
+    window.setTimeout(() => scrollToJob(initial), 0);
+    initialJobIdRef.current = null;
+  }, [filteredAndSorted, isDesktop, visibleCount]);
+
+  const handleSelectJobId = (jobId: string) => {
+    if (!jobId) return;
+    const idx = filteredAndSorted.findIndex((j) => j.id === jobId);
+    if (idx >= 0 && idx + 1 > visibleCount) {
+      setVisibleCount(Math.min(filteredAndSorted.length, idx + 1));
+    }
+    if (isDesktop) setSelectedJobId(jobId);
+    else setExpandedJobId(jobId);
+    window.setTimeout(() => scrollToJob(jobId), 0);
+  };
+
   useEffect(() => {
     if (!isDesktop) return;
+    if (initialJobIdRef.current) return;
     if (filteredAndSorted.length === 0) {
       setSelectedJobId(null);
       return;
@@ -1085,29 +1134,36 @@ const FindJobs: React.FC<FindJobsProps> = ({
               const selected = isDesktop && selectedJobId === job.id;
 
               return (
-                <JobRow
-                  key={job.id}
-                  job={job}
-                  variant="board"
-                  selected={selected}
-                  expanded={!isDesktop && expandedJobId === job.id}
-                  isSaved={Boolean(isSaved)}
-                  showSave={Boolean(canUseSaved)}
-                  showMenu={true}
-                  onToggleSave={() => onToggleBookmark(job.id)}
-                  onOpenCompany={(companyName) => {
-                    if (onSelectCompany) onSelectCompany(companyName);
-                    else router.push(`/companies/${createCompanySlug({ name: companyName })}`);
+                <div
+                  ref={(el) => {
+                    rowRefs.current[job.id] = el;
                   }}
-                  onSelect={() => {
-                    if (isDesktop) {
-                      setSelectedJobId(job.id);
-                      return;
-                    }
-                    setExpandedJobId((prev) => (prev === job.id ? null : job.id));
-                  }}
-                  onApply={() => handleApply(job)}
-                />
+                  data-job-id={job.id}
+                >
+                  <JobRow
+                    key={job.id}
+                    job={job}
+                    variant="board"
+                    selected={selected}
+                    expanded={!isDesktop && expandedJobId === job.id}
+                    isSaved={Boolean(isSaved)}
+                    showSave={Boolean(canUseSaved)}
+                    showMenu={true}
+                    onToggleSave={() => onToggleBookmark(job.id)}
+                    onOpenCompany={(companyName) => {
+                      if (onSelectCompany) onSelectCompany(companyName);
+                      else router.push(`/companies/${createCompanySlug({ name: companyName })}`);
+                    }}
+                    onSelect={() => {
+                      if (isDesktop) {
+                        handleSelectJobId(job.id);
+                        return;
+                      }
+                      setExpandedJobId((prev) => (prev === job.id ? null : job.id));
+                    }}
+                    onApply={() => handleApply(job)}
+                  />
+                </div>
               );
             })}
 
@@ -1168,6 +1224,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               allJobs={filteredAndSorted}
               onClose={() => setSelectedJobId(null)}
               onApply={handleApply}
+              onSelectJobId={handleSelectJobId}
               onToggleSave={canUseSaved ? onToggleBookmark : undefined}
               isSaved={(jobId) => Boolean(user?.savedJobIds?.includes(jobId))}
             />

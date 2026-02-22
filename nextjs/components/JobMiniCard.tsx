@@ -3,7 +3,6 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { Job } from "../types";
-import { createJobSlug } from "../lib/jobs";
 
 type JobMiniCardProps = {
   job: Job;
@@ -16,7 +15,7 @@ export default function JobMiniCard({ job, className = "" }: JobMiniCardProps) {
   return (
     <button
       type="button"
-      onClick={() => router.push(`/jobs/${createJobSlug(job)}`)}
+      onClick={() => router.push(`/jobs?jobId=${encodeURIComponent(job.id)}`)}
       className={[
         "w-full text-left rounded-2xl border border-amber-200 bg-amber-50/50 hover:bg-amber-50/70 shadow-sm hover:shadow-md transition-all px-4 py-3",
         "flex items-center gap-4 justify-between",

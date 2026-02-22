@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
-import { createCompanySlug, createJobSlug } from "../lib/jobs";
+import { createCompanySlug } from "../lib/jobs";
 
 export type JobRowAction = "copy_link" | "open_new_tab";
 
@@ -104,7 +104,7 @@ export default function JobRow({
     return (job.tags || []).filter(Boolean);
   }, [job.tags, job.tools]);
 
-  const href = `/jobs/${createJobSlug(job)}`;
+  const href = `/jobs?jobId=${encodeURIComponent(job.id)}`;
 
   const isHome = variant === "home";
   const maxTags = 2;

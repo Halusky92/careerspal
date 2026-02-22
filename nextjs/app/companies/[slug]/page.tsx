@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import CompanyProfile from "../../../components/CompanyProfile";
-import { createJobSlug } from "../../../lib/jobs";
 import type { Company, Job } from "../../../types";
 
 interface CompanyProfilePageProps {
@@ -81,7 +80,7 @@ const CompanyProfilePage = ({ params }: CompanyProfilePageProps) => {
         company={company}
         companyJobs={companyJobs}
         onBack={() => router.back()}
-        onSelectJob={(job) => router.push(`/jobs/${createJobSlug(job)}`)}
+        onSelectJob={(job) => router.push(`/jobs?jobId=${encodeURIComponent(job.id)}`)}
       />
     </div>
   );

@@ -4,13 +4,14 @@ import React, { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
-import { createCompanySlug, createJobSlug } from "../lib/jobs";
+import { createCompanySlug } from "../lib/jobs";
 
 type JobDetailPanelProps = {
   job: Job | null;
   allJobs: Job[];
   onClose: () => void;
   onApply: (job: Job) => void;
+  onSelectJobId?: (jobId: string) => void;
   onToggleSave?: (jobId: string) => void;
   isSaved?: (jobId: string) => boolean;
 };
@@ -39,6 +40,7 @@ export default function JobDetailPanel({
   allJobs,
   onClose,
   onApply,
+  onSelectJobId,
   onToggleSave,
   isSaved,
 }: JobDetailPanelProps) {
@@ -77,7 +79,6 @@ export default function JobDetailPanel({
     );
   }
 
-  const href = `/jobs/${createJobSlug(job)}`;
   const saved = isSaved ? isSaved(job.id) : false;
 
   return (
@@ -126,12 +127,6 @@ export default function JobDetailPanel({
               </svg>
             </button>
           )}
-          <button
-            onClick={() => router.push(href)}
-            className="h-10 px-3 rounded-2xl border border-slate-200/70 bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
-          >
-            Full page
-          </button>
           <button
             onClick={onClose}
             className="h-10 w-10 rounded-2xl border border-slate-200/70 bg-white text-slate-500 hover:border-indigo-200 hover:text-indigo-700 flex items-center justify-center"
@@ -217,7 +212,13 @@ export default function JobDetailPanel({
                 {similarJobs.map((s) => (
                   <button
                     key={s.id}
-                    onClick={() => router.push(`/jobs/${createJobSlug(s)}`)}
+                    onClick={() => {
+                      if (onSelectJobId) {
+                        onSelectJobId(s.id);
+                        return;
+                      }
+                      router.push(`/jobs?jobId=${encodeURIComponent(s.id)}`);
+                    }}
                     className="w-full text-left rounded-2xl border border-slate-200/60 bg-white px-4 py-3 hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors"
                   >
                     <div className="text-xs font-black text-slate-900 truncate">{s.title}</div>

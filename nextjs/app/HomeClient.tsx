@@ -7,7 +7,7 @@ import Testimonials from '../components/Testimonials';
 import Newsletter from '../components/Newsletter';
 import AIChatPanel from '../components/AIChatPanel';
 import { Job } from '../types';
-import { createJobSlug, createCompanySlug } from '../lib/jobs';
+import { createCompanySlug } from '../lib/jobs';
 import CompanyLogo from '../components/CompanyLogo';
 import JobMiniCard from "../components/JobMiniCard";
 import JobRow from "../components/JobRow";
@@ -240,7 +240,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
                     onOpenCompany={(companyName) => handleOpenCompany(companyName)}
                     onSelect={() => {
                       if (isSmUp) {
-                        router.push(`/jobs/${createJobSlug(job)}`);
+                        router.push(`/jobs?jobId=${encodeURIComponent(job.id)}`);
                         return;
                       }
                       setExpandedJobId((prev) => (prev === job.id ? null : job.id));
