@@ -114,13 +114,17 @@ export default function JobRow({
   const remoteMeta = useMemo(() => getRemoteMeta(job, workMode), [job.location, workMode]);
 
   const chips = useMemo(() => {
+    // On the jobs board we keep cards scan-first (no tool noise).
+    if (variant === "board") return job.type ? [job.type] : [];
     const out: string[] = [];
     if (job.type) out.push(job.type);
     const toolList = (stack || []).filter(Boolean);
     out.push(...toolList.slice(0, 2));
     if (out.length < 3 && job.category) out.push(job.category);
     return out.slice(0, 3);
-  }, [job.type, job.category, stack]);
+  }, [job.type, job.category, stack, variant]);
+
+  const toolList = useMemo(() => (stack || []).filter(Boolean), [stack]);
 
   return (
     <div
@@ -334,9 +338,9 @@ export default function JobRow({
                   {chip}
                 </span>
               ))}
-              {stack.length > 2 && (
+              {variant !== "board" && toolList.length > 2 && (
                 <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
-                  +{stack.length - 2}
+                  +{toolList.length - 2}
                 </span>
               )}
             </div>
@@ -366,7 +370,7 @@ export default function JobRow({
 
           {expanded && (
             <div className="sm:hidden mt-3 pt-3 border-t border-amber-200/60">
-              <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-700">
                 <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1">
                   {workMode}
                 </span>
@@ -383,8 +387,24 @@ export default function JobRow({
                 )}
               </div>
 
+              {toolList.length > 0 && (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {toolList.slice(0, 6).map((tool) => (
+                    <span
+                      key={tool}
+                      className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200 px-2 py-1 text-[11px] font-bold text-slate-700"
+                    >
+                      {tool}
+                    </span>
+                  ))}
+                  {toolList.length > 6 && (
+                    <span className="text-[11px] font-black text-slate-500">+{toolList.length - 6}</span>
+                  )}
+                </div>
+              )}
+
               {descriptionPreview && (
-                <p className="mt-3 text-sm font-medium text-slate-600 leading-relaxed">
+                <p className="mt-3 text-sm font-medium text-slate-700 leading-relaxed">
                   {descriptionPreview}
                 </p>
               )}

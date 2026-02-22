@@ -76,7 +76,7 @@ const Auth: React.FC<AuthProps> = () => {
             Join CareersPal Elite
           </h1>
           
-          <p className="font-medium mt-2 text-slate-500">
+          <p className="font-medium mt-2 text-slate-600">
             Verified roles and signal-first hiring for operators.
           </p>
         </div>
@@ -84,18 +84,18 @@ const Auth: React.FC<AuthProps> = () => {
         <div className="bg-slate-50 p-1.5 rounded-2xl flex gap-1 mb-8">
           <button 
             onClick={() => setRole('employer')} 
-            className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${role === 'employer' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+            className={`flex-1 py-3 text-xs font-black uppercase tracking-wide rounded-xl transition-all ${role === 'employer' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
           >
             I am Hiring
           </button>
           <button 
             onClick={() => setRole('candidate')} 
-            className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${role === 'candidate' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+            className={`flex-1 py-3 text-xs font-black uppercase tracking-wide rounded-xl transition-all ${role === 'candidate' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
           >
             I am a Talent
           </button>
         </div>
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center -mt-4 mb-6">
+        <p className="text-[11px] font-bold text-slate-600 text-center -mt-4 mb-6">
           {role === 'employer' ? 'Use a company email for faster verification' : 'Talent profiles stay private until you apply'}
         </p>
 
@@ -118,7 +118,7 @@ const Auth: React.FC<AuthProps> = () => {
         </button>
 
         <div className="space-y-3 mb-6">
-          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
+          <div className="text-[11px] font-bold text-slate-600 text-center">
             Or use email
           </div>
           <input
@@ -137,27 +137,27 @@ const Auth: React.FC<AuthProps> = () => {
           >
             {isLoading ? "Sending link..." : "Email me a sign-in link"}
           </button>
-          <p className={`text-[10px] font-bold text-center ${
-            emailStatus === "error" ? "text-red-500" : emailStatus === "sent" ? "text-emerald-500" : "text-slate-400"
+          <p className={`text-[11px] font-bold text-center ${
+            emailStatus === "error" ? "text-red-600" : emailStatus === "sent" ? "text-emerald-600" : "text-slate-600"
           }`}>
             {emailMessage || "We will send a magic link to your email."}
           </p>
         </div>
 
         <div className="rounded-[2rem] border border-slate-100 bg-slate-50/70 p-5 text-left">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Trusted access</p>
-          <ul className="mt-3 space-y-2 text-xs font-bold text-slate-600">
+          <p className="text-[11px] font-black text-slate-700">Trusted access</p>
+          <ul className="mt-3 space-y-2 text-sm font-medium text-slate-700">
             <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Verified employers only</li>
             <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Salary transparency enforced</li>
             <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Response SLA across plans</li>
           </ul>
-          <p className="mt-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          <p className="mt-4 text-xs font-medium text-slate-600">
             By continuing you agree to our <a className="text-indigo-600 hover:underline" href="/privacy">privacy policy</a> and <a className="text-indigo-600 hover:underline" href="/terms">terms</a>.
           </p>
         </div>
 
         <div className="mt-8 text-center pt-8 border-t border-slate-50">
-          <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+          <div className="text-xs font-medium text-slate-600">
             Need help? <a className="text-indigo-600 hover:underline" href="/about">Contact support</a>
           </div>
         </div>
