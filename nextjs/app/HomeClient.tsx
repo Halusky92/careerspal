@@ -19,6 +19,8 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
   const [jobs, setJobs] = useState<Job[]>(() => initialJobs || []);
   const [jobsLoading, setJobsLoading] = useState(() => (initialJobs?.length ? false : true));
   const [jobQuickQuery, setJobQuickQuery] = useState("");
+  const [isSmUp, setIsSmUp] = useState(false);
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -35,6 +37,20 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
       }
     };
     loadJobs();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 640px)");
+    const update = () => setIsSmUp(mq.matches);
+    update();
+    try {
+      mq.addEventListener("change", update);
+      return () => mq.removeEventListener("change", update);
+    } catch {
+      mq.addListener(update);
+      return () => mq.removeListener(update);
+    }
   }, []);
 
   const topJobs = useMemo(() => {
@@ -218,10 +234,17 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
                     key={job.id}
                     job={job}
                     variant="home"
+                    expanded={!isSmUp && expandedJobId === job.id}
                     showSave={false}
                     showMenu={false}
                     onOpenCompany={(companyName) => handleOpenCompany(companyName)}
-                    onSelect={() => router.push(`/jobs/${createJobSlug(job)}`)}
+                    onSelect={() => {
+                      if (isSmUp) {
+                        router.push(`/jobs/${createJobSlug(job)}`);
+                        return;
+                      }
+                      setExpandedJobId((prev) => (prev === job.id ? null : job.id));
+                    }}
                     onApply={() => handleApply(job)}
                   />
                 ))}

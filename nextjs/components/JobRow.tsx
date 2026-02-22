@@ -14,6 +14,7 @@ type JobRowProps = {
   job: Job;
   variant?: JobRowVariant;
   selected?: boolean;
+  expanded?: boolean;
   isSaved?: boolean;
   showSave?: boolean;
   showMenu?: boolean;
@@ -41,6 +42,7 @@ export default function JobRow({
   job,
   variant = "board",
   selected = false,
+  expanded = false,
   isSaved = false,
   showSave = true,
   showMenu = true,
@@ -68,6 +70,9 @@ export default function JobRow({
 
   const isHome = variant === "home";
   const maxTags = isHome ? 3 : 4;
+  const descriptionText = (job.description || "").replace(/\s+/g, " ").trim();
+  const descriptionPreview =
+    descriptionText.length > 520 ? `${descriptionText.slice(0, 520).trim()}…` : descriptionText;
 
   return (
     <div
@@ -94,6 +99,7 @@ export default function JobRow({
         onSelect();
       }}
       aria-current={selected ? "true" : undefined}
+      aria-expanded={expanded ? "true" : "false"}
     >
       {(isElite || isPro) && (
         <div
@@ -289,6 +295,7 @@ export default function JobRow({
                 className={[
                   "h-11",
                   isHome ? "px-4 text-[10px]" : "px-5 text-[11px]",
+                  "min-w-[124px] flex-shrink-0 whitespace-nowrap",
                   "rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100",
                 ].join(" ")}
               >
@@ -296,6 +303,56 @@ export default function JobRow({
               </button>
             </div>
           </div>
+
+          {expanded && (
+            <div className="sm:hidden mt-3 pt-3 border-t border-amber-200/60">
+              <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1">
+                  {workMode}
+                </span>
+                <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1">
+                  {job.type}
+                </span>
+                <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1">
+                  {job.category}
+                </span>
+                {job.companyVerified && (
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2 py-1 text-emerald-700">
+                    Verified
+                  </span>
+                )}
+              </div>
+
+              {descriptionPreview && (
+                <p className="mt-3 text-sm font-medium text-slate-600 leading-relaxed">
+                  {descriptionPreview}
+                </p>
+              )}
+
+              <div className="mt-4 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(href);
+                  }}
+                  className="h-11 flex-1 rounded-2xl border border-slate-200/80 bg-white text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
+                >
+                  Full details
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect();
+                  }}
+                  className="h-11 px-4 rounded-2xl border border-slate-200/80 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

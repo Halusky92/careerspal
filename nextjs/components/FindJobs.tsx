@@ -99,6 +99,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [savedNotice, setSavedNotice] = useState('');
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
   const titleRef = useRef<HTMLDivElement>(null);
   const locationRef = useRef<HTMLDivElement>(null);
@@ -210,6 +211,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   // Reset pagination when filters change
   useEffect(() => {
     setVisibleCount(JOBS_PER_PAGE);
+    setExpandedJobId(null);
   }, [
     query,
     locationQuery,
@@ -1088,6 +1090,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   job={job}
                   variant="board"
                   selected={selected}
+                  expanded={!isDesktop && expandedJobId === job.id}
                   isSaved={Boolean(isSaved)}
                   showSave={Boolean(canUseSaved)}
                   showMenu={true}
@@ -1101,7 +1104,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                       setSelectedJobId(job.id);
                       return;
                     }
-                    router.push(`/jobs/${createJobSlug(job)}`);
+                    setExpandedJobId((prev) => (prev === job.id ? null : job.id));
                   }}
                   onApply={() => handleApply(job)}
                 />
