@@ -69,7 +69,7 @@ export default function JobRow({
   const href = `/jobs/${createJobSlug(job)}`;
 
   const isHome = variant === "home";
-  const maxTags = isHome ? 3 : 4;
+  const maxTags = isHome ? 2 : 2;
   const descriptionText = (job.description || "").replace(/\s+/g, " ").trim();
   const descriptionPreview =
     descriptionText.length > 520 ? `${descriptionText.slice(0, 520).trim()}…` : descriptionText;
@@ -142,7 +142,7 @@ export default function JobRow({
                   </span>
                 )}
               </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-slate-500">
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-slate-600">
                 <button
                   className="hover:text-indigo-600 hover:underline decoration-indigo-300 underline-offset-2 truncate"
                   onClick={(e) => {
@@ -271,13 +271,13 @@ export default function JobRow({
               {(stack || []).slice(0, maxTags).map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-slate-500"
+                  className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1 text-[10px] font-bold tracking-normal text-slate-600"
                 >
                   {tag}
                 </span>
               ))}
               {stack.length > maxTags && (
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                   +{stack.length - maxTags}
                 </span>
               )}

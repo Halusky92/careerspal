@@ -626,8 +626,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
               onClick={() => { setCategory(cat); if(window.innerWidth < 1024) setIsFilterOpen(false); }}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all group ${category === cat ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'text-gray-500 hover:bg-gray-50'}`}
             >
-              <span>{cat}</span>
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${category === cat ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-400'}`}>
+              <span className="flex-1 min-w-0 text-left truncate" title={cat}>{cat}</span>
+              <span className={`flex-shrink-0 text-[10px] font-black px-2 py-0.5 rounded-lg ${category === cat ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-400'}`}>
                 {categoryCounts[cat] || 0}
               </span>
             </button>
