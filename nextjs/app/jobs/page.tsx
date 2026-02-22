@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Script from "next/script";
 import JobsClient from "./JobsClient";
 import { Job } from "../../types";
 import { createJobSlug } from "../../lib/jobs";
@@ -39,7 +38,7 @@ async function fetchPublishedJobs(): Promise<{ jobs: Job[]; total: number }> {
 function StaticJobsList({ jobs, total }: { jobs: Job[]; total: number }) {
   const preview = jobs.slice(0, 20);
   return (
-    <section className="cp-static-jobs">
+    <section className="cp-static-jobs hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-3">
           <div className="text-xs font-black uppercase tracking-widest text-slate-500">Jobs</div>
@@ -129,10 +128,6 @@ export default async function JobsPage({ searchParams }: PageProps) {
 
   return (
     <div className="pt-6">
-      <Script id="cp-js" strategy="beforeInteractive">
-        {`document.documentElement.classList.add('cp-js');`}
-      </Script>
-      <style>{`html.cp-js .cp-static-jobs{display:none;}`}</style>
       <StaticJobsList jobs={jobs} total={total} />
       <JobsClient
         initialJobs={jobs}

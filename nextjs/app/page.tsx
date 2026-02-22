@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Script from "next/script";
 import HomeClient from "./HomeClient";
 import { Job } from "../types";
 import { createJobSlug } from "../lib/jobs";
@@ -41,7 +40,7 @@ function StaticHomeJobs({ jobs }: { jobs: Job[] }) {
     .slice(0, 8);
 
   return (
-    <section className="cp-static-jobs">
+    <section className="cp-static-jobs hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="flex items-center justify-between gap-3">
           <div className="text-xs font-black uppercase tracking-widest text-slate-500">Latest roles</div>
@@ -86,10 +85,6 @@ export default async function HomePage() {
   const jobs = await fetchPublishedJobs();
   return (
     <>
-      <Script id="cp-js" strategy="beforeInteractive">
-        {`document.documentElement.classList.add('cp-js');`}
-      </Script>
-      <style>{`html.cp-js .cp-static-jobs{display:none;}`}</style>
       <StaticHomeJobs jobs={jobs} />
       <HomeClient initialJobs={jobs} />
     </>
