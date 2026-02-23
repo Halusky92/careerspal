@@ -663,6 +663,23 @@ const FindJobs: React.FC<FindJobsProps> = ({
     setUrlUpdateTick((x) => x + 1);
   };
 
+  const preserveFilterPosition = (apply: () => void) => {
+    if (typeof window === "undefined") {
+      apply();
+      return;
+    }
+    const pageY = window.scrollY;
+    const filterY = filterScrollRef.current?.scrollTop ?? null;
+    apply();
+    window.requestAnimationFrame(() => {
+      if (filterY !== null && filterScrollRef.current) {
+        filterScrollRef.current.scrollTop = filterY;
+      }
+      // Extra safety: keep page position stable as well.
+      window.scrollTo({ top: pageY, left: 0, behavior: "instant" as ScrollBehavior });
+    });
+  };
+
   const FilterContent = ({ variant }: { variant: "sidebar" | "sheet" }) => (
     <div
       className={[
@@ -687,7 +704,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
           {CATEGORIES.map(cat => (
             <button 
               key={cat} 
-              onClick={() => { setCategory(cat); if(window.innerWidth < 1024) setIsFilterOpen(false); }}
+              type="button"
+              onClick={() => preserveFilterPosition(() => { setCategory(cat); if(window.innerWidth < 1024) setIsFilterOpen(false); })}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all group ${category === cat ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               <span className="flex-1 min-w-0 text-left truncate" title={cat}>{cat}</span>
@@ -707,7 +725,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
           {workModes.map((mode) => (
             <button
               key={mode}
-              onClick={() => setWorkMode(mode)}
+              type="button"
+              onClick={() => preserveFilterPosition(() => setWorkMode(mode))}
               className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
                 workMode === mode ? 'bg-slate-900 text-white' : 'text-gray-500 hover:bg-gray-50'
               }`}
@@ -726,7 +745,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
           {employmentTypes.map((type) => (
             <button
               key={type}
-              onClick={() => setEmploymentType(type)}
+              type="button"
+              onClick={() => preserveFilterPosition(() => setEmploymentType(type))}
               className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
                 employmentType === type ? 'bg-slate-900 text-white' : 'text-gray-500 hover:bg-gray-50'
               }`}
@@ -757,7 +777,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
             {salaryFloors.map((option) => (
               <button
                 key={option.value}
-                onClick={() => setSalaryMin(option.value)}
+                type="button"
+                onClick={() => preserveFilterPosition(() => setSalaryMin(option.value))}
                 className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-colors ${
                   salaryMin === option.value
                     ? "bg-slate-900 text-white border-slate-900"
@@ -826,8 +847,11 @@ const FindJobs: React.FC<FindJobsProps> = ({
             return (
               <button
                 key={tool}
+              type="button"
                 onClick={() => {
-                  setSelectedTools((prev) => (prev.includes(tool) ? prev.filter((t) => t !== tool) : [...prev, tool]));
+                  preserveFilterPosition(() => {
+                    setSelectedTools((prev) => (prev.includes(tool) ? prev.filter((t) => t !== tool) : [...prev, tool]));
+                  });
                 }}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
                   active ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100" : "text-gray-500 hover:bg-gray-50"
@@ -855,7 +879,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
           ].map((opt) => (
             <button
               key={opt.id}
-              onClick={() => setTimezone(opt.id)}
+              type="button"
+              onClick={() => preserveFilterPosition(() => setTimezone(opt.id))}
               className={`rounded-2xl px-3 py-3 text-[10px] font-black uppercase tracking-widest border transition-colors ${
                 timezone === opt.id ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-indigo-200 hover:text-indigo-700"
               }`}
@@ -880,7 +905,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
           ].map((opt) => (
             <button
               key={opt.id}
-              onClick={() => setSeniority(opt.id)}
+              type="button"
+              onClick={() => preserveFilterPosition(() => setSeniority(opt.id))}
               className={`rounded-2xl px-3 py-3 text-[10px] font-black uppercase tracking-widest border transition-colors ${
                 seniority === opt.id ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-indigo-200 hover:text-indigo-700"
               }`}
@@ -896,7 +922,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
           <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Trust</h3>
         </div>
         <button
-          onClick={() => setVerifiedOnly((prev) => !prev)}
+          type="button"
+          onClick={() => preserveFilterPosition(() => setVerifiedOnly((prev) => !prev))}
           className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
             verifiedOnly ? "bg-emerald-600 text-white shadow-xl shadow-emerald-100" : "text-gray-500 hover:bg-gray-50"
           }`}
@@ -917,7 +944,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
       )}
       <div className="absolute bottom-0 left-0 right-0 border-t border-slate-100 bg-white/95 backdrop-blur px-4 py-3">
         <button
-          onClick={clearAllFilters}
+          type="button"
+          onClick={() => preserveFilterPosition(clearAllFilters)}
           className="w-full rounded-2xl bg-slate-900 text-white px-4 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-black transition-colors"
         >
           Reset filters ({activeFilterChips.length})
