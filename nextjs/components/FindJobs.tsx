@@ -101,8 +101,11 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [urlUpdateTick, setUrlUpdateTick] = useState(0);
   const initialJobIdRef = useRef<string | null>(null);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const suppressUrlUpdateRef = useRef(false);
+  const pendingUrlUpdateRef = useRef(false);
   const titleRef = useRef<HTMLDivElement>(null);
   const locationRef = useRef<HTMLDivElement>(null);
   const filterScrollRef = useRef<HTMLDivElement>(null);
@@ -172,6 +175,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!hydratedRef.current) return;
+    if (suppressUrlUpdateRef.current) {
+      pendingUrlUpdateRef.current = true;
+      return;
+    }
     const timer = window.setTimeout(() => {
       const params = new URLSearchParams(window.location.search);
       const setOrDelete = (key: string, value: string | null) => {
@@ -214,6 +221,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     selectedJobId,
     expandedJobId,
     isDesktop,
+    urlUpdateTick,
     router,
   ]);
 
@@ -648,6 +656,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
     [filteredAndSorted, selectedJobId],
   );
 
+  const flushUrlUpdate = () => {
+    if (typeof window === "undefined") return;
+    if (!pendingUrlUpdateRef.current) return;
+    pendingUrlUpdateRef.current = false;
+    setUrlUpdateTick((x) => x + 1);
+  };
+
   const FilterContent = ({ variant }: { variant: "sidebar" | "sheet" }) => (
     <div
       className={[
@@ -762,12 +777,19 @@ const FindJobs: React.FC<FindJobsProps> = ({
               max={250000}
               step={5000}
               value={salaryMin}
+              onPointerDown={() => {
+                suppressUrlUpdateRef.current = true;
+              }}
+              onPointerUp={() => {
+                suppressUrlUpdateRef.current = false;
+                flushUrlUpdate();
+              }}
               onChange={(e) => {
                 const next = Math.max(0, Number(e.target.value) || 0);
                 setSalaryMin(next);
                 if (salaryMax > 0 && next > salaryMax) setSalaryMax(next);
               }}
-              className="mt-2 w-full accent-indigo-600"
+              className="mt-2 w-full accent-indigo-600 touch-pan-x"
             />
           </div>
 
