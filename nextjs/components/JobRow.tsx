@@ -347,7 +347,7 @@ export default function JobRow({
 
             <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-start">
               <div className="flex-1 min-w-0">
-                <span className="block truncate text-[12px] sm:text-sm font-semibold text-slate-900">
+                <span className="block truncate text-[12px] sm:text-sm font-bold text-slate-900">
                   {job.salary || "Salary listed"}
                 </span>
               </div>
@@ -360,7 +360,7 @@ export default function JobRow({
                   "h-11",
                   "px-4 text-[10px] sm:px-5 sm:text-[11px]",
                   "min-w-[124px] sm:min-w-[132px] flex-shrink-0 whitespace-nowrap",
-                  "rounded-2xl bg-indigo-600 text-white font-semibold uppercase tracking-wide hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100",
+                  "rounded-2xl bg-indigo-600 text-white font-bold uppercase tracking-wide hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100",
                 ].join(" ")}
               >
                 Quick apply
