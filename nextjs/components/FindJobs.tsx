@@ -102,10 +102,12 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
   const [urlUpdateTick, setUrlUpdateTick] = useState(0);
+  const [topBarCollapsed, setTopBarCollapsed] = useState(false);
   const initialJobIdRef = useRef<string | null>(null);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const suppressUrlUpdateRef = useRef(false);
   const pendingUrlUpdateRef = useRef(false);
+  const lastScrollYRef = useRef(0);
   const titleRef = useRef<HTMLDivElement>(null);
   const locationRef = useRef<HTMLDivElement>(null);
   const filterScrollRef = useRef<HTMLDivElement>(null);
@@ -258,6 +260,26 @@ const FindJobs: React.FC<FindJobsProps> = ({
       mq.addListener(update);
       return () => mq.removeListener(update);
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onScroll = () => {
+      const y = window.scrollY || 0;
+      const last = lastScrollYRef.current || 0;
+      const delta = y - last;
+      lastScrollYRef.current = y;
+
+      if (y < 80) {
+        setTopBarCollapsed(false);
+        return;
+      }
+      // Collapse when scrolling down. Expand when scrolling up meaningfully.
+      if (delta > 12) setTopBarCollapsed(true);
+      if (delta < -24) setTopBarCollapsed(false);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll as any);
   }, []);
 
   useEffect(() => {
@@ -680,6 +702,58 @@ const FindJobs: React.FC<FindJobsProps> = ({
     });
   };
 
+  type FilterSectionId =
+    | "expertise"
+    | "workMode"
+    | "employment"
+    | "salary"
+    | "tools"
+    | "timezone"
+    | "seniority"
+    | "trust";
+
+  const [openFilterSections, setOpenFilterSections] = useState<Record<FilterSectionId, boolean>>({
+    expertise: true,
+    workMode: false,
+    employment: false,
+    salary: true,
+    tools: false,
+    timezone: false,
+    seniority: false,
+    trust: false,
+  });
+
+  const toggleFilterSection = (id: FilterSectionId) =>
+    preserveFilterPosition(() =>
+      setOpenFilterSections((prev) => ({ ...prev, [id]: !prev[id] })),
+    );
+
+  const FilterSection = ({
+    id,
+    title,
+    children,
+  }: {
+    id: FilterSectionId;
+    title: string;
+    children: React.ReactNode;
+  }) => {
+    const open = openFilterSections[id];
+    return (
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
+        <button
+          type="button"
+          onClick={() => toggleFilterSection(id)}
+          className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem] w-[calc(100%+1rem)] flex items-center justify-between gap-3 text-left"
+          aria-expanded={open}
+        >
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{title}</h3>
+          <span className="text-slate-400 font-black text-sm">{open ? "−" : "+"}</span>
+        </button>
+        {open && <div className="space-y-3">{children}</div>}
+      </div>
+    );
+  };
+
   const FilterContent = ({ variant }: { variant: "sidebar" | "sheet" }) => (
     <div
       className={[
@@ -692,14 +766,11 @@ const FindJobs: React.FC<FindJobsProps> = ({
       <div
         ref={filterScrollRef}
         className={[
-          "space-y-6 pr-2 pb-24 overflow-y-auto scroll-smooth",
+          "space-y-6 pr-2 pb-24 overflow-y-auto",
           variant === "sidebar" ? "max-h-[calc(100vh-10rem)]" : "max-h-[70vh]",
         ].join(" ")}
       >
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
-        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Expertise Segments</h3>
-        </div>
+      <FilterSection id="expertise" title="Expertise Segments">
         <div className="space-y-1.5">
           {CATEGORIES.map(cat => (
             <button 
@@ -715,12 +786,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
             </button>
           ))}
         </div>
-      </div>
+      </FilterSection>
 
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
-        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Work Mode</h3>
-        </div>
+      <FilterSection id="workMode" title="Work Mode">
         <div className="space-y-2">
           {workModes.map((mode) => (
             <button
@@ -735,12 +803,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
             </button>
           ))}
         </div>
-      </div>
+      </FilterSection>
 
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
-        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Employment Type</h3>
-        </div>
+      <FilterSection id="employment" title="Employment Type">
         <div className="space-y-2">
           {employmentTypes.map((type) => (
             <button
@@ -755,12 +820,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
             </button>
           ))}
         </div>
-      </div>
+      </FilterSection>
 
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
-        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Salary range</h3>
-        </div>
+      <FilterSection id="salary" title="Salary range">
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3">
             <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Min</div>
@@ -819,9 +881,11 @@ const FindJobs: React.FC<FindJobsProps> = ({
             <select
               value={salaryMax}
               onChange={(e) => {
-                const next = Number(e.target.value) || 0;
-                setSalaryMax(next);
-                if (next > 0 && salaryMin > next) setSalaryMin(next);
+                preserveFilterPosition(() => {
+                  const next = Number(e.target.value) || 0;
+                  setSalaryMax(next);
+                  if (next > 0 && salaryMin > next) setSalaryMin(next);
+                });
               }}
               className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
             >
@@ -835,12 +899,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
             </select>
           </div>
         </div>
-      </div>
+      </FilterSection>
 
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
-        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Tools</h3>
-        </div>
+      <FilterSection id="tools" title="Tools">
         <div className="space-y-2">
           {TOOL_OPTIONS.map((tool) => {
             const active = selectedTools.includes(tool);
@@ -865,12 +926,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
             );
           })}
         </div>
-      </div>
+      </FilterSection>
 
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
-        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Timezone overlap</h3>
-        </div>
+      <FilterSection id="timezone" title="Timezone overlap">
         <div className="grid grid-cols-3 gap-2">
           {[
             { id: "any" as const, label: "Any" },
@@ -889,12 +947,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
             </button>
           ))}
         </div>
-      </div>
+      </FilterSection>
 
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
-        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Seniority</h3>
-        </div>
+      <FilterSection id="seniority" title="Seniority">
         <div className="grid grid-cols-2 gap-2">
           {[
             { id: "any" as const, label: "Any" },
@@ -915,12 +970,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
             </button>
           ))}
         </div>
-      </div>
+      </FilterSection>
 
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
-        <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem]">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Trust</h3>
-        </div>
+      <FilterSection id="trust" title="Trust">
         <button
           type="button"
           onClick={() => preserveFilterPosition(() => setVerifiedOnly((prev) => !prev))}
@@ -934,7 +986,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
             {jobs.filter((j) => j.companyVerified).length}
           </span>
         </button>
-      </div>
+      </FilterSection>
       </div>
       {showFilterTopShadow && (
         <div className="pointer-events-none absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-white to-transparent" />
@@ -958,7 +1010,34 @@ const FindJobs: React.FC<FindJobsProps> = ({
     <div className="bg-[#F8F9FD]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="lg:sticky lg:top-20 z-40">
-          <div className="rounded-[2.25rem] border border-slate-200/60 bg-white/90 backdrop-blur shadow-sm px-4 sm:px-5 py-4">
+          <div
+            className={[
+              "rounded-[2.25rem] border border-slate-200/60 bg-white/90 backdrop-blur shadow-sm transition-all duration-300 overflow-hidden",
+              topBarCollapsed ? "px-4 sm:px-5 py-2" : "px-4 sm:px-5 py-4",
+            ].join(" ")}
+          >
+            {topBarCollapsed ? (
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate">
+                    {filteredAndSorted.length} roles
+                    {activeFilterChips.length > 0 ? ` • ${activeFilterChips.length} filters` : ""}
+                  </div>
+                  <div className="text-[11px] font-bold text-slate-400 truncate">Search & filters</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTopBarCollapsed(false)}
+                  className="h-10 w-10 rounded-2xl border border-slate-200/70 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-700 flex items-center justify-center flex-shrink-0"
+                  aria-label="Expand search and filters"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 7h16M4 12h16M4 17h16" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <>
             <div className="flex flex-col lg:flex-row lg:items-end gap-3 lg:gap-4">
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div ref={titleRef} className="relative">
@@ -1169,6 +1248,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   </span>
                 )}
               </div>
+            )}
+              </>
             )}
           </div>
         </div>
