@@ -964,7 +964,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   return (
     <div className="bg-[#F8F9FD]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="sticky top-20 z-40">
+        <div>
           <div className="rounded-[2.25rem] border border-slate-200/60 bg-white/90 backdrop-blur shadow-sm px-4 sm:px-5 py-4">
             <div className="flex flex-col lg:flex-row lg:items-end gap-3 lg:gap-4">
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
