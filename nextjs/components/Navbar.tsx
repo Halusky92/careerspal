@@ -213,7 +213,7 @@ const Navbar: React.FC = () => {
                   className={`whitespace-nowrap rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
                     pathname?.startsWith("/dashboard")
                       ? "bg-indigo-600 text-white shadow-md"
-                      : "bg-white text-slate-500 border border-slate-100"
+                      : "bg-indigo-50 text-indigo-700 border border-indigo-200"
                   }`}
                 >
                   Dashboard
@@ -227,7 +227,7 @@ const Navbar: React.FC = () => {
       {/* Mobile Menu Overlay */}
       <div
         id="mobile-menu"
-        className={`fixed inset-0 z-[101] bg-white md:hidden transition-all duration-500 flex flex-col ${isMenuOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none'}`}
+        className={`fixed inset-0 z-[101] bg-white md:hidden transition-all duration-500 flex flex-col ${isMenuOpen ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-full pointer-events-none'}`}
       >
         <div className="flex-1 flex flex-col px-6 pb-8 overflow-y-auto">
           <div className="pt-6 pb-4 flex items-center justify-between border-b border-slate-100">
@@ -254,7 +254,7 @@ const Navbar: React.FC = () => {
               <Link
                 href="/auth"
                 onClick={handleMobileNav}
-                className="w-full py-4 rounded-2xl bg-slate-50 text-slate-900 font-black text-base border border-slate-100 active:scale-95 transition-transform text-center"
+                className="block w-full py-4 rounded-2xl bg-slate-50 text-slate-900 font-black text-base border border-slate-100 active:scale-95 transition-transform text-center relative z-10"
               >
                 Sign In / Sign Up
               </Link>
@@ -300,7 +300,7 @@ const Navbar: React.FC = () => {
                <Link
                  href={dashboardHref}
                  onClick={handleMobileNav}
-                 className="w-full py-4 text-slate-900 font-black text-base border border-slate-100 active:scale-95 transition-transform text-center"
+                 className="block w-full py-4 rounded-2xl bg-indigo-600 text-white font-black text-base shadow-xl shadow-indigo-200 active:scale-95 transition-transform text-center"
                >
                  Dashboard
                </Link>
@@ -310,7 +310,7 @@ const Navbar: React.FC = () => {
               <Link
                 href="/account"
                 onClick={handleMobileNav}
-                className="w-full py-4 text-slate-900 font-black text-base border border-slate-100 active:scale-95 transition-transform text-center"
+                className="block w-full py-4 rounded-2xl bg-slate-50 text-slate-900 font-black text-base border border-slate-100 active:scale-95 transition-transform text-center"
               >
                 Account
               </Link>
