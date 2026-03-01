@@ -680,306 +680,283 @@ const FindJobs: React.FC<FindJobsProps> = ({
     });
   };
 
-  type FilterSectionId =
-    | "expertise"
-    | "workMode"
-    | "employment"
-    | "salary"
-    | "tools"
-    | "timezone"
-    | "seniority"
-    | "trust";
+  type OpenWwrDropdown = null | "category" | "salary" | "skills";
+  const [openWwrDropdown, setOpenWwrDropdown] = useState<OpenWwrDropdown>(null);
+  const [wwrCategoryQuery, setWwrCategoryQuery] = useState("");
+  const [wwrSkillQuery, setWwrSkillQuery] = useState("");
 
-  const [openFilterSections, setOpenFilterSections] = useState<Record<FilterSectionId, boolean>>({
-    expertise: true,
-    workMode: false,
-    employment: false,
-    salary: true,
-    tools: false,
-    timezone: false,
-    seniority: false,
-    trust: false,
-  });
+  const categoryOptions = CATEGORIES.filter((c) => c !== "All Roles");
 
-  const toggleFilterSection = (id: FilterSectionId) =>
-    preserveFilterPosition(() =>
-      setOpenFilterSections((prev) => ({ ...prev, [id]: !prev[id] })),
-    );
+  const SALARY_RANGE_OPTIONS = useMemo(
+    () =>
+      [
+        { label: "Any salary", min: 0, max: 0 },
+        { label: "$10,000 – $25,000 USD", min: 10000, max: 25000 },
+        { label: "$25,000 – $49,999 USD", min: 25000, max: 49999 },
+        { label: "$50,000 – $74,999 USD", min: 50000, max: 74999 },
+        { label: "$75,000 – $99,999 USD", min: 75000, max: 99999 },
+        { label: "$100,000 – $149,999 USD", min: 100000, max: 149999 },
+        { label: "$150,000+ USD", min: 150000, max: 0 },
+      ] as const,
+    [],
+  );
 
-  const FilterSection = ({
-    id,
-    title,
-    children,
-  }: {
-    id: FilterSectionId;
-    title: string;
-    children: React.ReactNode;
-  }) => {
-    const open = openFilterSections[id];
-    return (
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
-        <button
-          type="button"
-          onClick={() => toggleFilterSection(id)}
-          className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-4 bg-white/95 backdrop-blur rounded-[2rem] w-[calc(100%+1rem)] flex items-center justify-between gap-3 text-left"
-          aria-expanded={open}
-        >
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{title}</h3>
-          <span className="text-slate-400 font-black text-sm">{open ? "−" : "+"}</span>
-        </button>
-        {open && <div className="space-y-3">{children}</div>}
-      </div>
-    );
-  };
+  const selectedSalaryLabel = useMemo(() => {
+    if (!salaryMin && !salaryMax) return "";
+    const hit = SALARY_RANGE_OPTIONS.find((o) => o.min === salaryMin && o.max === (salaryMax || 0));
+    if (hit) return hit.label;
+    if (salaryMax > 0) return `${formatSalaryFloor(salaryMin)} – ${formatSalaryFloor(salaryMax)}`;
+    return `From ${formatSalaryFloor(salaryMin)}`;
+  }, [SALARY_RANGE_OPTIONS, salaryMin, salaryMax]);
+
+  const skillsSummary = useMemo(() => {
+    if (selectedTools.length === 0) return "";
+    if (selectedTools.length === 1) return selectedTools[0];
+    return `${selectedTools[0]} +${selectedTools.length - 1}`;
+  }, [selectedTools]);
 
   const FilterContent = ({ variant }: { variant: "sidebar" | "sheet" }) => (
     <div
       className={[
-        variant === "sidebar"
-          ? "sticky top-40 max-h-[calc(100vh-10rem)]"
-          : "max-h-[70vh]",
-        "overflow-hidden rounded-[2.75rem] border border-transparent relative",
+        variant === "sidebar" ? "sticky top-28" : "",
+        "rounded-2xl border border-slate-200 bg-white shadow-sm",
       ].join(" ")}
     >
-      <div
-        ref={filterScrollRef}
-        className={[
-          "space-y-6 pr-2 pb-24 overflow-y-auto",
-          variant === "sidebar" ? "max-h-[calc(100vh-10rem)]" : "max-h-[70vh]",
-        ].join(" ")}
-      >
-      <FilterSection id="expertise" title="Expertise Segments">
-        <div className="space-y-1.5">
-          {CATEGORIES.map(cat => (
-            <button 
-              key={cat} 
-              type="button"
-              onClick={() => preserveFilterPosition(() => { setCategory(cat); if(window.innerWidth < 1024) setIsFilterOpen(false); })}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all group ${category === cat ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'text-gray-500 hover:bg-gray-50'}`}
-            >
-              <span className="flex-1 min-w-0 text-left truncate" title={cat}>{cat}</span>
-              <span className={`flex-shrink-0 text-[10px] font-black px-2 py-0.5 rounded-lg ${category === cat ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                {categoryCounts[cat] || 0}
-              </span>
-            </button>
-          ))}
-        </div>
-      </FilterSection>
-
-      <FilterSection id="workMode" title="Work Mode">
-        <div className="space-y-2">
-          {workModes.map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => preserveFilterPosition(() => setWorkMode(mode))}
-              className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
-                workMode === mode ? 'bg-slate-900 text-white' : 'text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
-      </FilterSection>
-
-      <FilterSection id="employment" title="Employment Type">
-        <div className="space-y-2">
-          {employmentTypes.map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => preserveFilterPosition(() => setEmploymentType(type))}
-              className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
-                employmentType === type ? 'bg-slate-900 text-white' : 'text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              {type}
-            </button>
-          ))}
-        </div>
-      </FilterSection>
-
-      <FilterSection id="salary" title="Salary range">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3">
-            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Min</div>
-            <div className="text-sm font-black text-slate-900 mt-1">{formatSalaryFloor(salaryMin)}</div>
-          </div>
-          <div className="rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3">
-            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Max</div>
-            <div className="text-sm font-black text-slate-900 mt-1">{salaryMax > 0 ? formatSalaryFloor(salaryMax) : "Any"}</div>
-          </div>
+      <div ref={filterScrollRef} className={["p-4", variant === "sheet" ? "max-h-[70vh] overflow-y-auto" : ""].join(" ")}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="text-sm font-semibold text-slate-900">Search remote jobs</div>
+          <button
+            type="button"
+            onClick={() =>
+              preserveFilterPosition(() => {
+                clearAllFilters();
+                setOpenWwrDropdown(null);
+              })
+            }
+            className="text-xs font-medium text-slate-500 hover:text-slate-900"
+          >
+            Clear
+          </button>
         </div>
 
         <div className="mt-4 space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {salaryFloors.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => preserveFilterPosition(() => setSalaryMin(option.value))}
-                className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-colors ${
-                  salaryMin === option.value
-                    ? "bg-slate-900 text-white border-slate-900"
-                    : "bg-white text-slate-600 border-slate-200 hover:border-indigo-200 hover:text-indigo-700"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-
+          {/* Search */}
           <div>
-            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Min slider</label>
+            <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
+              <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Search
+            </div>
             <input
-              type="range"
-              min={0}
-              max={250000}
-              step={5000}
-              value={salaryMin}
-              onPointerDown={() => {
-                suppressUrlUpdateRef.current = true;
-              }}
-              onPointerUp={() => {
-                suppressUrlUpdateRef.current = false;
-                flushUrlUpdate();
-              }}
-              onChange={(e) => {
-                const next = Math.max(0, Number(e.target.value) || 0);
-                setSalaryMin(next);
-                if (salaryMax > 0 && next > salaryMax) setSalaryMax(next);
-              }}
-              className="mt-2 w-full accent-indigo-600 touch-pan-x"
+              value={query}
+              onChange={(e) => preserveFilterPosition(() => setQuery(e.target.value))}
+              placeholder="Search everything..."
+              className="mt-2 w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-1">
-            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Max cap</label>
-            <select
-              value={salaryMax}
-              onChange={(e) => {
-                preserveFilterPosition(() => {
-                  const next = Number(e.target.value) || 0;
-                  setSalaryMax(next);
-                  if (next > 0 && salaryMin > next) setSalaryMin(next);
-                });
-              }}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
+          {/* Job Categories */}
+          <div className="relative">
+            <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
+              <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h10" />
+              </svg>
+              Job Categories
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpenWwrDropdown((prev) => (prev === "category" ? null : "category"))}
+              className="mt-2 w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-medium text-slate-900 hover:border-slate-300"
             >
-              <option value={0}>Any</option>
-              <option value={100000}>$100k</option>
-              <option value={120000}>$120k</option>
-              <option value={150000}>$150k</option>
-              <option value={180000}>$180k</option>
-              <option value={200000}>$200k</option>
-              <option value={250000}>$250k</option>
-            </select>
+              <span className={category !== "All Roles" ? "" : "text-slate-400"}>
+                {category !== "All Roles" ? category : "Search job category..."}
+              </span>
+            </button>
+            {openWwrDropdown === "category" && (
+              <div className="mt-2 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                <div className="p-2 border-b border-slate-100">
+                  <input
+                    value={wwrCategoryQuery}
+                    onChange={(e) => setWwrCategoryQuery(e.target.value)}
+                    placeholder="Search job category..."
+                    className="w-full h-9 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
+                    autoFocus
+                  />
+                </div>
+                <div className="max-h-56 overflow-y-auto">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      preserveFilterPosition(() => {
+                        setCategory("All Roles");
+                        setOpenWwrDropdown(null);
+                        setWwrCategoryQuery("");
+                      })
+                    }
+                    className="w-full text-left px-3 py-2 text-sm font-medium hover:bg-slate-50"
+                  >
+                    All categories
+                  </button>
+                  {categoryOptions
+                    .filter((c) => c.toLowerCase().includes(wwrCategoryQuery.trim().toLowerCase()))
+                    .map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() =>
+                          preserveFilterPosition(() => {
+                            setCategory(c);
+                            setOpenWwrDropdown(null);
+                            setWwrCategoryQuery("");
+                            if (window.innerWidth < 1024) setIsFilterOpen(false);
+                          })
+                        }
+                        className={[
+                          "w-full text-left px-3 py-2 text-sm font-medium hover:bg-slate-50",
+                          category === c ? "bg-indigo-50 text-indigo-700" : "text-slate-900",
+                        ].join(" ")}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      </FilterSection>
 
-      <FilterSection id="tools" title="Tools">
-        <div className="space-y-2">
-          {TOOL_OPTIONS.map((tool) => {
-            const active = selectedTools.includes(tool);
-            return (
-              <button
-                key={tool}
-              type="button"
-                onClick={() => {
-                  preserveFilterPosition(() => {
-                    setSelectedTools((prev) => (prev.includes(tool) ? prev.filter((t) => t !== tool) : [...prev, tool]));
-                  });
-                }}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
-                  active ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100" : "text-gray-500 hover:bg-gray-50"
-                }`}
-              >
-                <span>{tool}</span>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-400"}`}>
-                  {toolCounts[tool] || 0}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </FilterSection>
+          {/* Countries */}
+          <div>
+            <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
+              <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21s7-4.35 7-11a7 7 0 10-14 0c0 6.65 7 11 7 11z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10a2 2 0 110-4 2 2 0 010 4z" />
+              </svg>
+              Countries
+            </div>
+            <input
+              value={locationQuery}
+              onChange={(e) => preserveFilterPosition(() => setLocationQuery(e.target.value))}
+              placeholder="Search country..."
+              className="mt-2 w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
+            />
+          </div>
 
-      <FilterSection id="timezone" title="Timezone overlap">
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { id: "any" as const, label: "Any" },
-            { id: "eu" as const, label: "EU-friendly" },
-            { id: "us" as const, label: "US-friendly" },
-          ].map((opt) => (
+          {/* Salary range */}
+          <div className="relative">
+            <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
+              <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-3 0-5 1.343-5 3s2 3 5 3 5 1.343 5 3-2 3-5 3m0-15v2m0 12v2" />
+              </svg>
+              Salary Range
+            </div>
             <button
-              key={opt.id}
               type="button"
-              onClick={() => preserveFilterPosition(() => setTimezone(opt.id))}
-              className={`rounded-2xl px-3 py-3 text-[10px] font-black uppercase tracking-widest border transition-colors ${
-                timezone === opt.id ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-indigo-200 hover:text-indigo-700"
-              }`}
+              onClick={() => setOpenWwrDropdown((prev) => (prev === "salary" ? null : "salary"))}
+              className="mt-2 w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-medium text-slate-900 hover:border-slate-300"
             >
-              {opt.label}
+              <span className={selectedSalaryLabel ? "" : "text-slate-400"}>
+                {selectedSalaryLabel || "Search by salary range..."}
+              </span>
             </button>
-          ))}
-        </div>
-      </FilterSection>
+            {openWwrDropdown === "salary" && (
+              <div className="mt-2 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                <div className="max-h-56 overflow-y-auto py-1">
+                  {SALARY_RANGE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      onClick={() =>
+                        preserveFilterPosition(() => {
+                          setSalaryMin(opt.min);
+                          setSalaryMax(opt.max === 0 ? 0 : opt.max);
+                          setOpenWwrDropdown(null);
+                          if (window.innerWidth < 1024) setIsFilterOpen(false);
+                        })
+                      }
+                      className="w-full text-left px-3 py-2 text-sm font-medium hover:bg-slate-50 text-slate-900"
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
-      <FilterSection id="seniority" title="Seniority">
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { id: "any" as const, label: "Any" },
-            { id: "junior" as const, label: "Junior" },
-            { id: "mid" as const, label: "Mid" },
-            { id: "senior" as const, label: "Senior" },
-            { id: "lead" as const, label: "Lead+" },
-          ].map((opt) => (
+          {/* Skills */}
+          <div className="relative">
+            <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
+              <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-7 4h8m2 5H6a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v14a2 2 0 01-2 2z" />
+              </svg>
+              Skills
+            </div>
             <button
-              key={opt.id}
               type="button"
-              onClick={() => preserveFilterPosition(() => setSeniority(opt.id))}
-              className={`rounded-2xl px-3 py-3 text-[10px] font-black uppercase tracking-widest border transition-colors ${
-                seniority === opt.id ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-indigo-200 hover:text-indigo-700"
-              }`}
+              onClick={() => setOpenWwrDropdown((prev) => (prev === "skills" ? null : "skills"))}
+              className="mt-2 w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-medium text-slate-900 hover:border-slate-300"
             >
-              {opt.label}
+              <span className={skillsSummary ? "" : "text-slate-400"}>
+                {skillsSummary || "Search skills..."}
+              </span>
             </button>
-          ))}
-        </div>
-      </FilterSection>
+            {openWwrDropdown === "skills" && (
+              <div className="mt-2 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                <div className="p-2 border-b border-slate-100">
+                  <input
+                    value={wwrSkillQuery}
+                    onChange={(e) => setWwrSkillQuery(e.target.value)}
+                    placeholder="Search skills..."
+                    className="w-full h-9 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
+                    autoFocus
+                  />
+                </div>
+                <div className="max-h-56 overflow-y-auto py-1">
+                  {TOOL_OPTIONS.filter((t) => t.toLowerCase().includes(wwrSkillQuery.trim().toLowerCase())).map((tool) => {
+                    const active = selectedTools.includes(tool);
+                    return (
+                      <button
+                        key={tool}
+                        type="button"
+                        onClick={() =>
+                          preserveFilterPosition(() => {
+                            setSelectedTools((prev) =>
+                              prev.includes(tool) ? prev.filter((x) => x !== tool) : [...prev, tool],
+                            );
+                          })
+                        }
+                        className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium hover:bg-slate-50"
+                      >
+                        <span className="text-slate-900">{tool}</span>
+                        <span
+                          className={[
+                            "h-5 w-5 rounded border flex items-center justify-center text-xs",
+                            active ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-200 text-transparent",
+                          ].join(" ")}
+                          aria-hidden="true"
+                        >
+                          ✓
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
 
-      <FilterSection id="trust" title="Trust">
-        <button
-          type="button"
-          onClick={() => preserveFilterPosition(() => setVerifiedOnly((prev) => !prev))}
-          className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
-            verifiedOnly ? "bg-emerald-600 text-white shadow-xl shadow-emerald-100" : "text-gray-500 hover:bg-gray-50"
-          }`}
-          aria-pressed={verifiedOnly}
-        >
-          <span>Verified only</span>
-          <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${verifiedOnly ? "bg-white/20 text-white" : "bg-gray-100 text-gray-400"}`}>
-            {jobs.filter((j) => j.companyVerified).length}
-          </span>
-        </button>
-      </FilterSection>
-      </div>
-      {showFilterTopShadow && (
-        <div className="pointer-events-none absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-white to-transparent" />
-      )}
-      {showFilterBottomShadow && (
-        <div className="pointer-events-none absolute bottom-14 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent" />
-      )}
-      <div className="absolute bottom-0 left-0 right-0 border-t border-slate-100 bg-white/95 backdrop-blur px-4 py-3">
-        <button
-          type="button"
-          onClick={() => preserveFilterPosition(clearAllFilters)}
-          className="w-full rounded-2xl bg-slate-900 text-white px-4 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-black transition-colors"
-        >
-          Reset filters ({activeFilterChips.length})
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpenWwrDropdown(null);
+              if (variant === "sheet") setIsFilterOpen(false);
+            }}
+            className="mt-2 w-full h-11 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-black"
+          >
+            Apply filters
+          </button>
+        </div>
       </div>
     </div>
   );
