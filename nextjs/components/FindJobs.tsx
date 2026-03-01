@@ -264,23 +264,50 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const onScroll = () => {
+    let ticking = false;
+    let lastToggleAt = 0;
+
+    const apply = () => {
       const y = window.scrollY || 0;
       const last = lastScrollYRef.current || 0;
       const delta = y - last;
       lastScrollYRef.current = y;
 
-      if (y < 80) {
-        setTopBarCollapsed(false);
+      // Hysteresis to avoid flicker: collapse later, expand earlier.
+      const collapseAfterY = 160;
+      const expandBeforeY = 120;
+
+      // Rate-limit state toggles.
+      const now = Date.now();
+      if (now - lastToggleAt < 180) return;
+
+      if (!topBarCollapsed) {
+        if (y > collapseAfterY && delta > 18) {
+          lastToggleAt = now;
+          setTopBarCollapsed(true);
+        }
         return;
       }
-      // Collapse when scrolling down. Expand when scrolling up meaningfully.
-      if (delta > 12) setTopBarCollapsed(true);
-      if (delta < -24) setTopBarCollapsed(false);
+
+      // Currently collapsed
+      if (y < expandBeforeY || delta < -22) {
+        lastToggleAt = now;
+        setTopBarCollapsed(false);
+      }
     };
+
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(() => {
+        ticking = false;
+        apply();
+      });
+    };
+
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll as any);
-  }, []);
+  }, [topBarCollapsed]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

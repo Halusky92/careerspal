@@ -68,11 +68,11 @@ const Navbar: React.FC = () => {
               className="flex items-center space-x-3 cursor-pointer group relative z-[102]"
             >
               <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center transition-transform group-hover:rotate-6 shadow-xl shadow-indigo-100">
-                <span className="text-white font-black text-lg">C</span>
+                <span className="text-white font-bold text-lg">C</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-lg font-extrabold tracking-tighter text-indigo-600 leading-none">CareersPal</span>
-                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-900 mt-1">Elite Ecosystem</span>
+                <span className="text-lg font-bold tracking-tight text-indigo-600 leading-none">CareersPal</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-700 mt-1">Elite Ecosystem</span>
               </div>
             </Link>
             
@@ -92,13 +92,13 @@ const Navbar: React.FC = () => {
               ))}
 
               {dashboardHref && (
-                <Link href={dashboardHref} className="text-sm font-black text-slate-500 hover:text-indigo-600 transition-colors">
+                <Link href={dashboardHref} className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
                   Dashboard
                 </Link>
               )}
 
               {!profile?.email && (
-                <Link href="/auth" className="text-sm font-black text-slate-500 hover:text-indigo-600 transition-colors">
+                <Link href="/auth" className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
                   Sign in
                 </Link>
               )}
@@ -161,14 +161,14 @@ const Navbar: React.FC = () => {
               {(profile?.role === "employer" || profile?.role === "admin") ? (
                 <Link
                   href="/post-a-job"
-                  className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200"
+                  className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-semibold uppercase tracking-wide shadow-lg shadow-indigo-200"
                 >
                   Post a Job
                 </Link>
               ) : (
                 <Link
                   href="/hire-talent"
-                  className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200"
+                  className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-semibold uppercase tracking-wide shadow-lg shadow-indigo-200"
                 >
                   Hire Talent
                 </Link>

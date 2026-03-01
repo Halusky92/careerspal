@@ -173,11 +173,11 @@ export default function JobRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h3 className={[isHome ? "text-[15px]" : "text-[15px] sm:text-base", "font-black text-slate-900 leading-snug truncate"].join(" ")}>
+              <h3 className={[isHome ? "text-[15px]" : "text-[15px] sm:text-base", "font-bold text-slate-900 leading-snug truncate"].join(" ")}>
                 {job.title}
               </h3>
 
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-bold text-slate-700">
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold text-slate-700">
                 <button
                   className="hover:text-indigo-600 hover:underline decoration-indigo-300 underline-offset-2 truncate"
                   onClick={(e) => {
@@ -196,7 +196,7 @@ export default function JobRow({
                 {(isElite || isPro) && (
                   <span
                     className={[
-                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest",
+                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
                       isElite
                         ? "bg-amber-200/70 text-amber-950 border border-amber-300"
                         : "bg-amber-100 text-amber-900 border border-amber-200",
@@ -208,13 +208,13 @@ export default function JobRow({
                 )}
 
                 {isPrivate && (
-                  <span className="inline-flex items-center rounded-full bg-slate-900 text-white px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
+                  <span className="inline-flex items-center rounded-full bg-slate-900 text-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
                     Invite only
                   </span>
                 )}
               </div>
 
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-bold text-slate-600">
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-medium text-slate-700">
                 <span className="inline-flex items-center gap-1">
                   <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 21s7-4.35 7-11a7 7 0 10-14 0c0 6.65 7 11 7 11z" />
@@ -232,7 +232,7 @@ export default function JobRow({
                   </span>
                 )}
                 {job.companyVerified && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
                     Verified
                   </span>
                 )}
@@ -297,7 +297,7 @@ export default function JobRow({
                   >
                     <button
                       role="menuitem"
-                      className="w-full text-left px-4 py-3 text-[11px] font-black uppercase tracking-widest text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 border-b border-slate-100"
+                      className="w-full text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 border-b border-slate-100"
                       onClick={async () => {
                         setMenuOpen(false);
                         if (onAction) onAction("copy_link");
@@ -312,7 +312,7 @@ export default function JobRow({
                     </button>
                     <button
                       role="menuitem"
-                      className="w-full text-left px-4 py-3 text-[11px] font-black uppercase tracking-widest text-slate-600 hover:bg-indigo-50 hover:text-indigo-700"
+                      className="w-full text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-600 hover:bg-indigo-50 hover:text-indigo-700"
                       onClick={() => {
                         setMenuOpen(false);
                         if (onAction) onAction("open_new_tab");
@@ -339,7 +339,7 @@ export default function JobRow({
                 </span>
               ))}
               {variant !== "board" && toolList.length > 2 && (
-                <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                   +{toolList.length - 2}
                 </span>
               )}
@@ -347,7 +347,7 @@ export default function JobRow({
 
             <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-start">
               <div className="flex-1 min-w-0">
-                <span className="block truncate text-[12px] sm:text-sm font-black text-slate-900">
+                <span className="block truncate text-[12px] sm:text-sm font-semibold text-slate-900">
                   {job.salary || "Salary listed"}
                 </span>
               </div>
@@ -360,7 +360,7 @@ export default function JobRow({
                   "h-11",
                   "px-4 text-[10px] sm:px-5 sm:text-[11px]",
                   "min-w-[124px] sm:min-w-[132px] flex-shrink-0 whitespace-nowrap",
-                  "rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100",
+                  "rounded-2xl bg-indigo-600 text-white font-semibold uppercase tracking-wide hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100",
                 ].join(" ")}
               >
                 Quick apply
@@ -398,7 +398,7 @@ export default function JobRow({
                     </span>
                   ))}
                   {toolList.length > 6 && (
-                    <span className="text-[11px] font-black text-slate-500">+{toolList.length - 6}</span>
+                    <span className="text-[11px] font-semibold text-slate-600">+{toolList.length - 6}</span>
                   )}
                 </div>
               )}
@@ -420,7 +420,7 @@ export default function JobRow({
                     }
                     router.push(href);
                   }}
-                  className="h-11 flex-1 rounded-2xl border border-slate-200/80 bg-white text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
+                  className="h-11 flex-1 rounded-2xl border border-slate-200/80 bg-white text-[10px] font-semibold uppercase tracking-wide text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
                 >
                   Full details
                 </button>
@@ -430,7 +430,7 @@ export default function JobRow({
                     e.stopPropagation();
                     onSelect();
                   }}
-                  className="h-11 px-4 rounded-2xl border border-slate-200/80 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100"
+                  className="h-11 px-4 rounded-2xl border border-slate-200/80 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-600 hover:bg-slate-100"
                 >
                   Close
                 </button>
