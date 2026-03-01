@@ -91,10 +91,10 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onJoinPool, onSearch, jobs }) => 
           <div className="flex-1 w-full">
             <div className="inline-flex items-center space-x-2 bg-white/70 backdrop-blur border border-slate-200/60 px-4 py-2 rounded-full mb-6 sm:mb-8 shadow-sm">
               <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em]">Invite-only access • Verified employers</span>
+              <span className="text-[10px] font-semibold text-slate-700 uppercase tracking-wide">Invite-only access • Verified employers</span>
             </div>
             
-            <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-slate-900 tracking-tight leading-[1.1] sm:leading-[0.9] mb-6 sm:mb-8">
+            <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-slate-900 tracking-tight leading-[1.1] sm:leading-[0.9] mb-6 sm:mb-8">
               The Hub for <br />
               <span className="text-gradient">Notion-first Ops.</span>
             </h1>
@@ -107,18 +107,18 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onJoinPool, onSearch, jobs }) => 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-3 sm:gap-4">
                 <button
                   onClick={onBrowse}
-                  className="w-full sm:w-auto bg-indigo-600 text-white px-8 sm:px-10 py-4 sm:py-5 rounded-2xl sm:rounded-[1.8rem] font-black text-base sm:text-lg hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 active:scale-95"
+                  className="w-full sm:w-auto bg-indigo-600 text-white px-8 sm:px-10 py-4 sm:py-5 rounded-2xl sm:rounded-[1.8rem] font-semibold text-base sm:text-lg hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 active:scale-95"
                 >
                   Browse Roles
                 </button>
                 <a
                   href="/post-a-job"
-                  className="w-full sm:w-auto text-center px-8 sm:px-10 py-4 sm:py-5 rounded-2xl sm:rounded-[1.8rem] font-black text-base sm:text-lg bg-white/70 backdrop-blur text-slate-900 border border-slate-200 hover:bg-indigo-50 transition-all active:scale-95 shadow-sm"
+                  className="w-full sm:w-auto text-center px-8 sm:px-10 py-4 sm:py-5 rounded-2xl sm:rounded-[1.8rem] font-semibold text-base sm:text-lg bg-white/70 backdrop-blur text-slate-900 border border-slate-200 hover:bg-indigo-50 transition-all active:scale-95 shadow-sm"
                 >
                   Post a job
                 </a>
               </div>
-              <div className="mt-4 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 text-xs sm:text-sm font-bold text-slate-500">
+              <div className="mt-4 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 text-xs sm:text-sm font-medium text-slate-600">
                 <span className="inline-flex items-center gap-2">
                   <span className="text-emerald-600">✓</span> Salary ranges required
                 </span>
@@ -130,7 +130,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onJoinPool, onSearch, jobs }) => 
                 <button
                   type="button"
                   onClick={onJoinPool}
-                  className="text-indigo-600 hover:text-indigo-800 font-black uppercase tracking-widest text-[10px]"
+                  className="text-indigo-600 hover:text-indigo-800 font-semibold uppercase tracking-wide text-[10px]"
                 >
                   Join talent pool →
                 </button>
@@ -139,7 +139,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onJoinPool, onSearch, jobs }) => 
             
             {/* ENHANCED SEARCH BAR */}
             <div ref={searchRef} className="max-w-xl mx-auto lg:mx-0 relative mb-8 sm:mb-10 group">
-              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-3 text-center lg:text-left">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 mb-3 text-center lg:text-left">
                 Search the board
               </div>
               <div className="relative flex items-center bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden focus-within:ring-4 focus-within:ring-indigo-100 transition-all">
@@ -153,7 +153,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onJoinPool, onSearch, jobs }) => 
                   onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
                   onFocus={() => setShowSuggestions(true)}
                   placeholder="Search role, company or stack..."
-                  className="w-full px-4 py-4 sm:py-5 text-sm sm:text-base font-bold text-slate-900 outline-none placeholder:text-slate-300 placeholder:font-medium"
+                  className="w-full px-4 py-4 sm:py-5 text-sm sm:text-base font-medium text-slate-900 outline-none placeholder:text-slate-400 placeholder:font-normal"
                 />
                 
                 {query && (
@@ -167,7 +167,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onJoinPool, onSearch, jobs }) => 
 
                 <button 
                   onClick={() => handleSearchSubmit()}
-                  className="bg-indigo-600 text-white px-6 py-4 sm:py-5 font-black text-xs sm:text-sm uppercase tracking-widest hover:bg-indigo-700 transition-all active:scale-95"
+                  className="bg-indigo-600 text-white px-6 py-4 sm:py-5 font-semibold text-xs sm:text-sm uppercase tracking-wide hover:bg-indigo-700 transition-all active:scale-95"
                 >
                   Search
                 </button>
@@ -183,7 +183,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onJoinPool, onSearch, jobs }) => 
                         setQuery(suggestion);
                         handleSearchSubmit(suggestion);
                       }}
-                      className="w-full text-left px-6 py-3.5 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-indigo-50/50 last:border-none flex items-center gap-3"
+                      className="w-full text-left px-6 py-3.5 text-sm font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-indigo-50/50 last:border-none flex items-center gap-3"
                     >
                       <svg className="w-3.5 h-3.5 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                       {suggestion}
@@ -198,7 +198,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onJoinPool, onSearch, jobs }) => 
                 <button
                   key={tag}
                   onClick={() => handleSearchSubmit(tag)}
-                  className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-slate-500 border border-slate-200 bg-white hover:border-indigo-200 hover:text-indigo-600"
+                  className="px-3 py-1 rounded-full text-[9px] font-semibold uppercase tracking-wide text-slate-600 border border-slate-200 bg-white hover:border-indigo-200 hover:text-indigo-600"
                 >
                   {tag}
                 </button>

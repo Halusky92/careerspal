@@ -24,9 +24,9 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
   if (!jobData) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-24 text-center">
-        <h2 className="text-2xl font-black text-slate-900 mb-4">Missing job details</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-4">Missing job details</h2>
         <p className="text-slate-500 font-medium mb-8">Please return and complete the job submission first.</p>
-        <button onClick={onCancel} className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black">
+        <button onClick={onCancel} className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-semibold">
           Back to Form
         </button>
       </div>
@@ -254,10 +254,10 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
     return (
       <div className="max-w-2xl mx-auto px-4 py-24 text-center animate-in zoom-in-95 duration-500">
         <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-10 text-4xl shadow-xl">✓</div>
-        <h1 className="text-5xl font-black text-slate-900 mb-6 tracking-tight">Payment Successful!</h1>
+        <h1 className="text-5xl font-bold text-slate-900 mb-6 tracking-tight">Payment Successful!</h1>
         <p className="text-lg text-slate-500 mb-2 font-medium">The role &quot;{jobData?.title}&quot; has been successfully activated.</p>
-        <p className="text-sm text-slate-400 font-bold mb-12">Confirmation sent to your email. Matches sent to subscribers.</p>
-        <button onClick={onSuccess} className="bg-indigo-600 text-white px-10 py-5 rounded-3xl font-black text-xl shadow-xl hover:scale-105 transition-all">Go to Dashboard</button>
+        <p className="text-sm text-slate-600 font-medium mb-12">Confirmation sent to your email. Matches sent to subscribers.</p>
+        <button onClick={onSuccess} className="bg-indigo-600 text-white px-10 py-5 rounded-3xl font-semibold text-xl shadow-xl hover:scale-105 transition-all">Go to Dashboard</button>
       </div>
     );
   }
@@ -266,8 +266,8 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
     return (
       <div className="max-w-2xl mx-auto px-4 py-24 text-center flex flex-col items-center animate-in fade-in">
         <div className="w-20 h-20 border-4 border-indigo-50 border-t-indigo-600 rounded-full animate-spin mb-10"></div>
-        <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Processing Payment...</h2>
-        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Matching with Talent Pool...</p>
+        <h2 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight">Processing Payment...</h2>
+        <p className="text-slate-600 font-medium uppercase tracking-wide text-xs">Matching with Talent Pool...</p>
       </div>
     );
   }
@@ -280,12 +280,12 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
             <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-100">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
             </div>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-none">Checkout</h2>
+            <h2 className="text-3xl font-bold text-slate-900 tracking-tight leading-none">Checkout</h2>
           </div>
 
           <div className="space-y-6">
             <div className="rounded-2xl border border-slate-100 bg-slate-50 px-6 py-5">
-              <p className="text-xs font-black uppercase tracking-widest text-slate-400">Secure payment</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Secure payment</p>
               <p className="mt-3 text-sm font-bold text-slate-700">
                 You will complete payment securely on Stripe.
               </p>
@@ -295,7 +295,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
               <button
                 type="button"
                 onClick={handlePay}
-                className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all text-xl active:scale-[0.98]"
+                className="w-full bg-indigo-600 text-white font-semibold py-6 rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all text-xl active:scale-[0.98]"
               >
                 Continue to Stripe ({formatPrice(price)})
               </button>
@@ -305,7 +305,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
               <button
                 type="button"
                 onClick={onCancel}
-                className="w-full text-slate-400 font-bold mt-6 hover:text-slate-600 transition-colors"
+                className="w-full text-slate-600 font-medium mt-6 hover:text-slate-900 transition-colors"
               >
                 Cancel & Return
               </button>
@@ -315,18 +315,18 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
 
         <div className="lg:col-span-5 space-y-8 sticky top-28">
            <div className="bg-slate-900 p-10 rounded-[3.5rem] text-white shadow-2xl">
-              <h3 className="text-xl font-black mb-8 border-b border-white/10 pb-6">Order Summary</h3>
+              <h3 className="text-xl font-bold mb-8 border-b border-white/10 pb-6">Order Summary</h3>
               <div className="space-y-6">
                  <div className="flex justify-between items-center">
                     <div>
-                       <p className="font-black text-white">{jobData?.title || "New Listing"}</p>
-                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{planName} 30-Day Listing</p>
+                       <p className="font-semibold text-white">{jobData?.title || "New Listing"}</p>
+                       <p className="text-[10px] text-slate-300 font-medium uppercase tracking-wide">{planName} 30-Day Listing</p>
                     </div>
-                    <span className="font-black">{formatPrice(price)}</span>
+                    <span className="font-semibold">{formatPrice(price)}</span>
                  </div>
                  <div className="pt-6 border-t border-white/10 flex justify-between items-center">
-                    <span className="text-lg font-black uppercase tracking-widest text-slate-400">Total</span>
-                    <span className="text-3xl font-black text-indigo-400">{formatPrice(price)}</span>
+                    <span className="text-lg font-semibold uppercase tracking-wide text-slate-300">Total</span>
+                    <span className="text-3xl font-bold text-indigo-400">{formatPrice(price)}</span>
                  </div>
               </div>
            </div>

@@ -24,10 +24,10 @@ export default function JobMiniCard({ job, className = "" }: JobMiniCardProps) {
       ].join(" ")}
     >
       <div className="min-w-0">
-        <div className="text-sm font-black text-slate-900 truncate">{job.title}</div>
+        <div className="text-sm font-bold text-slate-900 truncate">{job.title}</div>
       </div>
 
-      <div className="flex-shrink-0 text-[11px] font-black text-slate-900 whitespace-nowrap">
+      <div className="flex-shrink-0 text-[11px] font-semibold text-slate-900 whitespace-nowrap">
         {job.salary}
       </div>
     </button>

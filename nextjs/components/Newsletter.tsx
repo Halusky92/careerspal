@@ -40,21 +40,21 @@ const Newsletter: React.FC = () => {
 
         <div className="relative z-10 max-w-2xl mx-auto space-y-8">
           <div>
-            <span className="inline-block py-1 px-3 rounded-full bg-white/10 border border-white/20 text-white text-[10px] font-black uppercase tracking-widest mb-6">
+            <span className="inline-block py-1 px-3 rounded-full bg-white/10 border border-white/20 text-white text-[10px] font-semibold uppercase tracking-wide mb-6">
               Priority Access
             </span>
-            <h2 className="text-4xl md:text-5xl font-black text-white mb-6 tracking-tight">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
               Don&apos;t miss your next <br />
               <span className="text-indigo-400">Elite Opportunity.</span>
             </h2>
-            <p className="text-slate-400 text-lg font-medium">
+            <p className="text-slate-300 text-lg font-medium">
               Get curated role alerts. Select your expertise and we’ll notify you when a matching role drops.
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
               {["Verified employers", "Invite-only roles", "Response SLA"].map((label) => (
                 <span
                   key={label}
-                  className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-slate-200 border border-white/20 bg-white/5"
+                  className="px-3 py-1 rounded-full text-[9px] font-semibold uppercase tracking-wide text-slate-200 border border-white/20 bg-white/5"
                 >
                   {label}
                 </span>
@@ -68,7 +68,7 @@ const Newsletter: React.FC = () => {
                   <select 
                     value={preference}
                     onChange={(e) => setPreference(e.target.value as Subscriber["preference"])}
-                    className="w-full h-full bg-transparent text-white font-bold text-sm outline-none px-4 py-4 appearance-none cursor-pointer"
+                    className="w-full h-full bg-transparent text-white font-medium text-sm outline-none px-4 py-4 appearance-none cursor-pointer"
                     style={{ backgroundImage: 'none' }}
                   >
                     <option value="All" className="bg-slate-900 text-slate-300">Notify me for: Everything</option>
@@ -84,24 +84,24 @@ const Newsletter: React.FC = () => {
                   type="email" 
                   required
                   placeholder="Your work email" 
-                  className="flex-1 px-6 py-4 rounded-2xl bg-white/10 border border-white/10 text-white placeholder:text-slate-500 font-bold outline-none focus:ring-2 focus:ring-indigo-500 backdrop-blur-sm transition-all"
+                  className="flex-1 px-6 py-4 rounded-2xl bg-white/10 border border-white/10 text-white placeholder:text-slate-400 font-medium outline-none focus:ring-2 focus:ring-indigo-500 backdrop-blur-sm transition-all"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                />
                <button 
                   type="submit" 
-                  className={`px-8 py-4 rounded-2xl font-black transition-all active:scale-95 shadow-xl whitespace-nowrap ${status === 'success' ? 'bg-emerald-500 text-white' : status === 'error' ? 'bg-red-500 text-white' : 'bg-white text-slate-900 hover:bg-indigo-50'}`}
+                  className={`px-8 py-4 rounded-2xl font-semibold transition-all active:scale-95 shadow-xl whitespace-nowrap ${status === 'success' ? 'bg-emerald-500 text-white' : status === 'error' ? 'bg-red-500 text-white' : 'bg-white text-slate-900 hover:bg-indigo-50'}`}
                >
                   {status === 'success' ? 'Joined! ✓' : status === 'error' ? 'Try again' : 'Join List'}
                </button>
             </div>
-            {msg && <p className="text-xs font-bold text-indigo-300">{msg}</p>}
+            {msg && <p className="text-xs font-medium text-indigo-200">{msg}</p>}
           </form>
 
-          <p className="text-slate-500 text-xs font-bold">
+          <p className="text-slate-300/80 text-xs font-medium">
             We respect your inbox. Unsubscribe anytime. Data stored securely.
           </p>
-          <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest">
+          <p className="text-slate-300/70 text-[10px] font-semibold uppercase tracking-wide">
             Zero spam. You control frequency.
           </p>
         </div>

@@ -102,12 +102,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
   const [urlUpdateTick, setUrlUpdateTick] = useState(0);
-  const [topBarCollapsed, setTopBarCollapsed] = useState(false);
   const initialJobIdRef = useRef<string | null>(null);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const suppressUrlUpdateRef = useRef(false);
   const pendingUrlUpdateRef = useRef(false);
-  const lastScrollYRef = useRef(0);
   const titleRef = useRef<HTMLDivElement>(null);
   const locationRef = useRef<HTMLDivElement>(null);
   const filterScrollRef = useRef<HTMLDivElement>(null);
@@ -261,53 +259,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
       return () => mq.removeListener(update);
     }
   }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    let ticking = false;
-    let lastToggleAt = 0;
-
-    const apply = () => {
-      const y = window.scrollY || 0;
-      const last = lastScrollYRef.current || 0;
-      const delta = y - last;
-      lastScrollYRef.current = y;
-
-      // Hysteresis to avoid flicker: collapse later, expand earlier.
-      const collapseAfterY = 160;
-      const expandBeforeY = 120;
-
-      // Rate-limit state toggles.
-      const now = Date.now();
-      if (now - lastToggleAt < 180) return;
-
-      if (!topBarCollapsed) {
-        if (y > collapseAfterY && delta > 18) {
-          lastToggleAt = now;
-          setTopBarCollapsed(true);
-        }
-        return;
-      }
-
-      // Currently collapsed
-      if (y < expandBeforeY || delta < -22) {
-        lastToggleAt = now;
-        setTopBarCollapsed(false);
-      }
-    };
-
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      window.requestAnimationFrame(() => {
-        ticking = false;
-        apply();
-      });
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll as any);
-  }, [topBarCollapsed]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1036,35 +987,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
   return (
     <div className="bg-[#F8F9FD]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="lg:sticky lg:top-20 z-40">
-          <div
-            className={[
-              "rounded-[2.25rem] border border-slate-200/60 bg-white/90 backdrop-blur shadow-sm transition-all duration-300 overflow-hidden",
-              topBarCollapsed ? "px-4 sm:px-5 py-2" : "px-4 sm:px-5 py-4",
-            ].join(" ")}
-          >
-            {topBarCollapsed ? (
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate">
-                    {filteredAndSorted.length} roles
-                    {activeFilterChips.length > 0 ? ` • ${activeFilterChips.length} filters` : ""}
-                  </div>
-                  <div className="text-[11px] font-bold text-slate-400 truncate">Search & filters</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setTopBarCollapsed(false)}
-                  className="h-10 w-10 rounded-2xl border border-slate-200/70 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-700 flex items-center justify-center flex-shrink-0"
-                  aria-label="Expand search and filters"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 7h16M4 12h16M4 17h16" />
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <>
+        <div className="sticky top-20 z-40">
+          <div className="rounded-[2.25rem] border border-slate-200/60 bg-white/90 backdrop-blur shadow-sm px-4 sm:px-5 py-4">
             <div className="flex flex-col lg:flex-row lg:items-end gap-3 lg:gap-4">
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div ref={titleRef} className="relative">
@@ -1275,8 +1199,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   </span>
                 )}
               </div>
-            )}
-              </>
             )}
           </div>
         </div>

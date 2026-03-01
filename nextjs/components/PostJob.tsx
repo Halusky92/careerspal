@@ -479,26 +479,26 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                          <img src={previewLogo} alt="" className="max-h-full max-w-full object-contain" />
                       </div>
                       <div>
-                        <h4 className="text-xl sm:text-2xl font-black text-slate-900 leading-none mb-1">{formData.title}</h4>
-                        <p className="text-indigo-600 font-bold uppercase text-[10px] sm:text-xs tracking-widest">{formData.company}</p>
+                        <h4 className="text-xl sm:text-2xl font-bold text-slate-900 leading-none mb-1">{formData.title}</h4>
+                        <p className="text-indigo-600 font-semibold uppercase text-[10px] sm:text-xs tracking-wide">{formData.company}</p>
                         {formData.companyWebsite && (
-                          <p className="text-[10px] font-bold text-slate-400 mt-1">{formData.companyWebsite}</p>
+                          <p className="text-[10px] font-medium text-slate-600 mt-1">{formData.companyWebsite}</p>
                         )}
                       </div>
                    </div>
                    <div className="text-slate-500 line-clamp-4 text-sm font-medium leading-relaxed">{formData.description}</div>
                    <div className="mt-6 flex gap-3 flex-wrap">
-                      <span className="bg-white border border-slate-100 px-3 py-1 rounded-lg text-[10px] font-black text-slate-400 uppercase">{formData.type}</span>
-                      <span className="bg-white border border-slate-100 px-3 py-1 rounded-lg text-[10px] font-black text-slate-400 uppercase">{formData.salary}</span>
-                      <span className="bg-white border border-slate-100 px-3 py-1 rounded-lg text-[10px] font-black text-slate-400 uppercase">{formData.remotePolicy}</span>
-                      <span className="bg-white border border-slate-100 px-3 py-1 rounded-lg text-[10px] font-black text-slate-400 uppercase">{formData.location}</span>
+                      <span className="bg-white border border-slate-100 px-3 py-1 rounded-lg text-[10px] font-semibold text-slate-600 uppercase tracking-wide">{formData.type}</span>
+                      <span className="bg-white border border-slate-100 px-3 py-1 rounded-lg text-[10px] font-semibold text-slate-600 uppercase tracking-wide">{formData.salary}</span>
+                      <span className="bg-white border border-slate-100 px-3 py-1 rounded-lg text-[10px] font-semibold text-slate-600 uppercase tracking-wide">{formData.remotePolicy}</span>
+                      <span className="bg-white border border-slate-100 px-3 py-1 rounded-lg text-[10px] font-semibold text-slate-600 uppercase tracking-wide">{formData.location}</span>
                    </div>
                 </div>
                 <div className="flex flex-col gap-4">
-                <button onClick={handleFinalSubmit} className="w-full bg-slate-900 text-white font-black py-4 sm:py-6 rounded-2xl hover:bg-black shadow-[0_25px_70px_rgba(15,23,42,0.35)] active:scale-[0.98] transition-all text-base sm:text-xl">
+                <button onClick={handleFinalSubmit} className="w-full bg-slate-900 text-white font-semibold py-4 sm:py-6 rounded-2xl hover:bg-black shadow-[0_25px_70px_rgba(15,23,42,0.35)] active:scale-[0.98] transition-all text-base sm:text-xl">
                     Proceed to Payment ({formatPrice(selectedPlan.price)})
                   </button>
-                  <button onClick={() => setStep(2)} className="text-slate-400 font-bold hover:text-indigo-600 transition-colors">Edit details</button>
+                  <button onClick={() => setStep(2)} className="text-slate-600 font-medium hover:text-indigo-600 transition-colors">Edit details</button>
                 </div>
               </div>
             )}
@@ -509,8 +509,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200/60 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-[10px] font-black uppercase tracking-wide text-indigo-600">For employers</div>
-                  <h3 className="text-xl font-black text-slate-900 mt-2">Everything you need to post confidently.</h3>
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-indigo-600">For employers</div>
+                  <h3 className="text-xl font-bold text-slate-900 mt-2">Everything you need to post confidently.</h3>
                   <p className="mt-2 text-sm font-medium text-slate-600">
                     Clear rules, fast review, and premium visibility options.
                   </p>
@@ -522,7 +522,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                   <ul className="space-y-2 text-sm font-medium text-slate-700">
                     {planHighlights.map((x) => (
                       <li key={x} className="flex items-start gap-2">
-                        <span className="text-emerald-600 font-black mt-0.5">✓</span>
+                        <span className="text-emerald-600 font-semibold mt-0.5">✓</span>
                         <span>{x}</span>
                       </li>
                     ))}
@@ -531,18 +531,18 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
                 <AccordionRow id="requirements" title="Requirements (for approval)">
                   <ul className="space-y-2 text-sm font-medium text-slate-700">
-                    <li className="flex items-start gap-2"><span className="text-slate-900 font-black mt-0.5">•</span> Salary range included</li>
-                    <li className="flex items-start gap-2"><span className="text-slate-900 font-black mt-0.5">•</span> Clear scope + responsibilities</li>
-                    <li className="flex items-start gap-2"><span className="text-slate-900 font-black mt-0.5">•</span> Working apply link (URL or email)</li>
-                    <li className="flex items-start gap-2"><span className="text-slate-900 font-black mt-0.5">•</span> No spam / vague listings</li>
+                    <li className="flex items-start gap-2"><span className="text-slate-900 font-semibold mt-0.5">•</span> Salary range included</li>
+                    <li className="flex items-start gap-2"><span className="text-slate-900 font-semibold mt-0.5">•</span> Clear scope + responsibilities</li>
+                    <li className="flex items-start gap-2"><span className="text-slate-900 font-semibold mt-0.5">•</span> Working apply link (URL or email)</li>
+                    <li className="flex items-start gap-2"><span className="text-slate-900 font-semibold mt-0.5">•</span> No spam / vague listings</li>
                   </ul>
                 </AccordionRow>
 
                 <AccordionRow id="review" title="Review & publish timeline">
                   <div className="space-y-2 text-sm font-medium text-slate-700">
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-black mt-0.5">1</span> Submit + pay</div>
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-black mt-0.5">2</span> Review for quality + clarity</div>
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-black mt-0.5">3</span> Publish when approved</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span> Submit + pay</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">2</span> Review for quality + clarity</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">3</span> Publish when approved</div>
                     <p className="mt-3 text-xs text-slate-600">
                       We aim to review quickly. Response SLA: 2 days.
                     </p>
@@ -551,17 +551,17 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               </div>
 
               <div className="mt-5 text-xs font-medium text-slate-600">
-                Questions or edits? Email <span className="font-black text-slate-800">info@careerspal.com</span>.
+                Questions or edits? Email <span className="font-semibold text-slate-800">info@careerspal.com</span>.
               </div>
            </div>
            
            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 shadow-sm relative z-20">
-              <h3 className="text-lg font-black text-slate-900 mb-2">Selected Plan</h3>
-              <div className="text-3xl font-black text-indigo-600 mb-4">
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Selected Plan</h3>
+              <div className="text-3xl font-bold text-indigo-600 mb-4">
                 {formatPrice(selectedPlan.price)}
-                <span className="text-lg text-slate-400 font-bold"> / 30 days</span>
+                <span className="text-lg text-slate-600 font-medium"> / 30 days</span>
               </div>
-              <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">{selectedPlan.type}</div>
+              <div className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-6">{selectedPlan.type}</div>
               
               {/* Plan Upgrade Options */}
               {selectedPlan.type === 'Standard' && (

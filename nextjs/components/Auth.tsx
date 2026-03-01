@@ -68,11 +68,11 @@ const Auth: React.FC<AuthProps> = () => {
     <div className="max-w-md mx-auto px-4 py-24 animate-in fade-in slide-in-from-bottom-4">
       <div className="p-10 rounded-[3.5rem] shadow-2xl border bg-white border-slate-50 shadow-indigo-100">
         <div className="text-center mb-10">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-black shadow-xl bg-indigo-600 text-white shadow-indigo-100">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold shadow-xl bg-indigo-600 text-white shadow-indigo-100">
             C
           </div>
           
-          <h1 className="text-3xl font-black tracking-tight text-slate-900">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
             Join CareersPal Elite
           </h1>
           
@@ -84,13 +84,13 @@ const Auth: React.FC<AuthProps> = () => {
         <div className="bg-slate-50 p-1.5 rounded-2xl flex gap-1 mb-8">
           <button 
             onClick={() => setRole('employer')} 
-            className={`flex-1 py-3 text-xs font-black uppercase tracking-wide rounded-xl transition-all ${role === 'employer' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+            className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wide rounded-xl transition-all ${role === 'employer' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
           >
             I am Hiring
           </button>
           <button 
             onClick={() => setRole('candidate')} 
-            className={`flex-1 py-3 text-xs font-black uppercase tracking-wide rounded-xl transition-all ${role === 'candidate' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+            className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wide rounded-xl transition-all ${role === 'candidate' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
           >
             I am a Talent
           </button>
@@ -133,7 +133,7 @@ const Auth: React.FC<AuthProps> = () => {
             type="button"
             onClick={handleEmailSignIn}
             disabled={isLoading || !email.trim()}
-            className="w-full rounded-2xl bg-slate-900 text-white py-4 text-sm font-black uppercase tracking-widest hover:bg-black disabled:opacity-60"
+            className="w-full rounded-2xl bg-slate-900 text-white py-4 text-sm font-semibold uppercase tracking-wide hover:bg-black disabled:opacity-60"
           >
             {isLoading ? "Sending link..." : "Email me a sign-in link"}
           </button>
@@ -145,7 +145,7 @@ const Auth: React.FC<AuthProps> = () => {
         </div>
 
         <div className="rounded-[2rem] border border-slate-100 bg-slate-50/70 p-5 text-left">
-          <p className="text-[11px] font-black text-slate-700">Trusted access</p>
+          <p className="text-[11px] font-semibold text-slate-800">Trusted access</p>
           <ul className="mt-3 space-y-2 text-sm font-medium text-slate-700">
             <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Verified employers only</li>
             <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Salary transparency enforced</li>

@@ -25,6 +25,16 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
+/* Typography normalization:
+   Keep weights in 400/500/600/700 range across the UI. */
+.font-black {
+  font-weight: 700;
+}
+
+.font-extrabold {
+  font-weight: 700;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

@@ -68,7 +68,7 @@ export default function JobDetailPanel({
     return (
       <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
         <div className="p-6">
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
             Role details
           </div>
           <div className="mt-3 text-sm font-bold text-slate-600">
@@ -96,10 +96,10 @@ export default function JobDetailPanel({
             />
           </div>
           <div className="min-w-0">
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
               Role details
             </div>
-            <div className="text-sm font-black text-slate-900 truncate">{job.title}</div>
+            <div className="text-sm font-bold text-slate-900 truncate">{job.title}</div>
           </div>
         </div>
 
@@ -143,22 +143,22 @@ export default function JobDetailPanel({
         <div className="px-6 pt-5">
           <div className="flex flex-wrap items-center gap-2">
             {job.planType && job.planType !== "Standard" && (
-              <span className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-100 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-indigo-700">
+              <span className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-100 px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-indigo-700">
                 Response SLA 2d
               </span>
             )}
-            <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-600">
+            <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-700">
               {job.type}
             </span>
-            <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-600">
+            <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-700">
               {job.location}
             </span>
             {job.remotePolicy && (
-              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-700">
+              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-emerald-700">
                 {job.remotePolicy}
               </span>
             )}
-            <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-400">
+            <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[9px] font-medium uppercase tracking-wide text-slate-600">
               Posted {formatPosted(job)}
             </span>
           </div>
@@ -167,15 +167,15 @@ export default function JobDetailPanel({
             <div className="min-w-0">
               <button
                 onClick={() => router.push(`/companies/${createCompanySlug({ name: job.company })}`)}
-                className="text-sm font-black text-indigo-700 hover:text-indigo-800 hover:underline decoration-indigo-300 underline-offset-2 truncate"
+                className="text-sm font-semibold text-indigo-700 hover:text-indigo-800 hover:underline decoration-indigo-300 underline-offset-2 truncate"
               >
                 {job.company}
               </button>
-              <div className="text-sm font-black text-slate-900 mt-1">{job.salary}</div>
+              <div className="text-sm font-semibold text-slate-900 mt-1">{job.salary}</div>
             </div>
             <button
               onClick={() => onApply(job)}
-              className="h-11 px-6 rounded-2xl bg-indigo-600 text-white text-[11px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
+              className="h-11 px-6 rounded-2xl bg-indigo-600 text-white text-[11px] font-semibold uppercase tracking-wide hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
             >
               Quick apply
             </button>
@@ -186,7 +186,7 @@ export default function JobDetailPanel({
               {stack.slice(0, 10).map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-500"
+                  className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-700"
                 >
                   {tag}
                 </span>
@@ -195,7 +195,7 @@ export default function JobDetailPanel({
           )}
 
           <div className="mt-6 rounded-[2rem] border border-slate-200/60 bg-slate-50/60 p-5">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
               About the role
             </div>
             <div className="mt-3 text-sm font-medium text-slate-700 whitespace-pre-wrap leading-relaxed">
@@ -205,7 +205,7 @@ export default function JobDetailPanel({
 
           {similarJobs.length > 0 && (
             <div className="mt-7">
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
                 Similar roles
               </div>
               <div className="mt-3 space-y-2">
@@ -221,8 +221,8 @@ export default function JobDetailPanel({
                     }}
                     className="w-full text-left rounded-2xl border border-slate-200/60 bg-white px-4 py-3 hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors"
                   >
-                    <div className="text-xs font-black text-slate-900 truncate">{s.title}</div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1 truncate">
+                    <div className="text-xs font-bold text-slate-900 truncate">{s.title}</div>
+                    <div className="text-[10px] font-medium uppercase tracking-wide text-slate-600 mt-1 truncate">
                       {s.company} • {s.salary}
                     </div>
                   </button>
