@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   let q = supabaseAdmin
     .from("sourcing_sourced_job_candidates")
     .select(
-      "id,raw_job_id,source_id,source_run_id,external_job_id,title,company_name,apply_url,job_url,location_text,remote_policy,posted_at,salary_present,salary_currency,salary_period,salary_amount_min,salary_amount_max,created_at,updated_at",
+      "id,raw_job_id,source_id,source_run_id,external_job_id,title,company_name,apply_url,job_url,location_text,remote_policy,posted_at,salary_present,salary_currency,salary_period,salary_amount_min,salary_amount_max,published_job_id,published_at,publish_status,publish_notes,created_at,updated_at",
     )
     .order("created_at", { ascending: false })
     .limit(limit);

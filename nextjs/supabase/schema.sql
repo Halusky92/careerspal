@@ -807,6 +807,20 @@ create policy "sourcing_sourced_job_candidates_delete_admin"
 on public.sourcing_sourced_job_candidates for delete
 using (public.is_admin());
 
+-- Auto-publish tracking (conservative; no manual review removal)
+alter table public.sourcing_sourced_job_candidates
+  add column if not exists published_job_id uuid references public.jobs(id) on delete set null;
+alter table public.sourcing_sourced_job_candidates
+  add column if not exists published_at timestamptz;
+alter table public.sourcing_sourced_job_candidates
+  add column if not exists publish_status text not null default 'not_published'
+    check (publish_status in ('not_published', 'auto_published', 'skipped_duplicate', 'skipped_not_eligible', 'failed'));
+alter table public.sourcing_sourced_job_candidates
+  add column if not exists publish_notes text;
+
+create index if not exists sourcing_sourced_job_candidates_publish_status_idx
+  on public.sourcing_sourced_job_candidates (publish_status);
+
 -- Scoring results (explainable)
 create table if not exists public.sourcing_candidate_scores (
   candidate_id uuid primary key references public.sourcing_sourced_job_candidates(id) on delete cascade,

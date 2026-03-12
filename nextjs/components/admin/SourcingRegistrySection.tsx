@@ -99,6 +99,10 @@ type NormalizedCandidateRow = {
   salary_period: string | null;
   salary_amount_min: number | null;
   salary_amount_max: number | null;
+  published_job_id?: string | null;
+  published_at?: string | null;
+  publish_status?: string;
+  publish_notes?: string | null;
   created_at: string;
 };
 
@@ -164,6 +168,8 @@ export default function SourcingRegistrySection() {
   const [evalStatus, setEvalStatus] = useState<"idle" | "running" | "success" | "error">("idle");
   const [evalMsg, setEvalMsg] = useState<string>("");
   const [evalRows, setEvalRows] = useState<any[]>([]);
+  const [autoPublishStatus, setAutoPublishStatus] = useState<"idle" | "running" | "success" | "error">("idle");
+  const [autoPublishMsg, setAutoPublishMsg] = useState<string>("");
 
   const filteredReviews = useMemo(() => reviews.filter((r) => r.status === reviewFilter), [reviews, reviewFilter]);
   const filteredGreenhouseSources = useMemo(
@@ -386,6 +392,31 @@ export default function SourcingRegistrySection() {
       setCandidates(json.candidates || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to load candidates.");
+    }
+  };
+
+  const runAutoPublish = async () => {
+    setAutoPublishStatus("running");
+    setAutoPublishMsg("");
+    try {
+      const payload: Record<string, unknown> = { limit: 100 };
+      if (runFilterSourceId.trim()) payload.sourceId = runFilterSourceId.trim();
+      if (selectedRunId.trim()) payload.runId = selectedRunId.trim();
+      const resp = await fetch("/api/admin/sourcing/auto-publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = (await resp.json()) as { published?: number; skipped?: number; failed?: number; minScore?: number; error?: string };
+      if (!resp.ok) throw new Error(json.error || "Auto-publish failed.");
+      setAutoPublishStatus(json.failed && json.failed > 0 ? "error" : "success");
+      setAutoPublishMsg(
+        `Auto-publish: published ${json.published ?? 0}, skipped ${json.skipped ?? 0}, failed ${json.failed ?? 0} (minScore ${json.minScore ?? "?"}).`,
+      );
+      await loadCandidates();
+    } catch (e) {
+      setAutoPublishStatus("error");
+      setAutoPublishMsg(e instanceof Error ? e.message : "Auto-publish failed.");
     }
   };
 
@@ -910,6 +941,18 @@ export default function SourcingRegistrySection() {
                     {evalStatus === "running" ? "Evaluating..." : "Evaluate now"}
                   </button>
                   <button
+                    onClick={runAutoPublish}
+                    disabled={autoPublishStatus === "running"}
+                    className={`px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      autoPublishStatus === "running"
+                        ? "border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                        : "border-indigo-600/30 bg-indigo-600/10 text-indigo-200 hover:bg-indigo-600/20"
+                    }`}
+                    title="Conservative auto-publish (Greenhouse-only, salary required, no duplicates)"
+                  >
+                    {autoPublishStatus === "running" ? "Publishing..." : "Auto-publish now"}
+                  </button>
+                  <button
                     onClick={() => {
                       loadCandidates();
                       loadEvals();
@@ -932,6 +975,19 @@ export default function SourcingRegistrySection() {
                   aria-live="polite"
                 >
                   {evalMsg}
+                </div>
+              )}
+              {autoPublishMsg && (
+                <div
+                  className={`mt-3 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
+                    autoPublishStatus === "error"
+                      ? "border-red-600/30 bg-red-600/10 text-red-300"
+                      : "border-indigo-600/30 bg-indigo-600/10 text-indigo-200"
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {autoPublishMsg}
                 </div>
               )}
 
@@ -972,6 +1028,23 @@ export default function SourcingRegistrySection() {
                             {typeof scoreTotal === "number" ? <Badge tone="slate">{`score ${scoreTotal}`}</Badge> : <Badge tone="slate">score —</Badge>}
                             {decision ? <Badge tone={decisionTone}>{decision}</Badge> : <Badge tone="slate">decision —</Badge>}
                             {dup ? <Badge tone={dup === "high" ? "red" : dup === "possible" ? "amber" : "slate"}>{`dup ${dup}`}</Badge> : <Badge tone="slate">dup —</Badge>}
+                            {c.publish_status ? (
+                              <Badge
+                                tone={
+                                  c.publish_status === "auto_published"
+                                    ? "emerald"
+                                    : c.publish_status === "skipped_duplicate"
+                                      ? "amber"
+                                      : c.publish_status === "failed"
+                                        ? "red"
+                                        : "slate"
+                                }
+                              >
+                                {`pub ${c.publish_status}`}
+                              </Badge>
+                            ) : (
+                              <Badge tone="slate">pub —</Badge>
+                            )}
                             {c.salary_currency ? <Badge tone="slate">{c.salary_currency}</Badge> : null}
                             {c.salary_period ? <Badge tone="slate">{c.salary_period}</Badge> : null}
                             {typeof c.salary_amount_min === "number" ? <Badge tone="slate">{`min ${c.salary_amount_min}`}</Badge> : null}
