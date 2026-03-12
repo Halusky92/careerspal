@@ -22,12 +22,12 @@ const AboutUs: React.FC = () => {
           </p>
         </section>
 
-        {/* Premium Metrics */}
+          {/* Metrics (grounded) */}
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {[
             { label: "Curated roles", value: "Live board", note: "Updated continuously" },
-            { label: "Response SLA", value: "2 days", note: "Verified employers" },
-            { label: "Matches", value: "Direct apply", note: "Clear links, fast flow" },
+            { label: "Review", value: "Before publish", note: "Clarity + salary-first" },
+            { label: "Apply", value: "Direct links", note: "Official apply URLs" },
           ].map((item) => (
             <div
               key={item.label}
@@ -45,17 +45,17 @@ const AboutUs: React.FC = () => {
         {[
           { 
             title: "Salary Transparency", 
-            desc: "Every role has a clear salary range. We don't believe in 'Competitive salary' without numbers. Elite talent deserves to know their value upfront.", 
+            desc: "We push for clear salary ranges and scope. If a listing lacks key details, it may not be published as-is.", 
             icon: "💎" 
           },
           { 
-            title: "Elite Manual Curation", 
-            desc: "Our team (and AI) manually approves every listing. No LinkedIn duplicates, no shady agencies. Only direct, verified roles.", 
+            title: "Review before publish", 
+            desc: "Listings are reviewed for clarity and relevance before they go live on the board.", 
             icon: "🛠️" 
           },
           { 
             title: "Safety & Trust", 
-            desc: "Every employer is vetted. We protect you from 'ghosting' and unprofessionalism. We are your professional shield.", 
+            desc: "We remove obvious spam and keep the board focused. Always verify details on the employer’s official application page.", 
             icon: "🛡️" 
           },
           { 
@@ -78,10 +78,9 @@ const AboutUs: React.FC = () => {
           <h3 className="text-2xl font-black text-indigo-900">What we do</h3>
           <ul className="space-y-4">
             {[
-              "We verify company expertise in systems.",
-              "We enforce responses for candidates.",
-              "We support pay equality.",
-              "We build a library of workflow templates."
+              "We review listings before publish for clarity and relevance.",
+              "We prioritize salary-first listings and clear scope.",
+              "We keep category hubs and canonical pages indexable for better discovery."
             ].map(t => (
               <li key={t} className="flex items-center gap-4 text-indigo-700 font-bold">
                 <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-[10px]">✓</span>
@@ -121,18 +120,17 @@ const AboutUs: React.FC = () => {
                 Traditional job boards are noisy. Companies look for &quot;Operations&quot;, but they actually need Notion Architects who build the company on Notion.
               </p>
               <p>
-                <strong>CareersPal Elite</strong> is a filter. Where the top 1% of Ops talent meets companies that understand the power of automation.
+                CareersPal is a focused board. We aim to keep it scan-friendly and salary-first.
               </p>
             </div>
           </div>
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[3rem] p-10 space-y-8">
-            <h4 className="text-xs font-black uppercase tracking-[0.3em] text-indigo-400">Our Talent Promise</h4>
+            <h4 className="text-xs font-black uppercase tracking-[0.3em] text-indigo-400">What to expect</h4>
             <ul className="space-y-4">
               {[
-                "Response from companies within 2 days, or we step in.",
-                "Direct access to founders (C-level).",
-                "Premium roles with education budgets.",
-                "A community of like-minded architects."
+                "Salary-first listings and clear scope.",
+                "Canonical job pages that are easy to share and index.",
+                "Category and company pages for browsing."
               ].map(item => (
                 <li key={item} className="flex items-start gap-4 text-slate-300 font-bold text-sm">
                   <span className="text-indigo-500 mt-1">✓</span>
@@ -150,14 +148,16 @@ const AboutUs: React.FC = () => {
           <div className="w-24 h-24 bg-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-10 shadow-2xl">
             <span className="text-white text-4xl font-black">C</span>
           </div>
-          <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tighter italic">&quot;We will change the way the world builds companies.&quot;</h3>
-          <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Mgr. Marek Bilek • CEO & Founder of CareersPal Elite</p>
+          <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tighter italic">
+            &quot;Less noise. More signal.&quot;
+          </h3>
+          <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">CareersPal</p>
         </section>
 
         {/* Premium CTA */}
         <section className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[3rem] p-10 md:p-16 text-center shadow-[0_25px_70px_rgba(15,23,42,0.08)]">
-          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Join the elite</p>
-          <h4 className="text-3xl md:text-4xl font-black text-slate-900 mt-3">Build with verified teams who value systems.</h4>
+          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Get started</p>
+          <h4 className="text-3xl md:text-4xl font-black text-slate-900 mt-3">Browse salary-first roles.</h4>
           <p className="text-slate-500 font-medium mt-3">Your next role should feel intentional, not accidental.</p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <a
@@ -167,10 +167,10 @@ const AboutUs: React.FC = () => {
               Browse roles
             </a>
             <a
-              href="/hire-talent"
+              href="/post-a-job"
               className="px-8 py-4 rounded-2xl bg-white text-slate-900 border border-slate-200 font-black hover:border-indigo-200 hover:text-indigo-600 transition-all"
             >
-              Hire premium talent
+              Post a job
             </a>
           </div>
         </section>

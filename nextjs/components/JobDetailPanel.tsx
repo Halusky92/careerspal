@@ -142,11 +142,6 @@ export default function JobDetailPanel({
       <div className="overflow-y-auto max-h-[calc(100vh-7rem)] pb-28">
         <div className="px-6 pt-5">
           <div className="flex flex-wrap items-center gap-2">
-            {job.planType && job.planType !== "Standard" && (
-              <span className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-100 px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-indigo-700">
-                Response SLA 2d
-              </span>
-            )}
             <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-700">
               {job.type}
             </span>

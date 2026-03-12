@@ -7,12 +7,12 @@ const Footer = () => {
         <div className="mb-12 rounded-[3rem] border border-slate-200/60 bg-white/80 backdrop-blur p-8 md:p-12 shadow-[0_25px_70px_rgba(15,23,42,0.08)]">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-500">Elite access</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-500">CareersPal</p>
               <h3 className="text-2xl md:text-3xl font-bold text-slate-900 mt-3">
                 Build with teams who respect systems and salary transparency.
               </h3>
               <p className="text-slate-500 font-medium mt-3 max-w-2xl">
-                Invite-only roles, verified employers, and response SLAs that protect your time.
+                Curated, salary-first roles with clear scope and direct apply links.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -33,7 +33,7 @@ const Footer = () => {
               </div>
               <div>
                 <div className="text-lg font-bold text-slate-900 leading-none">CareersPal</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Elite Board</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Curated job board</div>
               </div>
             </div>
             <p className="text-sm text-slate-500 font-medium">
@@ -72,10 +72,10 @@ const Footer = () => {
 
         <div className="pt-8 mt-10 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-            © 2026 CareersPal Elite. All rights reserved.
+            © 2026 CareersPal. All rights reserved.
           </p>
           <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center md:justify-end gap-2 sm:gap-4 text-xs text-slate-600 font-medium text-center md:text-left">
-            <span className="leading-relaxed">Support: <a href="mailto:info@careerspal.com" className="font-semibold text-slate-700 hover:text-indigo-600">info@careerspal.com</a> • Response SLA 2 days.</span>
+            <span className="leading-relaxed">Support: <a href="mailto:info@careerspal.com" className="font-semibold text-slate-700 hover:text-indigo-600">info@careerspal.com</a></span>
             <span className="hidden md:inline text-slate-300">•</span>
             <Link href="/privacy" className="text-slate-600 hover:text-indigo-600 font-semibold uppercase tracking-wide text-[10px]">
               Privacy
@@ -94,7 +94,7 @@ const Footer = () => {
           </div>
         </div>
         <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-center">
-          CareersPal Elite is an independent platform and is not affiliated with similarly named entities.
+          CareersPal is an independent platform and is not affiliated with similarly named entities.
         </p>
       </div>
     </footer>

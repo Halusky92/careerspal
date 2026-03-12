@@ -16,7 +16,7 @@ const PrivacyPolicy: React.FC = () => {
     <div className="max-w-4xl mx-auto px-6 py-24 animate-in fade-in slide-in-from-bottom-4">
       <div className="mb-12">
         <h1 className="text-5xl font-bold text-slate-900 mb-4 tracking-tighter">Privacy Policy</h1>
-        <p className="text-xl text-slate-500 font-medium italic">Your data security is the foundation of our elite network.</p>
+        <p className="text-xl text-slate-500 font-medium italic">How we handle your data.</p>
       </div>
 
       <div className="bg-white p-12 rounded-[3.5rem] shadow-2xl shadow-indigo-100 border border-indigo-50 space-y-12">
@@ -68,11 +68,11 @@ const PrivacyPolicy: React.FC = () => {
           <p className="text-slate-600 leading-relaxed font-medium">
             We process your data exclusively to:
             <br />
-            - Connect elite Notion architects with high-growth companies.
+            - Operate the CareersPal platform (accounts, job posts, applications, alerts).
             <br />
-            - Facilitate job applications and talent matching.
+            - Facilitate job applications and employer tools.
             <br />
-            - Send curated newsletters and platform updates (only with consent).
+            - Send alerts and platform updates (only with consent).
             <br />
             - Prevent fraud and maintain a secure ecosystem.
           </p>
@@ -173,7 +173,7 @@ const PrivacyPolicy: React.FC = () => {
               <ol className="mt-3 list-decimal pl-5 space-y-2 text-sm">
                 <li>Email your request to <a href="mailto:info@careerspal.com" className="text-indigo-600 font-black hover:underline">info@careerspal.com</a> from the address linked to your account.</li>
                 <li>We may ask for additional verification to protect your data.</li>
-                <li><strong>Acknowledgement SLA:</strong> typically within <strong>2 days</strong>.</li>
+                <li><strong>Acknowledgement:</strong> we aim to confirm receipt promptly.</li>
                 <li><strong>Completion target:</strong> we aim to complete requests within <strong>30 days</strong> (GDPR standard), or sooner where possible.</li>
               </ol>
             </div>
@@ -181,7 +181,7 @@ const PrivacyPolicy: React.FC = () => {
         </section>
 
         <div className="pt-10 border-t border-slate-50 flex justify-between items-center">
-          <p className="text-xs font-black text-slate-300 uppercase tracking-widest">© 2026 CareersPal Elite • Mgr. Marek Bilek</p>
+          <p className="text-xs font-black text-slate-300 uppercase tracking-widest">© 2026 CareersPal • Mgr. Marek Bilek</p>
           <div className="flex gap-4">
             <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center"><span className="text-indigo-600 text-[10px] font-black">GDPR</span></div>
             <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center"><span className="text-indigo-600 text-[10px] font-black">SSL</span></div>

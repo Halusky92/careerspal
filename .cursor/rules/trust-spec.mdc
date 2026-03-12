@@ -1,0 +1,84 @@
+---
+alwaysApply: true
+description: "CareersPal internal trust spec: verified, reviewed-before-publish, copy & UI rules"
+---
+
+# CareersPal — Internal Trust Spec (v1)
+
+**Cieľ:** udržať produkt a marketing **premium**, ale **pravdivý a konzistentný**. Ak niečo nie je jasne podložené dátami alebo reálnym procesom, **radšej to vôbec netvrdiť**.
+
+## 1) VERIFIED
+
+### Čo znamená „Verified“
+- **Verified** znamená: „CareersPal má pre túto firmu interný signál, že identita firmy bola overená podľa definovaného procesu.“
+- Nie je to: „garancia kvality“, „garancia férovosti“, „garancia odpovede“, ani „garancia výšky platu“.
+
+### Kedy sa môže zobraziť
+- Iba vtedy, keď je to **explicitne podložené dátami**: `company.verified === true` (alebo ekvivalentný server-side flag).
+- Zobrazenie musí byť **podmienené dátami** (žiadne hardcoded „Verified Employer“).
+
+### Kedy sa nesmie zobraziť
+- Ak firma nemá `verified === true`, ak je pole prázdne, alebo ak firma nie je v DB (napr. iba string názov v job poste bez profilu).
+- Nesmie sa zobraziť ako všeobecný claim typu „Verified employers only“ alebo „100% verified“.
+
+### Aký proces/dáta to majú podopierať (minimum)
+- **Záznam v DB**: `companies.verified` boolean + `companies.verified_at` timestamp + `companies.verified_by` (admin id/email).
+- **Interné kritériá (MVP)**: potvrdený firemný web/doména + prepojenie na reálnu entitu (napr. admin kontrola).
+- **Audit trail**: aspoň logovanie zmeny (kto/koľko/kedy).
+
+## 2) REVIEWED BEFORE PUBLISH
+
+### Čo znamená
+„Reviewed before publish“ znamená: **listing prejde kontrolou pred tým, než sa zobrazí ako published**.
+
+### Minimum checks (pred publish)
+- **Salary**: uvedený salary range alebo jasná kompenzácia (ak to produkt vyžaduje).
+- **Scope**: jasný title + stručný popis zodpovedností/requirements (nie prázdne/placeholder).
+- **Apply**: funkčný apply link (URL alebo email), bez podozrivých presmerovaní/placeholder `#`.
+- **Spam / duplicity**: základná kontrola na spam, obvious scam, copy-paste noise.
+- **Kategória**: zmysluplná kategória v rámci niche (Ops/Systems/Automation/RevOps/Product Ops/Chief of Staff).
+
+### Čo to NEZNAMENÁ
+- Nie je to „SLA“ (žiadny sľub času typu „do 2 dní“).
+- Nie je to „verified employer“ pre každú firmu.
+- Nie je to garancia, že pozícia je otvorená, že firma odpovie, alebo že kandidát bude oslovený.
+- Nie je to „curated intros“, „matching“, „screening“ kandidátov (pokiaľ to nie je reálne implementované a dodávané).
+
+## 3) COPY RULES
+
+### Povolené frázy (ak sú pravdivé v UI/produkcii)
+- „Salary-first“ / „salary-first listings“
+- „Reviewed before publish“
+- „Clear scope“ / „clear apply links“
+- „Curated board“ (len v zmysle: board je uprataný, niche, a je moderovaný; nie ako prehnaná garancia kvality)
+- „Some companies may be verified“ (ak existuje verified flag a nie je univerzálny)
+
+### Zakázané alebo len s jasným podkladom (inak nepoužiť)
+- „Verified employers only“, „100% verified“
+- „Response SLA“, „SLA-backed“, „we step in“, „no-ghosting policy“ (bez enforcementu)
+- „Invite-only roles“ (ako všeobecná vlastnosť produktu)
+- „Top 1%“, „elite talent“, „world-class“, „pre-vetted“, „screened“, „hand-picked candidates“ (bez reálnych procesov a dodávky)
+- „Newsletter feature“, „social blast“, „guaranteed reach“ (ak nie je garantované)
+- „Encrypted/secure/SSL“ ako marketing claim (bez presnej technickej špecifikácie a scope)
+
+### Tone guidelines
+- **Premium = jasnosť, stručnosť, dôraz na UX**, nie hype.
+- Píš konkrétne: čo user dostane *dnes* (napr. „browse jobs“, „get alerts“, „direct apply“).
+- Vyhýbaj sa neurčitým sľubom („best“, „guaranteed“, „protected“) ak to nevieš zmerať a dodržať.
+
+## 4) UI RULES
+
+### Kde trust signály patria
+- **Job detail page**: salary-first meta, apply link, “Reviewed before publish” môže byť implicitné (napr. v employer/pricing flow), nepreplácavať.
+- **Company page**: „Verified“ badge len ak `company.verified === true`. Inak nič.
+- **Pricing / Post-a-job**: benefit text musí odrážať reálnu dodávku (board visibility, placement, review). Bez SLA a bez fake deliverables.
+
+### Kedy majú byť skryté
+- Ak nemáme dáta → **nezobraziť**. Žiadne placeholder “verified”, “trusted”, “top”.
+- Ak sekcia potrebuje proof/metrics a nemáme ich → sekciu vyhodiť alebo zobraziť neutrálne (“No data yet”).
+
+### Ako pracovať so sparse data bez faking trust
+- Preferuj: „—“ / prázdne polia **nezobrazovať**.
+- Použi neutrálne vysvetlenie: „This information is not provided by the employer.“
+- Nikdy nedopĺňaj “company facts”, “benefits”, “budgets”, “hiring process” ak to nie je v DB.
+

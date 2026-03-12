@@ -49,7 +49,7 @@ const SalaryInsights: React.FC<SalaryInsightsProps> = ({ onBrowse }) => {
       <div className="mb-12 bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2rem] p-6 text-left shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
         <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Methodology</h3>
         <p className="text-sm text-slate-500 font-medium mt-3">
-          Ranges are aggregated from public job listings, verified employer submissions, and internal benchmarks.
+          Ranges are aggregated from public job listings and partner-submitted ranges.
           Sample sizes vary by role and region. Use as directional guidance while negotiating.
         </p>
       </div>

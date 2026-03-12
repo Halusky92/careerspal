@@ -24,9 +24,9 @@ const baseUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
-  title: "CareersPal Elite | Curated Remote Roles",
+  title: "CareersPal | Curated remote Ops & Systems roles",
   description:
-    "Premium job board for Notion-first operations, product, and automation talent. Curated roles, verified employers, transparent salaries.",
+    "Curated remote roles in Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Salary-first listings with clear scope.",
   icons: {
     icon: [
       { url: "/icon", type: "image/png" },
@@ -35,11 +35,11 @@ export const metadata: Metadata = {
     shortcut: [{ url: "/icon", type: "image/png" }],
   },
   openGraph: {
-    title: "CareersPal Elite | Curated Remote Roles",
+    title: "CareersPal | Curated remote Ops & Systems roles",
     description:
-      "Premium job board for Notion-first operations, product, and automation talent. Curated roles, verified employers, transparent salaries.",
+      "Curated remote roles in Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Salary-first listings with clear scope.",
     url: baseUrl,
-    siteName: "CareersPal Elite",
+    siteName: "CareersPal",
     images: [
       {
         url: "/mockups/job-board-concept.svg",
@@ -53,9 +53,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "CareersPal Elite | Curated Remote Roles",
+    title: "CareersPal | Curated remote Ops & Systems roles",
     description:
-      "Premium job board for Notion-first operations, product, and automation talent. Curated roles, verified employers, transparent salaries.",
+      "Curated remote roles in Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Salary-first listings with clear scope.",
     images: ["/mockups/job-board-concept.svg"],
   },
 };

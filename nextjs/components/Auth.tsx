@@ -73,11 +73,11 @@ const Auth: React.FC<AuthProps> = () => {
           </div>
           
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            Join CareersPal Elite
+            Sign in to CareersPal
           </h1>
           
           <p className="font-medium mt-2 text-slate-600">
-            Verified roles and signal-first hiring for operators.
+            Save roles, set alerts, and manage your account.
           </p>
         </div>
 
@@ -96,7 +96,7 @@ const Auth: React.FC<AuthProps> = () => {
           </button>
         </div>
         <p className="text-[11px] font-bold text-slate-600 text-center -mt-4 mb-6">
-          {role === 'employer' ? 'Use a company email for faster verification' : 'Talent profiles stay private until you apply'}
+          {role === 'employer' ? 'Use a company email address for your employer account' : 'Sign in to save roles and set alerts'}
         </p>
 
         <button
@@ -145,11 +145,11 @@ const Auth: React.FC<AuthProps> = () => {
         </div>
 
         <div className="rounded-[2rem] border border-slate-100 bg-slate-50/70 p-5 text-left">
-          <p className="text-[11px] font-semibold text-slate-800">Trusted access</p>
+          <p className="text-[11px] font-semibold text-slate-800">What you get</p>
           <ul className="mt-3 space-y-2 text-sm font-medium text-slate-700">
-            <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Verified employers only</li>
-            <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Salary transparency enforced</li>
-            <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Response SLA across plans</li>
+            <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Save roles</li>
+            <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Create email alerts for new published roles</li>
+            <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Manage your account and role</li>
           </ul>
           <p className="mt-4 text-xs font-medium text-slate-600">
             By continuing you agree to our <a className="text-indigo-600 hover:underline" href="/privacy">privacy policy</a> and <a className="text-indigo-600 hover:underline" href="/terms">terms</a>.

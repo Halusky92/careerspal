@@ -154,9 +154,9 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
         {[
-          { label: "Verified board", value: "Enabled" },
-          { label: "Response SLA", value: "2 days" },
-          { label: "Support tier", value: "Priority" },
+          { label: "Board", value: "Active" },
+          { label: "Review", value: "Before publish" },
+          { label: "Support", value: "Email" },
         ].map((item) => (
           <div key={item.label} className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-2xl px-4 py-4 text-center shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
             <div className="text-xl font-black text-slate-900">{item.value}</div>
@@ -257,7 +257,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           <div className="bg-white py-24 rounded-[4rem] text-center border-2 border-dashed border-slate-100">
              <div className="w-24 h-24 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-8 text-4xl opacity-50">📂</div>
              <h3 className="text-3xl font-black text-slate-900 mb-4">No active roles found.</h3>
-            <p className="text-slate-400 font-medium mb-12 max-w-sm mx-auto italic">Start by posting your first elite opportunity to attract the world&apos;s best Notion Ops talent.</p>
+            <p className="text-slate-400 font-medium mb-12 max-w-sm mx-auto italic">Start by posting your first role to reach candidates browsing the board.</p>
              <button 
               onClick={onPostJob}
               className="bg-indigo-600 text-white px-10 py-5 rounded-2xl font-black text-lg shadow-xl shadow-indigo-100 hover:scale-105 transition-all"
@@ -271,8 +271,8 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
       {/* Visual Reports */}
       <div className="mt-20 grid grid-cols-1 md:grid-cols-2 gap-10">
          <div className="bg-slate-900 p-12 rounded-[4rem] text-white overflow-hidden relative group">
-            <h3 className="text-3xl font-black mb-6 relative z-10 tracking-tight">Elite Managed Service</h3>
-            <p className="text-slate-400 mb-10 relative z-10 font-medium leading-relaxed">Let our curators hand-pick your next Notion Database Architect. We handle the entire screening for you.</p>
+            <h3 className="text-3xl font-black mb-6 relative z-10 tracking-tight">Need help hiring?</h3>
+            <p className="text-slate-400 mb-10 relative z-10 font-medium leading-relaxed">Email us and we&apos;ll discuss options for hands-on support.</p>
             <a
               href="mailto:hello@careerspal.com?subject=Elite%20Managed%20Hiring"
               className="inline-flex items-center bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black relative z-10 hover:bg-white hover:text-slate-900 transition-all shadow-xl"

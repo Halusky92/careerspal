@@ -48,9 +48,10 @@ const CompanyProfile: React.FC<CompanyProfileProps> = ({ company, companyJobs, o
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative -mt-32 z-10">
         <div className="mb-10 grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { label: "Response SLA", value: "2 days" },
-            { label: "Hiring pace", value: "Verified" },
-            { label: "Remote policy", value: company.remoteDNA?.asyncLevel || "Flexible" },
+            // Legacy component: do not show hard-coded "verified" or SLA claims here.
+            { label: "Remote style", value: company.remoteDNA?.asyncLevel || "—" },
+            { label: "Meetings", value: company.remoteDNA?.meetingsPerWeek || "—" },
+            { label: "Headquarters", value: company.headquarters || "—" },
           ].map((item) => (
             <div key={item.label} className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-2xl px-4 py-4 text-center shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
               <div className="text-xl font-black text-slate-900">{item.value}</div>
@@ -75,9 +76,6 @@ const CompanyProfile: React.FC<CompanyProfileProps> = ({ company, companyJobs, o
                </div>
                <div className="flex items-center justify-center gap-2 mb-2">
                  <h1 className="text-3xl font-black text-slate-900 tracking-tight">{company.name}</h1>
-                 <span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-full">
-                   Verified
-                 </span>
                </div>
                <a href={company.website} target="_blank" rel="noreferrer" className="text-indigo-600 font-bold text-sm hover:underline block mb-6">{company.website.replace('https://', '')}</a>
                

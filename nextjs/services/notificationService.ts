@@ -29,7 +29,7 @@ export const subscribeUser = async (email: string, preference: Subscriber['prefe
     if (!response.ok) {
       return { success: false, message: payload.error || "Unable to subscribe right now." };
     }
-    return { success: true, message: payload.message || "Welcome to the Elite list." };
+    return { success: true, message: payload.message || "Subscription confirmed." };
   } catch {
     return { success: false, message: "Unable to subscribe right now." };
   }

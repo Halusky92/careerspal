@@ -226,9 +226,10 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                      {job.remotePolicy && (
                        <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-200">{job.remotePolicy}</span>
                      )}
-                     <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-200">Verified Employer</span>
-                     {job.planType && job.planType !== 'Standard' && (
-                       <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-indigo-100">Response SLA 2d</span>
+                     {job.companyVerified && (
+                       <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-200">
+                         Verified
+                       </span>
                      )}
                      <span className="px-3 py-1 bg-slate-50 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200/70">
                        Posted {postedDate}
@@ -330,7 +331,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
 
                {/* Similar Jobs */}
                <section>
-                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-6 px-4">Similar Elite Roles</h3>
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-6 px-4">Similar roles</h3>
                   <div className="space-y-4">
                      {similarJobs.length > 0 ? similarJobs.map(simJob => (
                         <div 
@@ -446,13 +447,11 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                            <button onClick={() => onSelectCompany(job.company)} className="text-xs text-indigo-600 font-bold hover:text-indigo-800 transition-colors">View Company Profile →</button>
                         </div>
                      </div>
-                     <p className="text-slate-600 text-sm font-medium leading-relaxed mb-6">
-                        {job.companyDescription || "A leading company in the Notion ecosystem building the future of work."}
-                     </p>
-                     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                        Verified Employer
-                     </div>
+                     {job.companyDescription && (
+                       <p className="text-slate-600 text-sm font-medium leading-relaxed mb-6">
+                          {job.companyDescription}
+                       </p>
+                     )}
                  {job.companyWebsite && (
                    <a
                      href={job.companyWebsite}

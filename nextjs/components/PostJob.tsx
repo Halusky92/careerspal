@@ -544,7 +544,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">2</span> Review for quality + clarity</div>
                     <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">3</span> Publish when approved</div>
                     <p className="mt-3 text-xs text-slate-600">
-                      We aim to review quickly. Response SLA: 2 days.
+                      Listings are reviewed before publish. Timing can vary based on completeness and review queue.
                     </p>
                   </div>
                 </AccordionRow>
@@ -572,26 +572,20 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                       <div className="w-5 h-5 rounded-full border border-white/40 flex items-center justify-center text-[10px] font-bold cursor-help hover:bg-white hover:text-indigo-600 transition-colors">?</div>
                       {/* Tooltip */}
                       <div className="absolute right-0 bottom-full mb-2 w-64 bg-white text-slate-900 p-4 rounded-xl shadow-2xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 pointer-events-none z-50 transform translate-y-2 group-hover/tooltip:translate-y-0 text-left border border-slate-100">
-                        <div className="text-xs font-black uppercase tracking-widest text-indigo-600 mb-3">Featured Pro Benefits</div>
+                        <div className="text-xs font-black uppercase tracking-widest text-indigo-600 mb-3">Featured Pro</div>
                         <ul className="space-y-2">
                            <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
                               <span className="text-indigo-600 mt-0.5">✓</span> 7 Days at Top of Board
                            </li>
                            <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
-                              <span className="text-indigo-600 mt-0.5">✓</span> Newsletter Feature
-                           </li>
-                           <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
-                              <span className="text-indigo-600 mt-0.5">✓</span> Social Media Blast
-                           </li>
-                           <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
-                              <span className="text-indigo-600 mt-0.5">✓</span> Verified Badge
+                              <span className="text-indigo-600 mt-0.5">✓</span> Prominent placement on the board
                            </li>
                         </ul>
                         <div className="absolute -bottom-2 right-1.5 w-4 h-4 bg-white transform rotate-45 border-r border-b border-slate-100"></div>
                       </div>
                     </div>
                   </div>
-                  <p className="font-bold text-sm mb-4 text-left">Get 3x more applicants with a Featured listing.</p>
+                  <p className="font-bold text-sm mb-4 text-left">Boost visibility for roles that need extra reach.</p>
                   <button 
                     onClick={() => onUpgradePlan('Featured Pro', 149)}
                     className="w-full bg-white text-indigo-800 py-3 rounded-xl font-black text-sm hover:bg-indigo-50 transition-colors"
@@ -609,26 +603,20 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                       <div className="w-5 h-5 rounded-full border border-white/40 flex items-center justify-center text-[10px] font-bold cursor-help hover:bg-white hover:text-slate-900 transition-colors">?</div>
                       {/* Tooltip */}
                       <div className="absolute right-0 bottom-full mb-2 w-64 bg-white text-slate-900 p-4 rounded-xl shadow-2xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 pointer-events-none z-50 transform translate-y-2 group-hover/tooltip:translate-y-0 text-left border border-slate-100">
-                        <div className="text-xs font-black uppercase tracking-widest text-indigo-600 mb-3">Elite Managed Benefits</div>
+                        <div className="text-xs font-black uppercase tracking-widest text-indigo-600 mb-3">Elite Managed</div>
                         <ul className="space-y-2">
                            <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
                               <span className="text-indigo-600 mt-0.5">💎</span> Permanent Top-of-Board placement
                            </li>
                            <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
-                              <span className="text-indigo-600 mt-0.5">💎</span> 3 Curated Candidate Intros
-                           </li>
-                           <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
-                              <span className="text-indigo-600 mt-0.5">💎</span> Dedicated Slack Announcement
-                           </li>
-                           <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
-                              <span className="text-indigo-600 mt-0.5">💎</span> Portfolio Review
+                              <span className="text-indigo-600 mt-0.5">💎</span> Hands-on help with listing positioning and copy
                            </li>
                         </ul>
                         <div className="absolute -bottom-2 right-1.5 w-4 h-4 bg-white transform rotate-45 border-r border-b border-slate-100"></div>
                       </div>
                     </div>
                    </div>
-                   <p className="font-bold text-sm mb-4 text-left">Let us hand-pick candidates for you.</p>
+                   <p className="font-bold text-sm mb-4 text-left">Get hands-on help for high-stakes roles.</p>
                    <button 
                     onClick={() => onUpgradePlan('Elite Managed', 249)}
                     className="w-full bg-white text-slate-900 py-3 rounded-xl font-black text-sm hover:bg-slate-200 transition-colors"

@@ -31,5 +31,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unable to subscribe." }, { status: 500 });
   }
 
-  return NextResponse.json({ message: "Welcome to the Elite list.", subscriber: data });
+  return NextResponse.json({ message: "Subscription confirmed.", subscriber: data });
 }

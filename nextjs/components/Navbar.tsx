@@ -36,7 +36,7 @@ const Navbar: React.FC = () => {
   const overflowItems = [
     { label: "Salary Insights", href: "/salary-insights" },
     { label: "About", href: "/about" },
-    { label: "Subscribe", href: "/#subscribe" },
+    { label: "Alerts", href: "/alerts" },
   ];
 
   const navItems = [
@@ -72,7 +72,7 @@ const Navbar: React.FC = () => {
               </div>
               <div className="flex flex-col">
                 <span className="text-lg font-bold tracking-tight text-indigo-600 leading-none">CareersPal</span>
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-700 mt-1">Elite Ecosystem</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-700 mt-1">Curated remote ops roles</span>
               </div>
             </Link>
             
@@ -261,10 +261,10 @@ const Navbar: React.FC = () => {
             </div>
           )}
 
-          <div className="mt-4 rounded-[2rem] border border-emerald-200 bg-emerald-50/60 p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-700">Verified board</p>
+          <div className="mt-4 rounded-[2rem] border border-slate-200 bg-white/70 p-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Curated board</p>
             <p className="mt-2 text-sm font-bold text-slate-700">
-              Invite-only roles, salary transparency, and SLA-backed responses.
+              Salary-first roles, clear scope, and clean links to apply.
             </p>
           </div>
 
@@ -285,11 +285,11 @@ const Navbar: React.FC = () => {
               </Link>
             ))}
               <Link
-                href="/#subscribe"
+                href="/alerts"
                 onClick={handleMobileNav}
                 className="w-full text-left text-xl font-black tracking-tight py-4 px-2 border-b border-slate-100 transition-colors text-slate-900"
               >
-                Subscribe
+                Alerts
               </Link>
             </div>
           </div>
@@ -338,7 +338,7 @@ const Navbar: React.FC = () => {
              </Link>
              
              <p className="text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 pt-6">
-                CareersPal Elite Mobile
+                CareersPal
              </p>
           </div>
         </div>

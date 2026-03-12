@@ -256,7 +256,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
         <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-10 text-4xl shadow-xl">✓</div>
         <h1 className="text-5xl font-bold text-slate-900 mb-6 tracking-tight">Payment Successful!</h1>
         <p className="text-lg text-slate-500 mb-2 font-medium">The role &quot;{jobData?.title}&quot; has been successfully activated.</p>
-        <p className="text-sm text-slate-600 font-medium mb-12">Confirmation sent to your email. Matches sent to subscribers.</p>
+        <p className="text-sm text-slate-600 font-medium mb-12">Confirmation sent to your email. Your listing is now active on the board.</p>
         <button onClick={onSuccess} className="bg-indigo-600 text-white px-10 py-5 rounded-3xl font-semibold text-xl shadow-xl hover:scale-105 transition-all">Go to Dashboard</button>
       </div>
     );
@@ -267,7 +267,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
       <div className="max-w-2xl mx-auto px-4 py-24 text-center flex flex-col items-center animate-in fade-in">
         <div className="w-20 h-20 border-4 border-indigo-50 border-t-indigo-600 rounded-full animate-spin mb-10"></div>
         <h2 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight">Processing Payment...</h2>
-        <p className="text-slate-600 font-medium uppercase tracking-wide text-xs">Matching with Talent Pool...</p>
+        <p className="text-slate-600 font-medium uppercase tracking-wide text-xs">Creating checkout session...</p>
       </div>
     );
   }

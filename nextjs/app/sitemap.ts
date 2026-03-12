@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
+import { CATEGORY_SLUGS } from "../lib/categories";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 
 const getBaseUrl = () => {
@@ -16,6 +17,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = [
     "",
     "/jobs",
+    "/categories",
+    "/alerts",
     "/post-a-job",
     "/pricing",
     "/about",
@@ -47,7 +50,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  return [...staticRoutes, ...jobRoutes, ...companyRoutes].map((path) => ({
+  const categoryRoutes = CATEGORY_SLUGS.map((slug) => `/categories/${slug}`);
+
+  return [...staticRoutes, ...categoryRoutes, ...jobRoutes, ...companyRoutes].map((path) => ({
     url: `${baseUrl}${path}`,
     lastModified: new Date(),
   }));

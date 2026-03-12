@@ -249,16 +249,13 @@ export default function JobCard({
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2 mt-2">
-            <span className="text-[7px] font-black uppercase tracking-widest px-2 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700">
-              Verified Employer
-            </span>
-            {!isStandard && (
-              <span className="text-[7px] font-black uppercase tracking-widest px-2 py-1 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-600">
-                Response SLA 2d
+          {job.companyVerified && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span className="text-[7px] font-black uppercase tracking-widest px-2 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700">
+                Verified
               </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 

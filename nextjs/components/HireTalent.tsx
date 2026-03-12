@@ -32,7 +32,7 @@ const HireTalent: React.FC<HireTalentProps> = ({ onPostJob }) => {
   };
 
   const handleRequestIntro = (candidateId: string) => {
-    alert("Intro Request Sent! Our elite recruiters will connect you shortly.");
+    alert("Intro request received. This feature is a preview and may not be available yet.");
   };
 
   // --- BROWSE VIEW ---
@@ -48,9 +48,9 @@ const HireTalent: React.FC<HireTalentProps> = ({ onPostJob }) => {
               ← Back to Overview
             </button>
             <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
-              Elite <span className="text-indigo-600">Talent Pool.</span>
+              Talent <span className="text-indigo-600">Profiles (Preview).</span>
             </h1>
-            <p className="text-xl text-slate-500 font-medium mt-2">Curated list of Notion Architects & Ops Leaders available now.</p>
+            <p className="text-xl text-slate-500 font-medium mt-2">Demo profiles for exploring the UI. Not a verified marketplace.</p>
           </div>
           <div className="flex gap-4">
              <button onClick={() => setView('landing')} className="hidden md:block text-slate-500 font-bold px-4 hover:text-indigo-600">How it works?</button>
@@ -60,9 +60,9 @@ const HireTalent: React.FC<HireTalentProps> = ({ onPostJob }) => {
 
         <div className="mb-10 grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { label: "Verified talent", value: "1,200+" },
-            { label: "Median time to hire", value: "9 days" },
-            { label: "Private intros", value: "Invite-only" },
+            { label: "Status", value: "Preview" },
+            { label: "Profiles", value: "Mock data" },
+            { label: "Intros", value: "Not guaranteed" },
           ].map((item) => (
             <div key={item.label} className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-2xl px-4 py-4 text-center shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
               <div className="text-2xl font-black text-slate-900">{item.value}</div>

@@ -81,7 +81,7 @@ const OnboardingPage = () => {
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Onboarding</p>
           <h1 className="text-3xl sm:text-4xl font-black text-slate-900 mt-3">Complete your profile</h1>
           <p className="text-slate-500 font-medium mt-3">
-            This enables verified access, private roles, and response SLAs.
+            This helps personalize your experience (saved roles, alerts, and account preferences).
           </p>
         </div>
 

@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
-import { createCompanySlug } from "../lib/jobs";
+import { createCompanySlug, createJobSlug } from "../lib/jobs";
 
 export type JobRowAction = "copy_link" | "open_new_tab";
 
@@ -104,7 +104,9 @@ export default function JobRow({
     return (job.tags || []).filter(Boolean);
   }, [job.tags, job.tools]);
 
-  const href = `/jobs?jobId=${encodeURIComponent(job.id)}`;
+  // Keep board panel UX (query param) intact, but canonicalize share/open links.
+  const boardHref = `/jobs?jobId=${encodeURIComponent(job.id)}`;
+  const detailHref = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
 
   const isHome = variant === "home";
   const maxTags = 2;
@@ -114,15 +116,15 @@ export default function JobRow({
   const remoteMeta = useMemo(() => getRemoteMeta(job, workMode), [job.location, workMode]);
 
   const chips = useMemo(() => {
-    // On the jobs board we keep cards scan-first (no tool noise).
+    // Scan-first metadata.
+    // - board: minimal chips (type)
+    // - home: salary-first + category visibility (no tool noise)
     if (variant === "board") return job.type ? [job.type] : [];
     const out: string[] = [];
+    if (job.category) out.push(job.category);
     if (job.type) out.push(job.type);
-    const toolList = (stack || []).filter(Boolean);
-    out.push(...toolList.slice(0, 2));
-    if (out.length < 3 && job.category) out.push(job.category);
-    return out.slice(0, 3);
-  }, [job.type, job.category, stack, variant]);
+    return out.slice(0, 2);
+  }, [job.type, job.category, variant]);
 
   const toolList = useMemo(() => (stack || []).filter(Boolean), [stack]);
 
@@ -302,7 +304,7 @@ export default function JobRow({
                         setMenuOpen(false);
                         if (onAction) onAction("copy_link");
                         try {
-                          await navigator.clipboard.writeText(window.location.origin + href);
+                          await navigator.clipboard.writeText(window.location.origin + detailHref);
                         } catch {
                           // ignore
                         }
@@ -316,7 +318,7 @@ export default function JobRow({
                       onClick={() => {
                         setMenuOpen(false);
                         if (onAction) onAction("open_new_tab");
-                        window.open(href, "_blank", "noopener,noreferrer");
+                        window.open(detailHref, "_blank", "noopener,noreferrer");
                       }}
                     >
                       Open details
@@ -418,7 +420,7 @@ export default function JobRow({
                       onApply();
                       return;
                     }
-                    router.push(href);
+                    router.push(boardHref);
                   }}
                   className="h-11 flex-1 rounded-2xl border border-slate-200/80 bg-white text-[10px] font-semibold uppercase tracking-wide text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
                 >
