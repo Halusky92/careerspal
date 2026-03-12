@@ -6,6 +6,7 @@ import { Subscriber } from '../services/notificationService';
 import { Job } from '../types';
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
+import SourcingRegistrySection from "./admin/SourcingRegistrySection";
 
 type AnalyticsPeriod = {
   totalViews: number;
@@ -1741,6 +1742,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </div>
         </div>
         
+        <SourcingRegistrySection />
+
         <div className="lg:col-span-12 text-center pt-8 pb-4">
            <p className="text-[10px] font-mono text-slate-600 uppercase tracking-[0.2em]">
               CareersPal Internal System v2.4.0 • Level 0 Clearance Required

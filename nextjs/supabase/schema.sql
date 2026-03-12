@@ -523,3 +523,226 @@ with check (public.is_admin());
 create policy "payments_delete_admin"
 on public.payments for delete
 using (public.is_admin());
+
+-- =========================================================
+-- Sourcing: source registry foundation (official sources only)
+-- =========================================================
+
+-- Company allowed domains (safe allowlist of registrable domains only)
+create table if not exists public.company_allowed_domains (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  registrable_domain text not null,
+  status text not null default 'approved' check (status in ('approved', 'pending', 'rejected')),
+  note text,
+  created_by uuid references public.profiles(id) on delete set null,
+  approved_by uuid references public.profiles(id) on delete set null,
+  approved_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (company_id, registrable_domain)
+);
+
+create trigger company_allowed_domains_set_updated_at
+before update on public.company_allowed_domains
+for each row execute function public.set_updated_at();
+
+alter table public.company_allowed_domains enable row level security;
+
+create policy "company_allowed_domains_select_admin"
+on public.company_allowed_domains for select
+using (public.is_admin());
+
+create policy "company_allowed_domains_write_admin"
+on public.company_allowed_domains for insert
+with check (public.is_admin());
+
+create policy "company_allowed_domains_update_admin"
+on public.company_allowed_domains for update
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "company_allowed_domains_delete_admin"
+on public.company_allowed_domains for delete
+using (public.is_admin());
+
+-- Source registry
+create table if not exists public.sourcing_sources (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid references public.companies(id) on delete set null,
+  display_name text,
+  base_url text not null,
+  normalized_url text not null,
+  source_type text not null default 'unknown'
+    check (source_type in ('greenhouse', 'lever', 'ashby', 'workable', 'direct_custom', 'unknown')),
+  validation_state text not null default 'allowed_needs_review'
+    check (validation_state in ('allowed', 'allowed_needs_review', 'denied', 'hold')),
+  validation_confidence text
+    check (validation_confidence in ('high', 'medium', 'low', 'unknown')),
+  validator_output jsonb,
+  ats_detection_output jsonb,
+  ats_identifier text,
+  enabled boolean not null default false,
+  last_validated_at timestamptz,
+  created_by uuid references public.profiles(id) on delete set null,
+  approved_by uuid references public.profiles(id) on delete set null,
+  approved_at timestamptz,
+  approval_decision text
+    check (approval_decision in ('approved_as_official_source', 'approved_as_official_ats', 'approved_as_direct_custom', 'rejected_third_party', 'held')),
+  approval_notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists sourcing_sources_company_id_idx on public.sourcing_sources (company_id);
+create index if not exists sourcing_sources_source_type_idx on public.sourcing_sources (source_type);
+create index if not exists sourcing_sources_validation_state_idx on public.sourcing_sources (validation_state);
+create index if not exists sourcing_sources_enabled_idx on public.sourcing_sources (enabled);
+
+create trigger sourcing_sources_set_updated_at
+before update on public.sourcing_sources
+for each row execute function public.set_updated_at();
+
+alter table public.sourcing_sources enable row level security;
+
+create policy "sourcing_sources_select_admin"
+on public.sourcing_sources for select
+using (public.is_admin());
+
+create policy "sourcing_sources_write_admin"
+on public.sourcing_sources for insert
+with check (public.is_admin());
+
+create policy "sourcing_sources_update_admin"
+on public.sourcing_sources for update
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "sourcing_sources_delete_admin"
+on public.sourcing_sources for delete
+using (public.is_admin());
+
+-- Manual review queue for sources
+create table if not exists public.sourcing_source_reviews (
+  id uuid primary key default gen_random_uuid(),
+  source_id uuid not null references public.sourcing_sources(id) on delete cascade,
+  status text not null default 'open' check (status in ('open', 'approved', 'rejected', 'held')),
+  decision text check (decision in ('approve_as_official_source', 'approve_as_official_ats', 'approve_as_direct_custom', 'reject_third_party', 'hold')),
+  decision_reason_codes jsonb,
+  notes text,
+  evidence_snapshot jsonb,
+  reviewer_id uuid references public.profiles(id) on delete set null,
+  reviewed_at timestamptz,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists sourcing_source_reviews_status_idx on public.sourcing_source_reviews (status);
+create index if not exists sourcing_source_reviews_source_id_idx on public.sourcing_source_reviews (source_id);
+
+create trigger sourcing_source_reviews_set_updated_at
+before update on public.sourcing_source_reviews
+for each row execute function public.set_updated_at();
+
+alter table public.sourcing_source_reviews enable row level security;
+
+create policy "sourcing_source_reviews_select_admin"
+on public.sourcing_source_reviews for select
+using (public.is_admin());
+
+create policy "sourcing_source_reviews_write_admin"
+on public.sourcing_source_reviews for insert
+with check (public.is_admin());
+
+create policy "sourcing_source_reviews_update_admin"
+on public.sourcing_source_reviews for update
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "sourcing_source_reviews_delete_admin"
+on public.sourcing_source_reviews for delete
+using (public.is_admin());
+
+-- Source runs (for later fetchers/connectors)
+create table if not exists public.sourcing_source_runs (
+  id uuid primary key default gen_random_uuid(),
+  source_id uuid not null references public.sourcing_sources(id) on delete cascade,
+  status text not null check (status in ('success', 'partial', 'failed')),
+  started_at timestamptz not null default now(),
+  finished_at timestamptz,
+  fetched_count int not null default 0,
+  new_raw_count int not null default 0,
+  new_candidates_count int not null default 0,
+  error_summary text,
+  http_summary jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists sourcing_source_runs_source_id_idx on public.sourcing_source_runs (source_id);
+create index if not exists sourcing_source_runs_started_at_idx on public.sourcing_source_runs (started_at);
+
+alter table public.sourcing_source_runs enable row level security;
+
+create policy "sourcing_source_runs_select_admin"
+on public.sourcing_source_runs for select
+using (public.is_admin());
+
+create policy "sourcing_source_runs_write_admin"
+on public.sourcing_source_runs for insert
+with check (public.is_admin());
+
+create policy "sourcing_source_runs_update_admin"
+on public.sourcing_source_runs for update
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "sourcing_source_runs_delete_admin"
+on public.sourcing_source_runs for delete
+using (public.is_admin());
+
+-- Extend run logging for clearer reporting (idempotent in existing DBs).
+alter table public.sourcing_source_runs
+  add column if not exists inserted_count int not null default 0;
+alter table public.sourcing_source_runs
+  add column if not exists skipped_count int not null default 0;
+
+-- Raw sourced jobs (ingestion layer) — Greenhouse first, later other ATS.
+create table if not exists public.sourcing_sourced_jobs_raw (
+  id uuid primary key default gen_random_uuid(),
+  source_id uuid not null references public.sourcing_sources(id) on delete cascade,
+  source_run_id uuid references public.sourcing_source_runs(id) on delete set null,
+  source_type text not null,
+  source_url text not null,
+  external_job_id text not null,
+  job_url text,
+  title text,
+  raw_payload jsonb not null,
+  payload_hash text,
+  fetched_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  unique (source_id, external_job_id)
+);
+
+create index if not exists sourcing_sourced_jobs_raw_source_id_idx on public.sourcing_sourced_jobs_raw (source_id);
+create index if not exists sourcing_sourced_jobs_raw_source_run_id_idx on public.sourcing_sourced_jobs_raw (source_run_id);
+create index if not exists sourcing_sourced_jobs_raw_fetched_at_idx on public.sourcing_sourced_jobs_raw (fetched_at);
+
+alter table public.sourcing_sourced_jobs_raw enable row level security;
+
+create policy "sourcing_sourced_jobs_raw_select_admin"
+on public.sourcing_sourced_jobs_raw for select
+using (public.is_admin());
+
+create policy "sourcing_sourced_jobs_raw_write_admin"
+on public.sourcing_sourced_jobs_raw for insert
+with check (public.is_admin());
+
+create policy "sourcing_sourced_jobs_raw_update_admin"
+on public.sourcing_sourced_jobs_raw for update
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "sourcing_sourced_jobs_raw_delete_admin"
+on public.sourcing_sourced_jobs_raw for delete
+using (public.is_admin());

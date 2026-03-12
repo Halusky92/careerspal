@@ -1,0 +1,722 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+type SourcingSource = {
+  id: string;
+  company_id: string | null;
+  display_name: string | null;
+  base_url: string;
+  normalized_url: string;
+  source_type: string;
+  validation_state: string;
+  validation_confidence: string | null;
+  enabled: boolean;
+  created_at: string;
+  approved_at: string | null;
+  approval_decision: string | null;
+  companies?: { name?: string | null; slug?: string | null } | null;
+};
+
+type SourcingReview = {
+  id: string;
+  status: "open" | "approved" | "rejected" | "held";
+  decision: string | null;
+  decision_reason_codes: unknown;
+  notes: string | null;
+  reviewer_id: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  source_id: string;
+  sourcing_sources?: {
+    id: string;
+    company_id: string | null;
+    display_name: string | null;
+    base_url: string;
+    normalized_url: string;
+    source_type: string;
+    validation_state: string;
+    validation_confidence: string | null;
+  } | null;
+};
+
+type SourcingRun = {
+  id: string;
+  source_id: string;
+  status: "success" | "partial" | "failed";
+  started_at: string;
+  finished_at: string | null;
+  fetched_count: number;
+  new_raw_count: number;
+  inserted_count?: number;
+  skipped_count?: number;
+  error_summary: string | null;
+  created_at: string;
+};
+
+type RawSourcedJobRow = {
+  id: string;
+  source_id: string;
+  source_run_id: string | null;
+  external_job_id: string;
+  title: string | null;
+  job_url: string | null;
+  fetched_at: string;
+  source_type: string;
+  source_url: string;
+  payload_keys?: string[];
+};
+
+type RawSourcedJobDetail = {
+  id: string;
+  source_id: string;
+  source_run_id: string | null;
+  external_job_id: string;
+  title: string | null;
+  job_url: string | null;
+  fetched_at: string;
+  source_type: string;
+  source_url: string;
+  payload_hash?: string | null;
+  raw_payload: unknown;
+};
+
+const formatTs = (value?: string | null) => {
+  if (!value) return "—";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+};
+
+const Badge = ({ tone, children }: { tone: "slate" | "amber" | "emerald" | "red" | "indigo"; children: string }) => {
+  const styles =
+    tone === "emerald"
+      ? "text-emerald-300 border-emerald-600/40 bg-emerald-600/10"
+      : tone === "amber"
+        ? "text-amber-300 border-amber-600/40 bg-amber-600/10"
+        : tone === "red"
+          ? "text-red-300 border-red-600/40 bg-red-600/10"
+          : tone === "indigo"
+            ? "text-indigo-200 border-indigo-700/40 bg-indigo-900/30"
+            : "text-slate-300 border-slate-700 bg-slate-800/60";
+  return (
+    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${styles}`}>
+      {children}
+    </span>
+  );
+};
+
+export default function SourcingRegistrySection() {
+  const [sources, setSources] = useState<SourcingSource[]>([]);
+  const [reviews, setReviews] = useState<SourcingReview[]>([]);
+  const [runs, setRuns] = useState<SourcingRun[]>([]);
+  const [rawJobs, setRawJobs] = useState<RawSourcedJobRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>("");
+
+  const [newBaseUrl, setNewBaseUrl] = useState("");
+  const [newCompanyId, setNewCompanyId] = useState("");
+  const [newDisplayName, setNewDisplayName] = useState("");
+  const [createStatus, setCreateStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
+  const [createMsg, setCreateMsg] = useState("");
+
+  const [reviewFilter, setReviewFilter] = useState<SourcingReview["status"]>("open");
+  const [actionReviewId, setActionReviewId] = useState<string | null>(null);
+  const [actionNotes, setActionNotes] = useState("");
+
+  const [runFilterSourceId, setRunFilterSourceId] = useState<string>("");
+  const [selectedRunId, setSelectedRunId] = useState<string>("");
+  const [rawLimit, setRawLimit] = useState<number>(50);
+  const [selectedRawJobId, setSelectedRawJobId] = useState<string | null>(null);
+  const [rawDetail, setRawDetail] = useState<RawSourcedJobDetail | null>(null);
+  const [rawDetailLoading, setRawDetailLoading] = useState(false);
+
+  const filteredReviews = useMemo(() => reviews.filter((r) => r.status === reviewFilter), [reviews, reviewFilter]);
+  const filteredGreenhouseSources = useMemo(
+    () => sources.filter((s) => s.source_type === "greenhouse"),
+    [sources],
+  );
+
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [sResp, rResp, runsResp] = await Promise.all([
+        fetch("/api/admin/sourcing/sources", { cache: "no-store" }),
+        fetch("/api/admin/sourcing/reviews", { cache: "no-store" }),
+        fetch("/api/admin/sourcing/runs?limit=50", { cache: "no-store" }),
+      ]);
+      const sJson = (await sResp.json()) as { sources?: SourcingSource[]; error?: string };
+      const rJson = (await rResp.json()) as { reviews?: SourcingReview[]; error?: string };
+      const runJson = (await runsResp.json()) as { runs?: SourcingRun[]; error?: string };
+      if (!sResp.ok) throw new Error(sJson.error || "Unable to load sources.");
+      if (!rResp.ok) throw new Error(rJson.error || "Unable to load reviews.");
+      if (!runsResp.ok) throw new Error(runJson.error || "Unable to load runs.");
+      setSources(sJson.sources || []);
+      setReviews(rJson.reviews || []);
+      setRuns(runJson.runs || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load sourcing registry.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const createSource = async () => {
+    const baseUrl = newBaseUrl.trim();
+    if (!baseUrl) {
+      setCreateStatus("error");
+      setCreateMsg("Missing URL.");
+      return;
+    }
+    setCreateStatus("saving");
+    setCreateMsg("");
+    try {
+      const resp = await fetch("/api/admin/sourcing/sources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          baseUrl,
+          companyId: newCompanyId.trim() || null,
+          displayName: newDisplayName.trim() || null,
+        }),
+      });
+      const json = (await resp.json()) as { sourceId?: string; reviewId?: string | null; error?: string };
+      if (!resp.ok) throw new Error(json.error || "Failed to create source.");
+      setCreateStatus("success");
+      setCreateMsg(json.reviewId ? "Source added. Sent to review queue." : "Source added.");
+      setNewBaseUrl("");
+      setNewCompanyId("");
+      setNewDisplayName("");
+      await load();
+    } catch (e) {
+      setCreateStatus("error");
+      setCreateMsg(e instanceof Error ? e.message : "Failed to create source.");
+    }
+  };
+
+  const actOnReview = async (reviewId: string, decision: SourcingReview["decision"]) => {
+    setActionReviewId(reviewId);
+    try {
+      const resp = await fetch("/api/admin/sourcing/reviews", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reviewId,
+          decision,
+          reasonCodes: [],
+          notes: actionNotes.trim() || "",
+        }),
+      });
+      const json = (await resp.json()) as { success?: boolean; error?: string };
+      if (!resp.ok) throw new Error(json.error || "Failed to update review.");
+      setActionNotes("");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update review.");
+    } finally {
+      setActionReviewId(null);
+    }
+  };
+
+  const loadRawJobs = async (opts?: { sourceId?: string; runId?: string }) => {
+    try {
+      const sourceId = (opts?.sourceId ?? "").trim();
+      const runId = (opts?.runId ?? "").trim();
+      const qs = new URLSearchParams();
+      if (sourceId) qs.set("sourceId", sourceId);
+      if (runId) qs.set("runId", runId);
+      qs.set("limit", String(Math.min(200, Math.max(1, rawLimit))));
+      const resp = await fetch(`/api/admin/sourcing/raw-jobs?${qs.toString()}`, { cache: "no-store" });
+      const json = (await resp.json()) as { jobs?: RawSourcedJobRow[]; error?: string };
+      if (!resp.ok) throw new Error(json.error || "Unable to load raw jobs.");
+      setRawJobs(json.jobs || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to load raw jobs.");
+    }
+  };
+
+  const openRawDetail = async (id: string) => {
+    setSelectedRawJobId(id);
+    setRawDetail(null);
+    setRawDetailLoading(true);
+    try {
+      const resp = await fetch(`/api/admin/sourcing/raw-jobs/${encodeURIComponent(id)}`, { cache: "no-store" });
+      const json = (await resp.json()) as { job?: RawSourcedJobDetail; error?: string };
+      if (!resp.ok || !json.job) throw new Error(json.error || "Unable to load raw payload.");
+      setRawDetail(json.job);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to load raw payload.");
+    } finally {
+      setRawDetailLoading(false);
+    }
+  };
+
+  return (
+    <div className="lg:col-span-12 order-9">
+      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl px-4 py-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div>
+            <h3 className="text-sm font-black text-white uppercase tracking-widest">Sourcing registry</h3>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-1">
+              Official hiring sources only (ATS + employer careers)
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={load}
+              disabled={loading}
+              className={`px-4 py-2 rounded-xl border border-slate-800 text-[10px] font-black uppercase tracking-widest ${
+                loading ? "text-slate-600 opacity-60 cursor-not-allowed" : "text-slate-300 hover:border-indigo-500/40 hover:text-indigo-300"
+              }`}
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-4 rounded-2xl border border-red-600/30 bg-red-600/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-300">
+            {error}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="lg:col-span-5 bg-slate-950/40 border border-slate-800 rounded-2xl p-4">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Add source</div>
+              <Badge tone="slate">admin</Badge>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">Careers / ATS URL</label>
+                <input
+                  value={newBaseUrl}
+                  onChange={(e) => setNewBaseUrl(e.target.value)}
+                  placeholder="https://jobs.lever.co/company"
+                  className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/40"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">Company ID (optional)</label>
+                  <input
+                    value={newCompanyId}
+                    onChange={(e) => setNewCompanyId(e.target.value)}
+                    placeholder="uuid"
+                    className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/40"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">Display name (optional)</label>
+                  <input
+                    value={newDisplayName}
+                    onChange={(e) => setNewDisplayName(e.target.value)}
+                    placeholder="Company careers"
+                    className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/40"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={createSource}
+                disabled={createStatus === "saving"}
+                className={`w-full rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-widest border ${
+                  createStatus === "saving"
+                    ? "bg-slate-950 text-slate-600 border-slate-800 cursor-not-allowed"
+                    : "bg-indigo-600/20 text-indigo-200 border-indigo-600/40 hover:bg-indigo-600/30"
+                }`}
+              >
+                {createStatus === "saving" ? "Adding..." : "Add source"}
+              </button>
+
+              {createMsg && (
+                <div
+                  className={`rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
+                    createStatus === "error"
+                      ? "border-red-600/30 bg-red-600/10 text-red-300"
+                      : "border-emerald-600/30 bg-emerald-600/10 text-emerald-300"
+                  }`}
+                >
+                  {createMsg}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="lg:col-span-7 bg-slate-950/40 border border-slate-800 rounded-2xl p-4">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Review queue</div>
+              <div className="flex flex-wrap gap-2">
+                {(["open", "approved", "rejected", "held"] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setReviewFilter(s)}
+                    className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                      reviewFilter === s ? "border-indigo-500/40 bg-indigo-900/30 text-indigo-200" : "border-slate-700 bg-slate-800/60 text-slate-300 hover:text-white"
+                    }`}
+                  >
+                    {s} ({reviews.filter((r) => r.status === s).length})
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+              {filteredReviews.length === 0 ? (
+                <div className="text-sm text-slate-600 italic py-8 text-center">No items.</div>
+              ) : (
+                filteredReviews.map((r) => {
+                  const src = r.sourcing_sources;
+                  const stateTone =
+                    src?.validation_state === "denied" ? "red" : src?.validation_state === "allowed" ? "emerald" : src?.validation_state === "hold" ? "amber" : "slate";
+                  const typeTone = src?.source_type && src.source_type !== "unknown" ? "indigo" : "slate";
+                  return (
+                    <div key={r.id} className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-sm font-black text-white truncate">
+                            {src?.display_name || src?.base_url || r.source_id}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-400 font-mono truncate">{src?.normalized_url || "—"}</div>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Badge tone={typeTone}>{src?.source_type || "unknown"}</Badge>
+                            <Badge tone={stateTone}>{src?.validation_state || "unknown"}</Badge>
+                            {src?.validation_confidence ? <Badge tone="slate">{src.validation_confidence}</Badge> : null}
+                            <Badge tone="slate">{`created ${formatTs(r.created_at)}`}</Badge>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2 w-full sm:w-auto">
+                          <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            Decision: {r.decision || "—"}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              disabled={actionReviewId === r.id}
+                              onClick={() => actOnReview(r.id, "approve_as_official_ats")}
+                              className="rounded-xl border border-emerald-600/30 bg-emerald-600/10 text-emerald-200 px-3 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/20"
+                            >
+                              Approve ATS
+                            </button>
+                            <button
+                              disabled={actionReviewId === r.id}
+                              onClick={() => actOnReview(r.id, "approve_as_direct_custom")}
+                              className="rounded-xl border border-indigo-600/30 bg-indigo-600/10 text-indigo-200 px-3 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600/20"
+                            >
+                              Approve direct
+                            </button>
+                            <button
+                              disabled={actionReviewId === r.id}
+                              onClick={() => actOnReview(r.id, "reject_third_party")}
+                              className="rounded-xl border border-red-600/30 bg-red-600/10 text-red-200 px-3 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
+                            >
+                              Reject
+                            </button>
+                            <button
+                              disabled={actionReviewId === r.id}
+                              onClick={() => actOnReview(r.id, "hold")}
+                              className="rounded-xl border border-amber-600/30 bg-amber-600/10 text-amber-200 px-3 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-amber-600/20"
+                            >
+                              Hold
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                          <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Review notes</div>
+                          <textarea
+                            value={actionNotes}
+                            onChange={(e) => setActionNotes(e.target.value)}
+                            placeholder="Optional notes (why approved/denied)"
+                            className="w-full min-h-[64px] rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-200 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/40"
+                          />
+                          <div className="mt-2 text-[10px] text-slate-600">
+                            Reviewed: {formatTs(r.reviewed_at)} {r.reviewer_id ? `• by ${r.reviewer_id}` : ""}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                          <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Why it is in review</div>
+                          <div className="text-xs text-slate-300 font-mono whitespace-pre-wrap break-words">
+                            {src?.validation_state && src.validation_state !== "allowed"
+                              ? `validation_state=${src.validation_state}`
+                              : "—"}
+                          </div>
+                          <div className="mt-2 text-[10px] text-slate-600">
+                            Reason codes: {r.decision_reason_codes ? "present" : "—"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="lg:col-span-12 bg-slate-950/40 border border-slate-800 rounded-2xl p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sources (latest)</div>
+              <Badge tone="slate">{`${sources.length} total`}</Badge>
+            </div>
+            <div className="mt-3 overflow-x-auto">
+              <table className="min-w-[860px] w-full text-left">
+                <thead>
+                  <tr className="text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-800">
+                    <th className="py-2 pr-3">Source</th>
+                    <th className="py-2 pr-3">Type</th>
+                    <th className="py-2 pr-3">State</th>
+                    <th className="py-2 pr-3">Company</th>
+                    <th className="py-2 pr-3">Enabled</th>
+                    <th className="py-2 pr-3">Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(sources || []).slice(0, 20).map((s) => (
+                    <tr key={s.id} className="border-b border-slate-900/60 text-xs text-slate-300">
+                      <td className="py-3 pr-3 min-w-0">
+                        <div className="font-bold text-white truncate">{s.display_name || s.base_url}</div>
+                        <div className="text-[11px] font-mono text-slate-500 truncate">{s.normalized_url}</div>
+                      </td>
+                      <td className="py-3 pr-3">
+                        <Badge tone={s.source_type !== "unknown" ? "indigo" : "slate"}>{s.source_type}</Badge>
+                      </td>
+                      <td className="py-3 pr-3">
+                        <Badge tone={s.validation_state === "allowed" ? "emerald" : s.validation_state === "denied" ? "red" : s.validation_state === "hold" ? "amber" : "slate"}>
+                          {s.validation_state}
+                        </Badge>
+                      </td>
+                      <td className="py-3 pr-3">
+                        <span className="text-slate-300">{s.companies?.name || s.company_id || "—"}</span>
+                      </td>
+                      <td className="py-3 pr-3">{s.enabled ? <Badge tone="emerald">yes</Badge> : <Badge tone="slate">no</Badge>}</td>
+                      <td className="py-3 pr-3 text-slate-500">{formatTs(s.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-2 text-[10px] text-slate-600">Showing latest 20.</div>
+          </div>
+
+          {/* Ingestion inspection (Greenhouse) */}
+          <div className="lg:col-span-12 bg-slate-950/40 border border-slate-800 rounded-2xl p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ingestion inspection</div>
+                <div className="mt-1 text-sm font-black text-white">Greenhouse raw jobs</div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone="indigo">read-only</Badge>
+                <Badge tone="slate">{`${runs.length} runs`}</Badge>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+              <div className="lg:col-span-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Latest runs</div>
+
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">Filter by source</label>
+                <select
+                  value={runFilterSourceId}
+                  onChange={(e) => {
+                    setRunFilterSourceId(e.target.value);
+                    setSelectedRunId("");
+                    setRawJobs([]);
+                  }}
+                  className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-3 text-xs font-black text-slate-200 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/40"
+                >
+                  <option value="">All sources</option>
+                  {filteredGreenhouseSources.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {(s.display_name || s.base_url).slice(0, 64)}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="mt-3 space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                  {runs
+                    .filter((r) => (runFilterSourceId ? r.source_id === runFilterSourceId : true))
+                    .slice(0, 20)
+                    .map((r) => {
+                      const tone = r.status === "success" ? "emerald" : r.status === "partial" ? "amber" : "red";
+                      return (
+                        <button
+                          key={r.id}
+                          onClick={() => {
+                            setSelectedRunId(r.id);
+                            loadRawJobs({ runId: r.id });
+                          }}
+                          className={`w-full text-left rounded-2xl border px-3 py-3 transition-colors ${
+                            selectedRunId === r.id
+                              ? "border-indigo-500/40 bg-indigo-900/20"
+                              : "border-slate-800 bg-slate-950/40 hover:border-indigo-500/20"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-xs font-black text-white truncate">{r.id}</div>
+                              <div className="mt-1 text-[10px] font-mono text-slate-500 truncate">
+                                {formatTs(r.started_at)} → {formatTs(r.finished_at)}
+                              </div>
+                            </div>
+                            <Badge tone={tone}>{r.status}</Badge>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Badge tone="slate">{`fetched ${r.fetched_count}`}</Badge>
+                            <Badge tone="slate">{`inserted ${r.inserted_count ?? r.new_raw_count ?? 0}`}</Badge>
+                            <Badge tone="slate">{`skipped ${r.skipped_count ?? 0}`}</Badge>
+                          </div>
+                          {r.error_summary ? (
+                            <div className="mt-2 text-[10px] text-red-300">{r.error_summary}</div>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+
+              <div className="lg:col-span-8 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Recent raw jobs</div>
+                    <div className="text-xs text-slate-400 font-mono mt-1">
+                      {selectedRunId ? `runId=${selectedRunId}` : runFilterSourceId ? `sourceId=${runFilterSourceId}` : "latest"}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Limit</label>
+                    <select
+                      value={rawLimit}
+                      onChange={(e) => setRawLimit(Number(e.target.value))}
+                      className="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs font-black text-slate-200"
+                    >
+                      {[25, 50, 100, 200].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => loadRawJobs({ sourceId: runFilterSourceId, runId: selectedRunId })}
+                      className="px-3 py-2 rounded-xl border border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:border-indigo-500/20 hover:text-indigo-300"
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                  {rawJobs.length === 0 ? (
+                    <div className="text-sm text-slate-600 italic py-12 text-center">
+                      Select a run to load raw jobs.
+                    </div>
+                  ) : (
+                    rawJobs.map((j) => (
+                      <button
+                        key={j.id}
+                        onClick={() => openRawDetail(j.id)}
+                        className="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3 hover:border-indigo-500/20 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-sm font-black text-white truncate">{j.title || "(no title)"}</div>
+                            <div className="mt-1 text-[10px] font-mono text-slate-500 truncate">
+                              ext={j.external_job_id} • {formatTs(j.fetched_at)}
+                            </div>
+                            {j.job_url ? (
+                              <div className="mt-1 text-[10px] font-mono text-indigo-300 truncate">{j.job_url}</div>
+                            ) : null}
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <Badge tone="indigo">{j.source_type}</Badge>
+                            {j.payload_keys && j.payload_keys.length > 0 ? (
+                              <Badge tone="slate">{`${j.payload_keys.length} keys`}</Badge>
+                            ) : (
+                              <Badge tone="slate">keys —</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Raw payload modal */}
+      {selectedRawJobId && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm p-4 flex items-center justify-center">
+          <div className="w-full max-w-4xl rounded-2xl border border-slate-800 bg-[#0B1120] text-slate-200 shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-5 py-4">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Raw payload</div>
+                <div className="mt-1 text-sm font-black text-white">{rawDetail?.title || "(loading...)"}</div>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedRawJobId(null);
+                  setRawDetail(null);
+                }}
+                className="px-4 py-2 rounded-xl border border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-white"
+              >
+                Close
+              </button>
+            </div>
+            <div className="px-5 py-4">
+              {rawDetailLoading ? (
+                <div className="py-12 text-center text-slate-500 font-bold">Loading payload…</div>
+              ) : rawDetail ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Context</div>
+                      <div className="mt-2 text-xs text-slate-300 font-mono whitespace-pre-wrap break-words">
+                        {`id=${rawDetail.id}\nsource_id=${rawDetail.source_id}\nrun_id=${rawDetail.source_run_id || "—"}\nexternal_job_id=${rawDetail.external_job_id}\nfetched_at=${rawDetail.fetched_at}`}
+                      </div>
+                      {rawDetail.job_url ? (
+                        <a
+                          href={rawDetail.job_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-3 inline-flex text-[10px] font-black uppercase tracking-widest text-indigo-300 hover:text-indigo-200"
+                        >
+                          Open job URL →
+                        </a>
+                      ) : null}
+                    </div>
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Payload</div>
+                      <div className="mt-2 text-xs text-slate-400">
+                        {rawDetail.payload_hash ? `sha256=${rawDetail.payload_hash}` : "sha256=—"}
+                      </div>
+                      <div className="mt-2 text-xs text-slate-400">{`source_type=${rawDetail.source_type}`}</div>
+                      <div className="mt-2 text-xs text-slate-400 font-mono break-words">{`source_url=${rawDetail.source_url}`}</div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4 overflow-auto max-h-[420px]">
+                    <pre className="text-[11px] leading-relaxed text-slate-200 whitespace-pre-wrap break-words">
+                      {JSON.stringify(rawDetail.raw_payload, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-12 text-center text-slate-500">No payload.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
