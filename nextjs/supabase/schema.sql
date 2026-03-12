@@ -806,3 +806,92 @@ with check (public.is_admin());
 create policy "sourcing_sourced_job_candidates_delete_admin"
 on public.sourcing_sourced_job_candidates for delete
 using (public.is_admin());
+
+-- Scoring results (explainable)
+create table if not exists public.sourcing_candidate_scores (
+  candidate_id uuid primary key references public.sourcing_sourced_job_candidates(id) on delete cascade,
+  model_version text not null default 'v1',
+  score_total int not null default 0,
+  score_breakdown jsonb not null default '{}'::jsonb,
+  reason_codes jsonb not null default '[]'::jsonb,
+  computed_at timestamptz not null default now()
+);
+
+alter table public.sourcing_candidate_scores enable row level security;
+
+create policy "sourcing_candidate_scores_select_admin"
+on public.sourcing_candidate_scores for select
+using (public.is_admin());
+
+create policy "sourcing_candidate_scores_write_admin"
+on public.sourcing_candidate_scores for insert
+with check (public.is_admin());
+
+create policy "sourcing_candidate_scores_update_admin"
+on public.sourcing_candidate_scores for update
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "sourcing_candidate_scores_delete_admin"
+on public.sourcing_candidate_scores for delete
+using (public.is_admin());
+
+-- Deduplication results (conservative)
+create table if not exists public.sourcing_candidate_dedupes (
+  candidate_id uuid primary key references public.sourcing_sourced_job_candidates(id) on delete cascade,
+  confidence text not null default 'none' check (confidence in ('none', 'possible', 'high')),
+  duplicate_of_candidate_id uuid references public.sourcing_sourced_job_candidates(id) on delete set null,
+  duplicate_of_job_id uuid references public.jobs(id) on delete set null,
+  signals jsonb not null default '{}'::jsonb,
+  computed_at timestamptz not null default now()
+);
+
+alter table public.sourcing_candidate_dedupes enable row level security;
+
+create policy "sourcing_candidate_dedupes_select_admin"
+on public.sourcing_candidate_dedupes for select
+using (public.is_admin());
+
+create policy "sourcing_candidate_dedupes_write_admin"
+on public.sourcing_candidate_dedupes for insert
+with check (public.is_admin());
+
+create policy "sourcing_candidate_dedupes_update_admin"
+on public.sourcing_candidate_dedupes for update
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "sourcing_candidate_dedupes_delete_admin"
+on public.sourcing_candidate_dedupes for delete
+using (public.is_admin());
+
+-- Decision prep (no publishing, just classification + reasons)
+create table if not exists public.sourcing_candidate_decisions (
+  candidate_id uuid primary key references public.sourcing_sourced_job_candidates(id) on delete cascade,
+  policy_version text not null default 'v1',
+  decision text not null check (decision in ('auto_publish_candidate', 'manual_review_candidate', 'reject_candidate')),
+  score_total int not null default 0,
+  blocking_reason_codes jsonb not null default '[]'::jsonb,
+  warning_reason_codes jsonb not null default '[]'::jsonb,
+  info_reason_codes jsonb not null default '[]'::jsonb,
+  computed_at timestamptz not null default now()
+);
+
+alter table public.sourcing_candidate_decisions enable row level security;
+
+create policy "sourcing_candidate_decisions_select_admin"
+on public.sourcing_candidate_decisions for select
+using (public.is_admin());
+
+create policy "sourcing_candidate_decisions_write_admin"
+on public.sourcing_candidate_decisions for insert
+with check (public.is_admin());
+
+create policy "sourcing_candidate_decisions_update_admin"
+on public.sourcing_candidate_decisions for update
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "sourcing_candidate_decisions_delete_admin"
+on public.sourcing_candidate_decisions for delete
+using (public.is_admin());

@@ -161,6 +161,9 @@ export default function SourcingRegistrySection() {
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [candidateDetail, setCandidateDetail] = useState<NormalizedCandidateDetail | null>(null);
   const [candidateDetailLoading, setCandidateDetailLoading] = useState(false);
+  const [evalStatus, setEvalStatus] = useState<"idle" | "running" | "success" | "error">("idle");
+  const [evalMsg, setEvalMsg] = useState<string>("");
+  const [evalRows, setEvalRows] = useState<any[]>([]);
 
   const filteredReviews = useMemo(() => reviews.filter((r) => r.status === reviewFilter), [reviews, reviewFilter]);
   const filteredGreenhouseSources = useMemo(
@@ -399,6 +402,44 @@ export default function SourcingRegistrySection() {
       setError(e instanceof Error ? e.message : "Unable to load candidate.");
     } finally {
       setCandidateDetailLoading(false);
+    }
+  };
+
+  const runEvaluate = async () => {
+    setEvalStatus("running");
+    setEvalMsg("");
+    try {
+      const payload: Record<string, unknown> = { limit: 300 };
+      if (runFilterSourceId.trim()) payload.sourceId = runFilterSourceId.trim();
+      if (selectedRunId.trim()) payload.runId = selectedRunId.trim();
+      const resp = await fetch("/api/admin/sourcing/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = (await resp.json()) as { processed?: number; evaluated?: number; errors?: unknown[]; error?: string };
+      if (!resp.ok) throw new Error(json.error || "Evaluation failed.");
+      setEvalStatus((json.errors?.length || 0) > 0 ? "error" : "success");
+      setEvalMsg(`Processed ${json.processed ?? 0}. Evaluated ${json.evaluated ?? 0}. Errors ${json.errors?.length ?? 0}.`);
+      await loadEvals();
+    } catch (e) {
+      setEvalStatus("error");
+      setEvalMsg(e instanceof Error ? e.message : "Evaluation failed.");
+    }
+  };
+
+  const loadEvals = async () => {
+    try {
+      const qs = new URLSearchParams();
+      if (runFilterSourceId.trim()) qs.set("sourceId", runFilterSourceId.trim());
+      if (selectedRunId.trim()) qs.set("runId", selectedRunId.trim());
+      qs.set("limit", "100");
+      const resp = await fetch(`/api/admin/sourcing/evals?${qs.toString()}`, { cache: "no-store" });
+      const json = (await resp.json()) as { evals?: any[]; error?: string };
+      if (!resp.ok) throw new Error(json.error || "Unable to load evals.");
+      setEvalRows(json.evals || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to load evals.");
     }
   };
 
@@ -855,13 +896,44 @@ export default function SourcingRegistrySection() {
                     {selectedRunId ? `runId=${selectedRunId}` : runFilterSourceId ? `sourceId=${runFilterSourceId}` : "latest"}
                   </div>
                 </div>
-                <button
-                  onClick={loadCandidates}
-                  className="px-3 py-2 rounded-xl border border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:border-indigo-500/20 hover:text-indigo-300"
-                >
-                  Refresh
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={runEvaluate}
+                    disabled={evalStatus === "running"}
+                    className={`px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      evalStatus === "running"
+                        ? "border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                        : "border-emerald-600/30 bg-emerald-600/10 text-emerald-200 hover:bg-emerald-600/20"
+                    }`}
+                    title="Score + dedupe + decision prep (no publish)"
+                  >
+                    {evalStatus === "running" ? "Evaluating..." : "Evaluate now"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      loadCandidates();
+                      loadEvals();
+                    }}
+                    className="px-3 py-2 rounded-xl border border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:border-indigo-500/20 hover:text-indigo-300"
+                  >
+                    Refresh
+                  </button>
+                </div>
               </div>
+
+              {evalMsg && (
+                <div
+                  className={`mt-3 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
+                    evalStatus === "error"
+                      ? "border-amber-600/30 bg-amber-600/10 text-amber-200"
+                      : "border-emerald-600/30 bg-emerald-600/10 text-emerald-300"
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {evalMsg}
+                </div>
+              )}
 
               <div className="mt-3 space-y-2 max-h-[360px] overflow-y-auto pr-1">
                 {candidates.length === 0 ? (
@@ -870,6 +942,20 @@ export default function SourcingRegistrySection() {
                   </div>
                 ) : (
                   candidates.map((c) => (
+                    (() => {
+                      const ev = evalRows.find((e) => e.id === c.id);
+                      const decision = ev?.sourcing_candidate_decisions?.decision || null;
+                      const scoreTotal = ev?.sourcing_candidate_scores?.score_total ?? null;
+                      const dup = ev?.sourcing_candidate_dedupes?.confidence || null;
+                      const decisionTone =
+                        decision === "auto_publish_candidate"
+                          ? "emerald"
+                          : decision === "reject_candidate"
+                            ? "red"
+                            : decision
+                              ? "amber"
+                              : "slate";
+                      return (
                     <button
                       key={c.id}
                       onClick={() => openCandidateDetail(c.id)}
@@ -883,6 +969,9 @@ export default function SourcingRegistrySection() {
                           </div>
                           <div className="mt-1 flex flex-wrap gap-2">
                             <Badge tone={c.salary_present ? "emerald" : "amber"}>{c.salary_present ? "salary_present" : "salary_missing"}</Badge>
+                            {typeof scoreTotal === "number" ? <Badge tone="slate">{`score ${scoreTotal}`}</Badge> : <Badge tone="slate">score —</Badge>}
+                            {decision ? <Badge tone={decisionTone}>{decision}</Badge> : <Badge tone="slate">decision —</Badge>}
+                            {dup ? <Badge tone={dup === "high" ? "red" : dup === "possible" ? "amber" : "slate"}>{`dup ${dup}`}</Badge> : <Badge tone="slate">dup —</Badge>}
                             {c.salary_currency ? <Badge tone="slate">{c.salary_currency}</Badge> : null}
                             {c.salary_period ? <Badge tone="slate">{c.salary_period}</Badge> : null}
                             {typeof c.salary_amount_min === "number" ? <Badge tone="slate">{`min ${c.salary_amount_min}`}</Badge> : null}
@@ -892,6 +981,8 @@ export default function SourcingRegistrySection() {
                         <Badge tone="indigo">candidate</Badge>
                       </div>
                     </button>
+                      );
+                    })()
                   ))
                 )}
               </div>

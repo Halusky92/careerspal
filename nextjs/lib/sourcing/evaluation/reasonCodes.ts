@@ -1,0 +1,35 @@
+export type ReasonSeverity = "BLOCK" | "WARN" | "INFO";
+
+export type ReasonCode =
+  | "OFF_NICHE"
+  | "APPLY_MISSING"
+  | "SALARY_MISSING"
+  | "REMOTE_UNCLEAR"
+  | "ONSITE_ONLY"
+  | "DUPLICATE_POSSIBLE"
+  | "DUPLICATE_HIGH"
+  | "METADATA_WEAK"
+  | "SOURCE_WEAK"
+  | "CAT_LOW_CONF"
+  | "LIKELY_GOOD"
+  | "AUTO_PUBLISH_QUALITY"
+  | "NEEDS_REVIEW";
+
+export const REASON_SEVERITY: Record<ReasonCode, ReasonSeverity> = {
+  OFF_NICHE: "BLOCK",
+  APPLY_MISSING: "BLOCK",
+  ONSITE_ONLY: "BLOCK",
+  SOURCE_WEAK: "BLOCK",
+  DUPLICATE_HIGH: "BLOCK",
+
+  SALARY_MISSING: "WARN", // blocks auto-publish, but not a hard reject by itself
+  REMOTE_UNCLEAR: "WARN",
+  DUPLICATE_POSSIBLE: "WARN",
+  METADATA_WEAK: "WARN",
+  CAT_LOW_CONF: "WARN",
+
+  LIKELY_GOOD: "INFO",
+  AUTO_PUBLISH_QUALITY: "INFO",
+  NEEDS_REVIEW: "INFO",
+};
+
