@@ -129,6 +129,8 @@ export default function SourcingRegistrySection() {
   const [selectedRawJobId, setSelectedRawJobId] = useState<string | null>(null);
   const [rawDetail, setRawDetail] = useState<RawSourcedJobDetail | null>(null);
   const [rawDetailLoading, setRawDetailLoading] = useState(false);
+  const [runNowStatus, setRunNowStatus] = useState<"idle" | "running" | "success" | "error">("idle");
+  const [runNowMsg, setRunNowMsg] = useState<string>("");
 
   const filteredReviews = useMemo(() => reviews.filter((r) => r.status === reviewFilter), [reviews, reviewFilter]);
   const filteredGreenhouseSources = useMemo(
@@ -252,6 +254,56 @@ export default function SourcingRegistrySection() {
       setError(e instanceof Error ? e.message : "Unable to load raw payload.");
     } finally {
       setRawDetailLoading(false);
+    }
+  };
+
+  const runGreenhouseNow = async () => {
+    setRunNowStatus("running");
+    setRunNowMsg("");
+    try {
+      const payload = runFilterSourceId.trim() ? { sourceId: runFilterSourceId.trim() } : {};
+      const resp = await fetch("/api/admin/sourcing/run/greenhouse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = (await resp.json()) as {
+        ran?: number;
+        results?: Array<{
+          sourceId: string;
+          runId?: string;
+          status: "success" | "partial" | "failed";
+          fetchedCount?: number;
+          insertedCount?: number;
+          skippedCount?: number;
+          error?: string;
+        }>;
+        error?: string;
+      };
+      if (!resp.ok) throw new Error(json.error || "Run failed.");
+
+      const ok = (json.results || []).filter((r) => r.status === "success" || r.status === "partial");
+      const fail = (json.results || []).filter((r) => r.status === "failed");
+      const inserted = ok.reduce((acc, r) => acc + (r.insertedCount || 0), 0);
+      const fetched = ok.reduce((acc, r) => acc + (r.fetchedCount || 0), 0);
+      const msg = `Ran ${json.ran ?? (json.results || []).length}. Fetched ${fetched}. Inserted ${inserted}. Failed ${fail.length}.`;
+      setRunNowStatus(fail.length > 0 && ok.length === 0 ? "error" : "success");
+      setRunNowMsg(msg);
+
+      // Refresh runs + raw jobs
+      await load();
+
+      // If we ran a single source and got a runId, auto-select it and load raw jobs.
+      const firstRunId = ok.find((r) => Boolean(r.runId))?.runId;
+      if (firstRunId) {
+        setSelectedRunId(firstRunId);
+        await loadRawJobs({ runId: firstRunId });
+      } else {
+        await loadRawJobs({ sourceId: runFilterSourceId.trim(), runId: selectedRunId.trim() });
+      }
+    } catch (e) {
+      setRunNowStatus("error");
+      setRunNowMsg(e instanceof Error ? e.message : "Run failed.");
     }
   };
 
@@ -514,8 +566,34 @@ export default function SourcingRegistrySection() {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone="indigo">read-only</Badge>
                 <Badge tone="slate">{`${runs.length} runs`}</Badge>
+                <button
+                  onClick={runGreenhouseNow}
+                  disabled={runNowStatus === "running"}
+                  className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    runNowStatus === "running"
+                      ? "border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                      : "border-emerald-600/30 bg-emerald-600/10 text-emerald-200 hover:bg-emerald-600/20"
+                  }`}
+                  title={runFilterSourceId ? "Runs only the selected source" : "Runs all enabled Greenhouse sources"}
+                >
+                  {runNowStatus === "running" ? "Running..." : "Run Greenhouse now"}
+                </button>
               </div>
             </div>
+
+            {runNowMsg && (
+              <div
+                className={`mt-4 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
+                  runNowStatus === "error"
+                    ? "border-red-600/30 bg-red-600/10 text-red-300"
+                    : "border-emerald-600/30 bg-emerald-600/10 text-emerald-300"
+                }`}
+                role="status"
+                aria-live="polite"
+              >
+                {runNowMsg}
+              </div>
+            )}
 
             <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
               <div className="lg:col-span-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
