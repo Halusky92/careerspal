@@ -30,11 +30,12 @@ export async function generateMetadata(): Promise<Metadata> {
 export const dynamic = "force-dynamic";
 
 async function fetchLiveCounts(): Promise<Record<string, number>> {
-  if (!supabaseAdmin) return {};
+  const sb = supabaseAdmin;
+  if (!sb) return {};
 
   const pairs = await Promise.all(
     CATEGORY_HUBS.map(async (hub) => {
-      const { count } = await supabaseAdmin
+      const { count } = await sb
         .from("jobs")
         // head:true avoids downloading rows; count:"exact" gives a real count.
         .select("id", { count: "exact", head: true })
