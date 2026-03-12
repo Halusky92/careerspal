@@ -746,3 +746,63 @@ with check (public.is_admin());
 create policy "sourcing_sourced_jobs_raw_delete_admin"
 on public.sourcing_sourced_jobs_raw for delete
 using (public.is_admin());
+
+-- Normalized sourced job candidates (draft layer before scoring/dedupe/publish)
+create table if not exists public.sourcing_sourced_job_candidates (
+  id uuid primary key default gen_random_uuid(),
+  raw_job_id uuid not null references public.sourcing_sourced_jobs_raw(id) on delete cascade,
+  source_id uuid not null references public.sourcing_sources(id) on delete cascade,
+  source_run_id uuid references public.sourcing_source_runs(id) on delete set null,
+  source_type text not null,
+  source_url text not null,
+  external_job_id text not null,
+  job_url text,
+  apply_url text,
+  title text,
+  company_name text,
+  location_text text,
+  remote_policy text,
+  posted_at timestamptz,
+  description_raw text,
+  description_clean text,
+  salary_text_raw text,
+  salary_amount_min int,
+  salary_amount_max int,
+  salary_currency text,
+  salary_period text check (salary_period in ('year', 'month', 'day', 'hour')),
+  salary_present boolean not null default false,
+  salary_confidence text check (salary_confidence in ('high', 'medium', 'low', 'unknown')),
+  salary_detected_from text check (salary_detected_from in ('ats_structured', 'official_json', 'text_comp_section', 'text_body', 'metadata', 'unknown')),
+  payload_hash text,
+  provenance jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (raw_job_id)
+);
+
+create index if not exists sourcing_sourced_job_candidates_source_id_idx on public.sourcing_sourced_job_candidates (source_id);
+create index if not exists sourcing_sourced_job_candidates_source_run_id_idx on public.sourcing_sourced_job_candidates (source_run_id);
+create index if not exists sourcing_sourced_job_candidates_created_at_idx on public.sourcing_sourced_job_candidates (created_at);
+
+create trigger sourcing_sourced_job_candidates_set_updated_at
+before update on public.sourcing_sourced_job_candidates
+for each row execute function public.set_updated_at();
+
+alter table public.sourcing_sourced_job_candidates enable row level security;
+
+create policy "sourcing_sourced_job_candidates_select_admin"
+on public.sourcing_sourced_job_candidates for select
+using (public.is_admin());
+
+create policy "sourcing_sourced_job_candidates_write_admin"
+on public.sourcing_sourced_job_candidates for insert
+with check (public.is_admin());
+
+create policy "sourcing_sourced_job_candidates_update_admin"
+on public.sourcing_sourced_job_candidates for update
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "sourcing_sourced_job_candidates_delete_admin"
+on public.sourcing_sourced_job_candidates for delete
+using (public.is_admin());

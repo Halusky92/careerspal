@@ -81,6 +81,29 @@ type RawSourcedJobDetail = {
   raw_payload: unknown;
 };
 
+type NormalizedCandidateRow = {
+  id: string;
+  raw_job_id: string;
+  source_id: string;
+  source_run_id: string | null;
+  external_job_id: string;
+  title: string | null;
+  company_name: string | null;
+  apply_url: string | null;
+  job_url: string | null;
+  location_text: string | null;
+  remote_policy: string | null;
+  posted_at: string | null;
+  salary_present: boolean;
+  salary_currency: string | null;
+  salary_period: string | null;
+  salary_amount_min: number | null;
+  salary_amount_max: number | null;
+  created_at: string;
+};
+
+type NormalizedCandidateDetail = Record<string, unknown> & { id: string; title?: string | null };
+
 const formatTs = (value?: string | null) => {
   if (!value) return "—";
   const d = new Date(value);
@@ -131,6 +154,13 @@ export default function SourcingRegistrySection() {
   const [rawDetailLoading, setRawDetailLoading] = useState(false);
   const [runNowStatus, setRunNowStatus] = useState<"idle" | "running" | "success" | "error">("idle");
   const [runNowMsg, setRunNowMsg] = useState<string>("");
+
+  const [normalizeStatus, setNormalizeStatus] = useState<"idle" | "running" | "success" | "error">("idle");
+  const [normalizeMsg, setNormalizeMsg] = useState<string>("");
+  const [candidates, setCandidates] = useState<NormalizedCandidateRow[]>([]);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [candidateDetail, setCandidateDetail] = useState<NormalizedCandidateDetail | null>(null);
+  const [candidateDetailLoading, setCandidateDetailLoading] = useState(false);
 
   const filteredReviews = useMemo(() => reviews.filter((r) => r.status === reviewFilter), [reviews, reviewFilter]);
   const filteredGreenhouseSources = useMemo(
@@ -304,6 +334,71 @@ export default function SourcingRegistrySection() {
     } catch (e) {
       setRunNowStatus("error");
       setRunNowMsg(e instanceof Error ? e.message : "Run failed.");
+    }
+  };
+
+  const runNormalization = async () => {
+    setNormalizeStatus("running");
+    setNormalizeMsg("");
+    try {
+      const payload: Record<string, unknown> = {};
+      if (runFilterSourceId.trim()) payload.sourceId = runFilterSourceId.trim();
+      if (selectedRunId.trim()) payload.runId = selectedRunId.trim();
+      payload.limit = 300;
+
+      const resp = await fetch("/api/admin/sourcing/normalize/greenhouse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = (await resp.json()) as {
+        processed?: number;
+        inserted?: number;
+        updated?: number;
+        skipped?: number;
+        errors?: Array<{ rawId: string; error: string }>;
+        error?: string;
+      };
+      if (!resp.ok) throw new Error(json.error || "Normalization failed.");
+      const msg = `Processed ${json.processed ?? 0}. Inserted ${json.inserted ?? 0}. Updated ${json.updated ?? 0}. Skipped ${json.skipped ?? 0}. Errors ${json.errors?.length ?? 0}.`;
+      setNormalizeStatus((json.errors?.length || 0) > 0 ? "error" : "success");
+      setNormalizeMsg(msg);
+      await load();
+      await loadCandidates();
+    } catch (e) {
+      setNormalizeStatus("error");
+      setNormalizeMsg(e instanceof Error ? e.message : "Normalization failed.");
+    }
+  };
+
+  const loadCandidates = async () => {
+    try {
+      const qs = new URLSearchParams();
+      if (runFilterSourceId.trim()) qs.set("sourceId", runFilterSourceId.trim());
+      if (selectedRunId.trim()) qs.set("runId", selectedRunId.trim());
+      qs.set("limit", "100");
+      const resp = await fetch(`/api/admin/sourcing/candidates?${qs.toString()}`, { cache: "no-store" });
+      const json = (await resp.json()) as { candidates?: NormalizedCandidateRow[]; error?: string };
+      if (!resp.ok) throw new Error(json.error || "Unable to load candidates.");
+      setCandidates(json.candidates || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to load candidates.");
+    }
+  };
+
+  const openCandidateDetail = async (id: string) => {
+    setSelectedCandidateId(id);
+    setCandidateDetail(null);
+    setCandidateDetailLoading(true);
+    try {
+      const resp = await fetch(`/api/admin/sourcing/candidates/${encodeURIComponent(id)}`, { cache: "no-store" });
+      const json = (await resp.json()) as { candidate?: NormalizedCandidateDetail; error?: string };
+      if (!resp.ok || !json.candidate) throw new Error(json.error || "Unable to load candidate.");
+      setCandidateDetail(json.candidate);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to load candidate.");
+    } finally {
+      setCandidateDetailLoading(false);
     }
   };
 
@@ -578,6 +673,18 @@ export default function SourcingRegistrySection() {
                 >
                   {runNowStatus === "running" ? "Running..." : "Run Greenhouse now"}
                 </button>
+                <button
+                  onClick={runNormalization}
+                  disabled={normalizeStatus === "running"}
+                  className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    normalizeStatus === "running"
+                      ? "border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                      : "border-indigo-600/30 bg-indigo-600/10 text-indigo-200 hover:bg-indigo-600/20"
+                  }`}
+                  title="Normalize raw Greenhouse jobs into candidates (no scoring/publish)"
+                >
+                  {normalizeStatus === "running" ? "Normalizing..." : "Normalize now"}
+                </button>
               </div>
             </div>
 
@@ -592,6 +699,19 @@ export default function SourcingRegistrySection() {
                 aria-live="polite"
               >
                 {runNowMsg}
+              </div>
+            )}
+            {normalizeMsg && (
+              <div
+                className={`mt-3 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
+                  normalizeStatus === "error"
+                    ? "border-amber-600/30 bg-amber-600/10 text-amber-200"
+                    : "border-indigo-600/30 bg-indigo-600/10 text-indigo-200"
+                }`}
+                role="status"
+                aria-live="polite"
+              >
+                {normalizeMsg}
               </div>
             )}
 
@@ -726,6 +846,56 @@ export default function SourcingRegistrySection() {
                 </div>
               </div>
             </div>
+
+            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Normalized candidates</div>
+                  <div className="mt-1 text-xs text-slate-400 font-mono">
+                    {selectedRunId ? `runId=${selectedRunId}` : runFilterSourceId ? `sourceId=${runFilterSourceId}` : "latest"}
+                  </div>
+                </div>
+                <button
+                  onClick={loadCandidates}
+                  className="px-3 py-2 rounded-xl border border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:border-indigo-500/20 hover:text-indigo-300"
+                >
+                  Refresh
+                </button>
+              </div>
+
+              <div className="mt-3 space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                {candidates.length === 0 ? (
+                  <div className="text-sm text-slate-600 italic py-10 text-center">
+                    No candidates loaded yet. Run normalization, then refresh.
+                  </div>
+                ) : (
+                  candidates.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => openCandidateDetail(c.id)}
+                      className="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3 hover:border-indigo-500/20 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-sm font-black text-white truncate">{c.title || "(no title)"}</div>
+                          <div className="mt-1 text-[10px] font-mono text-slate-500 truncate">
+                            {c.company_name || "—"} • ext={c.external_job_id} • {formatTs(c.created_at)}
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            <Badge tone={c.salary_present ? "emerald" : "amber"}>{c.salary_present ? "salary_present" : "salary_missing"}</Badge>
+                            {c.salary_currency ? <Badge tone="slate">{c.salary_currency}</Badge> : null}
+                            {c.salary_period ? <Badge tone="slate">{c.salary_period}</Badge> : null}
+                            {typeof c.salary_amount_min === "number" ? <Badge tone="slate">{`min ${c.salary_amount_min}`}</Badge> : null}
+                            {typeof c.salary_amount_max === "number" ? <Badge tone="slate">{`max ${c.salary_amount_max}`}</Badge> : null}
+                          </div>
+                        </div>
+                        <Badge tone="indigo">candidate</Badge>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -789,6 +959,42 @@ export default function SourcingRegistrySection() {
                 </div>
               ) : (
                 <div className="py-12 text-center text-slate-500">No payload.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Candidate detail modal */}
+      {selectedCandidateId && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm p-4 flex items-center justify-center">
+          <div className="w-full max-w-4xl rounded-2xl border border-slate-800 bg-[#0B1120] text-slate-200 shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-5 py-4">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Normalized candidate</div>
+                <div className="mt-1 text-sm font-black text-white">{(candidateDetail?.title as string) || "(loading...)"}</div>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedCandidateId(null);
+                  setCandidateDetail(null);
+                }}
+                className="px-4 py-2 rounded-xl border border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-white"
+              >
+                Close
+              </button>
+            </div>
+            <div className="px-5 py-4">
+              {candidateDetailLoading ? (
+                <div className="py-12 text-center text-slate-500 font-bold">Loading…</div>
+              ) : candidateDetail ? (
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4 overflow-auto max-h-[520px]">
+                  <pre className="text-[11px] leading-relaxed text-slate-200 whitespace-pre-wrap break-words">
+                    {JSON.stringify(candidateDetail, null, 2)}
+                  </pre>
+                </div>
+              ) : (
+                <div className="py-12 text-center text-slate-500">No candidate.</div>
               )}
             </div>
           </div>
