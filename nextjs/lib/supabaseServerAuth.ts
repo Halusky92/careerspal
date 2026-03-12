@@ -39,6 +39,19 @@ export const getSupabaseProfile = async (
     .single();
 
   if (existing) {
+    // Safety: ensure the canonical admin account is actually marked as admin in DB.
+    // This avoids inconsistent "email fallback" checks across the app.
+    const email = user.email.toLowerCase();
+    const role = (existing as any)?.role;
+    if (email === "admin@careerspal.com" && role !== "admin") {
+      const { data: updated } = await supabaseAdmin
+        .from("profiles")
+        .update({ role: "admin" })
+        .eq("id", user.id)
+        .select("id, email, role, is_onboarded, full_name, avatar_url")
+        .single();
+      if (updated) return { user, profile: updated as SupabaseProfile };
+    }
     return { user, profile: existing as SupabaseProfile };
   }
 

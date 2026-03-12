@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSupabaseAuth } from "../Providers";
+import { authFetch } from "../../lib/authFetch";
 
 type SourcingSource = {
   id: string;
@@ -133,6 +135,7 @@ const Badge = ({ tone, children }: { tone: "slate" | "amber" | "emerald" | "red"
 };
 
 export default function SourcingRegistrySection() {
+  const { accessToken } = useSupabaseAuth();
   const [sources, setSources] = useState<SourcingSource[]>([]);
   const [reviews, setReviews] = useState<SourcingReview[]>([]);
   const [runs, setRuns] = useState<SourcingRun[]>([]);
@@ -181,10 +184,11 @@ export default function SourcingRegistrySection() {
     setLoading(true);
     setError("");
     try {
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
       const [sResp, rResp, runsResp] = await Promise.all([
-        fetch("/api/admin/sourcing/sources", { cache: "no-store" }),
-        fetch("/api/admin/sourcing/reviews", { cache: "no-store" }),
-        fetch("/api/admin/sourcing/runs?limit=50", { cache: "no-store" }),
+        authFetch("/api/admin/sourcing/sources", { cache: "no-store" }, accessToken),
+        authFetch("/api/admin/sourcing/reviews", { cache: "no-store" }, accessToken),
+        authFetch("/api/admin/sourcing/runs?limit=50", { cache: "no-store" }, accessToken),
       ]);
       const sJson = (await sResp.json()) as { sources?: SourcingSource[]; error?: string };
       const rJson = (await rResp.json()) as { reviews?: SourcingReview[]; error?: string };
@@ -216,15 +220,20 @@ export default function SourcingRegistrySection() {
     setCreateStatus("saving");
     setCreateMsg("");
     try {
-      const resp = await fetch("/api/admin/sourcing/sources", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          baseUrl,
-          companyId: newCompanyId.trim() || null,
-          displayName: newDisplayName.trim() || null,
-        }),
-      });
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const resp = await authFetch(
+        "/api/admin/sourcing/sources",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            baseUrl,
+            companyId: newCompanyId.trim() || null,
+            displayName: newDisplayName.trim() || null,
+          }),
+        },
+        accessToken,
+      );
       const json = (await resp.json()) as { sourceId?: string; reviewId?: string | null; error?: string };
       if (!resp.ok) throw new Error(json.error || "Failed to create source.");
       setCreateStatus("success");
@@ -242,16 +251,21 @@ export default function SourcingRegistrySection() {
   const actOnReview = async (reviewId: string, decision: SourcingReview["decision"]) => {
     setActionReviewId(reviewId);
     try {
-      const resp = await fetch("/api/admin/sourcing/reviews", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reviewId,
-          decision,
-          reasonCodes: [],
-          notes: actionNotes.trim() || "",
-        }),
-      });
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const resp = await authFetch(
+        "/api/admin/sourcing/reviews",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reviewId,
+            decision,
+            reasonCodes: [],
+            notes: actionNotes.trim() || "",
+          }),
+        },
+        accessToken,
+      );
       const json = (await resp.json()) as { success?: boolean; error?: string };
       if (!resp.ok) throw new Error(json.error || "Failed to update review.");
       setActionNotes("");
@@ -265,13 +279,14 @@ export default function SourcingRegistrySection() {
 
   const loadRawJobs = async (opts?: { sourceId?: string; runId?: string }) => {
     try {
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
       const sourceId = (opts?.sourceId ?? "").trim();
       const runId = (opts?.runId ?? "").trim();
       const qs = new URLSearchParams();
       if (sourceId) qs.set("sourceId", sourceId);
       if (runId) qs.set("runId", runId);
       qs.set("limit", String(Math.min(200, Math.max(1, rawLimit))));
-      const resp = await fetch(`/api/admin/sourcing/raw-jobs?${qs.toString()}`, { cache: "no-store" });
+      const resp = await authFetch(`/api/admin/sourcing/raw-jobs?${qs.toString()}`, { cache: "no-store" }, accessToken);
       const json = (await resp.json()) as { jobs?: RawSourcedJobRow[]; error?: string };
       if (!resp.ok) throw new Error(json.error || "Unable to load raw jobs.");
       setRawJobs(json.jobs || []);
@@ -285,7 +300,8 @@ export default function SourcingRegistrySection() {
     setRawDetail(null);
     setRawDetailLoading(true);
     try {
-      const resp = await fetch(`/api/admin/sourcing/raw-jobs/${encodeURIComponent(id)}`, { cache: "no-store" });
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const resp = await authFetch(`/api/admin/sourcing/raw-jobs/${encodeURIComponent(id)}`, { cache: "no-store" }, accessToken);
       const json = (await resp.json()) as { job?: RawSourcedJobDetail; error?: string };
       if (!resp.ok || !json.job) throw new Error(json.error || "Unable to load raw payload.");
       setRawDetail(json.job);
@@ -301,11 +317,12 @@ export default function SourcingRegistrySection() {
     setRunNowMsg("");
     try {
       const payload = runFilterSourceId.trim() ? { sourceId: runFilterSourceId.trim() } : {};
-      const resp = await fetch("/api/admin/sourcing/run/greenhouse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const resp = await authFetch(
+        "/api/admin/sourcing/run/greenhouse",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+        accessToken,
+      );
       const json = (await resp.json()) as {
         ran?: number;
         results?: Array<{
@@ -355,11 +372,12 @@ export default function SourcingRegistrySection() {
       if (selectedRunId.trim()) payload.runId = selectedRunId.trim();
       payload.limit = 300;
 
-      const resp = await fetch("/api/admin/sourcing/normalize/greenhouse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const resp = await authFetch(
+        "/api/admin/sourcing/normalize/greenhouse",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+        accessToken,
+      );
       const json = (await resp.json()) as {
         processed?: number;
         inserted?: number;
@@ -382,11 +400,12 @@ export default function SourcingRegistrySection() {
 
   const loadCandidates = async () => {
     try {
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
       const qs = new URLSearchParams();
       if (runFilterSourceId.trim()) qs.set("sourceId", runFilterSourceId.trim());
       if (selectedRunId.trim()) qs.set("runId", selectedRunId.trim());
       qs.set("limit", "100");
-      const resp = await fetch(`/api/admin/sourcing/candidates?${qs.toString()}`, { cache: "no-store" });
+      const resp = await authFetch(`/api/admin/sourcing/candidates?${qs.toString()}`, { cache: "no-store" }, accessToken);
       const json = (await resp.json()) as { candidates?: NormalizedCandidateRow[]; error?: string };
       if (!resp.ok) throw new Error(json.error || "Unable to load candidates.");
       setCandidates(json.candidates || []);
@@ -402,11 +421,12 @@ export default function SourcingRegistrySection() {
       const payload: Record<string, unknown> = { limit: 100 };
       if (runFilterSourceId.trim()) payload.sourceId = runFilterSourceId.trim();
       if (selectedRunId.trim()) payload.runId = selectedRunId.trim();
-      const resp = await fetch("/api/admin/sourcing/auto-publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const resp = await authFetch(
+        "/api/admin/sourcing/auto-publish",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+        accessToken,
+      );
       const json = (await resp.json()) as { published?: number; skipped?: number; failed?: number; minScore?: number; error?: string };
       if (!resp.ok) throw new Error(json.error || "Auto-publish failed.");
       setAutoPublishStatus(json.failed && json.failed > 0 ? "error" : "success");
@@ -425,7 +445,8 @@ export default function SourcingRegistrySection() {
     setCandidateDetail(null);
     setCandidateDetailLoading(true);
     try {
-      const resp = await fetch(`/api/admin/sourcing/candidates/${encodeURIComponent(id)}`, { cache: "no-store" });
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const resp = await authFetch(`/api/admin/sourcing/candidates/${encodeURIComponent(id)}`, { cache: "no-store" }, accessToken);
       const json = (await resp.json()) as { candidate?: NormalizedCandidateDetail; error?: string };
       if (!resp.ok || !json.candidate) throw new Error(json.error || "Unable to load candidate.");
       setCandidateDetail(json.candidate);
@@ -443,11 +464,12 @@ export default function SourcingRegistrySection() {
       const payload: Record<string, unknown> = { limit: 300 };
       if (runFilterSourceId.trim()) payload.sourceId = runFilterSourceId.trim();
       if (selectedRunId.trim()) payload.runId = selectedRunId.trim();
-      const resp = await fetch("/api/admin/sourcing/evaluate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const resp = await authFetch(
+        "/api/admin/sourcing/evaluate",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+        accessToken,
+      );
       const json = (await resp.json()) as { processed?: number; evaluated?: number; errors?: unknown[]; error?: string };
       if (!resp.ok) throw new Error(json.error || "Evaluation failed.");
       setEvalStatus((json.errors?.length || 0) > 0 ? "error" : "success");
@@ -461,11 +483,12 @@ export default function SourcingRegistrySection() {
 
   const loadEvals = async () => {
     try {
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
       const qs = new URLSearchParams();
       if (runFilterSourceId.trim()) qs.set("sourceId", runFilterSourceId.trim());
       if (selectedRunId.trim()) qs.set("runId", selectedRunId.trim());
       qs.set("limit", "100");
-      const resp = await fetch(`/api/admin/sourcing/evals?${qs.toString()}`, { cache: "no-store" });
+      const resp = await authFetch(`/api/admin/sourcing/evals?${qs.toString()}`, { cache: "no-store" }, accessToken);
       const json = (await resp.json()) as { evals?: any[]; error?: string };
       if (!resp.ok) throw new Error(json.error || "Unable to load evals.");
       setEvalRows(json.evals || []);

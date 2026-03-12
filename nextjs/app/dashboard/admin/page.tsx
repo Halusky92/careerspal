@@ -16,7 +16,7 @@ const AdminDashboardPage = () => {
         router.replace("/auth");
         return;
       }
-      if (profile.role !== "admin" && profile.email.toLowerCase() !== "admin@careerspal.com") {
+      if (profile.role !== "admin") {
         router.replace("/auth");
       }
     } catch {
