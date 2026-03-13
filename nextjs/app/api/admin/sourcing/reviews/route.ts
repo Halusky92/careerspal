@@ -89,6 +89,8 @@ export async function PATCH(request: Request) {
   if (decision === "approve_as_official_ats") {
     sourceUpdate.approval_decision = "approved_as_official_ats";
     sourceUpdate.validation_state = "allowed";
+    // MVP: approved ATS sources are runnable immediately (still admin-only).
+    sourceUpdate.enabled = true;
   } else if (decision === "approve_as_direct_custom") {
     sourceUpdate.approval_decision = "approved_as_direct_custom";
     sourceUpdate.validation_state = "allowed";

@@ -173,6 +173,8 @@ export default function SourcingRegistrySection() {
   const [evalRows, setEvalRows] = useState<any[]>([]);
   const [autoPublishStatus, setAutoPublishStatus] = useState<"idle" | "running" | "success" | "error">("idle");
   const [autoPublishMsg, setAutoPublishMsg] = useState<string>("");
+  const [pipelineStatus, setPipelineStatus] = useState<"idle" | "running" | "success" | "error">("idle");
+  const [pipelineMsg, setPipelineMsg] = useState<string>("");
 
   const filteredReviews = useMemo(() => reviews.filter((r) => r.status === reviewFilter), [reviews, reviewFilter]);
   const filteredGreenhouseSources = useMemo(
@@ -437,6 +439,52 @@ export default function SourcingRegistrySection() {
     } catch (e) {
       setAutoPublishStatus("error");
       setAutoPublishMsg(e instanceof Error ? e.message : "Auto-publish failed.");
+    }
+  };
+
+  const toggleSourceEnabled = async (sourceId: string, enabled: boolean) => {
+    try {
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const resp = await authFetch(
+        "/api/admin/sourcing/sources",
+        { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sourceId, enabled }) },
+        accessToken,
+      );
+      const json = (await resp.json()) as { success?: boolean; error?: string };
+      if (!resp.ok) throw new Error(json.error || "Unable to update source.");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to update source.");
+    }
+  };
+
+  const runFullPipelineNow = async () => {
+    setPipelineStatus("running");
+    setPipelineMsg("");
+    try {
+      const payload: Record<string, unknown> = {};
+      if (runFilterSourceId.trim()) payload.sourceId = runFilterSourceId.trim();
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const resp = await authFetch(
+        "/api/admin/sourcing/pipeline/greenhouse",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+        accessToken,
+      );
+      const json = (await resp.json()) as { ok?: boolean; summary?: any; error?: string };
+      if (!resp.ok || !json.summary) throw new Error(json.error || "Pipeline failed.");
+      const s = json.summary;
+      const msg =
+        `Sources ${s.sources_processed ?? 0} • runs ${s.runs_created ?? 0} • raw inserted ${s.raw_inserted ?? 0} • ` +
+        `candidates inserted ${s.normalization?.inserted ?? 0} • evaluated ${s.evaluation?.evaluated ?? 0} • ` +
+        `published ${s.auto_publish?.published ?? 0} • dup-skipped ${s.auto_publish?.skipped_duplicates ?? 0}`;
+      setPipelineStatus("success");
+      setPipelineMsg(msg);
+      await load();
+      await loadCandidates();
+      await loadEvals();
+    } catch (e) {
+      setPipelineStatus("error");
+      setPipelineMsg(e instanceof Error ? e.message : "Pipeline failed.");
     }
   };
 
@@ -736,7 +784,18 @@ export default function SourcingRegistrySection() {
                       <td className="py-3 pr-3">
                         <span className="text-slate-300">{s.companies?.name || s.company_id || "—"}</span>
                       </td>
-                      <td className="py-3 pr-3">{s.enabled ? <Badge tone="emerald">yes</Badge> : <Badge tone="slate">no</Badge>}</td>
+                      <td className="py-3 pr-3">
+                        <div className="flex items-center gap-2">
+                          {s.enabled ? <Badge tone="emerald">yes</Badge> : <Badge tone="slate">no</Badge>}
+                          <button
+                            onClick={() => toggleSourceEnabled(s.id, !s.enabled)}
+                            className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-slate-700 bg-slate-800/60 text-slate-300 hover:text-white"
+                            title="Enable/disable this source (Greenhouse-only safety checks apply)"
+                          >
+                            {s.enabled ? "Disable" : "Enable"}
+                          </button>
+                        </div>
+                      </td>
                       <td className="py-3 pr-3 text-slate-500">{formatTs(s.created_at)}</td>
                     </tr>
                   ))}
@@ -756,6 +815,18 @@ export default function SourcingRegistrySection() {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone="indigo">read-only</Badge>
                 <Badge tone="slate">{`${runs.length} runs`}</Badge>
+                <button
+                  onClick={runFullPipelineNow}
+                  disabled={pipelineStatus === "running"}
+                  className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    pipelineStatus === "running"
+                      ? "border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                      : "border-indigo-500/40 bg-indigo-900/30 text-indigo-200 hover:bg-indigo-900/40"
+                  }`}
+                  title={runFilterSourceId ? "Runs full pipeline for selected source" : "Runs full pipeline for all enabled Greenhouse sources"}
+                >
+                  {pipelineStatus === "running" ? "Running pipeline..." : "Run full pipeline now"}
+                </button>
                 <button
                   onClick={runGreenhouseNow}
                   disabled={runNowStatus === "running"}
@@ -807,6 +878,19 @@ export default function SourcingRegistrySection() {
                 aria-live="polite"
               >
                 {normalizeMsg}
+              </div>
+            )}
+            {pipelineMsg && (
+              <div
+                className={`mt-3 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
+                  pipelineStatus === "error"
+                    ? "border-red-600/30 bg-red-600/10 text-red-300"
+                    : "border-indigo-600/30 bg-indigo-600/10 text-indigo-200"
+                }`}
+                role="status"
+                aria-live="polite"
+              >
+                {pipelineMsg}
               </div>
             )}
 

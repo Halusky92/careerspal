@@ -1,4 +1,5 @@
 import { REASON_SEVERITY, type ReasonCode } from "./reasonCodes";
+import { getSourcingAutoPublishMinScore } from "../config";
 
 export type Decision = "auto_publish_candidate" | "manual_review_candidate" | "reject_candidate";
 
@@ -32,9 +33,10 @@ export function prepareDecision(args: {
 
   // Salary-first: salary missing blocks auto-publish, but doesn't auto-reject.
   // Keep as warning.
+  const minScore = getSourcingAutoPublishMinScore();
   const autoPublishEligible =
     args.salary_present &&
-    args.score_total >= 85 &&
+    args.score_total >= minScore &&
     blocking.length === 0 &&
     warnings.filter((w) => w !== "SALARY_MISSING").length === 0;
 
