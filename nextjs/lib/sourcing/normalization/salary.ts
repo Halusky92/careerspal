@@ -71,7 +71,10 @@ function isNonExplicitSalary(text: string): boolean {
 
 export function parseSalaryFromText(text: string): ParsedSalary {
   const notes: string[] = [];
-  const clean = (text || "").trim();
+  const clean = (text || "")
+    .trim()
+    // Normalize common dash variants to hyphen so ranges like "$221,000—$260,000" match reliably.
+    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-");
   if (!clean) {
     return {
       salary_text_raw: null,
