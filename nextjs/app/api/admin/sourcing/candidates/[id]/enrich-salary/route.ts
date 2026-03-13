@@ -8,7 +8,8 @@ import { stripHtmlToText } from "../../../../../../../lib/sourcing/normalization
 
 export const runtime = "nodejs";
 
-async function readTextUpTo(response: Response, limitBytes = 250_000): Promise<string> {
+// Some employer job pages are long; keep a hard cap, but large enough to include compensation sections.
+async function readTextUpTo(response: Response, limitBytes = 900_000): Promise<string> {
   if (!response.body) return await response.text();
   const decoder = new TextDecoder("utf-8");
   let out = "";
@@ -90,7 +91,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: `Unsupported content-type: ${contentType || "unknown"}` }, { status: 400 });
   }
 
-  const html = await readTextUpTo(res, 250_000);
+  const html = await readTextUpTo(res, 900_000);
   const text = stripHtmlToText(html);
   const parsed = detectAndParseSalaryForGreenhouse(text);
 
