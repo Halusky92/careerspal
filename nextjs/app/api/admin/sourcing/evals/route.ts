@@ -39,7 +39,14 @@ export async function GET(request: Request) {
 
   const { data, error } = await q;
   if (error) {
-    return NextResponse.json({ error: "Unable to load evals." }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: `Unable to load evals: ${error.message || "unknown_error"}`,
+        code: (error as any).code || null,
+        hint: (error as any).hint || null,
+      },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({ evals: data || [] });
