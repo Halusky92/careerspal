@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../../lib/supabaseAdmin";
 import { getSupabaseProfile } from "../../../../../lib/supabaseServerAuth";
+import { inferGreenhouseBoardTokenFromUrl } from "../../../../../lib/sourcing/connectors/greenhouse";
+import { normalizeUrlForRegistry } from "../../../../../lib/sourcing/domain";
 
 export const runtime = "nodejs";
 
@@ -80,6 +82,20 @@ export async function PATCH(request: Request) {
   }
 
   // Mirror decision onto the source record (foundation only; no connectors yet).
+  const { data: sourceRow } = await supabaseAdmin
+    .from("sourcing_sources")
+    .select("id,source_type,base_url,normalized_url,ats_identifier,validator_output")
+    .eq("id", updatedReview.source_id)
+    .maybeSingle();
+
+  const baseOrNormalizedUrl = ((sourceRow as any)?.base_url || (sourceRow as any)?.normalized_url || "").toString();
+  const norm = baseOrNormalizedUrl ? normalizeUrlForRegistry(baseOrNormalizedUrl) : null;
+  const inputHostFromEvidence = ((sourceRow as any)?.validator_output?.input_host || "").toString().toLowerCase().trim();
+  const isCanonicalGreenhouse =
+    (norm?.host === "boards.greenhouse.io" || norm?.host === "boards.eu.greenhouse.io") ||
+    inputHostFromEvidence === "boards.greenhouse.io" ||
+    inputHostFromEvidence === "boards.eu.greenhouse.io";
+
   const sourceUpdate: Record<string, unknown> = {
     approved_by: auth.profile.id,
     approved_at: new Date().toISOString(),
@@ -91,6 +107,12 @@ export async function PATCH(request: Request) {
     sourceUpdate.validation_state = "allowed";
     // MVP: approved ATS sources are runnable immediately (still admin-only).
     sourceUpdate.enabled = true;
+    // Consistency: if the ATS is clearly Greenhouse canonical, ensure we do not leave it as "unknown".
+    if (isCanonicalGreenhouse) {
+      sourceUpdate.source_type = "greenhouse";
+      const existingId = ((sourceRow as any)?.ats_identifier || "").toString().trim();
+      sourceUpdate.ats_identifier = existingId || inferGreenhouseBoardTokenFromUrl(((sourceRow as any)?.normalized_url || (sourceRow as any)?.base_url || "").toString()) || null;
+    }
   } else if (decision === "approve_as_direct_custom") {
     sourceUpdate.approval_decision = "approved_as_direct_custom";
     sourceUpdate.validation_state = "allowed";

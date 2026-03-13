@@ -302,6 +302,12 @@ export async function validateSourceUrlV2(inputUrl: string, employerRegistrableD
     };
   }
 
+  // IMPORTANT: canonical ATS host detection should consider the ORIGINAL input host too.
+  // Some official ATS board URLs (e.g. Greenhouse) can redirect to an employer domain while still being a Greenhouse board.
+  const atsInputHost = detectAtsFromHost(input_host);
+  const atsIdFromInputUrl =
+    atsInputHost.type !== "unknown" ? extractAtsIdentifierFromUrl(atsInputHost.type, normalized.normalizedUrl) : null;
+
   // Host-based ATS detection (high confidence).
   const atsHost = detectAtsFromHost(final_host);
   const atsIdFromUrl =
@@ -321,6 +327,40 @@ export async function validateSourceUrlV2(inputUrl: string, employerRegistrableD
   if (multiDomains) manual_review_reason.push("REDIRECT_CHAIN_CROSSES_DOMAINS");
   if (denyHtml) manual_review_reason.push("DENYLIST_HIT_IN_CHAIN");
   if (fetched.html_multi_ats_signals) manual_review_reason.push("MULTI_ATS_SIGNALS");
+
+  // If the input host is a canonical ATS domain, trust that classification even if redirects go elsewhere.
+  if (atsInputHost.type !== "unknown") {
+    return {
+      source_allowed: true,
+      source_validation_result: "allowed",
+      source_validation_confidence: "high",
+      source_validation_reason: ["ATS_CANONICAL_DOMAIN"],
+      normalized_careers_url: normalized.normalizedUrl,
+      final_url_after_redirects,
+      redirect_chain: fetched.redirect_chain,
+      redirect_hops: fetched.redirect_hops,
+      input_host,
+      input_registrable_domain,
+      final_host,
+      final_registrable_domain,
+      matched_employer_domain: null,
+      matched_ats_domain: getRegistrableDomain(input_host),
+      detected_third_party_domain: null,
+      detected_ats_type: atsInputHost.type,
+      ats_identifier: atsIdFromInputUrl,
+      domain_match_type: "ats_canonical_match",
+      denylist_match: false,
+      denylist_match_domain: null,
+      needs_manual_review: true,
+      manual_review_reason: manual_review_reason.concat(atsIdFromInputUrl ? [] : ["CUSTOM_DOMAIN_TO_ATS"]),
+      notes: ["ATS canonical host detected (input URL). Requires admin mapping to company."],
+      fetch_status: fetched.fetch_status,
+      content_type: fetched.content_type,
+      page_title: fetched.page_title,
+      evidence_clues: ["host:ats_canonical_input"].concat(fetched.html_clues),
+      denylist_indicators_in_html: fetched.deny_indicators_in_html,
+    };
+  }
 
   if (atsHost.type !== "unknown") {
     return {
