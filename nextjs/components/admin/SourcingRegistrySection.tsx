@@ -175,6 +175,9 @@ export default function SourcingRegistrySection() {
   const [autoPublishMsg, setAutoPublishMsg] = useState<string>("");
   const [pipelineStatus, setPipelineStatus] = useState<"idle" | "running" | "success" | "error">("idle");
   const [pipelineMsg, setPipelineMsg] = useState<string>("");
+  const [backfillStatus, setBackfillStatus] = useState<"idle" | "running" | "success" | "error">("idle");
+  const [backfillMsg, setBackfillMsg] = useState<string>("");
+  const [backfillPreview, setBackfillPreview] = useState<{ matched: number; scanned: number } | null>(null);
 
   const filteredReviews = useMemo(() => reviews.filter((r) => r.status === reviewFilter), [reviews, reviewFilter]);
   const filteredGreenhouseSources = useMemo(
@@ -485,6 +488,51 @@ export default function SourcingRegistrySection() {
     } catch (e) {
       setPipelineStatus("error");
       setPipelineMsg(e instanceof Error ? e.message : "Pipeline failed.");
+    }
+  };
+
+  const runBackfillGreenhouse = async (dryRun: boolean) => {
+    setBackfillStatus("running");
+    setBackfillMsg("");
+    try {
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const resp = await authFetch(
+        "/api/admin/sourcing/backfill/greenhouse",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ limit: 200, dryRun }),
+        },
+        accessToken,
+      );
+      const json = (await resp.json()) as {
+        ok?: boolean;
+        dryRun?: boolean;
+        scanned?: number;
+        matched?: number;
+        updated?: number;
+        error?: string;
+      };
+      if (!resp.ok) throw new Error(json.error || "Backfill failed.");
+
+      const scanned = Number(json.scanned || 0) || 0;
+      const matched = Number(json.matched || 0) || 0;
+      const updated = Number(json.updated || 0) || 0;
+
+      if (dryRun) {
+        setBackfillPreview({ scanned, matched });
+        setBackfillMsg(`Preview: scanned ${scanned}, matched ${matched}.`);
+      } else {
+        setBackfillPreview(null);
+        setBackfillMsg(`Applied: updated ${updated} (matched ${matched}, scanned ${scanned}).`);
+      }
+      setBackfillStatus("success");
+
+      // Refresh sources/reviews after a backfill so the TYPE column updates.
+      await load();
+    } catch (e) {
+      setBackfillStatus("error");
+      setBackfillMsg(e instanceof Error ? e.message : "Backfill failed.");
     }
   };
 
@@ -828,6 +876,30 @@ export default function SourcingRegistrySection() {
                   {pipelineStatus === "running" ? "Running pipeline..." : "Run full pipeline now"}
                 </button>
                 <button
+                  onClick={() => runBackfillGreenhouse(true)}
+                  disabled={backfillStatus === "running"}
+                  className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    backfillStatus === "running"
+                      ? "border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                      : "border-amber-600/30 bg-amber-600/10 text-amber-200 hover:bg-amber-600/20"
+                  }`}
+                  title="Preview: finds canonical Greenhouse board sources incorrectly stored as unknown, without updating."
+                >
+                  Backfill Greenhouse sources
+                </button>
+                <button
+                  onClick={() => runBackfillGreenhouse(false)}
+                  disabled={backfillStatus === "running" || !(backfillPreview && backfillPreview.matched > 0)}
+                  className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    backfillStatus === "running" || !(backfillPreview && backfillPreview.matched > 0)
+                      ? "border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                      : "border-red-600/30 bg-red-600/10 text-red-200 hover:bg-red-600/20"
+                  }`}
+                  title="Apply: updates matched sources (unknown -> greenhouse + ats_identifier). Enabled only if preview found matches."
+                >
+                  Apply backfill
+                </button>
+                <button
                   onClick={runGreenhouseNow}
                   disabled={runNowStatus === "running"}
                   className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
@@ -891,6 +963,19 @@ export default function SourcingRegistrySection() {
                 aria-live="polite"
               >
                 {pipelineMsg}
+              </div>
+            )}
+            {backfillMsg && (
+              <div
+                className={`mt-3 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
+                  backfillStatus === "error"
+                    ? "border-red-600/30 bg-red-600/10 text-red-300"
+                    : "border-amber-600/30 bg-amber-600/10 text-amber-200"
+                }`}
+                role="status"
+                aria-live="polite"
+              >
+                {backfillMsg}
               </div>
             )}
 
