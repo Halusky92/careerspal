@@ -178,6 +178,8 @@ export default function SourcingRegistrySection() {
   const [backfillStatus, setBackfillStatus] = useState<"idle" | "running" | "success" | "error">("idle");
   const [backfillMsg, setBackfillMsg] = useState<string>("");
   const [backfillPreview, setBackfillPreview] = useState<{ matched: number; scanned: number } | null>(null);
+  const [enrichStatus, setEnrichStatus] = useState<"idle" | "running" | "success" | "error">("idle");
+  const [enrichMsg, setEnrichMsg] = useState<string>("");
 
   const filteredReviews = useMemo(() => reviews.filter((r) => r.status === reviewFilter), [reviews, reviewFilter]);
   const filteredGreenhouseSources = useMemo(
@@ -550,6 +552,34 @@ export default function SourcingRegistrySection() {
       setError(e instanceof Error ? e.message : "Unable to load candidate.");
     } finally {
       setCandidateDetailLoading(false);
+    }
+  };
+
+  const enrichSalaryFromJobPage = async (candidateId: string) => {
+    setEnrichStatus("running");
+    setEnrichMsg("");
+    try {
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const resp = await authFetch(
+        `/api/admin/sourcing/candidates/${encodeURIComponent(candidateId)}/enrich-salary`,
+        { method: "POST", headers: { "Content-Type": "application/json" } },
+        accessToken,
+      );
+      const json = (await resp.json()) as { ok?: boolean; updated?: boolean; reason?: string; candidate?: any; error?: string };
+      if (!resp.ok) throw new Error(json.error || "Enrichment failed.");
+      if (json.updated) {
+        setEnrichStatus("success");
+        setEnrichMsg("Salary updated from job page.");
+      } else {
+        setEnrichStatus("success");
+        setEnrichMsg(`No salary found (${json.reason || "not_found"}).`);
+      }
+      // Refresh candidate detail + list for badges.
+      await openCandidateDetail(candidateId);
+      await loadCandidates();
+    } catch (e) {
+      setEnrichStatus("error");
+      setEnrichMsg(e instanceof Error ? e.message : "Enrichment failed.");
     }
   };
 
@@ -1330,17 +1360,46 @@ export default function SourcingRegistrySection() {
                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Normalized candidate</div>
                 <div className="mt-1 text-sm font-black text-white">{(candidateDetail?.title as string) || "(loading...)"}</div>
               </div>
-              <button
-                onClick={() => {
-                  setSelectedCandidateId(null);
-                  setCandidateDetail(null);
-                }}
-                className="px-4 py-2 rounded-xl border border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-white"
-              >
-                Close
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => enrichSalaryFromJobPage(selectedCandidateId)}
+                  disabled={enrichStatus === "running"}
+                  className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    enrichStatus === "running"
+                      ? "border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                      : "border-emerald-600/30 bg-emerald-600/10 text-emerald-200 hover:bg-emerald-600/20"
+                  }`}
+                  title="Fetch salary from the official job page (job_url) if present. Never inferred."
+                >
+                  {enrichStatus === "running" ? "Fetching salary..." : "Fetch salary from job page"}
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedCandidateId(null);
+                    setCandidateDetail(null);
+                    setEnrichStatus("idle");
+                    setEnrichMsg("");
+                  }}
+                  className="px-4 py-2 rounded-xl border border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-white"
+                >
+                  Close
+                </button>
+              </div>
             </div>
             <div className="px-5 py-4">
+              {enrichMsg && (
+                <div
+                  className={`mb-3 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
+                    enrichStatus === "error"
+                      ? "border-red-600/30 bg-red-600/10 text-red-300"
+                      : "border-emerald-600/30 bg-emerald-600/10 text-emerald-200"
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {enrichMsg}
+                </div>
+              )}
               {candidateDetailLoading ? (
                 <div className="py-12 text-center text-slate-500 font-bold">Loading…</div>
               ) : candidateDetail ? (
