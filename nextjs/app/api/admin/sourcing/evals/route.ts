@@ -28,7 +28,8 @@ export async function GET(request: Request) {
     .select(
       "id,source_id,source_run_id,external_job_id,title,company_name,apply_url,job_url,salary_present,created_at," +
         "sourcing_candidate_scores(score_total,score_breakdown,reason_codes,computed_at)," +
-        "sourcing_candidate_dedupes(confidence,duplicate_of_candidate_id,duplicate_of_job_id,signals,computed_at)," +
+        // Disambiguate relationship: sourcing_candidate_dedupes has 2 FKs to candidates (candidate_id + duplicate_of_candidate_id)
+        "sourcing_candidate_dedupes!sourcing_candidate_dedupes_candidate_id_fkey(confidence,duplicate_of_candidate_id,duplicate_of_job_id,signals,computed_at)," +
         "sourcing_candidate_decisions(decision,score_total,blocking_reason_codes,warning_reason_codes,info_reason_codes,computed_at)",
     )
     .order("created_at", { ascending: false })

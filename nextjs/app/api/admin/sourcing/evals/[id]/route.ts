@@ -22,7 +22,8 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     .select(
       "*," +
         "sourcing_candidate_scores(*)," +
-        "sourcing_candidate_dedupes(*)," +
+        // Disambiguate relationship: sourcing_candidate_dedupes has 2 FKs to candidates (candidate_id + duplicate_of_candidate_id)
+        "sourcing_candidate_dedupes!sourcing_candidate_dedupes_candidate_id_fkey(*)," +
         "sourcing_candidate_decisions(*)",
     )
     .eq("id", id)

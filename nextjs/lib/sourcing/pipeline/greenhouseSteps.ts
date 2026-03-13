@@ -510,7 +510,8 @@ export async function autoPublishEligibleCandidates(
     .select(
       "id,source_id,source_run_id,source_type,source_url,external_job_id,job_url,apply_url,title,company_name,location_text,remote_policy,posted_at,description_clean,salary_text_raw,salary_amount_min,salary_amount_max,salary_currency,salary_period,salary_present,published_job_id,publish_status," +
         "sourcing_candidate_scores(score_total)," +
-        "sourcing_candidate_dedupes(confidence,duplicate_of_job_id)," +
+        // Disambiguate relationship: sourcing_candidate_dedupes has 2 FKs to candidates (candidate_id + duplicate_of_candidate_id)
+        "sourcing_candidate_dedupes!sourcing_candidate_dedupes_candidate_id_fkey(confidence,duplicate_of_job_id)," +
         "sourcing_candidate_decisions(decision,blocking_reason_codes,warning_reason_codes)",
     )
     .is("published_job_id", null)
