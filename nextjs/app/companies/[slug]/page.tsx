@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import CompanyLogo from "../../../components/CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../../../lib/jobs";
 import type { Company, Job } from "../../../types";
@@ -20,6 +21,15 @@ type CompanyFetchResult =
   | { kind: "error" };
 
 const getBaseUrl = () => {
+  // Prefer per-request host to avoid env mismatch across apex/www or preview domains.
+  try {
+    const h = headers();
+    const proto = (h.get("x-forwarded-proto") || "https").split(",")[0].trim();
+    const host = (h.get("x-forwarded-host") || h.get("host") || "").split(",")[0].trim();
+    if (host) return `${proto}://${host}`.replace(/\/+$/, "");
+  } catch {
+    // ignore (e.g. build time)
+  }
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
   if (siteUrl) return siteUrl.replace(/\/+$/, "");
   const vercelUrl = process.env.VERCEL_URL;
