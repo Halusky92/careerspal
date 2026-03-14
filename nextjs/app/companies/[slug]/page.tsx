@@ -133,8 +133,9 @@ async function fetchCompanyAndJobs(slug: string): Promise<{
         companyRow = { ...(companyRow as any), ...(patch as any) } as SupabaseCompanyRow;
       }
     }
-  } catch {
-    // ignore
+  } catch (e) {
+    // Don't block rendering; but log so we can debug production-only crashes.
+    console.error("[companies/[slug]] enrichment_failed", { slug, companyId: companyRow.id, website: companyRow.website, error: (e as any)?.message || String(e) });
   }
 
   const { data: jobs } = await supabaseAdmin

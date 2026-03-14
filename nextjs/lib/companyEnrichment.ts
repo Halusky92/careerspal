@@ -108,7 +108,15 @@ export async function enrichCompanyFromWebsite(args: {
   } catch {
     // ignore
   }
-  const html = new TextDecoder("utf-8").decode(Buffer.concat(chunks as any));
+
+  // Edge-safe concatenation (Buffer is not available on edge runtimes).
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    merged.set(c, offset);
+    offset += c.byteLength;
+  }
+  const html = new TextDecoder("utf-8").decode(merged);
   const base = (res.url || norm.normalizedUrl).toString();
 
   const description =
