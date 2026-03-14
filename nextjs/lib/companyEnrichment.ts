@@ -5,6 +5,7 @@ export type CompanyWebsiteEnrichment = {
   website: string | null;
   description: string | null;
   logo_url: string | null;
+  location?: string | null;
   notes: string[];
 };
 
@@ -29,6 +30,51 @@ function absolutizeUrl(base: string, maybe: string | null): string | null {
   } catch {
     return null;
   }
+}
+
+function extractJsonLdOrganization(html: string): { description?: string | null; logo?: string | null; website?: string | null; location?: string | null } {
+  const raw = (html || "").toString();
+  if (!raw) return {};
+  const scripts = raw.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi) || [];
+  for (const s of scripts) {
+    const jsonText = s
+      .replace(/^[\s\S]*?>/i, "")
+      .replace(/<\/script>\s*$/i, "")
+      .trim();
+    if (!jsonText) continue;
+    try {
+      const parsed = JSON.parse(jsonText);
+      const nodes: any[] = Array.isArray(parsed)
+        ? parsed
+        : parsed && Array.isArray((parsed as any)["@graph"])
+          ? (parsed as any)["@graph"]
+          : [parsed];
+      for (const n of nodes) {
+        const t = (n as any)?.["@type"];
+        const types = Array.isArray(t) ? t : t ? [t] : [];
+        const isOrg = types.map((x) => String(x).toLowerCase()).includes("organization");
+        if (!isOrg) continue;
+        const desc = ((n as any)?.description || (n as any)?.slogan || "")?.toString?.().trim?.() || null;
+        const url = ((n as any)?.url || "")?.toString?.().trim?.() || null;
+        const logoRaw = (n as any)?.logo;
+        const logo =
+          typeof logoRaw === "string"
+            ? logoRaw
+            : logoRaw && typeof logoRaw === "object"
+              ? ((logoRaw as any)?.url || (logoRaw as any)?.["@id"] || null)
+              : null;
+        const addr = (n as any)?.address;
+        const location =
+          addr && typeof addr === "object"
+            ? [addr.addressLocality, addr.addressRegion, addr.addressCountry].filter(Boolean).join(", ") || null
+            : null;
+        return { description: desc, logo: logo ? String(logo).trim() : null, website: url ? String(url).trim() : null, location };
+      }
+    } catch {
+      // ignore malformed json-ld blocks
+    }
+  }
+  return {};
 }
 
 export async function enrichCompanyFromWebsite(args: {
@@ -119,19 +165,22 @@ export async function enrichCompanyFromWebsite(args: {
   const html = new TextDecoder("utf-8").decode(merged);
   const base = (res.url || norm.normalizedUrl).toString();
 
+  const jsonld = extractJsonLdOrganization(html);
   const description =
     extractMeta(html, "og:description") || extractMeta(html, "twitter:description") || extractMeta(html, "description");
   const image =
     extractMeta(html, "og:logo") || extractMeta(html, "og:image") || extractMeta(html, "twitter:image");
-  const logoUrl = absolutizeUrl(base, image) || absolutizeUrl(base, "/favicon.ico");
+  const logoUrl =
+    absolutizeUrl(base, image) || absolutizeUrl(base, jsonld.logo || null) || absolutizeUrl(base, "/favicon.ico");
 
   if (!description) notes.push("no_description_meta");
   if (!logoUrl) notes.push("no_logo_meta");
 
   return {
-    website: base,
-    description: description ? description.slice(0, 280) : null,
+    website: jsonld.website ? jsonld.website : base,
+    description: (description || jsonld.description) ? String(description || jsonld.description).slice(0, 280) : null,
     logo_url: logoUrl,
+    location: jsonld.location || null,
     notes,
   };
 }

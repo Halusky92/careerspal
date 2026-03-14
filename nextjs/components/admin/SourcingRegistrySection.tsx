@@ -173,6 +173,9 @@ export default function SourcingRegistrySection() {
   const [evalRows, setEvalRows] = useState<any[]>([]);
   const [autoPublishStatus, setAutoPublishStatus] = useState<"idle" | "running" | "success" | "error">("idle");
   const [autoPublishMsg, setAutoPublishMsg] = useState<string>("");
+  const [repairCompanySlug, setRepairCompanySlug] = useState<string>("samsara");
+  const [repairCompanyStatus, setRepairCompanyStatus] = useState<"idle" | "running" | "success" | "error">("idle");
+  const [repairCompanyMsg, setRepairCompanyMsg] = useState<string>("");
   const [pipelineStatus, setPipelineStatus] = useState<"idle" | "running" | "success" | "error">("idle");
   const [pipelineMsg, setPipelineMsg] = useState<string>("");
   const [backfillStatus, setBackfillStatus] = useState<"idle" | "running" | "success" | "error">("idle");
@@ -444,6 +447,30 @@ export default function SourcingRegistrySection() {
     } catch (e) {
       setAutoPublishStatus("error");
       setAutoPublishMsg(e instanceof Error ? e.message : "Auto-publish failed.");
+    }
+  };
+
+  const runRepairCompany = async () => {
+    setRepairCompanyStatus("running");
+    setRepairCompanyMsg("");
+    try {
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const slug = repairCompanySlug.trim();
+      if (!slug) throw new Error("Enter a company slug (e.g., samsara).");
+      const resp = await authFetch(
+        "/api/admin/companies/repair",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) },
+        accessToken,
+      );
+      const json = (await resp.json()) as any;
+      if (!resp.ok) throw new Error(json.error || "Repair failed.");
+      setRepairCompanyStatus("success");
+      setRepairCompanyMsg(
+        `Repaired ${json.slug}: relinked ${json.relinkedJobs ?? 0} jobs, patched ${Object.keys(json.patch || {}).length} fields.`,
+      );
+    } catch (e) {
+      setRepairCompanyStatus("error");
+      setRepairCompanyMsg(e instanceof Error ? e.message : "Repair failed.");
     }
   };
 
@@ -955,6 +982,41 @@ export default function SourcingRegistrySection() {
                 </button>
               </div>
             </div>
+
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Company repair</div>
+              <input
+                value={repairCompanySlug}
+                onChange={(e) => setRepairCompanySlug(e.target.value)}
+                placeholder="company slug (e.g., samsara)"
+                className="w-full sm:w-64 px-3 py-2 rounded-xl border border-slate-800 bg-slate-950/60 text-slate-200 text-sm font-bold placeholder:text-slate-600"
+              />
+              <button
+                onClick={runRepairCompany}
+                disabled={repairCompanyStatus === "running"}
+                className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                  repairCompanyStatus === "running"
+                    ? "border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                    : "border-emerald-600/30 bg-emerald-600/10 text-emerald-200 hover:bg-emerald-600/20"
+                }`}
+                title="Safely fill missing website/logo/description and relink jobs to the canonical company row."
+              >
+                {repairCompanyStatus === "running" ? "Repairing..." : "Repair company"}
+              </button>
+            </div>
+            {repairCompanyMsg && (
+              <div
+                className={`mt-3 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
+                  repairCompanyStatus === "error"
+                    ? "border-red-600/30 bg-red-600/10 text-red-300"
+                    : "border-emerald-600/30 bg-emerald-600/10 text-emerald-300"
+                }`}
+                role="status"
+                aria-live="polite"
+              >
+                {repairCompanyMsg}
+              </div>
+            )}
 
             {runNowMsg && (
               <div
