@@ -205,7 +205,30 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
 
   const salaryPresent = Boolean((candidate as any).salary_present);
   const salaryConfidence = ((candidate as any).salary_confidence || "unknown").toString();
+  const shouldReopenForPublish =
+    ((candidate as any).published_job_id == null) && (((candidate as any).publish_status || "").toString() === "skipped_not_eligible");
+
+  // If the candidate already has a usable salary, avoid refetching the page. But we still may want to reopen the
+  // candidate for auto-publish if it was previously skipped due to missing salary.
   if (salaryPresent && (salaryConfidence === "high" || salaryConfidence === "medium")) {
+    if (shouldReopenForPublish) {
+      const { data: reopened, error: reopenErr } = await supabaseAdmin
+        .from("sourcing_sourced_job_candidates")
+        .update({
+          publish_status: "not_published",
+          publish_notes: "Reopened after salary was already present.",
+        })
+        .eq("id", id)
+        .select("id,publish_status,publish_notes,salary_present,salary_confidence")
+        .single();
+
+      if (reopenErr || !reopened) {
+        return NextResponse.json({ error: "Unable to reopen candidate for publish." }, { status: 500 });
+      }
+
+      return NextResponse.json({ ok: true, updated: true, reason: "reopened_for_publish", candidate: reopened });
+    }
+
     return NextResponse.json({ ok: true, updated: false, reason: "already_has_salary" });
   }
 
@@ -372,9 +395,6 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     salary_text_raw: parsed.salary_text_raw,
     salary_parse_notes: parsed.salary_parse_notes,
   };
-
-  const shouldReopenForPublish =
-    ((candidate as any).published_job_id == null) && (((candidate as any).publish_status || "").toString() === "skipped_not_eligible");
 
   const { data: updated, error: upErr } = await supabaseAdmin
     .from("sourcing_sourced_job_candidates")
