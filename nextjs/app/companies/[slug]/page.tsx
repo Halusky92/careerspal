@@ -140,7 +140,7 @@ async function fetchCompanyAndJobs(slug: string): Promise<{
   const { data: jobs } = await supabaseAdmin
     .from("jobs")
     .select(
-      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,logo_url,website,description,verified)",
+      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
     )
     .eq("company_id", companyRow.id)
     .eq("status", "published")
@@ -199,162 +199,258 @@ export default async function CompanyPage({ params }: PageProps) {
   const companyWebsite = (company.website || "").trim();
   const companyDescription = (company.description || "").trim();
   const companyLocation = (company.location || "").trim();
+  const employeeCount = (company as any).employee_count ? String((company as any).employee_count).trim() : "";
   const showVerified = Boolean(company.verified);
+
+  const stack = Array.from(
+    new Set(
+      jobs
+        .flatMap((j) => (j.tools && j.tools.length > 0 ? j.tools : j.tags || []))
+        .map((v) => (v || "").toString().trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, 18);
+
+  const benefits = Array.from(
+    new Set(
+      jobs
+        .flatMap((j) => (j.benefits || []) as string[])
+        .map((v) => (v || "").toString().trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, 18);
 
   return (
     <div className="bg-[#F8F9FD] pb-20">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
         <div className="flex items-center justify-between gap-3">
-          <Link href="/companies" className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-indigo-700">
-            <span aria-hidden="true">←</span> Companies
+          <Link href="/jobs" className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-indigo-700">
+            <span aria-hidden="true">←</span> Back to jobs
           </Link>
           <Link
-            href={jobs.length > 0 ? `/jobs?query=${encodeURIComponent(companyName)}` : "/jobs"}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
+            href="/post-a-job"
+            className="inline-flex items-center gap-2 rounded-full bg-slate-900 text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-black"
           >
-            Browse jobs →
+            Post a job
           </Link>
         </div>
 
-        <div className="mt-6 rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] overflow-hidden">
-          <div className="p-6 sm:p-10 border-b border-slate-100">
-            <div className="flex flex-col sm:flex-row sm:items-start gap-6">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0">
-                <CompanyLogo
-                  name={companyName}
-                  logoUrl={company.logo_url}
-                  website={companyWebsite || undefined}
-                  className="w-full h-full rounded-xl overflow-hidden bg-white"
-                  imageClassName="w-full h-full object-contain"
-                  fallbackClassName="text-[10px]"
-                />
-              </div>
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Sidebar */}
+          <aside className="lg:col-span-4">
+            <div className="lg:sticky lg:top-28 rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] overflow-hidden">
+              <div className="p-6 sm:p-8 border-b border-slate-100">
+                <div className="w-20 h-20 rounded-[1.6rem] overflow-hidden bg-white border border-slate-200/70 p-2">
+                  <CompanyLogo
+                    name={companyName}
+                    logoUrl={company.logo_url}
+                    website={companyWebsite || undefined}
+                    className="w-full h-full rounded-xl overflow-hidden bg-white"
+                    imageClassName="w-full h-full object-contain"
+                    fallbackClassName="text-[10px]"
+                  />
+                </div>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
+                <h1 className="mt-5 text-3xl font-black text-slate-900 tracking-tight">{companyName}</h1>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   {showVerified && (
                     <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
                       Verified
                     </span>
                   )}
+                  <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
+                    Jobs posted: {jobs.length}
+                  </span>
+                </div>
+
+                <div className="mt-5 space-y-3 text-sm font-bold text-slate-700">
                   {companyLocation && (
-                    <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
-                      {companyLocation}
-                    </span>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-500">HQ</span>
+                      <span className="text-slate-900">{companyLocation}</span>
+                    </div>
                   )}
-                  {jobs.length > 0 && (
-                    <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
-                      {jobs.length} live role{jobs.length === 1 ? "" : "s"}
-                    </span>
+                  {employeeCount && (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-500">Size</span>
+                      <span className="text-slate-900">{employeeCount}</span>
+                    </div>
+                  )}
+                  {companyWebsite && (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-500">Website</span>
+                      <a
+                        href={companyWebsite}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-700 hover:text-indigo-800 hover:underline decoration-indigo-300 underline-offset-2"
+                      >
+                        {safeHost(companyWebsite)}
+                      </a>
+                    </div>
                   )}
                 </div>
 
-                <h1 className="mt-4 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight">
-                  {companyName}
-                </h1>
-
-                {companyWebsite && (
-                  <div className="mt-2">
-                    <a
-                      href={companyWebsite}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-black text-indigo-700 hover:text-indigo-800 hover:underline decoration-indigo-300 underline-offset-2"
-                    >
-                      {safeHost(companyWebsite)} →
-                    </a>
-                  </div>
-                )}
-
-                {companyDescription && !companyDescription.toLowerCase().includes("coming soon") && (
-                  <p className="mt-4 text-slate-700 font-medium leading-relaxed">
-                    {companyDescription}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6 sm:p-10">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">Live roles</h2>
-                <p className="mt-2 text-slate-600 font-medium">
-                  {jobs.length > 0 ? "Published roles currently live on CareersPal." : "No published roles live right now."}
-                </p>
-              </div>
-              <div className="hidden sm:flex items-center gap-2">
-                <Link
-                  href="/post-a-job"
-                  className="inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-700 transition-colors"
-                >
-                  Post a job
-                </Link>
-              </div>
-            </div>
-
-            {jobs.length > 0 ? (
-              <ul className="mt-6 space-y-3">
-                {jobs.map((job) => {
-                  const href = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
-                  return (
-                    <li key={job.id} className="rounded-3xl border border-slate-200/60 bg-white px-5 py-5 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <Link href={href} className="block text-base sm:text-lg font-black text-slate-900 hover:text-indigo-700">
-                            {job.title}
-                          </Link>
-                          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-bold text-slate-600">
-                            {job.category && <span className="truncate">{job.category}</span>}
-                            {job.category && <span className="text-slate-300">•</span>}
-                            <span className="truncate">{job.location}</span>
-                            <span className="text-slate-300">•</span>
-                            <span className="truncate">{job.type}</span>
-                            {job.remotePolicy && (
-                              <>
-                                <span className="text-slate-300">•</span>
-                                <span className="truncate">{job.remotePolicy}</span>
-                              </>
-                            )}
-                            {job.postedAt && (
-                              <>
-                                <span className="text-slate-300">•</span>
-                                <span className="truncate">Posted {job.postedAt}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex-shrink-0 text-right">
-                          <div className="text-sm font-black text-slate-900 whitespace-nowrap">
-                            {job.salary || "Salary listed"}
-                          </div>
-                          <div className="mt-2">
-                            <Link
-                              href={href}
-                              className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
-                            >
-                              View role →
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 p-8 text-center">
-                <p className="text-slate-600 font-medium">Browse the job board for other live roles.</p>
-                <div className="mt-4">
-                  <Link
-                    href="/jobs"
-                    className="inline-flex items-center justify-center rounded-2xl bg-slate-900 text-white px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-black"
+                <div className="mt-6 flex flex-col gap-2">
+                  <a
+                    href="#roles"
+                    className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 text-white px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
                   >
-                    Browse jobs
-                  </Link>
+                    View roles →
+                  </a>
+                  <a
+                    href={companyWebsite || "#"}
+                    target={companyWebsite ? "_blank" : undefined}
+                    rel={companyWebsite ? "noopener noreferrer" : undefined}
+                    className="inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-700 transition-colors"
+                  >
+                    {companyWebsite ? "Visit website" : "Website not provided"}
+                  </a>
                 </div>
               </div>
+
+              <div className="p-6 sm:p-8">
+                <div className="flex flex-wrap gap-2">
+                  <a href="#about" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
+                    About
+                  </a>
+                  {stack.length > 0 && (
+                    <a href="#stack" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
+                      Stack
+                    </a>
+                  )}
+                  {benefits.length > 0 && (
+                    <a href="#benefits" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
+                      Benefits
+                    </a>
+                  )}
+                  <a href="#roles" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
+                    Roles
+                  </a>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {/* Main */}
+          <div className="lg:col-span-8 space-y-6">
+            <section id="about" className="rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] p-6 sm:p-10">
+              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">About</div>
+              <h2 className="mt-3 text-2xl sm:text-3xl font-black text-slate-900">What they do</h2>
+              <p className="mt-4 text-slate-700 font-medium leading-relaxed">
+                {companyDescription && !companyDescription.toLowerCase().includes("coming soon")
+                  ? companyDescription
+                  : "No company description yet. Always verify details on the official company site."}
+              </p>
+            </section>
+
+            {stack.length > 0 && (
+              <section id="stack" className="rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] p-6 sm:p-10">
+                <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Stack</div>
+                <h2 className="mt-3 text-2xl sm:text-3xl font-black text-slate-900">Tools & keywords seen in roles</h2>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {stack.map((t) => (
+                    <span key={t} className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-4 text-xs text-slate-500 font-medium">
+                  Derived from published role descriptions. Not guaranteed for every team.
+                </p>
+              </section>
             )}
+
+            {benefits.length > 0 && (
+              <section id="benefits" className="rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] p-6 sm:p-10">
+                <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Benefits</div>
+                <h2 className="mt-3 text-2xl sm:text-3xl font-black text-slate-900">Benefits mentioned in roles</h2>
+                <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700 font-medium">
+                  {benefits.map((b) => (
+                    <li key={b} className="flex items-start gap-2">
+                      <span className="text-emerald-600 font-black mt-0.5">✓</span>
+                      <span>{b}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <section id="roles" className="rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] p-6 sm:p-10">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Roles</div>
+                  <h2 className="mt-3 text-2xl sm:text-3xl font-black text-slate-900">All {companyName} roles</h2>
+                  <p className="mt-2 text-slate-600 font-medium">
+                    {jobs.length > 0 ? "Published roles currently live on CareersPal." : "No published roles live right now."}
+                  </p>
+                </div>
+              </div>
+
+              {jobs.length > 0 ? (
+                <ul className="mt-6 space-y-3">
+                  {jobs.map((job) => {
+                    const href = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
+                    return (
+                      <li key={job.id} className="rounded-3xl border border-slate-200/60 bg-white px-5 py-5 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <Link href={href} className="block text-base sm:text-lg font-black text-slate-900 hover:text-indigo-700">
+                              {job.title}
+                            </Link>
+                            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-bold text-slate-600">
+                              {job.category && <span className="truncate">{job.category}</span>}
+                              {job.category && <span className="text-slate-300">•</span>}
+                              <span className="truncate">{job.location}</span>
+                              <span className="text-slate-300">•</span>
+                              <span className="truncate">{job.type}</span>
+                              {job.remotePolicy && (
+                                <>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="truncate">{job.remotePolicy}</span>
+                                </>
+                              )}
+                              {job.postedAt && (
+                                <>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="truncate">Posted {job.postedAt}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0 text-right">
+                            <div className="text-sm font-black text-slate-900 whitespace-nowrap">
+                              {job.salary || "Salary listed"}
+                            </div>
+                            <div className="mt-2">
+                              <Link
+                                href={href}
+                                className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
+                              >
+                                View role →
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 p-8 text-center">
+                  <p className="text-slate-600 font-medium">Browse the job board for other live roles.</p>
+                  <div className="mt-4">
+                    <Link
+                      href="/jobs"
+                      className="inline-flex items-center justify-center rounded-2xl bg-slate-900 text-white px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-black"
+                    >
+                      Browse jobs
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </section>
           </div>
         </div>
       </div>

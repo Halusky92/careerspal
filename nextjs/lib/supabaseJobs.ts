@@ -2,6 +2,7 @@ import { Job, PlanType } from "../types";
 
 export type SupabaseCompanyRow = {
   name?: string | null;
+  slug?: string | null;
   logo_url?: string | null;
   website?: string | null;
   description?: string | null;
@@ -44,6 +45,7 @@ export const mapSupabaseJob = (row: SupabaseJobRow): Job => ({
   id: row.id,
   title: row.title || "",
   company: row.companies?.name || "Unknown",
+  companySlug: row.companies?.slug || undefined,
   logo: row.logo_url || row.companies?.logo_url || "",
   location: row.location || "Remote",
   type: (row.type as Job["type"]) || "Full-time",

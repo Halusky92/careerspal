@@ -95,11 +95,12 @@ export default function JobRow({
   const [menuOpen, setMenuOpen] = useState(false);
 
   const companyPath = `/companies/${createCompanySlug({ name: job.company })}`;
+  const companyPathResolved = `/companies/${(job.companySlug || createCompanySlug({ name: job.company })).trim()}`;
   const companyHref =
     typeof window !== "undefined" &&
     (window.location.hostname === "careerspal.com" || window.location.hostname === "www.careerspal.com")
-      ? `https://www.careerspal.com${companyPath}`
-      : companyPath;
+      ? `https://www.careerspal.com${companyPathResolved}`
+      : companyPathResolved;
 
   const isElite = job.planType === "Elite Managed";
   const isPro = job.planType === "Featured Pro";

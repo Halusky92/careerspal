@@ -63,7 +63,7 @@ export default function JobCard({
   className = "",
 }: JobCardProps) {
   const router = useRouter();
-  const companyPath = `/companies/${createCompanySlug({ name: job.company })}`;
+  const companyPath = `/companies/${(job.companySlug || createCompanySlug({ name: job.company })).trim()}`;
   const companyHref =
     typeof window !== "undefined" &&
     (window.location.hostname === "careerspal.com" || window.location.hostname === "www.careerspal.com")

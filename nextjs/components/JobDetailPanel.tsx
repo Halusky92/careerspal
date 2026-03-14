@@ -51,7 +51,9 @@ export default function JobDetailPanel({
 }: JobDetailPanelProps) {
   const router = useRouter();
 
-  const companyPath = job ? `/companies/${createCompanySlug({ name: job.company })}` : "/companies";
+  const companyPath = job
+    ? `/companies/${(job.companySlug || createCompanySlug({ name: job.company })).trim()}`
+    : "/companies";
   const companyHref =
     typeof window !== "undefined" &&
     (window.location.hostname === "careerspal.com" || window.location.hostname === "www.careerspal.com")

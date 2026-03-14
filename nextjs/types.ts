@@ -24,6 +24,7 @@ export interface Job {
   id: string;
   title: string;
   company: string;
+  companySlug?: string;
   logo: string;
   location: string;
   type: 'Full-time' | 'Contract' | 'Part-time';
