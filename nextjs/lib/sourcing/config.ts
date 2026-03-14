@@ -1,6 +1,6 @@
 export function getSourcingAutoPublishMinScore(): number {
-  const raw = Number.parseInt(process.env.SOURCING_AUTO_PUBLISH_SCORE || "78", 10);
-  const n = Number.isFinite(raw) ? raw : 78;
+  const raw = Number.parseInt(process.env.SOURCING_AUTO_PUBLISH_SCORE || "85", 10);
+  const n = Number.isFinite(raw) ? raw : 85;
   return Math.min(100, Math.max(0, n));
 }
 
