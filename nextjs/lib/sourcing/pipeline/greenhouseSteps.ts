@@ -12,6 +12,8 @@ import { scoreCandidate } from "../evaluation/scoring";
 import { dedupeAgainst, type CandidateForDedupe } from "../evaluation/dedupe";
 import { prepareDecision } from "../evaluation/decision";
 import { getSourcingAutoPublishMinScore, getSourcingAutoPublishSupportedSourceTypes } from "../config";
+import { stripHtmlToText } from "../normalization/text";
+import { createCompanySlug } from "../../jobs";
 
 type AdminSb = SupabaseClient<any, "public", any>;
 
@@ -573,6 +575,70 @@ export async function autoPublishEligibleCandidates(
     return "";
   };
 
+  const deriveCompanyWebsite = (candidate: AutoPublishCandidateRow, src?: SourceRowForPublish) => {
+    const tryUrl = (value?: string | null) => {
+      const raw = (value || "").trim();
+      if (!raw || raw === "#" || raw.startsWith("mailto:") || raw.startsWith("/")) return null;
+      try {
+        const u = new URL(raw);
+        return `${u.protocol}//${u.hostname}`;
+      } catch {
+        return null;
+      }
+    };
+    // Prefer the public job page host (often has the right domain), then fall back to source URLs.
+    return (
+      tryUrl(candidate.job_url) ||
+      tryUrl(candidate.apply_url) ||
+      tryUrl(src?.normalized_url || null) ||
+      tryUrl(src?.base_url || null) ||
+      null
+    );
+  };
+
+  const deriveFaviconUrl = (website: string | null) => {
+    const raw = (website || "").trim();
+    if (!raw) return null;
+    try {
+      const u = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+      return `${u.protocol}//${u.hostname}/favicon.ico`;
+    } catch {
+      return null;
+    }
+  };
+
+  const inferCategory = (candidate: AutoPublishCandidateRow) => {
+    const blob = [candidate.title, candidate.description_clean, candidate.location_text, candidate.remote_policy]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    if (!blob) return "Operations";
+    if (blob.includes("chief of staff") || blob.includes("office of the ceo") || blob.includes("strategic initiatives"))
+      return "Executive & Staff";
+    if (blob.includes("product ops") || blob.includes("product operations")) return "Product Management";
+    if (
+      blob.includes("revops") ||
+      blob.includes("revenue operations") ||
+      blob.includes("marketing ops") ||
+      blob.includes("sales ops") ||
+      blob.includes("gtm operations")
+    )
+      return "Marketing & Growth Ops"; // TEMP mapping for RevOps hub
+    if (blob.includes("automation") || blob.includes("zapier") || blob.includes("make.com") || blob.includes("n8n"))
+      return "Automation";
+    if (
+      blob.includes("systems") ||
+      blob.includes("business systems") ||
+      blob.includes("salesforce") ||
+      blob.includes("hubspot") ||
+      blob.includes("netsuite") ||
+      blob.includes("workday") ||
+      blob.includes("integrations")
+    )
+      return "Systems Design";
+    return "Operations";
+  };
+
   for (const r of rows) {
     const candidate = r as AutoPublishCandidateRow & {
       sourcing_candidate_scores?: { score_total?: number } | null;
@@ -586,6 +652,9 @@ export async function autoPublishEligibleCandidates(
     const blocking = (candidate.sourcing_candidate_decisions?.blocking_reason_codes as string[] | undefined) || [];
     const dupConfidence = (candidate.sourcing_candidate_dedupes?.confidence || "none").toString();
     const derivedCompanyName = deriveCompanyName(candidate, src);
+    const derivedCompanyWebsite = deriveCompanyWebsite(candidate, src);
+    const derivedCompanySlug = derivedCompanyName ? createCompanySlug({ name: derivedCompanyName }) : null;
+    const derivedLogoUrl = deriveFaviconUrl(derivedCompanyWebsite);
 
     const ineligibleReasons: string[] = [];
     if (decision !== "auto_publish_candidate") ineligibleReasons.push(`decision=${decision || "null"}`);
@@ -651,20 +720,48 @@ export async function autoPublishEligibleCandidates(
         continue;
       }
 
-      const { data: companyRow, error: cErr } = await sb
+      // Create / patch company record (avoid overwriting non-null fields).
+      const { data: existingCompany } = await sb
         .from("companies")
-        .upsert(
-          {
+        .select("id,slug,website,logo_url")
+        .eq("name", companyName)
+        .maybeSingle();
+
+      if (!existingCompany?.id) {
+        const { data: createdCompany, error: cErr } = await sb
+          .from("companies")
+          .insert({
             name: companyName,
-            website: null,
-            logo_url: null,
+            slug: derivedCompanySlug,
+            website: derivedCompanyWebsite,
+            logo_url: derivedLogoUrl,
             created_by: actorId,
-          },
-          { onConflict: "name" },
-        )
-        .select("id")
-        .single();
-      if (cErr || !companyRow?.id) {
+          })
+          .select("id")
+          .single();
+
+        if (cErr || !createdCompany?.id) {
+          failed += 1;
+          await sb
+            .from("sourcing_sourced_job_candidates")
+            .update({ publish_status: "failed", publish_notes: "Company insert failed." })
+            .eq("id", candidate.id);
+          results.push({ candidateId: candidate.id, status: "failed", error: "company_insert_failed" });
+          continue;
+        }
+        companyId = createdCompany.id as string;
+      } else {
+        companyId = existingCompany.id as string;
+        const patch: Record<string, unknown> = {};
+        if (!existingCompany.slug && derivedCompanySlug) patch.slug = derivedCompanySlug;
+        if (!existingCompany.website && derivedCompanyWebsite) patch.website = derivedCompanyWebsite;
+        if (!existingCompany.logo_url && derivedLogoUrl) patch.logo_url = derivedLogoUrl;
+        if (Object.keys(patch).length > 0) {
+          await sb.from("companies").update(patch).eq("id", companyId);
+        }
+      }
+
+      if (!companyId) {
         failed += 1;
         await sb
           .from("sourcing_sourced_job_candidates")
@@ -673,7 +770,6 @@ export async function autoPublishEligibleCandidates(
         results.push({ candidateId: candidate.id, status: "failed", error: "company_upsert_failed" });
         continue;
       }
-      companyId = companyRow.id as string;
     }
 
     const now = Date.now();
@@ -684,24 +780,29 @@ export async function autoPublishEligibleCandidates(
         ? `${candidate.salary_amount_min ?? ""}-${candidate.salary_amount_max ?? ""} ${candidate.salary_currency ?? ""} ${candidate.salary_period ?? ""}`.trim()
         : "");
 
+    const cleanedDescription = stripHtmlToText(
+      ((candidate as any).description_raw || candidate.description_clean || "").toString(),
+    ).trim();
+    const category = inferCategory(candidate);
+
     const jobInsert = {
       company_id: companyId,
       title: (candidate.title || "").trim() || "Untitled role",
-      description: (candidate.description_clean || "").trim() || "",
+      description: cleanedDescription || "",
       location: candidate.location_text || null,
       remote_policy: candidate.remote_policy || null,
-      type: null,
+      type: "Full-time",
       salary: salaryText || null,
       salary_min: candidate.salary_amount_min || null,
       salary_max: candidate.salary_amount_max || null,
       salary_currency: candidate.salary_currency || null,
       posted_at_text: candidate.posted_at ? new Date(candidate.posted_at).toISOString().slice(0, 10) : "Just now",
       timestamp: Number.isFinite(timestamp) ? Math.floor(timestamp) : now,
-      category: null,
+      category,
       apply_url: applyUrl,
       company_description: null,
-      company_website: null,
-      logo_url: src?.companies?.logo_url || null,
+      company_website: derivedCompanyWebsite || src?.companies?.website || null,
+      logo_url: src?.companies?.logo_url || derivedLogoUrl || null,
       tags: null,
       tools: null,
       benefits: null,

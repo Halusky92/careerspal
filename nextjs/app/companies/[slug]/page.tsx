@@ -53,11 +53,30 @@ async function fetchCompanyAndJobs(slug: string): Promise<{
 } | null> {
   if (!supabaseAdmin) return null;
 
-  const { data: company } = await supabaseAdmin
+  let { data: company } = await supabaseAdmin
     .from("companies")
     .select("id,name,slug,website,description,logo_url,location,verified")
     .eq("slug", slug)
     .maybeSingle();
+
+  // Self-heal: some records may exist without a slug (legacy / imported / auto-created).
+  // Try a conservative fallback lookup by exact name match (case-insensitive) and then set slug.
+  if (!company) {
+    const nameGuess = slug.replace(/-/g, " ").trim();
+    const { data: byName } = await supabaseAdmin
+      .from("companies")
+      .select("id,name,slug,website,description,logo_url,location,verified")
+      .ilike("name", nameGuess)
+      .maybeSingle();
+
+    if (byName?.id) {
+      company = byName as any;
+      if (!byName.slug) {
+        await supabaseAdmin.from("companies").update({ slug }).eq("id", byName.id);
+        company.slug = slug;
+      }
+    }
+  }
 
   if (!company) return null;
 

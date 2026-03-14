@@ -3,10 +3,10 @@ export function stripHtmlToText(html: string): string {
   if (!raw) return "";
   // Remove scripts/styles.
   const noScripts = raw.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ");
-  // Replace tags with spaces.
-  const noTags = noScripts.replace(/<[^>]+>/g, " ");
   // Decode a few common HTML entities (minimal, safe).
-  const decoded = noTags
+  // NOTE: Some ATS payloads contain HTML that is itself escaped (e.g. "&lt;div&gt;...").
+  // We decode first, then strip tags, then normalize whitespace.
+  const decoded = noScripts
     .replace(/&nbsp;/g, " ")
     // Normalize common dash entities so salary ranges like "$120k &mdash; $150k" can be parsed.
     .replace(/&mdash;|&#8212;|&#x2014;/gi, "-")
@@ -17,7 +17,10 @@ export function stripHtmlToText(html: string): string {
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'");
-  return decoded.replace(/\s+/g, " ").trim();
+
+  // Replace tags with spaces (after decoding, to handle escaped HTML).
+  const noTags = decoded.replace(/<[^>]+>/g, " ");
+  return noTags.replace(/\s+/g, " ").trim();
 }
 
 export function extractCompensationSnippet(text: string): string | null {

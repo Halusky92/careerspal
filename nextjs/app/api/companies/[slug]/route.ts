@@ -35,11 +35,28 @@ export const GET = async (_request: Request, context: { params: Promise<{ slug: 
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }
 
-  const { data: company } = await supabaseAdmin
+  let { data: company } = await supabaseAdmin
     .from("companies")
     .select("id,name,slug,website,description,long_description,logo_url,location,employee_count")
     .eq("slug", slug)
     .single();
+
+  // Self-heal fallback for legacy records without slug: try case-insensitive exact name match.
+  if (!company) {
+    const nameGuess = slug.replace(/-/g, " ").trim();
+    const { data: byName } = await supabaseAdmin
+      .from("companies")
+      .select("id,name,slug,website,description,long_description,logo_url,location,employee_count")
+      .ilike("name", nameGuess)
+      .maybeSingle();
+    if (byName?.id) {
+      company = byName as any;
+      if (!byName.slug) {
+        await supabaseAdmin.from("companies").update({ slug }).eq("id", byName.id);
+        (company as any).slug = slug;
+      }
+    }
+  }
 
   if (!company) {
     return NextResponse.json({ error: "Company not found" }, { status: 404 });
