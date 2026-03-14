@@ -1,4 +1,5 @@
 import type { ReasonCode } from "./reasonCodes";
+import { detectNotionSignal } from "../signals/notion";
 
 export type ScoreBreakdown = {
   niche_relevance: number; // 0-30
@@ -93,8 +94,7 @@ const NicheCore = {
   chief: ["chief of staff", "cos", "office of the ceo", "strategic initiatives", "special projects", "strategy & operations"],
 } as const;
 
-// Notion is a supporting signal only (must co-occur with core niche).
-const NOTION_SUPPORT = ["notion"];
+// Notion is a supporting signal only; notion-heavy is a stricter signal (Notion + systems/docs/process context).
 
 // Explicit off-niche themes (deny-style). These are strong negatives unless core niche is clearly present.
 const NEGATIVE_THEMES_STRONG = [
@@ -178,14 +178,14 @@ export function scoreCandidate(c: CandidateForScoring): {
 
   const coreKeywords = Object.values(NicheCore).flat();
   const coreHits = coreKeywords.reduce((acc, kw) => acc + (blob.includes(kw) ? 1 : 0), 0) || 0;
-  const notionHit = NOTION_SUPPORT.some((kw) => blob.includes(kw));
+  const notion = detectNotionSignal({ title: c.title, description: c.description_clean, tools: null });
 
   // Strong negative gating: if the role looks like a generic off-niche theme AND we don't have enough core niche evidence, reject.
   const strongNegHits = NEGATIVE_THEMES_STRONG.reduce((acc, kw) => acc + (blob.includes(kw) ? 1 : 0), 0);
   const softNegHits = NEGATIVE_THEMES_SOFT.reduce((acc, kw) => acc + (blob.includes(kw) ? 1 : 0), 0);
 
   // Notion should never be a standalone pass signal.
-  const notionSupport = notionHit && coreHits > 0;
+  const notionSupport = notion.notion_mentioned && coreHits > 0;
 
   // Extra safety: allow "marketing ops"/"sales ops"/"revops" even if blob contains "marketing"/"sales".
   const isRevOpsExplicit =
@@ -212,8 +212,16 @@ export function scoreCandidate(c: CandidateForScoring): {
     else if (coreHits === 1) niche = 10;
     else niche = 4;
 
-    // Notion is a supporting boost only.
-    if (notionSupport) niche = Math.min(30, niche + 4);
+    // Notion is a supporting boost only (requires core niche evidence).
+    if (notionSupport) niche = Math.min(30, niche + 3);
+
+    // Notion-heavy: only boost when Notion is clearly central AND core niche context exists.
+    // This avoids over-promoting irrelevant roles that casually mention Notion.
+    const notionHeavyWithinNiche = notion.notion_heavy && coreHits >= 2;
+    if (notionHeavyWithinNiche) {
+      niche = Math.min(30, niche + 6);
+      reasons.push("NOTION_HEAVY_SIGNAL");
+    }
 
     // If core evidence is weak, mark as low confidence (forces manual review).
     if (coreHits < 2) reasons.push("CAT_LOW_CONF");

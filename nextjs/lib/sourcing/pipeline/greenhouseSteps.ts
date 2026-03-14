@@ -15,6 +15,7 @@ import { getSourcingAutoPublishMinScore, getSourcingAutoPublishSupportedSourceTy
 import { stripHtmlToText } from "../normalization/text";
 import { formatSourcedDescription } from "../normalization/description";
 import { detectEmploymentType } from "../normalization/employmentType";
+import { detectNotionSignal } from "../signals/notion";
 import { createCompanySlug } from "../../jobs";
 import { enrichCompanyFromWebsite } from "../../companyEnrichment";
 
@@ -899,6 +900,8 @@ export async function autoPublishEligibleCandidates(
       locationText: candidate.location_text,
       remotePolicy: candidate.remote_policy,
     });
+    const notion = detectNotionSignal({ title: candidate.title, description: formattedDescription || cleanedDescription, tools: toolHits });
+    const keywords = notion.notion_heavy ? "notion-heavy" : null;
 
     // For parity with manual admin posts, copy safe company fields onto the job row as well.
     // (Company pages can still render even if company record is sparse.)
@@ -931,7 +934,7 @@ export async function autoPublishEligibleCandidates(
       tags: toolHits.length > 0 ? toolHits : null,
       tools: toolHits.length > 0 ? toolHits : null,
       benefits: null,
-      keywords: null,
+      keywords,
       match_score: null,
       is_featured: false,
       status: "published",

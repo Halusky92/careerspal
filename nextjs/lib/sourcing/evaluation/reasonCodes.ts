@@ -11,6 +11,7 @@ export type ReasonCode =
   | "METADATA_WEAK"
   | "SOURCE_WEAK"
   | "CAT_LOW_CONF"
+  | "NOTION_HEAVY_SIGNAL"
   | "LIKELY_GOOD"
   | "AUTO_PUBLISH_QUALITY"
   | "NEEDS_REVIEW";
@@ -28,6 +29,7 @@ export const REASON_SEVERITY: Record<ReasonCode, ReasonSeverity> = {
   METADATA_WEAK: "WARN",
   CAT_LOW_CONF: "WARN",
 
+  NOTION_HEAVY_SIGNAL: "INFO",
   LIKELY_GOOD: "INFO",
   AUTO_PUBLISH_QUALITY: "INFO",
   NEEDS_REVIEW: "INFO",
