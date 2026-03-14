@@ -20,10 +20,10 @@ type CompanyFetchResult =
   | { kind: "not_found" }
   | { kind: "error" };
 
-const getBaseUrl = () => {
+const getBaseUrl = async () => {
   // Prefer per-request host to avoid env mismatch across apex/www or preview domains.
   try {
-    const h = headers();
+    const h = await headers();
     const proto = (h.get("x-forwarded-proto") || "https").split(",")[0].trim();
     const host = (h.get("x-forwarded-host") || h.get("host") || "").split(",")[0].trim();
     if (host) return `${proto}://${host}`.replace(/\/+$/, "");
@@ -55,7 +55,7 @@ const safeHost = (value?: string | null) => {
 };
 
 async function fetchCompanyAndJobs(slug: string): Promise<CompanyFetchResult> {
-  const baseUrl = getBaseUrl();
+  const baseUrl = await getBaseUrl();
   const url = `${baseUrl}/api/companies/${encodeURIComponent(slug)}`;
   const res = await fetch(url, { cache: "no-store" });
   if (res.status === 404) return { kind: "not_found" };
@@ -70,7 +70,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const result = await fetchCompanyAndJobs(params.slug);
     if (result.kind !== "ok") return {};
 
-    const baseUrl = getBaseUrl();
+    const baseUrl = await getBaseUrl();
     const companyName = result.company.name || "Company";
     const canonicalSlug = params.slug || createCompanySlug({ name: companyName });
     const canonicalPath = `/companies/${canonicalSlug}`;
