@@ -187,6 +187,8 @@ export default function SourcingRegistrySection() {
   const [bulkEnrichMsg, setBulkEnrichMsg] = useState<string>("");
   const [unpublishStatus, setUnpublishStatus] = useState<"idle" | "running" | "success" | "error">("idle");
   const [unpublishMsg, setUnpublishMsg] = useState<string>("");
+  const [unpublishSalaryStatus, setUnpublishSalaryStatus] = useState<"idle" | "running" | "success" | "error">("idle");
+  const [unpublishSalaryMsg, setUnpublishSalaryMsg] = useState<string>("");
 
   const filteredReviews = useMemo(() => reviews.filter((r) => r.status === reviewFilter), [reviews, reviewFilter]);
   const filteredGreenhouseSources = useMemo(
@@ -715,6 +717,37 @@ export default function SourcingRegistrySection() {
     } catch (e) {
       setUnpublishStatus("error");
       setUnpublishMsg(e instanceof Error ? e.message : "Unpublish failed.");
+    }
+  };
+
+  const unpublishImplausibleSalary = async () => {
+    setUnpublishSalaryStatus("running");
+    setUnpublishSalaryMsg("");
+    try {
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      if (!runFilterSourceId.trim()) throw new Error("Select a source first (filter by sourceId).");
+      const payload = { sourceId: runFilterSourceId.trim(), maxToProcess: 2000 };
+      const resp = await authFetch(
+        "/api/admin/sourcing/cleanup/unpublish-implausible-salary",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+        accessToken,
+      );
+      const json = (await resp.json()) as {
+        ok?: boolean;
+        scanned?: number;
+        implausible?: number;
+        unpublished_jobs?: number;
+        error?: string;
+      };
+      if (!resp.ok) throw new Error(json.error || "Unpublish failed.");
+      setUnpublishSalaryStatus("success");
+      setUnpublishSalaryMsg(
+        `Unpublish implausible salary: scanned ${json.scanned ?? 0}, flagged ${json.implausible ?? 0}, unpublished jobs ${json.unpublished_jobs ?? 0}.`,
+      );
+      await loadCandidates();
+    } catch (e) {
+      setUnpublishSalaryStatus("error");
+      setUnpublishSalaryMsg(e instanceof Error ? e.message : "Unpublish failed.");
     }
   };
 
@@ -1383,6 +1416,18 @@ export default function SourcingRegistrySection() {
                     {unpublishStatus === "running" ? "Unpublishing..." : "Unpublish low-score"}
                   </button>
                   <button
+                    onClick={unpublishImplausibleSalary}
+                    disabled={unpublishSalaryStatus === "running" || !runFilterSourceId.trim()}
+                    className={`px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      unpublishSalaryStatus === "running" || !runFilterSourceId.trim()
+                        ? "border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                        : "border-red-600/30 bg-red-600/10 text-red-200 hover:bg-red-600/20"
+                    }`}
+                    title="Unpublish already-published sourced jobs with obviously wrong salary (e.g., $1-$2) for the selected source."
+                  >
+                    {unpublishSalaryStatus === "running" ? "Unpublishing..." : "Unpublish $1-$2 salary"}
+                  </button>
+                  <button
                     onClick={() => {
                       loadCandidates();
                       loadEvals();
@@ -1431,6 +1476,19 @@ export default function SourcingRegistrySection() {
                   aria-live="polite"
                 >
                   {unpublishMsg}
+                </div>
+              )}
+              {unpublishSalaryMsg && (
+                <div
+                  className={`mt-3 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
+                    unpublishSalaryStatus === "error"
+                      ? "border-red-600/30 bg-red-600/10 text-red-300"
+                      : "border-red-600/30 bg-red-600/10 text-red-200"
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {unpublishSalaryMsg}
                 </div>
               )}
               {autoPublishMsg && (

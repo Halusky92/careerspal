@@ -853,6 +853,30 @@ export async function autoPublishEligibleCandidates(
       }
     }
 
+  // Salary sanity: block obviously wrong parsed salaries (e.g. "$1-$2") from being published.
+  // (Salary parsing happens earlier; this is an extra last-line defense.)
+  const period = (candidate.salary_period || "").toString().toLowerCase();
+  const minAmt = typeof candidate.salary_amount_min === "number" ? candidate.salary_amount_min : null;
+  const maxAmt = typeof candidate.salary_amount_max === "number" ? candidate.salary_amount_max : null;
+  const floor =
+    period === "hour" ? 10 : period === "day" ? 80 : period === "month" ? 1500 : period === "year" ? 20000 : null;
+  if (floor != null) {
+    const loBad = minAmt != null && minAmt > 0 && minAmt < floor;
+    const hiBad = maxAmt != null && maxAmt > 0 && maxAmt < floor;
+    if (loBad || hiBad) {
+      skipped += 1;
+      await sb
+        .from("sourcing_sourced_job_candidates")
+        .update({
+          publish_status: "skipped_not_eligible",
+          publish_notes: `Skipped: implausible salary for period=${period} (min=${minAmt ?? "—"}, max=${maxAmt ?? "—"}).`,
+        })
+        .eq("id", candidate.id);
+      results.push({ candidateId: candidate.id, status: "skipped", reason: "implausible_salary" });
+      continue;
+    }
+  }
+
     const now = Date.now();
     const timestamp = candidate.posted_at ? Date.parse(candidate.posted_at) : now;
     const salaryText =

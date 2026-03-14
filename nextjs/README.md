@@ -44,6 +44,7 @@ Helpful admin-only utilities:
 
 - `POST /api/admin/sourcing/candidates/enrich-salary-bulk` (batch fetch salary from official job pages)
 - `POST /api/admin/sourcing/cleanup/unpublish-low-score` (unpublish already-published sourced jobs below a score threshold)
+- `POST /api/admin/sourcing/cleanup/unpublish-implausible-salary` (unpublish already-published sourced jobs with implausible salary like "$1-$2")
 
 Environment variables:
 

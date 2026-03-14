@@ -16,6 +16,26 @@ export type ParsedSalary = {
   salary_parse_notes: string[];
 };
 
+const MIN_PLAUSIBLE_BY_PERIOD: Record<SalaryPeriod, number> = {
+  // Conservative: filters obvious false positives like "$1-$2".
+  // If we ever want to support ultra-low wages, we can make this configurable.
+  hour: 10,
+  day: 80,
+  month: 1500,
+  year: 20_000,
+};
+
+function isImplausibleSalary(period: SalaryPeriod | null, min: number | null, max: number | null): boolean {
+  if (!period) return false;
+  const floor = MIN_PLAUSIBLE_BY_PERIOD[period];
+  const lo = typeof min === "number" && Number.isFinite(min) ? min : null;
+  const hi = typeof max === "number" && Number.isFinite(max) ? max : null;
+  // If either bound exists but is below our plausibility floor, treat as not-a-salary.
+  if (lo != null && lo > 0 && lo < floor) return true;
+  if (hi != null && hi > 0 && hi < floor) return true;
+  return false;
+}
+
 const CURRENCY_SYMBOL_TO_CODE: Record<string, string> = {
   "$": "USD",
   "€": "EUR",
@@ -139,6 +159,21 @@ export function parseSalaryFromText(text: string): ParsedSalary {
 
   const present = Boolean(currency && period && (min || max));
   const confidence: SalaryConfidence = present ? "medium" : "low";
+
+  // Sanity: guard against obvious false positives (e.g., "$1-$2") getting treated as salary.
+  if (present && isImplausibleSalary(period, min, max)) {
+    return {
+      salary_text_raw,
+      salary_amount_min: null,
+      salary_amount_max: null,
+      salary_currency: currency,
+      salary_period: period,
+      salary_present: false,
+      salary_confidence: "low",
+      salary_detected_from: "text_body",
+      salary_parse_notes: notes.concat(["implausible_salary_amount"]),
+    };
+  }
 
   return {
     salary_text_raw,
