@@ -8,6 +8,9 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
 
+// Ensure a consistent runtime (avoid edge differences that can cause production-only crashes).
+export const runtime = "nodejs";
+
 type PageProps = {
   params: { slug: string };
 };
