@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug } from "../lib/jobs";
-import { formatSourcedDescription } from "../lib/sourcing/normalization/description";
+import FormattedDescription from "./FormattedDescription";
 
 type JobDetailPanelProps = {
   job: Job | null;
@@ -17,22 +17,7 @@ type JobDetailPanelProps = {
   isSaved?: (jobId: string) => boolean;
 };
 
-const sanitizeDescription = (value?: string | null) => {
-  if (!value) return "";
-  const clean = formatSourcedDescription(value);
-  const lines = clean.split("\n");
-  const cleaned = lines.filter((line) => {
-    const trimmed = line.trim().toLowerCase();
-    if (!trimmed) return true;
-    if (trimmed.startsWith("import-") || trimmed.startsWith("import/")) return false;
-    if (trimmed.includes("import-") && !trimmed.includes(" ")) return false;
-    return true;
-  });
-  const out = cleaned.join("\n").trim();
-  // Keep the panel preview readable and short.
-  if (out.length > 2200) return `${out.slice(0, 2200).trim()}…`;
-  return out;
-};
+// description rendering is centralized in <FormattedDescription />
 
 const formatPosted = (job: Job) => {
   if (!job.timestamp) return job.postedAt;
@@ -217,8 +202,11 @@ export default function JobDetailPanel({
             <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
               About the role
             </div>
-            <div className="mt-3 text-sm font-medium text-slate-700 whitespace-pre-wrap leading-relaxed">
-              {sanitizeDescription(job.description) || "Description is being updated."}
+            <div className="mt-3">
+              <FormattedDescription text={job.description} maxLen={2200} />
+              {!job.description ? (
+                <p className="text-sm font-medium text-slate-700 leading-relaxed">Description is being updated.</p>
+              ) : null}
             </div>
           </div>
 

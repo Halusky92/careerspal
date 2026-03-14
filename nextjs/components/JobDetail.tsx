@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Job } from '../types';
 import CompanyLogo from './CompanyLogo';
-import { formatSourcedDescription } from "../lib/sourcing/normalization/description";
+import FormattedDescription from "./FormattedDescription";
 
 interface JobDetailProps {
   job: Job;
@@ -55,18 +55,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
   const stack = job.tools && job.tools.length > 0 ? job.tools : job.tags;
   const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl !== '#');
   const displayType = job.type && job.type !== "Unknown" ? job.type : null;
-  const sanitizeDescription = (value?: string | null) => {
-    if (!value) return "";
-    const lines = formatSourcedDescription(value).split("\n");
-    const cleaned = lines.filter((line) => {
-      const trimmed = line.trim().toLowerCase();
-      if (!trimmed) return true;
-      if (trimmed.startsWith("import-") || trimmed.startsWith("import/")) return false;
-      if (trimmed.includes("import-") && !trimmed.includes(" ")) return false;
-      return true;
-    });
-    return cleaned.join("\n").trim();
-  };
+  // description rendering is centralized in <FormattedDescription />
   const formatDate = (value?: number) => {
     if (!value) return job.postedAt;
     const date = new Date(value);
@@ -317,8 +306,8 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                {/* Description */}
                <section className="bg-white p-6 sm:p-8 md:p-12 rounded-[2rem] sm:rounded-[3rem] shadow-[0_20px_60px_rgba(15,23,42,0.06)] border border-slate-200/60">
                   <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-8">About the Role</h3>
-                  <div className="prose prose-lg prose-indigo text-slate-600 leading-relaxed font-medium max-w-none">
-                    <p className="whitespace-pre-wrap">{sanitizeDescription(job.description)}</p>
+                  <div className="prose prose-lg prose-indigo max-w-none">
+                    <FormattedDescription text={job.description} />
                   </div>
                </section>
 

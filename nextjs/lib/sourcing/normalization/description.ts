@@ -81,6 +81,31 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
   // Collapse too many blank lines.
   out = out.replace(/\n{3,}/g, "\n\n").trim();
 
+  // 6) Normalize common inline section headings into standalone lines (grounded: only if the phrase exists).
+  // This helps turn "Who we are ... What you'll do: ..." into readable sections.
+  const headings = [
+    "Who we are",
+    "About the role",
+    "About the team",
+    "What you’ll do",
+    "What you'll do",
+    "Responsibilities",
+    "Requirements",
+    "Qualifications",
+    "Preferred qualifications",
+    "Benefits",
+    "Compensation",
+    "Salary",
+    "What we offer",
+  ];
+  for (const h of headings) {
+    const safe = h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // If it appears after start/newline or sentence boundary, break into section form.
+    const re = new RegExp(`(^|\\n|\\.|\\!|\\?)\\s*(${safe})\\s*:?\\s+`, "gi");
+    out = out.replace(re, (_m, p1, p2) => `${p1}\n\n${p2}:\n`);
+  }
+  out = out.replace(/\n{3,}/g, "\n\n").trim();
+
   // If we somehow lost structure and got very dense text, fall back to the plain stripper.
   // (Still conservative: just readable text.)
   const lineCount = out.split("\n").filter((l) => l.trim()).length;

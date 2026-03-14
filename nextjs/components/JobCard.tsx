@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug } from "../lib/jobs";
-import { formatSourcedDescription } from "../lib/sourcing/normalization/description";
+import FormattedDescription from "./FormattedDescription";
 
 export type JobCardVariant = "board" | "home";
 
@@ -21,19 +21,7 @@ type JobCardProps = {
   className?: string;
 };
 
-const sanitizeDescription = (value?: string | null) => {
-  if (!value) return "";
-  const formatted = formatSourcedDescription(value);
-  const lines = formatted.split("\n");
-  const cleaned = lines.filter((line) => {
-    const trimmed = line.trim().toLowerCase();
-    if (!trimmed) return true;
-    if (trimmed.startsWith("import-") || trimmed.startsWith("import/")) return false;
-    if (trimmed.includes("import-") && !trimmed.includes(" ")) return false;
-    return true;
-  });
-  return cleaned.join("\n").trim();
-};
+// description rendering is centralized in <FormattedDescription />
 
 const isNewListing = (postedAt: string) => {
   const lower = (postedAt || "").toLowerCase();
@@ -328,9 +316,12 @@ export default function JobCard({
         <div className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 text-left">
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Role overview</p>
-            <p className="text-sm sm:text-base text-slate-700 mt-2 whitespace-pre-wrap">
-              {sanitizeDescription(job.description) || "Description coming soon."}
-            </p>
+            <div className="mt-2">
+              <FormattedDescription text={job.description} maxLen={1200} />
+              {!job.description ? (
+                <p className="text-sm sm:text-base text-slate-700 font-medium">Description coming soon.</p>
+              ) : null}
+            </div>
           </div>
           <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] font-bold text-slate-600">
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
