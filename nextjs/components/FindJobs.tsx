@@ -1215,10 +1215,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     showSave={Boolean(canUseSaved)}
                     showMenu={true}
                     onToggleSave={() => onToggleBookmark(job.id)}
-                    onOpenCompany={(companyName) => {
-                      if (onSelectCompany) onSelectCompany(companyName);
-                      else goCompany(companyName);
-                    }}
                     onSelect={() => {
                       if (isDesktop) {
                         handleSelectJobId(job.id);
