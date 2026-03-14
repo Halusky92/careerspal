@@ -185,6 +185,8 @@ export default function SourcingRegistrySection() {
   const [enrichMsg, setEnrichMsg] = useState<string>("");
   const [bulkEnrichStatus, setBulkEnrichStatus] = useState<"idle" | "running" | "success" | "error">("idle");
   const [bulkEnrichMsg, setBulkEnrichMsg] = useState<string>("");
+  const [unpublishStatus, setUnpublishStatus] = useState<"idle" | "running" | "success" | "error">("idle");
+  const [unpublishMsg, setUnpublishMsg] = useState<string>("");
 
   const filteredReviews = useMemo(() => reviews.filter((r) => r.status === reviewFilter), [reviews, reviewFilter]);
   const filteredGreenhouseSources = useMemo(
@@ -681,6 +683,38 @@ export default function SourcingRegistrySection() {
     } catch (e) {
       setBulkEnrichStatus("error");
       setBulkEnrichMsg(e instanceof Error ? e.message : "Bulk enrichment failed.");
+    }
+  };
+
+  const unpublishLowScore = async () => {
+    setUnpublishStatus("running");
+    setUnpublishMsg("");
+    try {
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      if (!runFilterSourceId.trim()) throw new Error("Select a source first (filter by sourceId).");
+      const payload = { sourceId: runFilterSourceId.trim(), minScore: 85, maxToProcess: 500 };
+      const resp = await authFetch(
+        "/api/admin/sourcing/cleanup/unpublish-low-score",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+        accessToken,
+      );
+      const json = (await resp.json()) as {
+        ok?: boolean;
+        scanned?: number;
+        below_threshold?: number;
+        unpublished_jobs?: number;
+        minScore?: number;
+        error?: string;
+      };
+      if (!resp.ok) throw new Error(json.error || "Unpublish failed.");
+      setUnpublishStatus("success");
+      setUnpublishMsg(
+        `Unpublish low-score: scanned ${json.scanned ?? 0}, below ${json.minScore ?? 85}: ${json.below_threshold ?? 0}, unpublished jobs ${json.unpublished_jobs ?? 0}.`,
+      );
+      await loadCandidates();
+    } catch (e) {
+      setUnpublishStatus("error");
+      setUnpublishMsg(e instanceof Error ? e.message : "Unpublish failed.");
     }
   };
 
@@ -1337,6 +1371,18 @@ export default function SourcingRegistrySection() {
                     {autoPublishStatus === "running" ? "Publishing..." : "Auto-publish now"}
                   </button>
                   <button
+                    onClick={unpublishLowScore}
+                    disabled={unpublishStatus === "running" || !runFilterSourceId.trim()}
+                    className={`px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      unpublishStatus === "running" || !runFilterSourceId.trim()
+                        ? "border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                        : "border-red-600/30 bg-red-600/10 text-red-200 hover:bg-red-600/20"
+                    }`}
+                    title="Unpublish already-published sourced jobs below minScore (default 85) for the selected source."
+                  >
+                    {unpublishStatus === "running" ? "Unpublishing..." : "Unpublish low-score"}
+                  </button>
+                  <button
                     onClick={() => {
                       loadCandidates();
                       loadEvals();
@@ -1372,6 +1418,19 @@ export default function SourcingRegistrySection() {
                   aria-live="polite"
                 >
                   {bulkEnrichMsg}
+                </div>
+              )}
+              {unpublishMsg && (
+                <div
+                  className={`mt-3 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
+                    unpublishStatus === "error"
+                      ? "border-red-600/30 bg-red-600/10 text-red-300"
+                      : "border-red-600/30 bg-red-600/10 text-red-200"
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {unpublishMsg}
                 </div>
               )}
               {autoPublishMsg && (

@@ -40,10 +40,15 @@ The Greenhouse sourcing pipeline can run end-to-end via:
 - `POST /api/admin/sourcing/pipeline/greenhouse` (admin session required)
 - `GET /api/admin/sourcing/pipeline/greenhouse?secret=...` (cron-friendly)
 
+Helpful admin-only utilities:
+
+- `POST /api/admin/sourcing/candidates/enrich-salary-bulk` (batch fetch salary from official job pages)
+- `POST /api/admin/sourcing/cleanup/unpublish-low-score` (unpublish already-published sourced jobs below a score threshold)
+
 Environment variables:
 
 - `SOURCING_CRON_SECRET`: required for cron calls (query `?secret=` must match)
-- `SOURCING_AUTO_PUBLISH_SCORE`: optional (default `78`)
+- `SOURCING_AUTO_PUBLISH_SCORE`: optional (default `85`)
 - `SOURCING_AUTO_PUBLISH_SOURCES`: optional (default `greenhouse`)
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
