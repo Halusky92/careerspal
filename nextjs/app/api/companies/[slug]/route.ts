@@ -136,5 +136,17 @@ export const GET = async (_request: Request, context: { params: Promise<{ slug: 
 
   const mappedJobs = (jobs as SupabaseJobRow[] | null || []).map(mapSupabaseJob);
 
-  return NextResponse.json({ company: mapCompany(company as SupabaseCompanyRow), jobs: mappedJobs });
+  // Safe fallback: if company row is sparse, prefer a non-empty company_description from the newest job.
+  // This mirrors the manual admin-post behavior without inventing facts.
+  const outCompany = mapCompany(company as SupabaseCompanyRow);
+  const hasRealDesc = (outCompany.description || "").trim() && !outCompany.description.toLowerCase().includes("coming soon");
+  if (!hasRealDesc) {
+    const jobDesc = (mappedJobs[0]?.companyDescription || "").toString().trim();
+    if (jobDesc) {
+      outCompany.description = jobDesc;
+      outCompany.longDescription = jobDesc;
+    }
+  }
+
+  return NextResponse.json({ company: outCompany, jobs: mappedJobs });
 };

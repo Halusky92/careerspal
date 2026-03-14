@@ -853,6 +853,16 @@ export async function autoPublishEligibleCandidates(
     const category = inferCategory(candidate);
     const toolHits = extractTools(cleanedDescription);
 
+    // For parity with manual admin posts, copy safe company fields onto the job row as well.
+    // (Company pages can still render even if company record is sparse.)
+    let companyForJob: { website?: string | null; logo_url?: string | null; description?: string | null } | null = null;
+    try {
+      const { data } = await sb.from("companies").select("website,logo_url,description").eq("id", companyId).maybeSingle();
+      companyForJob = (data as any) || null;
+    } catch {
+      companyForJob = null;
+    }
+
     const jobInsert = {
       company_id: companyId,
       title: (candidate.title || "").trim() || "Untitled role",
@@ -868,9 +878,9 @@ export async function autoPublishEligibleCandidates(
       timestamp: Number.isFinite(timestamp) ? Math.floor(timestamp) : now,
       category,
       apply_url: applyUrl,
-      company_description: null,
-      company_website: derivedCompanyWebsite || src?.companies?.website || null,
-      logo_url: src?.companies?.logo_url || derivedLogoUrl || null,
+      company_description: (companyForJob?.description || "").toString().trim() || null,
+      company_website: (companyForJob?.website || "").toString().trim() || derivedCompanyWebsite || src?.companies?.website || null,
+      logo_url: (companyForJob?.logo_url || "").toString().trim() || src?.companies?.logo_url || derivedLogoUrl || null,
       tags: toolHits.length > 0 ? toolHits : null,
       tools: toolHits.length > 0 ? toolHits : null,
       benefits: null,

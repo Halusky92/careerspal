@@ -121,6 +121,27 @@ export async function POST(request: Request) {
       await supabaseAdmin.from("companies").update(patch).eq("id", canonicalId);
       Object.assign(company as any, patch);
     }
+
+    // 6) Backfill job-level company fields for parity with manual admin posts (only fill missing).
+    try {
+      const jobPatch: Record<string, unknown> = {};
+      const desc = ((company as any).description || "").toString().trim();
+      const logo = ((company as any).logo_url || "").toString().trim();
+      const web = ((company as any).website || "").toString().trim();
+      if (desc) jobPatch.company_description = desc;
+      if (logo) jobPatch.logo_url = logo;
+      if (web) jobPatch.company_website = web;
+      if (Object.keys(jobPatch).length > 0) {
+        await supabaseAdmin
+          .from("jobs")
+          .update(jobPatch)
+          .eq("company_id", canonicalId)
+          .eq("status", "published");
+      }
+    } catch {
+      // ignore
+    }
+
     return NextResponse.json({
       ok: true,
       slug,
