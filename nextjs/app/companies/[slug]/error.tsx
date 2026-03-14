@@ -15,6 +15,18 @@ export default function CompanyError({
     console.error(error);
   }, [error]);
 
+  // Failsafe: if we landed on the apex domain and RSC navigation broke, hard-redirect to www.
+  // This avoids the "Server Components render" failure mode caused by cross-origin redirects.
+  useEffect(() => {
+    try {
+      if (window.location.hostname !== "careerspal.com") return;
+      const target = `https://www.careerspal.com${window.location.pathname}${window.location.search}${window.location.hash}`;
+      window.location.replace(target);
+    } catch {
+      // noop
+    }
+  }, []);
+
   return (
     <div className="bg-[#F8F9FD] min-h-screen">
       <div className="max-w-3xl mx-auto px-6 pt-20 pb-24">
