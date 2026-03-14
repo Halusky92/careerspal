@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type PageProps = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 type CompanyApiPayload = { company: Company & { verified?: boolean }; jobs: Job[] };
@@ -24,8 +24,16 @@ const getBaseUrl = async () => {
   // Prefer per-request host to avoid env mismatch across apex/www or preview domains.
   try {
     const h = await headers();
-    const proto = (h.get("x-forwarded-proto") || "https").split(",")[0].trim();
-    const host = (h.get("x-forwarded-host") || h.get("host") || "").split(",")[0].trim();
+    let host = (h.get("x-forwarded-host") || h.get("host") || "").split(",")[0].trim();
+    const xfProto = (h.get("x-forwarded-proto") || "").split(",")[0].trim();
+    const proto =
+      xfProto ||
+      (host.includes("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
+    // In local dev, host header can sometimes omit the port. Default to PORT/3000.
+    if (host && !host.includes(":") && process.env.NODE_ENV !== "production") {
+      const port = process.env.PORT || "3000";
+      host = `${host}:${port}`;
+    }
     if (host) return `${proto}://${host}`.replace(/\/+$/, "");
   } catch {
     // ignore (e.g. build time)
@@ -58,6 +66,9 @@ async function fetchCompanyAndJobs(slug: string): Promise<CompanyFetchResult> {
   const baseUrl = await getBaseUrl();
   const url = `${baseUrl}/api/companies/${encodeURIComponent(slug)}`;
   const res = await fetch(url, { cache: "no-store" });
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[companies/[slug]] fetch", { slug, url, status: res.status });
+  }
   if (res.status === 404) return { kind: "not_found" };
   if (!res.ok) return { kind: "error" };
   const json = (await res.json()) as CompanyApiPayload;
@@ -67,12 +78,13 @@ async function fetchCompanyAndJobs(slug: string): Promise<CompanyFetchResult> {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   try {
-    const result = await fetchCompanyAndJobs(params.slug);
+    const { slug } = await params;
+    const result = await fetchCompanyAndJobs(slug);
     if (result.kind !== "ok") return {};
 
     const baseUrl = await getBaseUrl();
     const companyName = result.company.name || "Company";
-    const canonicalSlug = params.slug || createCompanySlug({ name: companyName });
+    const canonicalSlug = slug || createCompanySlug({ name: companyName });
     const canonicalPath = `/companies/${canonicalSlug}`;
     const canonicalUrl = `${baseUrl}${canonicalPath}`;
 
@@ -111,11 +123,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function CompanyPage({ params }: PageProps) {
+  const { slug } = await params;
   let result: CompanyFetchResult | null = null;
   try {
-    result = await fetchCompanyAndJobs(params.slug);
+    result = await fetchCompanyAndJobs(slug);
   } catch (e) {
-    console.error("[companies/[slug]] render_failed", { slug: params.slug, error: (e as any)?.message || String(e) });
+    console.error("[companies/[slug]] render_failed", { slug, error: (e as any)?.message || String(e) });
   }
   if (!result || result.kind === "error") {
     // Prefer a clean fallback over crashing into the global error boundary.
@@ -136,7 +149,7 @@ export default async function CompanyPage({ params }: PageProps) {
                 Browse jobs
               </Link>
               <Link
-                href={`/companies/${params.slug}`}
+                href={`/companies/${slug}`}
                 className="inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 text-slate-800 px-8 py-4 text-[10px] font-black uppercase tracking-widest hover:border-indigo-200 hover:text-indigo-700 transition-colors"
               >
                 Retry
