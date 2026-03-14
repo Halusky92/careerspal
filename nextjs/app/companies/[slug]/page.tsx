@@ -10,6 +10,7 @@ import type { Job } from "../../../types";
 
 // Ensure a consistent runtime (avoid edge differences that can cause production-only crashes).
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: { slug: string };
@@ -155,48 +156,100 @@ async function fetchCompanyAndJobs(slug: string): Promise<{
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const result = await fetchCompanyAndJobs(params.slug);
-  if (!result) return {};
+  try {
+    const result = await fetchCompanyAndJobs(params.slug);
+    if (!result) return {};
 
-  const baseUrl = getBaseUrl();
-  const companyName = result.company.name || "Company";
-  const canonicalSlug = result.company.slug || createCompanySlug({ name: companyName });
-  const canonicalPath = `/companies/${canonicalSlug}`;
-  const canonicalUrl = `${baseUrl}${canonicalPath}`;
+    const baseUrl = getBaseUrl();
+    const companyName = result.company.name || "Company";
+    const canonicalSlug = result.company.slug || createCompanySlug({ name: companyName });
+    const canonicalPath = `/companies/${canonicalSlug}`;
+    const canonicalUrl = `${baseUrl}${canonicalPath}`;
 
-  const title = `${companyName} — Remote Ops & Systems roles | CareersPal`;
-  const desc = plainText(result.company.description || "").slice(0, 240);
-  const description = desc || `Explore live remote roles from ${companyName} on CareersPal.`;
+    const title = `${companyName} — Remote Ops & Systems roles | CareersPal`;
+    const desc = plainText(result.company.description || "").slice(0, 240);
+    const description = desc || `Explore live remote roles from ${companyName} on CareersPal.`;
 
-  const imageUrl = result.company.logo_url
-    ? result.company.logo_url.startsWith("http")
-      ? result.company.logo_url
-      : `${baseUrl}${result.company.logo_url}`
-    : undefined;
+    const imageUrl = result.company.logo_url
+      ? result.company.logo_url.startsWith("http")
+        ? result.company.logo_url
+        : `${baseUrl}${result.company.logo_url}`
+      : undefined;
 
-  return {
-    title,
-    description,
-    alternates: { canonical: canonicalUrl },
-    openGraph: {
+    return {
       title,
       description,
-      url: canonicalUrl,
-      type: "website",
-      images: imageUrl ? [{ url: imageUrl }] : undefined,
-    },
-    twitter: {
-      card: imageUrl ? "summary_large_image" : "summary",
-      title,
-      description,
-      images: imageUrl ? [imageUrl] : undefined,
-    },
-  };
+      alternates: { canonical: canonicalUrl },
+      openGraph: {
+        title,
+        description,
+        url: canonicalUrl,
+        type: "website",
+        images: imageUrl ? [{ url: imageUrl }] : undefined,
+      },
+      twitter: {
+        card: imageUrl ? "summary_large_image" : "summary",
+        title,
+        description,
+        images: imageUrl ? [imageUrl] : undefined,
+      },
+    };
+  } catch (e) {
+    console.error("[companies/[slug]] generateMetadata_failed", { slug: params.slug, error: (e as any)?.message || String(e) });
+    return {};
+  }
 }
 
 export default async function CompanyPage({ params }: PageProps) {
-  const result = await fetchCompanyAndJobs(params.slug);
-  if (!result) notFound();
+  let result: Awaited<ReturnType<typeof fetchCompanyAndJobs>> | null = null;
+  try {
+    result = await fetchCompanyAndJobs(params.slug);
+  } catch (e) {
+    console.error("[companies/[slug]] render_failed", { slug: params.slug, error: (e as any)?.message || String(e) });
+  }
+  if (!result) {
+    // Prefer a clean fallback over crashing into the global error boundary.
+    // If the company truly doesn't exist, keep behavior consistent with notFound.
+    // If the DB temporarily errors, we still show a useful page.
+    try {
+      // If Supabase is up, we can distinguish "missing company" vs "transient failure" by a quick lookup.
+      const { data: exists } = await supabaseAdmin
+        ?.from("companies")
+        .select("id")
+        .eq("slug", params.slug)
+        .maybeSingle()!;
+      if (!exists?.id) notFound();
+    } catch {
+      // ignore
+    }
+    return (
+      <div className="bg-[#F8F9FD] pb-20">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-16">
+          <div className="rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] p-8 sm:p-12 text-center">
+            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Company</div>
+            <h1 className="mt-3 text-3xl sm:text-4xl font-black text-slate-900">This page is temporarily unavailable</h1>
+            <p className="mt-4 text-slate-600 font-medium">
+              Please try again in a moment. You can still browse roles on the job board.
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                href="/jobs"
+                className="inline-flex items-center justify-center rounded-2xl bg-slate-900 text-white px-8 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-black"
+              >
+                Browse jobs
+              </Link>
+              <Link
+                href={`/companies/${params.slug}`}
+                className="inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 text-slate-800 px-8 py-4 text-[10px] font-black uppercase tracking-widest hover:border-indigo-200 hover:text-indigo-700 transition-colors"
+              >
+                Retry
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const { company, jobs } = result;
   const companyName = company.name || "Company";
