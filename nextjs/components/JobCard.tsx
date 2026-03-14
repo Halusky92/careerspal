@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug } from "../lib/jobs";
+import { formatSourcedDescription } from "../lib/sourcing/normalization/description";
 
 export type JobCardVariant = "board" | "home";
 
@@ -22,7 +23,8 @@ type JobCardProps = {
 
 const sanitizeDescription = (value?: string | null) => {
   if (!value) return "";
-  const lines = value.split("\n");
+  const formatted = formatSourcedDescription(value);
+  const lines = formatted.split("\n");
   const cleaned = lines.filter((line) => {
     const trimmed = line.trim().toLowerCase();
     if (!trimmed) return true;
@@ -63,6 +65,7 @@ export default function JobCard({
   className = "",
 }: JobCardProps) {
   const router = useRouter();
+  const displayType = job.type && job.type !== "Unknown" ? job.type : "—";
   const rawSlug = (job.companySlug || "").toString().trim();
   const safeSlug = rawSlug && rawSlug !== "undefined" && rawSlug !== "null" ? rawSlug : "";
   const companyPath = `/companies/${(safeSlug || createCompanySlug({ name: job.company || "Company" })).trim()}`;
@@ -344,7 +347,7 @@ export default function JobCard({
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
               <span className="text-[9px] uppercase tracking-widest text-slate-400">Employment type</span>
-              <div className="mt-1">{job.type || "N/A"}</div>
+              <div className="mt-1">{displayType}</div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
               <span className="text-[9px] uppercase tracking-widest text-slate-400">Salary</span>

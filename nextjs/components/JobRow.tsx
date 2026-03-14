@@ -130,10 +130,11 @@ export default function JobRow({
     // Scan-first metadata.
     // - board: minimal chips (type)
     // - home: salary-first + category visibility (no tool noise)
-    if (variant === "board") return job.type ? [job.type] : [];
+    const typeChip = job.type && job.type !== "Unknown" ? job.type : null;
+    if (variant === "board") return typeChip ? [typeChip] : [];
     const out: string[] = [];
     if (job.category) out.push(job.category);
-    if (job.type) out.push(job.type);
+    if (typeChip) out.push(typeChip);
     return out.slice(0, 2);
   }, [job.type, job.category, variant]);
 

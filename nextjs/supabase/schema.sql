@@ -166,7 +166,7 @@ create table if not exists public.jobs (
   description text not null,
   location text,
   remote_policy text,
-  type text check (type in ('Full-time', 'Part-time', 'Contract')),
+  type text check (type in ('Full-time', 'Part-time', 'Contract', 'Freelance', 'Internship', 'Temporary')),
   salary text,
   salary_min int,
   salary_max int,

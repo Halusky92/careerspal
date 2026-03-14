@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Job } from '../types';
 import CompanyLogo from './CompanyLogo';
+import { formatSourcedDescription } from "../lib/sourcing/normalization/description";
 
 interface JobDetailProps {
   job: Job;
@@ -53,9 +54,10 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
   const isPrivate = job.status === 'private' || job.status === 'invite_only';
   const stack = job.tools && job.tools.length > 0 ? job.tools : job.tags;
   const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl !== '#');
+  const displayType = job.type && job.type !== "Unknown" ? job.type : null;
   const sanitizeDescription = (value?: string | null) => {
     if (!value) return "";
-    const lines = value.split("\n");
+    const lines = formatSourcedDescription(value).split("\n");
     const cleaned = lines.filter((line) => {
       const trimmed = line.trim().toLowerCase();
       if (!trimmed) return true;
@@ -220,7 +222,11 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                      {isPrivate && (
                        <span className="px-3 py-1 bg-slate-900 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">Invite Only</span>
                      )}
-                     <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-indigo-100">{job.type}</span>
+                     {displayType && (
+                       <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
+                         displayType === "Contract" ? "bg-amber-50 text-amber-800 border-amber-200" : "bg-indigo-50 text-indigo-600 border-indigo-100"
+                       }`}>{displayType}</span>
+                     )}
                      <span className="px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200/70">{job.location}</span>
                      <span className="px-3 py-1 bg-white text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200/70">{job.category}</span>
                      {job.remotePolicy && (

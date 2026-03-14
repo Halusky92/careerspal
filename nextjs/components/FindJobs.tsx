@@ -125,7 +125,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [visibleCount, setVisibleCount] = useState(JOBS_PER_PAGE);
 
   const workModes: Array<'All' | 'Remote' | 'Hybrid' | 'Onsite'> = ['All', 'Remote', 'Hybrid', 'Onsite'];
-  const employmentTypes: Array<'All' | Job['type']> = ['All', 'Full-time', 'Contract', 'Part-time'];
+  const employmentTypes: Array<'All' | Job['type']> = ['All', 'Full-time', 'Contract', 'Part-time', 'Freelance', 'Internship', 'Temporary'];
   const salaryFloors = [
     { label: 'Any', value: 0 },
     { label: '$60k+', value: 60000 },

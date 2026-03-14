@@ -48,7 +48,8 @@ export const mapSupabaseJob = (row: SupabaseJobRow): Job => ({
   companySlug: row.companies?.slug || undefined,
   logo: row.logo_url || row.companies?.logo_url || "",
   location: row.location || "Remote",
-  type: (row.type as Job["type"]) || "Full-time",
+  // Keep conservative: if we don't have a confident type stored, show Unknown rather than guessing.
+  type: (row.type as Job["type"]) || "Unknown",
   salary: row.salary || "",
   postedAt: row.posted_at_text || "Just now",
   category: row.category || "Operations",

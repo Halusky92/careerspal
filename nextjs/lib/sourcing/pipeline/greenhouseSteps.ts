@@ -13,6 +13,8 @@ import { dedupeAgainst, type CandidateForDedupe } from "../evaluation/dedupe";
 import { prepareDecision } from "../evaluation/decision";
 import { getSourcingAutoPublishMinScore, getSourcingAutoPublishSupportedSourceTypes } from "../config";
 import { stripHtmlToText } from "../normalization/text";
+import { formatSourcedDescription } from "../normalization/description";
+import { detectEmploymentType } from "../normalization/employmentType";
 import { createCompanySlug } from "../../jobs";
 import { enrichCompanyFromWebsite } from "../../companyEnrichment";
 
@@ -888,8 +890,15 @@ export async function autoPublishEligibleCandidates(
     const cleanedDescription = stripHtmlToText(
       ((candidate as any).description_raw || candidate.description_clean || "").toString(),
     ).trim();
+    const formattedDescription = formatSourcedDescription(((candidate as any).description_raw || candidate.description_clean || "").toString());
     const category = inferCategory(candidate);
     const toolHits = extractTools(cleanedDescription);
+    const emp = detectEmploymentType({
+      title: candidate.title,
+      description: formattedDescription || cleanedDescription,
+      locationText: candidate.location_text,
+      remotePolicy: candidate.remote_policy,
+    });
 
     // For parity with manual admin posts, copy safe company fields onto the job row as well.
     // (Company pages can still render even if company record is sparse.)
@@ -904,10 +913,10 @@ export async function autoPublishEligibleCandidates(
     const jobInsert = {
       company_id: companyId,
       title: (candidate.title || "").trim() || "Untitled role",
-      description: cleanedDescription || "",
+      description: formattedDescription || cleanedDescription || "",
       location: candidate.location_text || null,
       remote_policy: candidate.remote_policy || null,
-      type: "Full-time",
+      type: emp.type || null,
       salary: salaryText || null,
       salary_min: candidate.salary_amount_min || null,
       salary_max: candidate.salary_amount_max || null,

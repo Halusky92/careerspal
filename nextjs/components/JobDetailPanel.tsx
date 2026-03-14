@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug } from "../lib/jobs";
-import { stripHtmlToText } from "../lib/sourcing/normalization/text";
+import { formatSourcedDescription } from "../lib/sourcing/normalization/description";
 
 type JobDetailPanelProps = {
   job: Job | null;
@@ -19,7 +19,7 @@ type JobDetailPanelProps = {
 
 const sanitizeDescription = (value?: string | null) => {
   if (!value) return "";
-  const clean = stripHtmlToText(value);
+  const clean = formatSourcedDescription(value);
   const lines = clean.split("\n");
   const cleaned = lines.filter((line) => {
     const trimmed = line.trim().toLowerCase();
@@ -158,9 +158,17 @@ export default function JobDetailPanel({
       <div className="overflow-y-auto max-h-[calc(100vh-7rem)] pb-28">
         <div className="px-6 pt-5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-700">
-              {job.type}
-            </span>
+            {job.type && job.type !== "Unknown" ? (
+              <span
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-[9px] font-semibold uppercase tracking-wide ${
+                  job.type === "Contract"
+                    ? "bg-amber-50 border-amber-200 text-amber-800"
+                    : "bg-slate-50 border-slate-200/70 text-slate-700"
+                }`}
+              >
+                {job.type}
+              </span>
+            ) : null}
             <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-700">
               {job.location}
             </span>

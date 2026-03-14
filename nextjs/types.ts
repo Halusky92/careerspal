@@ -27,7 +27,7 @@ export interface Job {
   companySlug?: string;
   logo: string;
   location: string;
-  type: 'Full-time' | 'Contract' | 'Part-time';
+  type: 'Full-time' | 'Contract' | 'Part-time' | 'Freelance' | 'Internship' | 'Temporary' | 'Unknown';
   salary: string;
   postedAt: string;
   category: string;
