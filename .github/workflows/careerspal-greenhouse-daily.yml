@@ -24,5 +24,16 @@ jobs:
             echo "Missing secret CAREERSPAL_CRON_SECRET (must match Vercel env SOURCING_CRON_SECRET)"
             exit 1
           fi
-          curl -sS -m 60 -G "$PIPELINE_URL" --data-urlencode "secret=$CRON_SECRET"
+          # This endpoint can take a couple minutes depending on number of sources/jobs.
+          # -L: follow redirects, --retry: tolerate transient network issues
+          echo "Calling pipeline endpoint..."
+          curl -sS -L \
+            --connect-timeout 15 \
+            --max-time 600 \
+            --retry 2 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            --fail \
+            -w "\nHTTP_STATUS=%{http_code}\n" \
+            -G "$PIPELINE_URL" --data-urlencode "secret=$CRON_SECRET"
 

@@ -24,5 +24,13 @@ jobs:
             echo "Missing secret CAREERSPAL_ALERTS_CRON_SECRET (must match Vercel env ALERTS_CRON_SECRET)"
             exit 1
           fi
-          curl -sS -m 60 -G "$ALERTS_URL" --data-urlencode "secret=$ALERTS_SECRET"
+          curl -sS -L \
+            --connect-timeout 15 \
+            --max-time 300 \
+            --retry 2 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            --fail \
+            -w "\nHTTP_STATUS=%{http_code}\n" \
+            -G "$ALERTS_URL" --data-urlencode "secret=$ALERTS_SECRET"
 
