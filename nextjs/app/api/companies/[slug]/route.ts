@@ -36,19 +36,25 @@ export const GET = async (_request: Request, context: { params: Promise<{ slug: 
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }
 
+  // Be resilient to legacy data issues (missing slug trigger, duplicates by case, etc.).
+  // Use order+limit instead of `.single()` to avoid hard failures when more than one row matches.
   let { data: company } = await supabaseAdmin
     .from("companies")
-    .select("id,name,slug,website,description,long_description,logo_url,location,employee_count")
+    .select("id,name,slug,website,description,long_description,logo_url,location,employee_count,updated_at")
     .eq("slug", slug)
-    .single();
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   // Self-heal fallback for legacy records without slug: try case-insensitive exact name match.
   if (!company) {
     const nameGuess = slug.replace(/-/g, " ").trim();
     const { data: byName } = await supabaseAdmin
       .from("companies")
-      .select("id,name,slug,website,description,long_description,logo_url,location,employee_count")
+      .select("id,name,slug,website,description,long_description,logo_url,location,employee_count,updated_at")
       .ilike("name", nameGuess)
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (byName?.id) {
       company = byName as any;

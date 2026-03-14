@@ -60,8 +60,10 @@ async function fetchCompanyAndJobs(slug: string): Promise<{
 
   let { data: company } = await supabaseAdmin
     .from("companies")
-    .select("id,name,slug,website,description,logo_url,location,verified")
+    .select("id,name,slug,website,description,logo_url,location,verified,updated_at")
     .eq("slug", slug)
+    .order("updated_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   // Self-heal: some records may exist without a slug (legacy / imported / auto-created).
@@ -70,8 +72,10 @@ async function fetchCompanyAndJobs(slug: string): Promise<{
     const nameGuess = slug.replace(/-/g, " ").trim();
     const { data: byName } = await supabaseAdmin
       .from("companies")
-      .select("id,name,slug,website,description,logo_url,location,verified")
+      .select("id,name,slug,website,description,logo_url,location,verified,updated_at")
       .ilike("name", nameGuess)
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (byName?.id) {
