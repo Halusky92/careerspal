@@ -82,6 +82,41 @@ async function fetchCompanyAndJobs(slug: string): Promise<{
   if (!company) return null;
   let companyRow = company as SupabaseCompanyRow;
 
+  // Self-heal: if website is missing, derive it from published jobs (company_website or apply_url host).
+  try {
+    const needsWebsite = !((companyRow.website || "").trim());
+    if (needsWebsite) {
+      const { data: jobRow } = await supabaseAdmin
+        .from("jobs")
+        .select("company_website,apply_url")
+        .eq("company_id", companyRow.id)
+        .eq("status", "published")
+        .order("timestamp", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const rawWebsite = (jobRow as any)?.company_website || null;
+      const rawApply = (jobRow as any)?.apply_url || null;
+      const pick = (value: string | null) => {
+        const v = (value || "").trim();
+        if (!v || v === "#" || v.startsWith("mailto:") || v.startsWith("/")) return null;
+        try {
+          const u = new URL(v);
+          return `${u.protocol}//${u.hostname}`;
+        } catch {
+          return null;
+        }
+      };
+      const derived = pick(rawWebsite) || pick(rawApply);
+      if (derived) {
+        await supabaseAdmin.from("companies").update({ website: derived }).eq("id", companyRow.id);
+        companyRow = { ...(companyRow as any), website: derived } as SupabaseCompanyRow;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
   // Optional enrichment: if company has a website but missing description/logo, fill from meta tags.
   // Conservative: only fills missing fields; failures don't block rendering.
   try {

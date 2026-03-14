@@ -94,14 +94,12 @@ export default function JobRow({
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const goCompany = (companyName: string) => {
-    const href = `/companies/${createCompanySlug({ name: companyName })}`;
-    if (typeof window !== "undefined" && window.location.hostname === "careerspal.com") {
-      window.location.assign(`https://www.careerspal.com${href}`);
-      return;
-    }
-    router.push(href);
-  };
+  const companyPath = `/companies/${createCompanySlug({ name: job.company })}`;
+  const companyHref =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "careerspal.com" || window.location.hostname === "www.careerspal.com")
+      ? `https://www.careerspal.com${companyPath}`
+      : companyPath;
 
   const isElite = job.planType === "Elite Managed";
   const isPro = job.planType === "Featured Pro";
@@ -190,7 +188,7 @@ export default function JobRow({
               </h3>
 
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold text-slate-700">
-                <button
+                <a
                   className="hover:text-indigo-600 hover:underline decoration-indigo-300 underline-offset-2 truncate"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -198,12 +196,13 @@ export default function JobRow({
                       onOpenCompany(job.company);
                       return;
                     }
-                    goCompany(job.company);
+                    // Let the anchor navigate.
                   }}
                   title={job.company}
+                  href={companyHref}
                 >
                   {job.company}
-                </button>
+                </a>
 
                 {(isElite || isPro) && (
                   <span

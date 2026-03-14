@@ -63,14 +63,12 @@ export default function JobCard({
   className = "",
 }: JobCardProps) {
   const router = useRouter();
-  const goCompany = (companyName: string) => {
-    const href = `/companies/${createCompanySlug({ name: companyName })}`;
-    if (typeof window !== "undefined" && window.location.hostname === "careerspal.com") {
-      window.location.assign(`https://www.careerspal.com${href}`);
-      return;
-    }
-    router.push(href);
-  };
+  const companyPath = `/companies/${createCompanySlug({ name: job.company })}`;
+  const companyHref =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "careerspal.com" || window.location.hostname === "www.careerspal.com")
+      ? `https://www.careerspal.com${companyPath}`
+      : companyPath;
   const isHome = variant === "home";
 
   const isElite = job.planType === "Elite Managed";
@@ -201,13 +199,13 @@ export default function JobCard({
             {job.title}
           </h3>
           <div className="flex items-center gap-2 mt-1 flex-nowrap overflow-hidden">
-            <button
+            <a
+              href={companyHref}
               onClick={(e) => {
                 e.stopPropagation();
                 if (onOpenCompany) {
+                  e.preventDefault();
                   onOpenCompany(job.company);
-                } else {
-                  goCompany(job.company);
                 }
               }}
               className={`font-bold uppercase text-[9px] sm:text-[10px] tracking-wider hover:underline z-10 relative truncate ${
@@ -215,7 +213,7 @@ export default function JobCard({
               }`}
             >
               {job.company}
-            </button>
+            </a>
             <span className={`text-[8px] flex-shrink-0 ${isElite ? "text-yellow-300" : "text-slate-300"}`}>•</span>
             <span
               className={`${isHome ? "text-[8px]" : "text-[8px] sm:text-[9px]"} font-black uppercase tracking-widest truncate ${
