@@ -489,6 +489,9 @@ type SourceRowForPublish = {
   enabled: boolean;
   validation_state: string;
   source_type: string;
+  ats_identifier?: string | null;
+  normalized_url?: string | null;
+  base_url?: string | null;
   display_name: string | null;
   companies?: { id: string; name: string; website: string | null; logo_url: string | null; slug: string | null } | null;
 };
@@ -534,7 +537,9 @@ export async function autoPublishEligibleCandidates(
   const sourceIds = Array.from(new Set(rows.map((r) => r.source_id)));
   const { data: sources } = await sb
     .from("sourcing_sources")
-    .select("id,company_id,enabled,validation_state,source_type,display_name,companies(id,name,website,logo_url,slug)")
+    .select(
+      "id,company_id,enabled,validation_state,source_type,display_name,ats_identifier,normalized_url,base_url,companies(id,name,website,logo_url,slug)",
+    )
     .in("id", sourceIds);
 
   const sourceMap = new Map<string, SourceRowForPublish>();
@@ -544,6 +549,29 @@ export async function autoPublishEligibleCandidates(
   let skipped = 0;
   let failed = 0;
   const results: any[] = [];
+
+  const deriveCompanyName = (candidate: AutoPublishCandidateRow, src?: SourceRowForPublish) => {
+    const fromCandidate = (candidate.company_name || "").trim();
+    if (fromCandidate) return fromCandidate;
+
+    const fromDisplay = (src?.display_name || "").trim();
+    if (fromDisplay) return fromDisplay;
+
+    // Greenhouse canonical board token is often a good fallback, e.g. "samsara" -> "Samsara".
+    const token = (src?.ats_identifier || "").trim();
+    if (token) return token.charAt(0).toUpperCase() + token.slice(1);
+
+    const url = (src?.normalized_url || src?.base_url || candidate.source_url || "").toString();
+    if (url) {
+      const m = url.match(/boards\.greenhouse\.io\/([^/?#]+)/i);
+      if (m?.[1]) {
+        const t = m[1].trim();
+        if (t) return t.charAt(0).toUpperCase() + t.slice(1);
+      }
+    }
+
+    return "";
+  };
 
   for (const r of rows) {
     const candidate = r as AutoPublishCandidateRow & {
@@ -557,6 +585,7 @@ export async function autoPublishEligibleCandidates(
     const decision = candidate.sourcing_candidate_decisions?.decision || null;
     const blocking = (candidate.sourcing_candidate_decisions?.blocking_reason_codes as string[] | undefined) || [];
     const dupConfidence = (candidate.sourcing_candidate_dedupes?.confidence || "none").toString();
+    const derivedCompanyName = deriveCompanyName(candidate, src);
 
     const ineligibleReasons: string[] = [];
     if (decision !== "auto_publish_candidate") ineligibleReasons.push(`decision=${decision || "null"}`);
@@ -574,8 +603,7 @@ export async function autoPublishEligibleCandidates(
       ineligibleReasons.push(`source_type_unsupported(${(src?.source_type || "").toLowerCase() || "null"})`);
     // Also require some company context; otherwise we can't publish into public.jobs reliably.
     if (!src?.company_id) {
-      const companyName = (candidate.company_name || src?.display_name || "").trim();
-      if (!companyName) ineligibleReasons.push("missing_company");
+      if (!derivedCompanyName) ineligibleReasons.push("missing_company");
     }
 
     const eligible = ineligibleReasons.length === 0;
@@ -612,7 +640,7 @@ export async function autoPublishEligibleCandidates(
 
     let companyId: string | null = src?.company_id || null;
     if (!companyId) {
-      const companyName = (candidate.company_name || src?.display_name || "").trim();
+      const companyName = derivedCompanyName;
       if (!companyName) {
         skipped += 1;
         await sb
