@@ -651,6 +651,7 @@ export default function SourcingRegistrySection() {
         limit: 30,
         concurrency: 3,
         cooldownHours: 24,
+        scanLimit: 600,
       };
       if (runFilterSourceId.trim()) payload.sourceId = runFilterSourceId.trim();
       if (selectedRunId.trim()) payload.runId = selectedRunId.trim();
