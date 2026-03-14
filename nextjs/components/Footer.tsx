@@ -12,7 +12,7 @@ const Footer = () => {
                 Build with teams who respect systems and salary transparency.
               </h3>
               <p className="text-slate-500 font-medium mt-3 max-w-2xl">
-                Curated, salary-first roles with clear scope and direct apply links.
+                Notion-heavy, salary-first roles with clear scope and direct apply links.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -33,11 +33,13 @@ const Footer = () => {
               </div>
               <div>
                 <div className="text-lg font-bold text-slate-900 leading-none">CareersPal</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Curated job board</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                  Notion-heavy ops & systems board
+                </div>
               </div>
             </div>
             <p className="text-sm text-slate-500 font-medium">
-              Curated roles for modern operations, product, and automation talent.
+              Notion-heavy roles for modern operations, systems, and automation talent — plus RevOps, Product Ops, and Chief of Staff.
             </p>
           </div>
 

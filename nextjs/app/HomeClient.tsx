@@ -115,7 +115,10 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Browse by focus</div>
-              <div className="text-xl sm:text-2xl font-black text-slate-900 mt-2">Start with a category.</div>
+              <div className="text-xl sm:text-2xl font-black text-slate-900 mt-2">Start with a lane.</div>
+              <div className="mt-2 text-sm text-slate-600 font-medium">
+                Most roles are Notion-heavy — but the board stays broad across Ops, Systems, Automation, RevOps, Product Ops, and Chief of Staff.
+              </div>
             </div>
             <button
               type="button"
@@ -128,6 +131,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
 
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {[
+              { label: "Notion Ops", onClick: () => goToJobsWithQuery("Notion") },
               { label: "Operations", onClick: () => goToJobsWithCategory("Operations") },
               { label: "Systems", onClick: () => goToJobsWithCategory("Systems Design") },
               { label: "Automation", onClick: () => goToJobsWithCategory("Automation") },
@@ -141,7 +145,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
                 onClick={item.onClick}
                 className="rounded-2xl border border-slate-200/70 bg-white px-4 py-4 text-left hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors"
               >
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Category</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Focus</div>
                 <div className="mt-1 text-sm font-black text-slate-900">{item.label}</div>
               </button>
             ))}
@@ -156,7 +160,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
             <div>
               <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em]">Featured roles</p>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
-                {hasJobs ? "Salary-first roles worth your time." : "Curated remote roles, salary-first."}
+                {hasJobs ? "Notion-heavy, salary-first roles worth your time." : "Notion-heavy remote roles, salary-first."}
               </h2>
               <p className="text-sm text-slate-600 font-medium mt-2 max-w-2xl">
                 Title, company, salary, remote/location, category, and posted date — easy to scan.
@@ -326,7 +330,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500">For employers</p>
               <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Post a role that serious operators will trust.</h3>
               <p className="text-slate-600 font-medium mt-2 max-w-2xl">
-                Salary-first listings. Clear scope. Reviewed before publish.
+                Salary-first listings. Clear scope. Reviewed before publish — best for Notion-heavy ops and systems work (but open to the broader niche).
               </p>
               <ul className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-slate-600 font-medium">
                 <li className="flex items-center gap-2"><span className="text-emerald-600 font-black">✓</span> Salary required</li>

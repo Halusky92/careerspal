@@ -27,15 +27,17 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur border border-slate-200/60 px-4 py-2 rounded-full shadow-sm">
-            <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Curated • Salary-first • Remote</span>
+            <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">
+              Notion-heavy • Salary-first • Remote
+            </span>
           </div>
 
           <h1 className="mt-6 text-4xl sm:text-6xl md:text-7xl font-black text-slate-900 tracking-tight leading-[1.05]">
-            High-signal remote roles in Ops & Systems.
+            Notion-heavy remote roles in Ops, Systems & Automation.
           </h1>
 
           <p className="mt-5 text-base sm:text-lg text-slate-600 font-medium max-w-2xl">
-            Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff roles — reviewed for clarity and salary transparency.
+            Built for modern business operations and systems builders. Also covers RevOps, Product Ops, and Chief of Staff — always salary-first and reviewed for clarity.
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
@@ -70,7 +72,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
             </span>
             <span className="hidden sm:inline text-slate-300">•</span>
             <span className="inline-flex items-center gap-2">
-              <span className="text-emerald-600 font-black">✓</span> Remote-first focus
+              <span className="text-emerald-600 font-black">✓</span> Clear apply links
             </span>
           </div>
         </div>
