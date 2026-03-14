@@ -66,9 +66,6 @@ async function fetchCompanyAndJobs(slug: string): Promise<CompanyFetchResult> {
   const baseUrl = await getBaseUrl();
   const url = `${baseUrl}/api/companies/${encodeURIComponent(slug)}`;
   const res = await fetch(url, { cache: "no-store" });
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[companies/[slug]] fetch", { slug, url, status: res.status });
-  }
   if (res.status === 404) return { kind: "not_found" };
   if (!res.ok) return { kind: "error" };
   const json = (await res.json()) as CompanyApiPayload;
@@ -117,7 +114,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       },
     };
   } catch (e) {
-    console.error("[companies/[slug]] generateMetadata_failed", { slug: params.slug, error: (e as any)?.message || String(e) });
+    console.error("[companies/[slug]] generateMetadata_failed", { error: (e as any)?.message || String(e) });
     return {};
   }
 }
