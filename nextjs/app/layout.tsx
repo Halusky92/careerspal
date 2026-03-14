@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Providers from "../components/Providers";
 import AnalyticsTracker from "../components/AnalyticsTracker";
+import CanonicalHostRedirect from "../components/CanonicalHostRedirect";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -69,6 +70,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F8F9FD] text-slate-900`}>
         <Providers>
+          <CanonicalHostRedirect />
           <Suspense fallback={null}>
             <AnalyticsTracker />
           </Suspense>
