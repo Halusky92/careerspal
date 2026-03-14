@@ -767,15 +767,19 @@ export async function autoPublishEligibleCandidates(
         .maybeSingle();
 
       if (!existingCompany?.id) {
+        // Idempotent create: upsert on unique company name (safe for races).
         const { data: createdCompany, error: cErr } = await sb
           .from("companies")
-          .insert({
-            name: companyName,
-            slug: derivedCompanySlug,
-            website: derivedCompanyWebsite,
-            logo_url: derivedLogoUrl,
-            created_by: actorId,
-          })
+          .upsert(
+            {
+              name: companyName,
+              slug: derivedCompanySlug,
+              website: derivedCompanyWebsite,
+              logo_url: derivedLogoUrl,
+              created_by: actorId,
+            },
+            { onConflict: "name" },
+          )
           .select("id")
           .single();
 
