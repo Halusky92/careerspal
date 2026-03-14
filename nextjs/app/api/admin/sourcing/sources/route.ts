@@ -104,3 +104,49 @@ export async function POST(request: Request) {
   return NextResponse.json({ sourceId: source.id, reviewId });
 }
 
+export async function PATCH(request: Request) {
+  const auth = await getSupabaseProfile(request);
+  if (auth?.profile?.role !== "admin") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
+  }
+
+  const body = (await request.json().catch(() => ({}))) as { sourceId?: string; enabled?: boolean };
+  const sourceId = (body.sourceId || "").trim();
+  const enabled = body.enabled === true;
+
+  if (!sourceId) {
+    return NextResponse.json({ error: "Missing sourceId." }, { status: 400 });
+  }
+
+  const { data: src, error: srcErr } = await supabaseAdmin
+    .from("sourcing_sources")
+    .select("id,validation_state,source_type,enabled")
+    .eq("id", sourceId)
+    .maybeSingle();
+
+  if (srcErr) {
+    return NextResponse.json({ error: "Unable to load source." }, { status: 500 });
+  }
+  if (!src) {
+    return NextResponse.json({ error: "Source not found." }, { status: 404 });
+  }
+
+  if (enabled) {
+    if (src.validation_state !== "allowed") {
+      return NextResponse.json({ error: "Source must be allowed before enabling." }, { status: 400 });
+    }
+    if ((src.source_type || "").toString() === "unknown") {
+      return NextResponse.json({ error: "Cannot enable unknown source type." }, { status: 400 });
+    }
+  }
+
+  const { error: updErr } = await supabaseAdmin.from("sourcing_sources").update({ enabled }).eq("id", sourceId);
+  if (updErr) {
+    return NextResponse.json({ error: "Unable to update source." }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true, sourceId, enabled });
+}
