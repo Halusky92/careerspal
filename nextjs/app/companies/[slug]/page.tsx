@@ -3,10 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import CompanyLogo from "../../../components/CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../../../lib/jobs";
-import { enrichCompanyFromWebsite } from "../../../lib/companyEnrichment";
-import { supabaseAdmin } from "../../../lib/supabaseAdmin";
-import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
-import type { Job } from "../../../types";
+import type { Company, Job } from "../../../types";
 
 // Ensure a consistent runtime (avoid edge differences that can cause production-only crashes).
 export const runtime = "nodejs";
@@ -16,16 +13,11 @@ type PageProps = {
   params: { slug: string };
 };
 
-type SupabaseCompanyRow = {
-  id: string;
-  name: string | null;
-  slug: string | null;
-  website: string | null;
-  description: string | null;
-  logo_url: string | null;
-  location: string | null;
-  verified: boolean | null;
-};
+type CompanyApiPayload = { company: Company & { verified?: boolean }; jobs: Job[] };
+type CompanyFetchResult =
+  | { kind: "ok"; company: Company & { verified?: boolean }; jobs: Job[] }
+  | { kind: "not_found" }
+  | { kind: "error" };
 
 const getBaseUrl = () => {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
@@ -52,121 +44,25 @@ const safeHost = (value?: string | null) => {
   }
 };
 
-async function fetchCompanyAndJobs(slug: string): Promise<{
-  company: SupabaseCompanyRow;
-  jobs: Job[];
-} | null> {
-  if (!supabaseAdmin) return null;
-
-  let { data: company } = await supabaseAdmin
-    .from("companies")
-    .select("id,name,slug,website,description,logo_url,location,verified,updated_at")
-    .eq("slug", slug)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  // Self-heal: some records may exist without a slug (legacy / imported / auto-created).
-  // Try a conservative fallback lookup by exact name match (case-insensitive) and then set slug.
-  if (!company) {
-    const nameGuess = slug.replace(/-/g, " ").trim();
-    const { data: byName } = await supabaseAdmin
-      .from("companies")
-      .select("id,name,slug,website,description,logo_url,location,verified,updated_at")
-      .ilike("name", nameGuess)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (byName?.id) {
-      company = byName as any;
-      if (!byName.slug) {
-        await supabaseAdmin.from("companies").update({ slug }).eq("id", byName.id);
-        company = { ...(company as any), slug } as any;
-      }
-    }
-  }
-
-  if (!company) return null;
-  let companyRow = company as SupabaseCompanyRow;
-
-  // Self-heal: if website is missing, derive it from published jobs (company_website or apply_url host).
-  try {
-    const needsWebsite = !((companyRow.website || "").trim());
-    if (needsWebsite) {
-      const { data: jobRow } = await supabaseAdmin
-        .from("jobs")
-        .select("company_website,apply_url")
-        .eq("company_id", companyRow.id)
-        .eq("status", "published")
-        .order("timestamp", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const rawWebsite = (jobRow as any)?.company_website || null;
-      const rawApply = (jobRow as any)?.apply_url || null;
-      const pick = (value: string | null) => {
-        const v = (value || "").trim();
-        if (!v || v === "#" || v.startsWith("mailto:") || v.startsWith("/")) return null;
-        try {
-          const u = new URL(v);
-          return `${u.protocol}//${u.hostname}`;
-        } catch {
-          return null;
-        }
-      };
-      const derived = pick(rawWebsite) || pick(rawApply);
-      if (derived) {
-        await supabaseAdmin.from("companies").update({ website: derived }).eq("id", companyRow.id);
-        companyRow = { ...(companyRow as any), website: derived } as SupabaseCompanyRow;
-      }
-    }
-  } catch {
-    // ignore
-  }
-
-  // Optional enrichment: if company has a website but missing description/logo, fill from meta tags.
-  // Conservative: only fills missing fields; failures don't block rendering.
-  try {
-    const needsDesc = !((companyRow.description || "").trim());
-    const needsLogo = !((companyRow.logo_url || "").trim());
-    const website = (companyRow.website || "").trim();
-    if ((needsDesc || needsLogo) && website) {
-      const enr = await enrichCompanyFromWebsite({ websiteUrl: website });
-      const patch: Record<string, unknown> = {};
-      if (needsDesc && enr.description) patch.description = enr.description;
-      if (needsLogo && enr.logo_url) patch.logo_url = enr.logo_url;
-      if (Object.keys(patch).length > 0) {
-        await supabaseAdmin.from("companies").update(patch).eq("id", companyRow.id);
-        companyRow = { ...(companyRow as any), ...(patch as any) } as SupabaseCompanyRow;
-      }
-    }
-  } catch (e) {
-    // Don't block rendering; but log so we can debug production-only crashes.
-    console.error("[companies/[slug]] enrichment_failed", { slug, companyId: companyRow.id, website: companyRow.website, error: (e as any)?.message || String(e) });
-  }
-
-  const { data: jobs } = await supabaseAdmin
-    .from("jobs")
-    .select(
-      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
-    )
-    .eq("company_id", companyRow.id)
-    .eq("status", "published")
-    .order("timestamp", { ascending: false });
-
-  const mappedJobs = (jobs as SupabaseJobRow[] | null || []).map(mapSupabaseJob);
-  return { company: companyRow, jobs: mappedJobs };
+async function fetchCompanyAndJobs(slug: string): Promise<CompanyFetchResult> {
+  const baseUrl = getBaseUrl();
+  const url = `${baseUrl}/api/companies/${encodeURIComponent(slug)}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (res.status === 404) return { kind: "not_found" };
+  if (!res.ok) return { kind: "error" };
+  const json = (await res.json()) as CompanyApiPayload;
+  if (!json?.company) return { kind: "error" };
+  return { kind: "ok", company: json.company, jobs: Array.isArray(json.jobs) ? json.jobs : [] };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   try {
     const result = await fetchCompanyAndJobs(params.slug);
-    if (!result) return {};
+    if (result.kind !== "ok") return {};
 
     const baseUrl = getBaseUrl();
     const companyName = result.company.name || "Company";
-    const canonicalSlug = result.company.slug || createCompanySlug({ name: companyName });
+    const canonicalSlug = params.slug || createCompanySlug({ name: companyName });
     const canonicalPath = `/companies/${canonicalSlug}`;
     const canonicalUrl = `${baseUrl}${canonicalPath}`;
 
@@ -174,10 +70,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const desc = plainText(result.company.description || "").slice(0, 240);
     const description = desc || `Explore live remote roles from ${companyName} on CareersPal.`;
 
-    const imageUrl = result.company.logo_url
-      ? result.company.logo_url.startsWith("http")
-        ? result.company.logo_url
-        : `${baseUrl}${result.company.logo_url}`
+    const imageUrl = result.company.logo
+      ? result.company.logo.startsWith("http")
+        ? result.company.logo
+        : `${baseUrl}${result.company.logo}`
       : undefined;
 
     return {
@@ -205,27 +101,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function CompanyPage({ params }: PageProps) {
-  let result: Awaited<ReturnType<typeof fetchCompanyAndJobs>> | null = null;
+  let result: CompanyFetchResult | null = null;
   try {
     result = await fetchCompanyAndJobs(params.slug);
   } catch (e) {
     console.error("[companies/[slug]] render_failed", { slug: params.slug, error: (e as any)?.message || String(e) });
   }
-  if (!result) {
+  if (!result || result.kind === "error") {
     // Prefer a clean fallback over crashing into the global error boundary.
-    // If the company truly doesn't exist, keep behavior consistent with notFound.
-    // If the DB temporarily errors, we still show a useful page.
-    try {
-      // If Supabase is up, we can distinguish "missing company" vs "transient failure" by a quick lookup.
-      const { data: exists } = await supabaseAdmin
-        ?.from("companies")
-        .select("id")
-        .eq("slug", params.slug)
-        .maybeSingle()!;
-      if (!exists?.id) notFound();
-    } catch {
-      // ignore
-    }
     return (
       <div className="bg-[#F8F9FD] pb-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-16">
@@ -254,13 +137,14 @@ export default async function CompanyPage({ params }: PageProps) {
       </div>
     );
   }
+  if (result.kind === "not_found") notFound();
 
   const { company, jobs } = result;
   const companyName = company.name || "Company";
   const companyWebsite = (company.website || "").trim();
   const companyDescription = (company.description || "").trim();
-  const companyLocation = (company.location || "").trim();
-  const employeeCount = (company as any).employee_count ? String((company as any).employee_count).trim() : "";
+  const companyLocation = (company.headquarters || "").trim();
+  const employeeCount = (company.employeeCount || "").trim();
   const showVerified = Boolean(company.verified);
 
   const stack = Array.from(
@@ -304,7 +188,7 @@ export default async function CompanyPage({ params }: PageProps) {
                 <div className="w-20 h-20 rounded-[1.6rem] overflow-hidden bg-white border border-slate-200/70 p-2">
                   <CompanyLogo
                     name={companyName}
-                    logoUrl={company.logo_url}
+                    logoUrl={company.logo}
                     website={companyWebsite || undefined}
                     className="w-full h-full rounded-xl overflow-hidden bg-white"
                     imageClassName="w-full h-full object-contain"

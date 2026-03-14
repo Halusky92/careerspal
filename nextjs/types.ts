@@ -68,6 +68,7 @@ export interface Company {
   website: string;
   description: string;
   longDescription: string;
+  verified?: boolean;
   foundedYear: string;
   employeeCount: string;
   headquarters: string;

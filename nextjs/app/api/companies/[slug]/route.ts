@@ -14,6 +14,7 @@ type SupabaseCompanyRow = {
   logo_url: string | null;
   location: string | null;
   employee_count: string | null;
+  verified?: boolean | null;
 };
 
 const mapCompany = (row: SupabaseCompanyRow): Company => ({
@@ -22,6 +23,7 @@ const mapCompany = (row: SupabaseCompanyRow): Company => ({
   website: row.website || "",
   description: row.description || "Company profile coming soon.",
   longDescription: row.long_description || row.description || "Company profile coming soon.",
+  verified: Boolean(row.verified),
   foundedYear: "—",
   employeeCount: row.employee_count || "—",
   headquarters: row.location || "Remote",
@@ -40,7 +42,7 @@ export const GET = async (_request: Request, context: { params: Promise<{ slug: 
   // Use order+limit instead of `.single()` to avoid hard failures when more than one row matches.
   let { data: company } = await supabaseAdmin
     .from("companies")
-    .select("id,name,slug,website,description,long_description,logo_url,location,employee_count,updated_at")
+    .select("id,name,slug,website,description,long_description,logo_url,location,employee_count,verified,updated_at")
     .eq("slug", slug)
     .order("updated_at", { ascending: false })
     .limit(1)
@@ -51,7 +53,7 @@ export const GET = async (_request: Request, context: { params: Promise<{ slug: 
     const nameGuess = slug.replace(/-/g, " ").trim();
     const { data: byName } = await supabaseAdmin
       .from("companies")
-      .select("id,name,slug,website,description,long_description,logo_url,location,employee_count,updated_at")
+      .select("id,name,slug,website,description,long_description,logo_url,location,employee_count,verified,updated_at")
       .ilike("name", nameGuess)
       .order("updated_at", { ascending: false })
       .limit(1)
