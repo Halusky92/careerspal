@@ -95,7 +95,9 @@ export default function JobRow({
   const [menuOpen, setMenuOpen] = useState(false);
 
   const companyPath = `/companies/${createCompanySlug({ name: job.company })}`;
-  const companyPathResolved = `/companies/${(job.companySlug || createCompanySlug({ name: job.company })).trim()}`;
+  const rawSlug = (job.companySlug || "").toString().trim();
+  const safeSlug = rawSlug && rawSlug !== "undefined" && rawSlug !== "null" ? rawSlug : "";
+  const companyPathResolved = `/companies/${(safeSlug || createCompanySlug({ name: job.company || "Company" })).trim()}`;
   const companyHref =
     typeof window !== "undefined" &&
     (window.location.hostname === "careerspal.com" || window.location.hostname === "www.careerspal.com")

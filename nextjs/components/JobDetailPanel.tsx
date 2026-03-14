@@ -51,8 +51,10 @@ export default function JobDetailPanel({
 }: JobDetailPanelProps) {
   const router = useRouter();
 
+  const rawSlug = (job?.companySlug || "").toString().trim();
+  const safeSlug = rawSlug && rawSlug !== "undefined" && rawSlug !== "null" ? rawSlug : "";
   const companyPath = job
-    ? `/companies/${(job.companySlug || createCompanySlug({ name: job.company })).trim()}`
+    ? `/companies/${(safeSlug || createCompanySlug({ name: job.company || "Company" })).trim()}`
     : "/companies";
   const companyHref =
     typeof window !== "undefined" &&
