@@ -7,6 +7,7 @@ const adminPaths = ["/dashboard/admin"];
 // Auth is requested only at submission/payment time inside the UI.
 const employerPaths = ["/dashboard/employer"];
 const candidatePaths = ["/dashboard/candidate"];
+const protectedPaths = ["/dashboard", "/account"];
 
 const matchesPath = (pathname: string, paths: string[]) =>
   paths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
@@ -14,6 +15,21 @@ const matchesPath = (pathname: string, paths: string[]) =>
 export async function middleware(_request: NextRequest) {
   const request = _request;
   const { pathname } = request.nextUrl;
+  const host = (request.headers.get("host") || "").toLowerCase().split(":")[0] || "";
+
+  // Canonicalize apex -> www to avoid cross-origin redirects during client-side navigation / RSC fetches.
+  if (host === "careerspal.com") {
+    const url = request.nextUrl.clone();
+    url.hostname = "www.careerspal.com";
+    url.protocol = "https:";
+    return NextResponse.redirect(url, 308);
+  }
+
+  // Only enforce auth on protected areas. Public pages should never require a token.
+  if (!matchesPath(pathname, protectedPaths)) {
+    return NextResponse.next();
+  }
+
   const token = request.cookies.get("cp_access_token")?.value;
 
   if (!token) {
@@ -72,5 +88,8 @@ export async function middleware(_request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/account/:path*"],
+  matcher: [
+    // Apply to all pages + APIs, but skip Next assets.
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|icon|logo.svg).*)",
+  ],
 };
