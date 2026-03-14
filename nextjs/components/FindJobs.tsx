@@ -80,6 +80,14 @@ const FindJobs: React.FC<FindJobsProps> = ({
 }) => {
   const router = useRouter();
   const { accessToken } = useSupabaseAuth();
+  const goCompany = (companyName: string) => {
+    const href = `/companies/${createCompanySlug({ name: companyName })}`;
+    if (typeof window !== "undefined" && window.location.hostname === "careerspal.com") {
+      window.location.assign(`https://www.careerspal.com${href}`);
+      return;
+    }
+    router.push(href);
+  };
   const [query, setQuery] = useState(initialQuery);
   const [locationQuery, setLocationQuery] = useState(initialLocationQuery);
   const [category, setCategory] = useState('All Roles');
@@ -1209,7 +1217,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     onToggleSave={() => onToggleBookmark(job.id)}
                     onOpenCompany={(companyName) => {
                       if (onSelectCompany) onSelectCompany(companyName);
-                      else router.push(`/companies/${createCompanySlug({ name: companyName })}`);
+                      else goCompany(companyName);
                     }}
                     onSelect={() => {
                       if (isDesktop) {

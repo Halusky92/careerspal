@@ -63,6 +63,14 @@ export default function JobCard({
   className = "",
 }: JobCardProps) {
   const router = useRouter();
+  const goCompany = (companyName: string) => {
+    const href = `/companies/${createCompanySlug({ name: companyName })}`;
+    if (typeof window !== "undefined" && window.location.hostname === "careerspal.com") {
+      window.location.assign(`https://www.careerspal.com${href}`);
+      return;
+    }
+    router.push(href);
+  };
   const isHome = variant === "home";
 
   const isElite = job.planType === "Elite Managed";
@@ -199,7 +207,7 @@ export default function JobCard({
                 if (onOpenCompany) {
                   onOpenCompany(job.company);
                 } else {
-                  router.push(`/companies/${createCompanySlug({ name: job.company })}`);
+                  goCompany(job.company);
                 }
               }}
               className={`font-bold uppercase text-[9px] sm:text-[10px] tracking-wider hover:underline z-10 relative truncate ${

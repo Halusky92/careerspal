@@ -94,6 +94,15 @@ export default function JobRow({
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const goCompany = (companyName: string) => {
+    const href = `/companies/${createCompanySlug({ name: companyName })}`;
+    if (typeof window !== "undefined" && window.location.hostname === "careerspal.com") {
+      window.location.assign(`https://www.careerspal.com${href}`);
+      return;
+    }
+    router.push(href);
+  };
+
   const isElite = job.planType === "Elite Managed";
   const isPro = job.planType === "Featured Pro";
   const isPrivate = job.status === "private" || job.status === "invite_only";
@@ -189,7 +198,7 @@ export default function JobRow({
                       onOpenCompany(job.company);
                       return;
                     }
-                    router.push(`/companies/${createCompanySlug({ name: job.company })}`);
+                    goCompany(job.company);
                   }}
                   title={job.company}
                 >

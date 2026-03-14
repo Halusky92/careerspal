@@ -51,6 +51,17 @@ export default function JobDetailPanel({
 }: JobDetailPanelProps) {
   const router = useRouter();
 
+  const goCompany = (companyName: string) => {
+    const href = `/companies/${createCompanySlug({ name: companyName })}`;
+    // If the user is on the apex domain, Vercel redirects to www which can break Next.js client navigation
+    // (cross-origin redirect during RSC fetch). Force a full navigation to the canonical host.
+    if (typeof window !== "undefined" && window.location.hostname === "careerspal.com") {
+      window.location.assign(`https://www.careerspal.com${href}`);
+      return;
+    }
+    router.push(href);
+  };
+
   const stack = useMemo(() => {
     if (!job) return [];
     const tools = (job.tools || []).filter(Boolean);
@@ -166,7 +177,7 @@ export default function JobDetailPanel({
           <div className="mt-4 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <button
-                onClick={() => router.push(`/companies/${createCompanySlug({ name: job.company })}`)}
+                onClick={() => goCompany(job.company)}
                 className="text-sm font-semibold text-indigo-700 hover:text-indigo-800 hover:underline decoration-indigo-300 underline-offset-2 truncate"
               >
                 {job.company}
