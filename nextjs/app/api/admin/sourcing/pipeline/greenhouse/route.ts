@@ -110,6 +110,19 @@ async function runPipelineGreenhouse(args: { sourceId?: string | null; limitRaw?
   pipeSummary.auto_publish.skipped_not_eligible = pubResults.filter((r) => r?.status === "skipped").length;
   pipeSummary.auto_publish.skipped_total = pipeSummary.auto_publish.skipped_duplicates + pipeSummary.auto_publish.skipped_not_eligible;
 
+  // Capture published job IDs for admin drill-down (cap to keep audit logs small).
+  // This is intentionally best-effort and non-essential for the pipeline logic.
+  const publishedJobIds = pubResults
+    .filter((r) => r?.status === "published" && typeof r?.jobId === "string")
+    .map((r) => String(r.jobId))
+    .filter(Boolean);
+  const duplicateJobIds = pubResults
+    .filter((r) => r?.status === "skipped_duplicate" && typeof r?.jobId === "string")
+    .map((r) => String(r.jobId))
+    .filter(Boolean);
+  (pipeSummary.auto_publish as any).published_job_ids = Array.from(new Set(publishedJobIds)).slice(0, 60);
+  (pipeSummary.auto_publish as any).duplicate_job_ids = Array.from(new Set(duplicateJobIds)).slice(0, 60);
+
   // Optional: audit a pipeline run (cron actorId=null).
   await supabaseAdmin.from("audit_logs").insert({
     actor_id: args.actorId,

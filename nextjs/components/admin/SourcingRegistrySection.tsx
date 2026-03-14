@@ -110,6 +110,27 @@ type NormalizedCandidateRow = {
 
 type NormalizedCandidateDetail = Record<string, unknown> & { id: string; title?: string | null };
 
+type AutomationRun = {
+  id: string;
+  createdAt: string;
+  actorId: string | null;
+  sourcesProcessed: number;
+  ingestion: { rawFetched: number; rawInserted: number; rawSkipped: number; runsCreated: number };
+  normalization: { processed: number; inserted: number; updated: number; skipped: number; errors: number };
+  evaluation: { processed: number; evaluated: number; errors: number };
+  autoPublish: {
+    minScore: number | null;
+    processed: number;
+    published: number;
+    failed: number;
+    skippedTotal: number;
+    skippedDuplicates: number;
+    skippedNotEligible: number;
+    publishedJobIds: string[];
+    duplicateJobIds: string[];
+  };
+};
+
 const formatTs = (value?: string | null) => {
   if (!value) return "—";
   const d = new Date(value);
@@ -139,6 +160,9 @@ export default function SourcingRegistrySection() {
   const [sources, setSources] = useState<SourcingSource[]>([]);
   const [reviews, setReviews] = useState<SourcingReview[]>([]);
   const [runs, setRuns] = useState<SourcingRun[]>([]);
+  const [automationRuns, setAutomationRuns] = useState<AutomationRun[]>([]);
+  const [automationLoading, setAutomationLoading] = useState(false);
+  const [automationError, setAutomationError] = useState<string>("");
   const [rawJobs, setRawJobs] = useState<RawSourcedJobRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -222,8 +246,25 @@ export default function SourcingRegistrySection() {
     }
   };
 
+  const loadAutomationRuns = async () => {
+    setAutomationLoading(true);
+    setAutomationError("");
+    try {
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const resp = await authFetch("/api/admin/sourcing/automation/runs?limit=14", { cache: "no-store" }, accessToken);
+      const json = (await resp.json()) as { runs?: AutomationRun[]; error?: string };
+      if (!resp.ok) throw new Error(json.error || "Unable to load automation runs.");
+      setAutomationRuns(json.runs || []);
+    } catch (e) {
+      setAutomationError(e instanceof Error ? e.message : "Unable to load automation runs.");
+    } finally {
+      setAutomationLoading(false);
+    }
+  };
+
   useEffect(() => {
     load();
+    loadAutomationRuns();
   }, []);
 
   const createSource = async () => {
@@ -548,6 +589,7 @@ export default function SourcingRegistrySection() {
       setPipelineStatus("success");
       setPipelineMsg(msg);
       await load();
+      await loadAutomationRuns();
       await loadCandidates();
       await loadEvals();
     } catch (e) {
@@ -1053,6 +1095,112 @@ export default function SourcingRegistrySection() {
 
           {/* Ingestion inspection (Greenhouse) */}
           <div className="lg:col-span-12 bg-slate-950/40 border border-slate-800 rounded-2xl p-4">
+            {/* Automation feed */}
+            <div className="mb-5 rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Automation</div>
+                  <div className="mt-1 text-sm font-black text-white">Daily pipeline summary</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    Runs automatically once per day. This shows what got published, and what got skipped.
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {automationLoading ? <Badge tone="slate">loading</Badge> : <Badge tone="indigo">{`${automationRuns.length} runs`}</Badge>}
+                  <button
+                    onClick={loadAutomationRuns}
+                    disabled={automationLoading}
+                    className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      automationLoading
+                        ? "border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                        : "border-slate-700 bg-slate-900/30 text-slate-200 hover:bg-slate-900/50"
+                    }`}
+                    title="Refresh automation run history"
+                  >
+                    Refresh
+                  </button>
+                </div>
+              </div>
+
+              {automationError && (
+                <div className="mt-3 rounded-2xl border border-red-600/30 bg-red-600/10 px-4 py-3 text-xs text-red-200">
+                  {automationError}
+                </div>
+              )}
+
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="text-[10px] uppercase tracking-widest text-slate-500">
+                    <tr className="border-b border-slate-900/60">
+                      <th className="py-2 pr-3">When</th>
+                      <th className="py-2 pr-3">Sources</th>
+                      <th className="py-2 pr-3">Raw</th>
+                      <th className="py-2 pr-3">Normalized</th>
+                      <th className="py-2 pr-3">Evaluated</th>
+                      <th className="py-2 pr-3">Published</th>
+                      <th className="py-2 pr-3">Skipped</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(automationRuns || []).map((r) => (
+                      <tr key={r.id} className="border-b border-slate-900/60 text-slate-300 align-top">
+                        <td className="py-3 pr-3 whitespace-nowrap">
+                          <div className="font-bold text-white">{formatTs(r.createdAt)}</div>
+                          <div className="text-[11px] text-slate-500">{r.actorId ? "manual" : "cron"}</div>
+                        </td>
+                        <td className="py-3 pr-3">
+                          <Badge tone="indigo">{String(r.sourcesProcessed || 0)}</Badge>
+                        </td>
+                        <td className="py-3 pr-3 text-[11px] text-slate-400">
+                          {r.ingestion.rawInserted}/{r.ingestion.rawFetched} new
+                        </td>
+                        <td className="py-3 pr-3 text-[11px] text-slate-400">
+                          {r.normalization.inserted + r.normalization.updated}/{r.normalization.processed}
+                        </td>
+                        <td className="py-3 pr-3 text-[11px] text-slate-400">
+                          {r.evaluation.evaluated}/{r.evaluation.processed}
+                        </td>
+                        <td className="py-3 pr-3">
+                          {r.autoPublish.published > 0 ? <Badge tone="emerald">{String(r.autoPublish.published)}</Badge> : <Badge tone="slate">0</Badge>}
+                          {r.autoPublish.publishedJobIds?.length > 0 && (
+                            <div className="mt-2 flex flex-col gap-1">
+                              {r.autoPublish.publishedJobIds.slice(0, 6).map((jobId) => (
+                                <a
+                                  key={jobId}
+                                  href={`/jobs/${jobId}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[11px] text-indigo-200 hover:text-indigo-100 underline underline-offset-2"
+                                >
+                                  View job {jobId.slice(0, 8)}…
+                                </a>
+                              ))}
+                              {r.autoPublish.publishedJobIds.length > 6 && (
+                                <div className="text-[11px] text-slate-500">{`+${r.autoPublish.publishedJobIds.length - 6} more`}</div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 pr-3">
+                          {r.autoPublish.skippedTotal > 0 ? <Badge tone="amber">{String(r.autoPublish.skippedTotal)}</Badge> : <Badge tone="slate">0</Badge>}
+                          <div className="mt-2 text-[11px] text-slate-500">
+                            {`dup ${r.autoPublish.skippedDuplicates || 0} · not eligible ${r.autoPublish.skippedNotEligible || 0}`}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {(!automationRuns || automationRuns.length === 0) && (
+                      <tr>
+                        <td colSpan={7} className="py-4 text-xs text-slate-500">
+                          No automation runs yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ingestion inspection</div>
