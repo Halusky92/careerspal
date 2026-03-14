@@ -74,27 +74,28 @@ async function fetchCompanyAndJobs(slug: string): Promise<{
       company = byName as any;
       if (!byName.slug) {
         await supabaseAdmin.from("companies").update({ slug }).eq("id", byName.id);
-        company.slug = slug;
+        company = { ...(company as any), slug } as any;
       }
     }
   }
 
   if (!company) return null;
+  let companyRow = company as SupabaseCompanyRow;
 
   // Optional enrichment: if company has a website but missing description/logo, fill from meta tags.
   // Conservative: only fills missing fields; failures don't block rendering.
   try {
-    const needsDesc = !((company.description || "").trim());
-    const needsLogo = !((company.logo_url || "").trim());
-    const website = (company.website || "").trim();
+    const needsDesc = !((companyRow.description || "").trim());
+    const needsLogo = !((companyRow.logo_url || "").trim());
+    const website = (companyRow.website || "").trim();
     if ((needsDesc || needsLogo) && website) {
       const enr = await enrichCompanyFromWebsite({ websiteUrl: website });
       const patch: Record<string, unknown> = {};
       if (needsDesc && enr.description) patch.description = enr.description;
       if (needsLogo && enr.logo_url) patch.logo_url = enr.logo_url;
       if (Object.keys(patch).length > 0) {
-        await supabaseAdmin.from("companies").update(patch).eq("id", company.id);
-        company = { ...(company as any), ...(patch as any) };
+        await supabaseAdmin.from("companies").update(patch).eq("id", companyRow.id);
+        companyRow = { ...(companyRow as any), ...(patch as any) } as SupabaseCompanyRow;
       }
     }
   } catch {
@@ -106,12 +107,12 @@ async function fetchCompanyAndJobs(slug: string): Promise<{
     .select(
       "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,logo_url,website,description,verified)",
     )
-    .eq("company_id", company.id)
+    .eq("company_id", companyRow.id)
     .eq("status", "published")
     .order("timestamp", { ascending: false });
 
   const mappedJobs = (jobs as SupabaseJobRow[] | null || []).map(mapSupabaseJob);
-  return { company: company as SupabaseCompanyRow, jobs: mappedJobs };
+  return { company: companyRow, jobs: mappedJobs };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
