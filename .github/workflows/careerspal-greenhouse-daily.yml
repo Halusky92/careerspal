@@ -1,0 +1,28 @@
+name: CareersPal - Greenhouse daily pipeline
+
+on:
+  schedule:
+    # Daily at 06:00 UTC (adjust if you want; Vercel free cron alternative)
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Run Greenhouse pipeline (cron-safe)
+        env:
+          PIPELINE_URL: ${{ secrets.CAREERSPAL_PIPELINE_URL }}
+          CRON_SECRET: ${{ secrets.CAREERSPAL_CRON_SECRET }}
+        run: |
+          if [ -z "$PIPELINE_URL" ]; then
+            echo "Missing secret CAREERSPAL_PIPELINE_URL (e.g. https://www.careerspal.com/api/admin/sourcing/pipeline/greenhouse)"
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ]; then
+            echo "Missing secret CAREERSPAL_CRON_SECRET (must match Vercel env SOURCING_CRON_SECRET)"
+            exit 1
+          fi
+          curl -sS -m 60 -G "$PIPELINE_URL" --data-urlencode "secret=$CRON_SECRET"
+
