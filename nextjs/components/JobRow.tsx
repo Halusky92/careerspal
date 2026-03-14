@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
@@ -188,7 +189,14 @@ export default function JobRow({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h3 className={[isHome ? "text-[15px]" : "text-[15px] sm:text-base", "font-bold text-slate-900 leading-snug truncate"].join(" ")}>
-                {job.title}
+                <Link
+                  href={detailHref}
+                  onClick={(e) => e.stopPropagation()}
+                  className="hover:text-indigo-700 hover:underline decoration-indigo-300 underline-offset-2"
+                  title="Open role page"
+                >
+                  {job.title}
+                </Link>
               </h3>
 
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold text-slate-700">
@@ -433,11 +441,11 @@ export default function JobRow({
                       onApply();
                       return;
                     }
-                    router.push(boardHref);
+                    router.push(detailHref);
                   }}
                   className="h-11 flex-1 rounded-2xl border border-slate-200/80 bg-white text-[10px] font-semibold uppercase tracking-wide text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
                 >
-                  Full details
+                  View role
                 </button>
                 <button
                   type="button"

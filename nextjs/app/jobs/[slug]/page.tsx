@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import CompanyLogo from "../../../components/CompanyLogo";
+import FormattedDescriptionStatic from "../../../components/FormattedDescriptionStatic";
 import { getCategoryHubForDbCategory } from "../../../lib/categories";
 import { createCompanySlug, createJobSlug, getJobIdFromSlug } from "../../../lib/jobs";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
@@ -339,6 +340,13 @@ export default async function JobDetailPage({ params }: PageProps) {
                 </div>
               </section>
             )}
+
+            <section>
+              <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">Full description</h2>
+              <div className="mt-3">
+                <FormattedDescriptionStatic text={job.description} />
+              </div>
+            </section>
 
             {stack.length > 0 && (
               <section>

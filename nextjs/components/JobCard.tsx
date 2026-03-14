@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useMemo } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
-import { createCompanySlug } from "../lib/jobs";
+import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import FormattedDescription from "./FormattedDescription";
 
 export type JobCardVariant = "board" | "home";
@@ -54,6 +55,7 @@ export default function JobCard({
 }: JobCardProps) {
   const router = useRouter();
   const displayType = job.type && job.type !== "Unknown" ? job.type : "—";
+  const detailHref = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
   const rawSlug = (job.companySlug || "").toString().trim();
   const safeSlug = rawSlug && rawSlug !== "undefined" && rawSlug !== "null" ? rawSlug : "";
   const companyPath = `/companies/${(safeSlug || createCompanySlug({ name: job.company || "Company" })).trim()}`;
@@ -189,7 +191,14 @@ export default function JobCard({
               isElite ? "text-slate-900 group-hover:text-yellow-700" : "text-slate-900 group-hover:text-indigo-600"
             } transition-colors`}
           >
-            {job.title}
+            <Link
+              href={detailHref}
+              onClick={(e) => e.stopPropagation()}
+              className="hover:underline decoration-indigo-300 underline-offset-2"
+              title="Open role page"
+            >
+              {job.title}
+            </Link>
           </h3>
           <div className="flex items-center gap-2 mt-1 flex-nowrap overflow-hidden">
             <a

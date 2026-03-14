@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useMemo } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
-import { createCompanySlug } from "../lib/jobs";
+import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import FormattedDescription from "./FormattedDescription";
 
 type JobDetailPanelProps = {
@@ -41,6 +42,13 @@ export default function JobDetailPanel({
   const companyPath = job
     ? `/companies/${(safeSlug || createCompanySlug({ name: job.company || "Company" })).trim()}`
     : "/companies";
+  const detailPath = job ? `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}` : "/jobs";
+  const roleHref =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "careerspal.com" || window.location.hostname === "www.careerspal.com")
+      ? `https://www.careerspal.com${detailPath}`
+      : detailPath;
+
   const companyHref =
     typeof window !== "undefined" &&
     (window.location.hostname === "careerspal.com" || window.location.hostname === "www.careerspal.com")
@@ -100,7 +108,14 @@ export default function JobDetailPanel({
             <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
               Role details
             </div>
-            <div className="text-sm font-bold text-slate-900 truncate">{job.title}</div>
+            <Link
+              href={roleHref}
+              onClick={(e) => e.stopPropagation()}
+              className="text-sm font-bold text-slate-900 truncate hover:text-indigo-700 hover:underline decoration-indigo-300 underline-offset-2"
+              title="Open role page"
+            >
+              {job.title}
+            </Link>
           </div>
         </div>
 
