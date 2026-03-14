@@ -19,7 +19,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
             Invest in the best talent.
           </h1>
           <p className="text-lg sm:text-xl text-slate-500 max-w-2xl mx-auto font-medium">
-            Post a role for Notion-heavy operators and systems builders — across Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff.
+            Post a role on a curated, salary-first board for Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff roles.
           </p>
         </div>
 

@@ -72,9 +72,7 @@ const Navbar: React.FC = () => {
               </div>
               <div className="flex flex-col">
                 <span className="text-lg font-bold tracking-tight text-indigo-600 leading-none">CareersPal</span>
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-700 mt-1">
-                  Notion-heavy ops & systems roles
-                </span>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-700 mt-1">Curated remote ops roles</span>
               </div>
             </Link>
             
