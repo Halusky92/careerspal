@@ -183,6 +183,8 @@ export default function SourcingRegistrySection() {
   const [backfillPreview, setBackfillPreview] = useState<{ matched: number; scanned: number } | null>(null);
   const [enrichStatus, setEnrichStatus] = useState<"idle" | "running" | "success" | "error">("idle");
   const [enrichMsg, setEnrichMsg] = useState<string>("");
+  const [bulkEnrichStatus, setBulkEnrichStatus] = useState<"idle" | "running" | "success" | "error">("idle");
+  const [bulkEnrichMsg, setBulkEnrichMsg] = useState<string>("");
 
   const filteredReviews = useMemo(() => reviews.filter((r) => r.status === reviewFilter), [reviews, reviewFilter]);
   const filteredGreenhouseSources = useMemo(
@@ -637,6 +639,47 @@ export default function SourcingRegistrySection() {
     } catch (e) {
       setEnrichStatus("error");
       setEnrichMsg(e instanceof Error ? e.message : "Enrichment failed.");
+    }
+  };
+
+  const bulkEnrichMissingSalaries = async () => {
+    setBulkEnrichStatus("running");
+    setBulkEnrichMsg("");
+    try {
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const payload: Record<string, unknown> = {
+        limit: 30,
+        concurrency: 3,
+        cooldownHours: 24,
+      };
+      if (runFilterSourceId.trim()) payload.sourceId = runFilterSourceId.trim();
+      if (selectedRunId.trim()) payload.runId = selectedRunId.trim();
+
+      const resp = await authFetch(
+        "/api/admin/sourcing/candidates/enrich-salary-bulk",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+        accessToken,
+      );
+      const json = (await resp.json()) as {
+        ok?: boolean;
+        scanned?: number;
+        attempted?: number;
+        skipped_recent?: number;
+        updated?: number;
+        reopened?: number;
+        not_found?: number;
+        failed?: number;
+        error?: string;
+      };
+      if (!resp.ok) throw new Error(json.error || "Bulk enrichment failed.");
+      setBulkEnrichStatus(json.failed && json.failed > 0 ? "error" : "success");
+      setBulkEnrichMsg(
+        `Salary enrichment: attempted ${json.attempted ?? 0}/${json.scanned ?? 0}, updated ${json.updated ?? 0}, reopened ${json.reopened ?? 0}, not_found ${json.not_found ?? 0}, failed ${json.failed ?? 0}.`,
+      );
+      await loadCandidates();
+    } catch (e) {
+      setBulkEnrichStatus("error");
+      setBulkEnrichMsg(e instanceof Error ? e.message : "Bulk enrichment failed.");
     }
   };
 
@@ -1257,6 +1300,18 @@ export default function SourcingRegistrySection() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={bulkEnrichMissingSalaries}
+                    disabled={bulkEnrichStatus === "running"}
+                    className={`px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      bulkEnrichStatus === "running"
+                        ? "border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                        : "border-amber-600/30 bg-amber-600/10 text-amber-200 hover:bg-amber-600/20"
+                    }`}
+                    title="Fetch salary from official job pages for candidates missing salary (batched, conservative)."
+                  >
+                    {bulkEnrichStatus === "running" ? "Enriching salaries..." : "Enrich missing salaries"}
+                  </button>
+                  <button
                     onClick={runEvaluate}
                     disabled={evalStatus === "running"}
                     className={`px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
@@ -1303,6 +1358,19 @@ export default function SourcingRegistrySection() {
                   aria-live="polite"
                 >
                   {evalMsg}
+                </div>
+              )}
+              {bulkEnrichMsg && (
+                <div
+                  className={`mt-3 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
+                    bulkEnrichStatus === "error"
+                      ? "border-red-600/30 bg-red-600/10 text-red-300"
+                      : "border-amber-600/30 bg-amber-600/10 text-amber-200"
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {bulkEnrichMsg}
                 </div>
               )}
               {autoPublishMsg && (
