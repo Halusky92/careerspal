@@ -214,6 +214,17 @@ export default function SourcingRegistrySection() {
   const [unpublishSalaryStatus, setUnpublishSalaryStatus] = useState<"idle" | "running" | "success" | "error">("idle");
   const [unpublishSalaryMsg, setUnpublishSalaryMsg] = useState<string>("");
 
+  const safeJson = async <T,>(resp: Response): Promise<T> => {
+    const text = await resp.text();
+    if (!text) return {} as T;
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      // Fall back to a minimal shape so error messages are still useful.
+      return { error: text.slice(0, 280) } as T;
+    }
+  };
+
   const filteredReviews = useMemo(() => reviews.filter((r) => r.status === reviewFilter), [reviews, reviewFilter]);
   const filteredGreenhouseSources = useMemo(
     () => sources.filter((s) => s.source_type === "greenhouse"),
@@ -252,8 +263,8 @@ export default function SourcingRegistrySection() {
     try {
       if (!accessToken) throw new Error("Missing session token. Please sign in again.");
       const resp = await authFetch("/api/admin/sourcing/automation/runs?limit=14", { cache: "no-store" }, accessToken);
-      const json = (await resp.json()) as { runs?: AutomationRun[]; error?: string };
-      if (!resp.ok) throw new Error(json.error || "Unable to load automation runs.");
+      const json = (await safeJson(resp)) as { runs?: AutomationRun[]; error?: string };
+      if (!resp.ok) throw new Error(json.error || `Unable to load automation runs (HTTP ${resp.status}).`);
       setAutomationRuns(json.runs || []);
     } catch (e) {
       setAutomationError(e instanceof Error ? e.message : "Unable to load automation runs.");
@@ -559,8 +570,8 @@ export default function SourcingRegistrySection() {
         { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sourceId, enabled }) },
         accessToken,
       );
-      const json = (await resp.json()) as { success?: boolean; error?: string };
-      if (!resp.ok) throw new Error(json.error || "Unable to update source.");
+      const json = (await safeJson(resp)) as { success?: boolean; error?: string };
+      if (!resp.ok) throw new Error(json.error || `Unable to update source (HTTP ${resp.status}).`);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to update source.");
