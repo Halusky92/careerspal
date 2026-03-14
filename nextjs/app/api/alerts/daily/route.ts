@@ -178,6 +178,11 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const secret = url.searchParams.get("secret");
   const dryRun = url.searchParams.get("dryRun") === "1";
+  const includeAttempted = url.searchParams.get("includeAttempted") === "1";
+  const backfillDaysParam = url.searchParams.get("backfillDays");
+  const backfillDaysRaw = backfillDaysParam ? Number(backfillDaysParam) : NaN;
+  const backfillDays =
+    Number.isFinite(backfillDaysRaw) && backfillDaysRaw > 0 ? Math.min(Math.floor(backfillDaysRaw), 30) : null;
   if (process.env.ALERTS_CRON_SECRET && secret !== process.env.ALERTS_CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -196,7 +201,10 @@ export async function GET(request: Request) {
   }
 
   const now = new Date();
-  const sinceDefault = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  // Default: daily window.
+  // First run (no last_run_at): allow a slightly wider backfill so users actually get their first email.
+  const sinceDaily = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const sinceFirstRun = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   const { data: profiles } = await supabaseAdmin
     .from("profiles")
@@ -213,13 +221,34 @@ export async function GET(request: Request) {
   const from = getFromEmail();
 
   let sent = 0;
-  const attempted: Array<{ alertId: string; email: string; matches: number }> = [];
+  let matchedTotal = 0;
+  const attempted: Array<{ alertId: string; email: string; matches: number; since: string }> = [];
+  const summary = {
+    totalAlerts: (alerts || []).length,
+    considered: 0,
+    skipped: {
+      missing_user_or_query: 0,
+      missing_email: 0,
+    },
+  };
   for (const alert of (alerts || []) as AlertRow[]) {
-    if (!alert.user_id || !alert.query) continue;
+    if (!alert.user_id || !alert.query) {
+      summary.skipped.missing_user_or_query += 1;
+      continue;
+    }
     const toEmail = emailByUser.get(alert.user_id);
-    if (!toEmail) continue;
+    if (!toEmail) {
+      summary.skipped.missing_email += 1;
+      continue;
+    }
 
-    const since = alert.last_run_at ? new Date(alert.last_run_at) : sinceDefault;
+    summary.considered += 1;
+
+    const since = (() => {
+      if (backfillDays) return new Date(now.getTime() - backfillDays * 24 * 60 * 60 * 1000);
+      if (alert.last_run_at) return new Date(alert.last_run_at);
+      return sinceFirstRun;
+    })();
     const sinceMs = since.getTime();
 
     const { data: jobs } = await supabaseAdmin
@@ -230,6 +259,7 @@ export async function GET(request: Request) {
 
     const jobRows = (jobs || []) as JobRow[];
     const matches = jobRows.filter((job) => matchesAlert(job, alert.query || ""));
+    matchedTotal += matches.length;
 
     if (matches.length > 0 && !dryRun) {
       const rows = matches
@@ -237,10 +267,10 @@ export async function GET(request: Request) {
         .map((job) => {
           const companyName = getCompanyName(job);
           const jobUrl = `${baseUrl}/jobs/${createJobSlug({ title: job.title || "role", id: job.id })}`;
-        const safeTitle = escapeHtml(job.title || "Role");
-        const safeCompany = escapeHtml(companyName);
-        const safeLocation = escapeHtml(job.location || "Remote");
-        const safeSalary = escapeHtml(job.salary || "Salary not listed");
+          const safeTitle = escapeHtml(job.title || "Role");
+          const safeCompany = escapeHtml(companyName);
+          const safeLocation = escapeHtml(job.location || "Remote");
+          const safeSalary = escapeHtml(job.salary || "Salary not listed");
           return `
             <tr>
               <td style="padding:16px;border:1px solid #eef0f5;border-radius:12px;background:#fbfbff;">
@@ -283,7 +313,7 @@ export async function GET(request: Request) {
       sent += 1;
     }
 
-    attempted.push({ alertId: alert.id, email: toEmail, matches: matches.length });
+    attempted.push({ alertId: alert.id, email: toEmail, matches: matches.length, since: since.toISOString() });
 
     await supabaseAdmin
       .from("alerts")
@@ -298,8 +328,22 @@ export async function GET(request: Request) {
       sent,
       attempted,
       dryRun,
+      matchedTotal,
+      backfillDays,
     },
   });
 
-  return NextResponse.json({ sent, dryRun });
+  return NextResponse.json({
+    ok: true,
+    sent,
+    dryRun,
+    matchedTotal,
+    backfillDays,
+    window: {
+      defaultDailySince: sinceDaily.toISOString(),
+      firstRunSince: sinceFirstRun.toISOString(),
+    },
+    summary,
+    attempted: includeAttempted ? attempted : undefined,
+  });
 }
