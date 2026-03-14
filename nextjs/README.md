@@ -43,7 +43,7 @@ The Greenhouse sourcing pipeline can run end-to-end via:
 Environment variables:
 
 - `SOURCING_CRON_SECRET`: required for cron calls (query `?secret=` must match)
-- `SOURCING_AUTO_PUBLISH_SCORE`: optional (default `85`)
+- `SOURCING_AUTO_PUBLISH_SCORE`: optional (default `78`)
 - `SOURCING_AUTO_PUBLISH_SOURCES`: optional (default `greenhouse`)
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
