@@ -515,7 +515,8 @@ export async function autoPublishEligibleCandidates(
         "sourcing_candidate_decisions(decision,blocking_reason_codes,warning_reason_codes)",
     )
     .is("published_job_id", null)
-    .eq("publish_status", "not_published")
+    // Also reconsider candidates previously skipped for eligibility; conditions can change after enrichment (e.g. salary).
+    .in("publish_status", ["not_published", "skipped_not_eligible"])
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -557,25 +558,38 @@ export async function autoPublishEligibleCandidates(
     const blocking = (candidate.sourcing_candidate_decisions?.blocking_reason_codes as string[] | undefined) || [];
     const dupConfidence = (candidate.sourcing_candidate_dedupes?.confidence || "none").toString();
 
-    const eligible =
-      decision === "auto_publish_candidate" &&
-      scoreTotal >= AUTO_PUBLISH_MIN_SCORE &&
-      candidate.salary_present === true &&
-      dupConfidence !== "high" &&
-      blocking.length === 0 &&
-      Boolean(candidate.apply_url && candidate.apply_url.trim() && candidate.apply_url.trim() !== "#") &&
-      src?.enabled === true &&
-      src?.validation_state === "allowed" &&
-      SUPPORTED_SOURCE_TYPES.has((candidate.source_type || "").toLowerCase()) &&
-      SUPPORTED_SOURCE_TYPES.has((src?.source_type || "").toLowerCase());
+    const ineligibleReasons: string[] = [];
+    if (decision !== "auto_publish_candidate") ineligibleReasons.push(`decision=${decision || "null"}`);
+    if (!(scoreTotal >= AUTO_PUBLISH_MIN_SCORE)) ineligibleReasons.push(`score_below_min(${scoreTotal}<${AUTO_PUBLISH_MIN_SCORE})`);
+    if (candidate.salary_present !== true) ineligibleReasons.push("salary_missing");
+    if (dupConfidence === "high") ineligibleReasons.push("duplicate_high");
+    if (blocking.length > 0) ineligibleReasons.push(`blocking=${blocking.join(",")}`);
+    if (!Boolean(candidate.apply_url && candidate.apply_url.trim() && candidate.apply_url.trim() !== "#"))
+      ineligibleReasons.push("apply_missing");
+    if (src?.enabled !== true) ineligibleReasons.push("source_disabled");
+    if (src?.validation_state !== "allowed") ineligibleReasons.push(`source_not_allowed(${src?.validation_state || "null"})`);
+    if (!SUPPORTED_SOURCE_TYPES.has((candidate.source_type || "").toLowerCase()))
+      ineligibleReasons.push(`candidate_source_unsupported(${(candidate.source_type || "").toLowerCase() || "null"})`);
+    if (!SUPPORTED_SOURCE_TYPES.has((src?.source_type || "").toLowerCase()))
+      ineligibleReasons.push(`source_type_unsupported(${(src?.source_type || "").toLowerCase() || "null"})`);
+    // Also require some company context; otherwise we can't publish into public.jobs reliably.
+    if (!src?.company_id) {
+      const companyName = (candidate.company_name || src?.display_name || "").trim();
+      if (!companyName) ineligibleReasons.push("missing_company");
+    }
+
+    const eligible = ineligibleReasons.length === 0;
 
     if (!eligible) {
       skipped += 1;
       await sb
         .from("sourcing_sourced_job_candidates")
-        .update({ publish_status: "skipped_not_eligible", publish_notes: "Not eligible for auto-publish." })
+        .update({
+          publish_status: "skipped_not_eligible",
+          publish_notes: `Not eligible for auto-publish. ${ineligibleReasons.join("; ")}`.trim(),
+        })
         .eq("id", candidate.id);
-      results.push({ candidateId: candidate.id, status: "skipped" });
+      results.push({ candidateId: candidate.id, status: "skipped", reason: ineligibleReasons });
       continue;
     }
 
