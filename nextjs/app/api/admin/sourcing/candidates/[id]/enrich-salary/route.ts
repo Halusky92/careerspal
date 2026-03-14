@@ -195,7 +195,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
 
   const { data: candidate, error: candErr } = await supabaseAdmin
     .from("sourcing_sourced_job_candidates")
-    .select("id,job_url,apply_url,salary_present,salary_confidence,provenance")
+    .select("id,job_url,apply_url,salary_present,salary_confidence,provenance,publish_status,published_job_id")
     .eq("id", id)
     .single();
 
@@ -373,6 +373,9 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     salary_parse_notes: parsed.salary_parse_notes,
   };
 
+  const shouldReopenForPublish =
+    ((candidate as any).published_job_id == null) && (((candidate as any).publish_status || "").toString() === "skipped_not_eligible");
+
   const { data: updated, error: upErr } = await supabaseAdmin
     .from("sourcing_sourced_job_candidates")
     .update({
@@ -385,6 +388,12 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       salary_confidence: parsed.salary_confidence,
       salary_detected_from: parsed.salary_detected_from,
       provenance: { ...provObj, salary_enrichment: enrichment },
+      ...(shouldReopenForPublish
+        ? {
+            publish_status: "not_published",
+            publish_notes: "Reopened after salary enrichment.",
+          }
+        : {}),
     })
     .eq("id", id)
     .select("id,salary_present,salary_confidence,salary_text_raw,salary_amount_min,salary_amount_max,salary_currency,salary_period,salary_detected_from")
