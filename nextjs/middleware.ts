@@ -17,12 +17,21 @@ export async function middleware(_request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = (request.headers.get("host") || "").toLowerCase().split(":")[0] || "";
 
-  // Canonicalize apex -> www to avoid cross-origin redirects during client-side navigation / RSC fetches.
+  // Canonicalize apex -> www, but ONLY for top-level document navigations.
+  // Redirecting RSC/flight fetches cross-origin causes "Server Components render" errors in the browser.
   if (host === "careerspal.com") {
-    const url = request.nextUrl.clone();
-    url.hostname = "www.careerspal.com";
-    url.protocol = "https:";
-    return NextResponse.redirect(url, 308);
+    const accept = (request.headers.get("accept") || "").toLowerCase();
+    const secFetchDest = (request.headers.get("sec-fetch-dest") || "").toLowerCase();
+    const isRsc =
+      request.headers.get("rsc") === "1" || accept.includes("text/x-component") || request.nextUrl.searchParams.has("_rsc");
+    const isDocument = secFetchDest === "document" || accept.includes("text/html");
+
+    if (isDocument && !isRsc) {
+      const url = request.nextUrl.clone();
+      url.hostname = "www.careerspal.com";
+      url.protocol = "https:";
+      return NextResponse.redirect(url, 308);
+    }
   }
 
   // Only enforce auth on protected areas. Public pages should never require a token.
