@@ -162,7 +162,7 @@ export default async function CompanyPage({ params }: PageProps) {
   const { company, jobs } = result;
   const companyName = company.name || "Company";
   const companyWebsite = (company.website || "").trim();
-  const companyDescription = (company.description || "").trim();
+  const companyDescription = ((company.longDescription || company.description) || "").trim();
   const companyLocation = (company.headquarters || "").trim();
   const employeeCount = (company.employeeCount || "").trim();
   const showVerified = Boolean(company.verified);

@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as { slug?: string };
+  const body = (await request.json().catch(() => ({}))) as { slug?: string; description?: string; longDescription?: string };
   const slug = (body.slug || "").toString().trim().toLowerCase();
   if (!slug || slug === "undefined" || slug === "null") {
     return NextResponse.json({ error: "Missing slug." }, { status: 400 });
@@ -60,10 +60,26 @@ export async function POST(request: Request) {
   }
 
   const before = company;
+  const canonicalId = company.id as string;
+
+  // Optional manual override (admin-only): set official copy (trust-first).
+  // This is used to match manual admin-post quality without inventing facts.
+  try {
+    const overrideDesc = (body.description || "").toString().trim();
+    const overrideLong = (body.longDescription || "").toString().trim();
+    if (overrideDesc || overrideLong) {
+      const patch: Record<string, unknown> = {};
+      if (overrideDesc) patch.description = overrideDesc;
+      if (overrideLong) patch.long_description = overrideLong;
+      await supabaseAdmin.from("companies").update(patch).eq("id", canonicalId);
+      Object.assign(company as any, patch);
+    }
+  } catch {
+    // ignore
+  }
 
   // 2) Relink jobs from duplicate company rows (same name, case-insensitive exact match).
   let relinkedJobs = 0;
-  const canonicalId = company.id as string;
   const companyName = ((company as any).name || "").toString().trim();
   if (companyName) {
     const { data: dupes } = await supabaseAdmin

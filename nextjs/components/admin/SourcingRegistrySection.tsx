@@ -474,6 +474,36 @@ export default function SourcingRegistrySection() {
     }
   };
 
+  const applyOfficialSamsaraCopy = async () => {
+    setRepairCompanyStatus("running");
+    setRepairCompanyMsg("");
+    try {
+      if (!accessToken) throw new Error("Missing session token. Please sign in again.");
+      const slug = "samsara";
+      const longDescription =
+        "Samsara builds connected operations software for fleets and field teams. Its platform combines fleet telematics, AI-powered cameras, equipment tracking, workforce tools, and operational workflows to help organizations improve safety, efficiency, and visibility across physical operations.";
+      const description =
+        "Samsara provides software and hardware tools for companies that manage fleets, equipment, and field operations. Its products focus on safety, telematics, asset tracking, workforce management, and operational visibility.";
+      const resp = await authFetch(
+        "/api/admin/companies/repair",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug, description, longDescription }),
+        },
+        accessToken,
+      );
+      const json = (await resp.json()) as any;
+      if (!resp.ok) throw new Error(json.error || "Update failed.");
+      setRepairCompanySlug("samsara");
+      setRepairCompanyStatus("success");
+      setRepairCompanyMsg("Applied official Samsara description.");
+    } catch (e) {
+      setRepairCompanyStatus("error");
+      setRepairCompanyMsg(e instanceof Error ? e.message : "Update failed.");
+    }
+  };
+
   const toggleSourceEnabled = async (sourceId: string, enabled: boolean) => {
     try {
       if (!accessToken) throw new Error("Missing session token. Please sign in again.");
@@ -1003,6 +1033,20 @@ export default function SourcingRegistrySection() {
               >
                 {repairCompanyStatus === "running" ? "Repairing..." : "Repair company"}
               </button>
+              {repairCompanySlug.trim().toLowerCase() === "samsara" && (
+                <button
+                  onClick={applyOfficialSamsaraCopy}
+                  disabled={repairCompanyStatus === "running"}
+                  className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    repairCompanyStatus === "running"
+                      ? "border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                      : "border-indigo-600/30 bg-indigo-600/10 text-indigo-200 hover:bg-indigo-600/20"
+                  }`}
+                  title="Applies official Samsara description copy (trust-first)."
+                >
+                  Apply official copy
+                </button>
+              )}
             </div>
             {repairCompanyMsg && (
               <div
