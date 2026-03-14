@@ -128,6 +128,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
 
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {[
+              { label: "Notion Ops", onClick: () => goToJobsWithQuery("Notion") },
               { label: "Operations", onClick: () => goToJobsWithCategory("Operations") },
               { label: "Systems", onClick: () => goToJobsWithCategory("Systems Design") },
               { label: "Automation", onClick: () => goToJobsWithCategory("Automation") },

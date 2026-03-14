@@ -31,7 +31,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
           </div>
 
           <h1 className="mt-6 text-4xl sm:text-6xl md:text-7xl font-black text-slate-900 tracking-tight leading-[1.05]">
-            High-signal remote roles in Ops & Systems.
+            Notion Ops, Systems & Automation roles.
           </h1>
 
           <p className="mt-5 text-base sm:text-lg text-slate-600 font-medium max-w-2xl">
