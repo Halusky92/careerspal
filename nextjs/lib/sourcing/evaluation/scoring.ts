@@ -17,6 +17,7 @@ export type CandidateForScoring = {
   location_text: string | null;
   remote_policy: string | null;
   description_clean: string | null;
+  team_text?: string | null;
   salary_present: boolean;
   source_type: string;
   source_validation_state?: string | null;
@@ -25,19 +26,143 @@ export type CandidateForScoring = {
 
 const hasText = (v: string | null | undefined) => Boolean((v || "").trim());
 
-const Niche = {
-  operations: ["operations", "bizops", "business operations", "ops manager", "ops lead", "operator"],
-  systems: ["systems", "business systems", "crm", "salesforce", "hubspot", "netsuite", "workday", "integrations"],
-  automation: ["automation", "zapier", "make.com", "n8n", "workflows", "webhooks", "rpa"],
-  revops: ["revops", "revenue operations", "gtm operations", "sales ops", "marketing ops", "cs ops", "pipeline"],
-  productops: ["product ops", "product operations", "release process", "product workflows"],
-  chief: ["chief of staff", "cos", "office of the ceo", "strategic initiatives", "special projects"],
+// Positive niche signals (precision > recall). These are matched against title+desc+team+location+remote.
+const NicheCore = {
+  operations: [
+    "operations",
+    "business operations",
+    "bizops",
+    "ops manager",
+    "ops lead",
+    "operations manager",
+    "operational excellence",
+    "process design",
+    "process improvement",
+    "continuous improvement",
+    "operating model",
+    "internal operations",
+  ],
+  systems: [
+    "systems",
+    "business systems",
+    "internal tooling",
+    "internal tools",
+    "tooling",
+    "integrations",
+    "integration",
+    "workflows",
+    "workflow",
+    "knowledge management",
+    "documentation",
+    "documentation ops",
+    "knowledge base",
+    "crm",
+    "salesforce",
+    "hubspot",
+    "netsuite",
+    "workday",
+    "okta",
+    "jira administration",
+    "admin (systems)",
+  ],
+  automation: [
+    "automation",
+    "automate",
+    "workflow automation",
+    "zapier",
+    "make.com",
+    "make ",
+    "n8n",
+    "rpa",
+    "webhooks",
+    "api integrations",
+  ],
+  revops: [
+    "revops",
+    "revenue operations",
+    "gtm operations",
+    "sales ops",
+    "marketing ops",
+    "customer ops",
+    "cs ops",
+    "pipeline operations",
+    "deal desk operations",
+    "go-to-market operations",
+  ],
+  productops: ["product ops", "product operations", "product workflows", "release process", "product enablement (ops)"],
+  chief: ["chief of staff", "cos", "office of the ceo", "strategic initiatives", "special projects", "strategy & operations"],
 } as const;
 
-const NEGATIVE_OFF_NICHE = ["warehouse", "plant", "manufacturing", "retail store", "driver", "nursing"];
+// Notion is a supporting signal only (must co-occur with core niche).
+const NOTION_SUPPORT = ["notion"];
+
+// Explicit off-niche themes (deny-style). These are strong negatives unless core niche is clearly present.
+const NEGATIVE_THEMES_STRONG = [
+  // software engineering
+  "software engineer",
+  "frontend engineer",
+  "backend engineer",
+  "full stack",
+  "full-stack",
+  "ios engineer",
+  "android engineer",
+  "mobile engineer",
+  "site reliability",
+  "sre",
+  "devops engineer",
+  "platform engineer",
+  "security engineer",
+  "ml engineer",
+  "machine learning",
+  "data scientist",
+  "data science",
+  // sales
+  "account executive",
+  "sales development",
+  "sdr",
+  "bdr",
+  // support/cs (generic)
+  "customer support",
+  "technical support",
+  "support specialist",
+  "customer success manager",
+  // recruiting/hr
+  "recruiter",
+  "talent",
+  "people operations",
+  "human resources",
+  "hr ",
+  // finance/legal
+  "accounting",
+  "accounts payable",
+  "accounts receivable",
+  "controller",
+  "finance",
+  "legal",
+  "attorney",
+  "paralegal",
+  // unrelated marketing
+  "paid media",
+  "performance marketing",
+  "social media",
+  "content marketing",
+  "brand marketing",
+  // manual ops
+  "warehouse",
+  "retail store",
+  "plant",
+  "manufacturing",
+  "driver",
+  "nursing",
+];
+
+const NEGATIVE_THEMES_SOFT = ["engineering", "developer", "sales", "marketing", "support", "recruiting", "finance", "legal", "store"];
 
 function textBlob(c: CandidateForScoring): string {
-  return [c.title, c.description_clean, c.location_text, c.remote_policy].filter(Boolean).join(" ").toLowerCase();
+  return [c.title, c.description_clean, c.team_text, c.location_text, c.remote_policy]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 }
 
 export function scoreCandidate(c: CandidateForScoring): {
@@ -50,19 +175,50 @@ export function scoreCandidate(c: CandidateForScoring): {
 
   // Niche relevance 0-30
   let niche = 0;
-  const posHits =
-    Object.values(Niche)
-      .flat()
-      .reduce((acc, kw) => acc + (blob.includes(kw) ? 1 : 0), 0) || 0;
-  const negHits = NEGATIVE_OFF_NICHE.reduce((acc, kw) => acc + (blob.includes(kw) ? 1 : 0), 0);
 
-  if (negHits > 0 && posHits === 0) niche = 0;
-  else if (posHits >= 4) niche = 30;
-  else if (posHits >= 2) niche = 22;
-  else if (posHits === 1) niche = 14;
-  else niche = 6;
+  const coreKeywords = Object.values(NicheCore).flat();
+  const coreHits = coreKeywords.reduce((acc, kw) => acc + (blob.includes(kw) ? 1 : 0), 0) || 0;
+  const notionHit = NOTION_SUPPORT.some((kw) => blob.includes(kw));
 
-  if (niche <= 6) reasons.push("OFF_NICHE");
+  // Strong negative gating: if the role looks like a generic off-niche theme AND we don't have enough core niche evidence, reject.
+  const strongNegHits = NEGATIVE_THEMES_STRONG.reduce((acc, kw) => acc + (blob.includes(kw) ? 1 : 0), 0);
+  const softNegHits = NEGATIVE_THEMES_SOFT.reduce((acc, kw) => acc + (blob.includes(kw) ? 1 : 0), 0);
+
+  // Notion should never be a standalone pass signal.
+  const notionSupport = notionHit && coreHits > 0;
+
+  // Extra safety: allow "marketing ops"/"sales ops"/"revops" even if blob contains "marketing"/"sales".
+  const isRevOpsExplicit =
+    blob.includes("revops") ||
+    blob.includes("revenue operations") ||
+    blob.includes("sales ops") ||
+    blob.includes("marketing ops") ||
+    blob.includes("gtm operations");
+
+  const hasCoreSignal = coreHits >= 2 || (coreHits === 1 && notionSupport);
+
+  const offNicheStrong = strongNegHits > 0 && !hasCoreSignal && !isRevOpsExplicit;
+  // If only soft negatives, be conservative: require at least 1 core hit (and not just Notion).
+  const offNicheSoft = !offNicheStrong && softNegHits > 0 && coreHits === 0 && !isRevOpsExplicit;
+
+  if (offNicheStrong || offNicheSoft) {
+    niche = 0;
+    reasons.push("OFF_NICHE");
+  } else {
+    // Tiering from core niche hits (precision-first).
+    if (coreHits >= 5) niche = 30;
+    else if (coreHits >= 3) niche = 24;
+    else if (coreHits >= 2) niche = 18;
+    else if (coreHits === 1) niche = 10;
+    else niche = 4;
+
+    // Notion is a supporting boost only.
+    if (notionSupport) niche = Math.min(30, niche + 4);
+
+    // If core evidence is weak, mark as low confidence (forces manual review).
+    if (coreHits < 2) reasons.push("CAT_LOW_CONF");
+    if (niche <= 4) reasons.push("OFF_NICHE");
+  }
 
   // Salary transparency 0-20
   const salary = c.salary_present ? 20 : 0;

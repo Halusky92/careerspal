@@ -312,6 +312,7 @@ type CandidateRow = {
   remote_policy: string | null;
   description_clean: string | null;
   salary_present: boolean;
+  provenance: any;
 };
 
 type SourceTrustRow = { id: string; validation_state: string; enabled: boolean; source_type: string };
@@ -327,7 +328,7 @@ export async function evaluateCandidates(
   let q = sb
     .from("sourcing_sourced_job_candidates")
     .select(
-      "id,source_id,source_run_id,source_type,source_url,external_job_id,job_url,apply_url,title,company_name,location_text,remote_policy,description_clean,salary_present",
+      "id,source_id,source_run_id,source_type,source_url,external_job_id,job_url,apply_url,title,company_name,location_text,remote_policy,description_clean,salary_present,provenance",
     )
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -381,6 +382,10 @@ export async function evaluateCandidates(
   for (const c of candidateRows) {
     try {
       const src = sourceMap.get(c.source_id);
+      const teamText =
+        (c as any)?.provenance && typeof (c as any).provenance === "object"
+          ? ((c as any).provenance.team_text || "")?.toString?.().trim?.() || null
+          : null;
       const scoring = scoreCandidate({
         title: c.title,
         company_name: c.company_name,
@@ -389,6 +394,7 @@ export async function evaluateCandidates(
         location_text: c.location_text,
         remote_policy: c.remote_policy,
         description_clean: c.description_clean,
+        team_text: teamText,
         salary_present: Boolean(c.salary_present),
         source_type: c.source_type,
         source_validation_state: src?.validation_state || null,
@@ -613,7 +619,7 @@ export async function autoPublishEligibleCandidates(
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
-    if (!blob) return "Operations";
+    if (!blob) return "Other";
     if (blob.includes("chief of staff") || blob.includes("office of the ceo") || blob.includes("strategic initiatives"))
       return "Executive & Staff";
     if (blob.includes("product ops") || blob.includes("product operations")) return "Product Management";
@@ -637,7 +643,15 @@ export async function autoPublishEligibleCandidates(
       blob.includes("integrations")
     )
       return "Systems Design";
-    return "Operations";
+    // Only classify as Operations when we see explicit ops language (avoid defaulting unknown roles).
+    const ops =
+      blob.includes("operations") ||
+      blob.includes("business operations") ||
+      blob.includes("bizops") ||
+      blob.includes(" ops ");
+    const looksLikeDevOps = blob.includes("devops") || blob.includes("site reliability") || blob.includes("sre");
+    if (ops && !looksLikeDevOps) return "Operations";
+    return "Other";
   };
 
   const extractTools = (text: string) => {
