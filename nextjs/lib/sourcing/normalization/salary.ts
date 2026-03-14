@@ -108,8 +108,10 @@ export function parseSalaryFromText(text: string): ParsedSalary {
 
   // Pattern: currency + min [- max] + period
   // Examples: $120k-$150k per year, USD 120,000 – 150,000 annual, €60/hr
+  // NOTE: don't use a word-boundary before currency symbols like "$" (it's a non-word char),
+  // otherwise "$120,000" won't match after whitespace.
   const re =
-    /\b(USD|EUR|GBP|CAD|AUD|CHF|SEK|NOK|DKK|PLN|CZK|[$€£])\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:[-–]\s*(?:\1\s*)?([0-9][0-9,]*(?:\.[0-9]+)?[km]?))?/i;
+    /(?:^|[\s(>])\s*(USD|EUR|GBP|CAD|AUD|CHF|SEK|NOK|DKK|PLN|CZK|[$€£])\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:[-–]\s*(?:\1\s*)?([0-9][0-9,]*(?:\.[0-9]+)?[km]?))?/i;
   const m = clean.match(re);
   if (!m) {
     return {
@@ -158,7 +160,12 @@ export function detectAndParseSalaryForGreenhouse(descriptionText: string): Pars
   const snippet = extractCompensationSnippet(clean);
   if (snippet) {
     const parsed = parseSalaryFromText(snippet);
-    return { ...parsed, salary_detected_from: parsed.salary_text_raw ? "text_comp_section" : "text_body" };
+    if (parsed.salary_present) {
+      return { ...parsed, salary_detected_from: "text_comp_section" };
+    }
+    // If the snippet heuristic truncated important context (e.g., "Annual" before "Base Salary"),
+    // fall back to parsing the full description.
+    return parseSalaryFromText(clean);
   }
   return parseSalaryFromText(clean);
 }

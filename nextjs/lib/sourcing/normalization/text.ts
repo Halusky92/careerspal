@@ -8,6 +8,10 @@ export function stripHtmlToText(html: string): string {
   // Decode a few common HTML entities (minimal, safe).
   const decoded = noTags
     .replace(/&nbsp;/g, " ")
+    // Normalize common dash entities so salary ranges like "$120k &mdash; $150k" can be parsed.
+    .replace(/&mdash;|&#8212;|&#x2014;/gi, "-")
+    .replace(/&ndash;|&#8211;|&#x2013;/gi, "-")
+    .replace(/&minus;|&#8722;|&#x2212;/gi, "-")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
