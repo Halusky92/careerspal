@@ -14,6 +14,7 @@ import { prepareDecision } from "../evaluation/decision";
 import { getSourcingAutoPublishMinScore, getSourcingAutoPublishSupportedSourceTypes } from "../config";
 import { stripHtmlToText } from "../normalization/text";
 import { createCompanySlug } from "../../jobs";
+import { enrichCompanyFromWebsite } from "../../companyEnrichment";
 
 type AdminSb = SupabaseClient<any, "public", any>;
 
@@ -639,6 +640,44 @@ export async function autoPublishEligibleCandidates(
     return "Operations";
   };
 
+  const extractTools = (text: string) => {
+    const t = (text || "").toLowerCase();
+    if (!t) return [] as string[];
+    const tools = [
+      "Notion",
+      "Airtable",
+      "Zapier",
+      "Make",
+      "Make.com",
+      "n8n",
+      "Salesforce",
+      "HubSpot",
+      "NetSuite",
+      "Workday",
+      "Slack",
+      "Jira",
+      "Asana",
+      "Linear",
+      "SQL",
+      "Looker",
+      "Tableau",
+      "Google Sheets",
+      "Sheets",
+      "Excel",
+      "Snowflake",
+      "Segment",
+    ];
+    const hits = tools.filter((tool) => {
+      const needle = tool.toLowerCase();
+      if (needle === "make.com") return t.includes("make.com") || t.includes(" make ");
+      if (needle === "sheets") return t.includes("google sheets") || t.includes(" spreadsheets ") || t.includes("sheet");
+      return t.includes(needle);
+    });
+    // Normalize: keep unique + prefer canonical casing.
+    const normalized = hits.map((x) => (x === "Sheets" ? "Google Sheets" : x === "Make.com" ? "Make" : x));
+    return Array.from(new Set(normalized)).slice(0, 12);
+  };
+
   for (const r of rows) {
     const candidate = r as AutoPublishCandidateRow & {
       sourcing_candidate_scores?: { score_total?: number } | null;
@@ -761,6 +800,30 @@ export async function autoPublishEligibleCandidates(
         }
       }
 
+      // Enrich company profile from official website if we have a website and the company fields are still empty.
+      // Conservative: only fill missing fields (never overwrite non-null).
+      if (companyId && derivedCompanyWebsite) {
+        try {
+          const { data: after } = await sb.from("companies").select("id,description,logo_url,website").eq("id", companyId).single();
+          const needsDesc = !((after as any)?.description || "").toString().trim();
+          const needsLogo = !((after as any)?.logo_url || "").toString().trim();
+          const needsWebsite = !((after as any)?.website || "").toString().trim();
+
+          if (needsDesc || needsLogo || needsWebsite) {
+            const enr = await enrichCompanyFromWebsite({ websiteUrl: derivedCompanyWebsite });
+            const patch: Record<string, unknown> = {};
+            if (needsWebsite && enr.website) patch.website = enr.website;
+            if (needsDesc && enr.description) patch.description = enr.description;
+            if (needsLogo && enr.logo_url) patch.logo_url = enr.logo_url;
+            if (Object.keys(patch).length > 0) {
+              await sb.from("companies").update(patch).eq("id", companyId);
+            }
+          }
+        } catch {
+          // ignore enrichment failures (don't block publish)
+        }
+      }
+
       if (!companyId) {
         failed += 1;
         await sb
@@ -784,6 +847,7 @@ export async function autoPublishEligibleCandidates(
       ((candidate as any).description_raw || candidate.description_clean || "").toString(),
     ).trim();
     const category = inferCategory(candidate);
+    const toolHits = extractTools(cleanedDescription);
 
     const jobInsert = {
       company_id: companyId,
@@ -803,8 +867,8 @@ export async function autoPublishEligibleCandidates(
       company_description: null,
       company_website: derivedCompanyWebsite || src?.companies?.website || null,
       logo_url: src?.companies?.logo_url || derivedLogoUrl || null,
-      tags: null,
-      tools: null,
+      tags: toolHits.length > 0 ? toolHits : null,
+      tools: toolHits.length > 0 ? toolHits : null,
       benefits: null,
       keywords: null,
       match_score: null,

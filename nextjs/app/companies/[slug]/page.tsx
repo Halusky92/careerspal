@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import CompanyLogo from "../../../components/CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../../../lib/jobs";
+import { enrichCompanyFromWebsite } from "../../../lib/companyEnrichment";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
@@ -79,6 +80,26 @@ async function fetchCompanyAndJobs(slug: string): Promise<{
   }
 
   if (!company) return null;
+
+  // Optional enrichment: if company has a website but missing description/logo, fill from meta tags.
+  // Conservative: only fills missing fields; failures don't block rendering.
+  try {
+    const needsDesc = !((company.description || "").trim());
+    const needsLogo = !((company.logo_url || "").trim());
+    const website = (company.website || "").trim();
+    if ((needsDesc || needsLogo) && website) {
+      const enr = await enrichCompanyFromWebsite({ websiteUrl: website });
+      const patch: Record<string, unknown> = {};
+      if (needsDesc && enr.description) patch.description = enr.description;
+      if (needsLogo && enr.logo_url) patch.logo_url = enr.logo_url;
+      if (Object.keys(patch).length > 0) {
+        await supabaseAdmin.from("companies").update(patch).eq("id", company.id);
+        company = { ...(company as any), ...(patch as any) };
+      }
+    }
+  } catch {
+    // ignore
+  }
 
   const { data: jobs } = await supabaseAdmin
     .from("jobs")

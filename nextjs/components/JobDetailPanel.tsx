@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug } from "../lib/jobs";
+import { stripHtmlToText } from "../lib/sourcing/normalization/text";
 
 type JobDetailPanelProps = {
   job: Job | null;
@@ -18,7 +19,8 @@ type JobDetailPanelProps = {
 
 const sanitizeDescription = (value?: string | null) => {
   if (!value) return "";
-  const lines = value.split("\n");
+  const clean = stripHtmlToText(value);
+  const lines = clean.split("\n");
   const cleaned = lines.filter((line) => {
     const trimmed = line.trim().toLowerCase();
     if (!trimmed) return true;
@@ -26,7 +28,10 @@ const sanitizeDescription = (value?: string | null) => {
     if (trimmed.includes("import-") && !trimmed.includes(" ")) return false;
     return true;
   });
-  return cleaned.join("\n").trim();
+  const out = cleaned.join("\n").trim();
+  // Keep the panel preview readable and short.
+  if (out.length > 2200) return `${out.slice(0, 2200).trim()}…`;
+  return out;
 };
 
 const formatPosted = (job: Job) => {

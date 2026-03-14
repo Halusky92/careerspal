@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
+import { stripHtmlToText } from "../lib/sourcing/normalization/text";
 
 export type JobRowAction = "copy_link" | "open_new_tab";
 
@@ -110,7 +111,7 @@ export default function JobRow({
 
   const isHome = variant === "home";
   const maxTags = 2;
-  const descriptionText = (job.description || "").replace(/\s+/g, " ").trim();
+  const descriptionText = stripHtmlToText(job.description || "").replace(/\s+/g, " ").trim();
   const descriptionPreview =
     descriptionText.length > 520 ? `${descriptionText.slice(0, 520).trim()}…` : descriptionText;
   const remoteMeta = useMemo(() => getRemoteMeta(job, workMode), [job.location, workMode]);
