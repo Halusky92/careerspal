@@ -26,6 +26,34 @@ function looksLikeHtml(text: string): boolean {
   return false;
 }
 
+function normalizeSectionHeadings(out: string): string {
+  let s = (out || "").toString();
+  if (!s.trim()) return "";
+  // Normalize common inline section headings into standalone lines (grounded: only if the phrase exists).
+  // This helps turn "Who we are ... What you'll do: ..." into readable sections.
+  const headings = [
+    "Who we are",
+    "About the role",
+    "About the team",
+    "What you’ll do",
+    "What you'll do",
+    "Responsibilities",
+    "Requirements",
+    "Qualifications",
+    "Preferred qualifications",
+    "Benefits",
+    "Compensation",
+    "Salary",
+    "What we offer",
+  ];
+  for (const h of headings) {
+    const safe = h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(^|\\n|\\.|\\!|\\?)\\s*(${safe})\\s*:?\\s+`, "gi");
+    s = s.replace(re, (_m, p1, p2) => `${p1}\n\n${p2}:\n`);
+  }
+  return s.replace(/\n{3,}/g, "\n\n").trim();
+}
+
 export function formatSourcedDescription(input: string, opts: FormatOpts = {}): string {
   const maxLen = typeof opts.maxLen === "number" ? opts.maxLen : 18_000;
   const raw = (input || "").toString();
@@ -37,7 +65,8 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
       .replace(/\r\n/g, "\n")
       .split("\n")
       .map((l) => l.replace(/\s+/g, " ").trim());
-    const normalized = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    let normalized = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    normalized = normalizeSectionHeadings(normalized);
     return normalized.length > maxLen ? `${normalized.slice(0, maxLen).trim()}…` : normalized;
   }
 
@@ -81,30 +110,7 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
   // Collapse too many blank lines.
   out = out.replace(/\n{3,}/g, "\n\n").trim();
 
-  // 6) Normalize common inline section headings into standalone lines (grounded: only if the phrase exists).
-  // This helps turn "Who we are ... What you'll do: ..." into readable sections.
-  const headings = [
-    "Who we are",
-    "About the role",
-    "About the team",
-    "What you’ll do",
-    "What you'll do",
-    "Responsibilities",
-    "Requirements",
-    "Qualifications",
-    "Preferred qualifications",
-    "Benefits",
-    "Compensation",
-    "Salary",
-    "What we offer",
-  ];
-  for (const h of headings) {
-    const safe = h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    // If it appears after start/newline or sentence boundary, break into section form.
-    const re = new RegExp(`(^|\\n|\\.|\\!|\\?)\\s*(${safe})\\s*:?\\s+`, "gi");
-    out = out.replace(re, (_m, p1, p2) => `${p1}\n\n${p2}:\n`);
-  }
-  out = out.replace(/\n{3,}/g, "\n\n").trim();
+  out = normalizeSectionHeadings(out);
 
   // If we somehow lost structure and got very dense text, fall back to the plain stripper.
   // (Still conservative: just readable text.)
