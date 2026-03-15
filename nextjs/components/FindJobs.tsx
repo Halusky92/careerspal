@@ -650,8 +650,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
       setVisibleCount(Math.min(filteredAndSorted.length, idx + 1));
     }
 
-    if (isDesktop) setSelectedJobId(initial);
-    else setExpandedJobId(initial);
+    // Deep link should behave like a real click:
+    // - highlight the card (selected)
+    // - open the right panel on desktop
+    // - open the accordion on mobile
+    // We set both; rendering decides which one is visible.
+    setSelectedJobId(initial);
+    setExpandedJobId(initial);
 
     window.setTimeout(() => scrollToJob(initial), 0);
     initialJobIdRef.current = null;
