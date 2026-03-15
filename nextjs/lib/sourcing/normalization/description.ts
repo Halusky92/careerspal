@@ -36,12 +36,22 @@ function normalizeSectionHeadings(out: string): string {
     "Who we are",
     "About the role",
     "About the team",
+    "About you",
+    "About us",
     "What you’ll do",
     "What you'll do",
+    "What we're looking for",
+    "What you will do",
+    "What you bring",
+    "What you'll bring",
     "Responsibilities",
+    "What you'll need",
+    "What you’ll need",
     "Requirements",
     "Qualifications",
     "Preferred qualifications",
+    "Nice to have",
+    "Preferred",
     "Benefits",
     "Compensation",
     "Salary",
@@ -49,10 +59,45 @@ function normalizeSectionHeadings(out: string): string {
   ];
   for (const h of headings) {
     const safe = h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`(^|\\n|\\.|\\!|\\?)\\s*(${safe})\\s*:?\\s+`, "gi");
+    // Boundary: start, newline, or sentence-ish break. Some descriptions use " — " or "|" inline.
+    const re = new RegExp(`(^|\\n|\\.|\\!|\\?|\\||—|-)\\s*(${safe})\\s*:?\\s+`, "gi");
     s = s.replace(re, (_m, p1, p2) => `${p1}\n\n${p2}:\n`);
   }
   return s.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function splitDenseParagraphs(out: string): string {
+  let s = (out || "").toString().replace(/\r\n/g, "\n");
+  if (!s.trim()) return "";
+
+  // If everything is still one giant block, split into readable paragraphs using sentence boundaries.
+  const nonEmptyLines = s.split("\n").filter((l) => l.trim()).length;
+  if (s.length < 900 || nonEmptyLines > 6) return s;
+
+  const tokens = s
+    .replace(/\s+/g, " ")
+    .trim()
+    // break after sentence end when next starts like a new sentence / section
+    .split(/(?<=[.!?])\s+(?=[A-Z0-9])/g)
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  if (tokens.length <= 2) return s;
+
+  const paras: string[] = [];
+  let current = "";
+  for (const t of tokens) {
+    const next = current ? `${current} ${t}` : t;
+    if (next.length > 420 && current) {
+      paras.push(current.trim());
+      current = t;
+    } else {
+      current = next;
+    }
+  }
+  if (current.trim()) paras.push(current.trim());
+
+  return paras.join("\n\n");
 }
 
 function explodeInlineBullets(out: string): string {
@@ -90,6 +135,7 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
     let normalized = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
     normalized = normalizeSectionHeadings(normalized);
     normalized = explodeInlineBullets(normalized).replace(/\n{3,}/g, "\n\n").trim();
+    normalized = splitDenseParagraphs(normalized).replace(/\n{3,}/g, "\n\n").trim();
     return normalized.length > maxLen ? `${normalized.slice(0, maxLen).trim()}…` : normalized;
   }
 
@@ -135,6 +181,7 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
 
   out = normalizeSectionHeadings(out);
   out = explodeInlineBullets(out).replace(/\n{3,}/g, "\n\n").trim();
+  out = splitDenseParagraphs(out).replace(/\n{3,}/g, "\n\n").trim();
 
   // If we somehow lost structure and got very dense text, fall back to the plain stripper.
   // (Still conservative: just readable text.)
@@ -142,6 +189,7 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
   if (out.length > 800 && lineCount <= 2) {
     const flat = stripHtmlToText(raw);
     out = explodeInlineBullets(normalizeSectionHeadings(flat)).replace(/\n{3,}/g, "\n\n").trim();
+    out = splitDenseParagraphs(out).replace(/\n{3,}/g, "\n\n").trim();
   }
 
   return out.length > maxLen ? `${out.slice(0, maxLen).trim()}…` : out;
