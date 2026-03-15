@@ -282,6 +282,16 @@ const FindJobs: React.FC<FindJobsProps> = ({
     }
   }, []);
 
+  // If we deep-link into /jobs?jobId=... on mobile first (before isDesktop is known),
+  // make sure the desktop panel also opens once isDesktop flips to true.
+  useEffect(() => {
+    if (isDesktop) {
+      if (!selectedJobId && expandedJobId) setSelectedJobId(expandedJobId);
+      return;
+    }
+    if (!expandedJobId && selectedJobId) setExpandedJobId(selectedJobId);
+  }, [expandedJobId, isDesktop, selectedJobId]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (titleRef.current && !titleRef.current.contains(event.target as Node)) {
@@ -1206,7 +1216,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
           <aside className="hidden lg:block lg:col-span-3">
-            <FilterContent variant="sidebar" />
+            {FilterContent({ variant: "sidebar" })}
           </aside>
 
           <div className="lg:col-span-5 space-y-3">
@@ -1338,7 +1348,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               </button>
             </div>
             <div className="px-4 pb-4">
-              <FilterContent variant="sheet" />
+              {FilterContent({ variant: "sheet" })}
             </div>
           </div>
         </div>
