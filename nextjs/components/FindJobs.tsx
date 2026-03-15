@@ -69,6 +69,13 @@ const getToolSignals = (job: Job) => {
   return new Set(normalized);
 };
 
+const isNotionHeavyRole = (job: Job) => {
+  const toolSignals = getToolSignals(job);
+  if (toolSignals.has("notion")) return true;
+  const blob = `${job.title || ""} ${job.company || ""} ${job.category || ""} ${job.location || ""} ${job.remotePolicy || ""} ${job.description || ""}`.toLowerCase();
+  return blob.includes("notion");
+};
+
 const FindJobs: React.FC<FindJobsProps> = ({
   jobs,
   onSelectJob,
@@ -209,7 +216,14 @@ const FindJobs: React.FC<FindJobsProps> = ({
       const activeJobId = (isDesktop ? selectedJobId : expandedJobId) || null;
       setOrDelete("jobId", activeJobId);
       const qs = params.toString();
-      router.replace(qs ? `/jobs?${qs}` : "/jobs", { scroll: false });
+      const nextUrl = qs ? `/jobs?${qs}` : "/jobs";
+      // Avoid Next.js navigation on every keystroke (it can steal focus from inputs).
+      // Still keeps a shareable URL for the current filter state.
+      try {
+        window.history.replaceState(null, "", nextUrl);
+      } catch {
+        router.replace(nextUrl, { scroll: false });
+      }
     }, 250);
     return () => window.clearTimeout(timer);
   }, [
@@ -349,7 +363,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
     const counts: Record<string, number> = { 'All Roles': jobs.length };
     CATEGORIES.forEach(cat => {
       if (cat !== 'All Roles') {
-        counts[cat] = jobs.filter(j => j.category === cat).length;
+        if (cat === "Notion Ops") counts[cat] = jobs.filter(isNotionHeavyRole).length;
+        else counts[cat] = jobs.filter(j => j.category === cat).length;
       }
     });
     return counts;
@@ -389,7 +404,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
                           j.tags.some(t => t.toLowerCase().includes(query.toLowerCase()));
       const matchesLocation =
         !locationQuery.trim() || j.location.toLowerCase().includes(locationQuery.toLowerCase());
-      const matchesCat = category === 'All Roles' || j.category === category;
+      const matchesCat =
+        category === 'All Roles' ? true : category === "Notion Ops" ? isNotionHeavyRole(j) : j.category === category;
       const matchesWorkMode = workMode === 'All' || getWorkMode(j) === workMode;
       const matchesEmployment = employmentType === 'All' || j.type === employmentType;
       const salaryRange = parseSalaryRange(j.salary);

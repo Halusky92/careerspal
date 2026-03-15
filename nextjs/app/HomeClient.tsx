@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Hero from "../components/Hero";
 import { Job } from "../types";
 import JobRow from "../components/JobRow";
+import { CATEGORIES } from "../constants";
 
 const planWeight = { "Elite Managed": 3, "Featured Pro": 2, Standard: 1 };
 
@@ -14,6 +15,8 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
   const [jobsLoading, setJobsLoading] = useState(() => (initialJobs?.length ? false : true));
   const [isSmUp, setIsSmUp] = useState(false);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("All Roles");
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -54,6 +57,25 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
       return (b.timestamp ?? 0) - (a.timestamp ?? 0);
     });
   }, [jobs]);
+
+  const isNotionHeavyRole = (job: Job) => {
+    const tools = [...(job.tools || []), ...(job.tags || [])].filter(Boolean).map((t) => t.toLowerCase());
+    if (tools.includes("notion")) return true;
+    const blob = `${job.title || ""} ${job.company || ""} ${job.description || ""}`.toLowerCase();
+    return blob.includes("notion");
+  };
+
+  const filteredTopJobs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return topJobs.filter((j) => {
+      const matchesQuery = !q
+        ? true
+        : `${j.title || ""} ${j.company || ""} ${(j.tags || []).join(" ")} ${(j.tools || []).join(" ")}`.toLowerCase().includes(q);
+      const matchesCat =
+        category === "All Roles" ? true : category === "Notion Ops" ? isNotionHeavyRole(j) : (j.category || "") === category;
+      return matchesQuery && matchesCat;
+    });
+  }, [topJobs, query, category]);
 
   const hasJobs = jobs.length > 0;
   const showJobCounts = !jobsLoading && hasJobs;
@@ -215,25 +237,104 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
           )}
 
           {hasJobs && (
-            <div className="space-y-4">
-              {topJobs.slice(0, 7).map((job) => (
-                <JobRow
-                  key={job.id}
-                  job={job}
-                  variant="home"
-                  expanded={!isSmUp && expandedJobId === job.id}
-                  showSave={false}
-                  showMenu={false}
-                  onSelect={() => {
-                    if (isSmUp) {
-                      router.push(`/jobs?jobId=${encodeURIComponent(job.id)}`);
-                      return;
-                    }
-                    setExpandedJobId((prev) => (prev === job.id ? null : job.id));
-                  }}
-                  onApply={() => handleApply(job)}
-                />
-              ))}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Narrower cards column */}
+              <div className="lg:col-span-8 space-y-4">
+                {filteredTopJobs.slice(0, 7).map((job) => (
+                  <JobRow
+                    key={job.id}
+                    job={job}
+                    variant="home"
+                    expanded={!isSmUp && expandedJobId === job.id}
+                    showSave={false}
+                    showMenu={false}
+                    onSelect={() => {
+                      if (isSmUp) {
+                        router.push(`/jobs?jobId=${encodeURIComponent(job.id)}`);
+                        return;
+                      }
+                      setExpandedJobId((prev) => (prev === job.id ? null : job.id));
+                    }}
+                    onApply={() => handleApply(job)}
+                  />
+                ))}
+
+                {filteredTopJobs.length === 0 && (
+                  <div className="rounded-[2.25rem] border border-slate-200/70 bg-white p-10 text-center shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">No matches</div>
+                    <div className="mt-2 text-lg font-black text-slate-900">No roles match your filters.</div>
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                      {["Notion", "Operations", "Automation"].map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setQuery(t)}
+                          className="px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest text-slate-600 border border-slate-200 bg-slate-50 hover:border-indigo-200 hover:text-indigo-700"
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Filter sidebar (right) */}
+              <aside className="lg:col-span-4">
+                <div className="sticky top-28 rounded-[2.25rem] border border-slate-200/70 bg-white shadow-sm p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Filter</div>
+                      <div className="mt-1 text-sm font-black text-slate-900">Refine featured roles</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuery("");
+                        setCategory("All Roles");
+                      }}
+                      className="text-xs font-bold text-slate-500 hover:text-slate-900"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    <div>
+                      <div className="text-[11px] font-bold text-slate-700">Search</div>
+                      <input
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Role, company, tool…"
+                        className="mt-2 w-full h-11 rounded-2xl border border-slate-200/70 bg-white px-4 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="text-[11px] font-bold text-slate-700">Category</div>
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="mt-2 w-full h-11 rounded-2xl border border-slate-200/70 bg-white px-4 text-sm font-black text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
+                      >
+                        {CATEGORIES.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => router.push(query.trim() ? `/jobs?query=${encodeURIComponent(query.trim())}` : "/jobs")}
+                      className="mt-1 w-full h-11 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black"
+                    >
+                      Open full board →
+                    </button>
+                  </div>
+                </div>
+              </aside>
             </div>
           )}
 

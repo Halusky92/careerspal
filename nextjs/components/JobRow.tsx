@@ -144,12 +144,12 @@ export default function JobRow({
   return (
     <div
       className={[
-        "group relative rounded-2xl border transition-all",
+        "group relative rounded-2xl border transition-all overflow-hidden",
         isElite
           ? "bg-amber-50 border-amber-200"
           : isPro
-            ? "bg-amber-50/70 border-amber-200"
-            : "bg-amber-50/50 border-amber-200/80",
+            ? "bg-amber-50/80 border-amber-200"
+            : "bg-amber-50/70 border-amber-200/80",
         selected ? "ring-2 ring-indigo-600 ring-offset-2 ring-offset-[#F8F9FD]" : "hover:shadow-sm",
         isPrivate ? "opacity-80" : "",
       ].join(" ")}
@@ -168,6 +168,14 @@ export default function JobRow({
       aria-current={selected ? "true" : undefined}
       aria-expanded={expanded ? "true" : "false"}
     >
+      {/* WWR-like thin accent strip */}
+      <div
+        aria-hidden="true"
+        className={[
+          "absolute inset-y-0 left-0 w-1",
+          isElite ? "bg-amber-400" : isPro ? "bg-amber-300" : "bg-amber-200",
+        ].join(" ")}
+      />
       <div className={["flex items-start gap-3", isHome ? "px-3.5 py-3" : "px-4 py-3.5"].join(" ")}>
         <div
           className={[

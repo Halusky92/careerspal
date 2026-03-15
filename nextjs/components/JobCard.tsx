@@ -96,12 +96,12 @@ export default function JobCard({
       }}
       className={[
         containerClass,
-        "transition-all cursor-pointer group flex flex-col items-stretch justify-between gap-2.5 relative active:scale-[0.99] animate-in fade-in slide-in-from-bottom-2",
+        "transition-all cursor-pointer group flex flex-col items-stretch justify-between gap-2.5 relative active:scale-[0.99] animate-in fade-in slide-in-from-bottom-2 overflow-hidden",
         isElite
-          ? "bg-amber-50 border border-amber-200 shadow-sm text-slate-900 border-l-4 border-l-amber-400"
+          ? "bg-amber-50 border border-amber-200 shadow-sm text-slate-900 border-l-2 border-l-amber-400"
           : isPro
-            ? "bg-amber-50/60 border border-amber-200 shadow-sm hover:shadow-md border-l-4 border-l-amber-400"
-            : "bg-amber-50/50 border border-amber-200 shadow-sm hover:shadow-md border-l-4 border-l-amber-300",
+            ? "bg-amber-50/80 border border-amber-200 shadow-sm hover:shadow-md border-l-2 border-l-amber-300"
+            : "bg-amber-50/70 border border-amber-200 shadow-sm hover:shadow-md border-l-2 border-l-amber-200",
         isPrivate ? "opacity-70" : "",
         className,
       ].join(" ")}

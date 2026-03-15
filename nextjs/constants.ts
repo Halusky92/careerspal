@@ -195,6 +195,7 @@ export const MOCK_CANDIDATES: Candidate[] = [
 
 export const CATEGORIES = [
   'All Roles',
+  'Notion Ops',
   'Operations',
   'Systems Design',
   'Automation',
