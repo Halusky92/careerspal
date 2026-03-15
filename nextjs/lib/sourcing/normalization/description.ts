@@ -21,8 +21,9 @@ function decodeEntities(raw: string): string {
 function looksLikeHtml(text: string): boolean {
   const t = (text || "").trim();
   if (!t) return false;
-  if (t.includes("<") && t.includes(">")) return true;
-  if (t.includes("&lt;") && t.includes("&gt;")) return true;
+  // Avoid false positives (e.g. "3 < 5 and 5 > 3") by requiring something tag-like.
+  if (/<\/?[a-z][\s\S]*?>/i.test(t)) return true;
+  if (/&lt;\/?[a-z]/i.test(t)) return true;
   return false;
 }
 
@@ -54,6 +55,27 @@ function normalizeSectionHeadings(out: string): string {
   return s.replace(/\n{3,}/g, "\n\n").trim();
 }
 
+function explodeInlineBullets(out: string): string {
+  let s = (out || "").toString();
+  if (!s.trim()) return "";
+
+  // Convert inline bullet separators into real list items.
+  // Examples:
+  // "What you'll do: • Build X • Own Y" -> "What you'll do:\n- Build X\n- Own Y"
+  const bulletChars = "•·‣▪●○";
+  const reAfterPunct = new RegExp(`([:\\;\\.\\!\\?\\)])\\s*[${bulletChars}]\\s+`, "g");
+  s = s.replace(reAfterPunct, "$1\n- ");
+
+  const reAnywhere = new RegExp(`\\s*[${bulletChars}]\\s+`, "g");
+  s = s.replace(reAnywhere, "\n- ");
+
+  // Also handle common inline hyphen bullets after a label, e.g. "Responsibilities: - A - B"
+  s = s.replace(/:\s*-\s+/g, ":\n- ");
+  s = s.replace(/\n-\s+-\s+/g, "\n- ");
+
+  return s;
+}
+
 export function formatSourcedDescription(input: string, opts: FormatOpts = {}): string {
   const maxLen = typeof opts.maxLen === "number" ? opts.maxLen : 18_000;
   const raw = (input || "").toString();
@@ -67,6 +89,7 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
       .map((l) => l.replace(/\s+/g, " ").trim());
     let normalized = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
     normalized = normalizeSectionHeadings(normalized);
+    normalized = explodeInlineBullets(normalized).replace(/\n{3,}/g, "\n\n").trim();
     return normalized.length > maxLen ? `${normalized.slice(0, maxLen).trim()}…` : normalized;
   }
 
@@ -111,12 +134,14 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
   out = out.replace(/\n{3,}/g, "\n\n").trim();
 
   out = normalizeSectionHeadings(out);
+  out = explodeInlineBullets(out).replace(/\n{3,}/g, "\n\n").trim();
 
   // If we somehow lost structure and got very dense text, fall back to the plain stripper.
   // (Still conservative: just readable text.)
   const lineCount = out.split("\n").filter((l) => l.trim()).length;
   if (out.length > 800 && lineCount <= 2) {
-    out = stripHtmlToText(raw);
+    const flat = stripHtmlToText(raw);
+    out = explodeInlineBullets(normalizeSectionHeadings(flat)).replace(/\n{3,}/g, "\n\n").trim();
   }
 
   return out.length > maxLen ? `${out.slice(0, maxLen).trim()}…` : out;
