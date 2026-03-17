@@ -11,6 +11,7 @@ import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: { slug: string };
@@ -120,7 +121,7 @@ async function fetchPublishedJobBySlug(slug: string): Promise<Job | null> {
   const jobId = getJobIdFromSlug(slug);
   if (!jobId) return null;
 
-  // Primary: direct Supabase query (fast path).
+  // Primary: direct Supabase query by id, then verify status (match /api/jobs/[id] behavior).
   if (supabaseAdmin) {
     const { data, error } = await supabaseAdmin
       .from("jobs")
@@ -128,10 +129,13 @@ async function fetchPublishedJobBySlug(slug: string): Promise<Job | null> {
         "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description,verified)",
       )
       .eq("id", jobId)
-      .eq("status", "published")
       .single();
 
-    if (data && !error) return mapSupabaseJob(data as SupabaseJobRow);
+    if (data && !error) {
+      const mapped = mapSupabaseJob(data as SupabaseJobRow);
+      if (mapped.status === "published") return mapped;
+      return null;
+    }
   }
 
   // Fallback: use the already-working public API handler (prevents false "not found").

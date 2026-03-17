@@ -6,6 +6,11 @@ export const runtime = "nodejs";
 export async function GET() {
   const hasStripe = Boolean(process.env.STRIPE_SECRET_KEY);
   const hasWebhook = Boolean(process.env.STRIPE_WEBHOOK_SECRET);
+  const gitSha =
+    process.env.VERCEL_GIT_COMMIT_SHA ||
+    process.env.VERCEL_GIT_COMMIT_REF ||
+    process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ||
+    null;
 
   if (!supabaseAdmin) {
     return NextResponse.json(
@@ -14,6 +19,7 @@ export async function GET() {
         supabase: false,
         stripe: hasStripe,
         stripeWebhook: hasWebhook,
+        gitSha,
       },
       { status: 500 },
     );
@@ -26,6 +32,7 @@ export async function GET() {
       supabase: true,
       stripe: hasStripe,
       stripeWebhook: hasWebhook,
+      gitSha,
     });
   } catch {
     return NextResponse.json(
@@ -34,6 +41,7 @@ export async function GET() {
         supabase: false,
         stripe: hasStripe,
         stripeWebhook: hasWebhook,
+        gitSha,
       },
       { status: 500 },
     );
