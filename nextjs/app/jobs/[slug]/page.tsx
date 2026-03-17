@@ -15,6 +15,7 @@ export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: { slug: string };
+  searchParams?: Record<string, string | string[] | undefined>;
 };
 
 const getBaseUrl = () => {
@@ -142,6 +143,65 @@ async function fetchPublishedJobBySlug(slug: string): Promise<Job | null> {
   return await fetchPublicJobViaApi(jobId);
 }
 
+async function debugResolveJob(slug: string) {
+  const jobId = getJobIdFromSlug(slug);
+  const out: Record<string, unknown> = {
+    slug,
+    jobId,
+    hasSupabaseAdmin: Boolean(supabaseAdmin),
+  };
+
+  try {
+    const h = await headers();
+    out.request = {
+      host: h.get("host"),
+      xfHost: h.get("x-forwarded-host"),
+      xfProto: h.get("x-forwarded-proto"),
+      xfFor: h.get("x-forwarded-for"),
+    };
+  } catch {
+    // ignore
+  }
+
+  if (jobId && supabaseAdmin) {
+    const { data, error } = await supabaseAdmin
+      .from("jobs")
+      .select("id,status,created_at,published_at")
+      .eq("id", jobId)
+      .maybeSingle();
+    out.supabase = {
+      hasData: Boolean(data),
+      error: error ? { message: error.message, code: (error as unknown as { code?: string }).code } : null,
+      data,
+    };
+  }
+
+  if (jobId) {
+    const siteUrl =
+      (process.env.NEXT_PUBLIC_SITE_URL && process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, "")) || null;
+    const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
+    out.env = { siteUrl, vercelUrl };
+
+    try {
+      const r = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`, {
+        cache: "no-store",
+        headers: { accept: "application/json" },
+      });
+      const txt = await r.text();
+      out.apiRelative = {
+        status: r.status,
+        cacheControl: r.headers.get("cache-control"),
+        location: r.headers.get("location"),
+        bodyStart: txt.slice(0, 240),
+      };
+    } catch (e) {
+      out.apiRelative = { error: String((e as Error)?.message || e) };
+    }
+  }
+
+  return out;
+}
+
 async function fetchSimilarPublishedJobs(job: Job): Promise<Job[]> {
   if (!supabaseAdmin) return [];
   if (!job.category) return [];
@@ -193,9 +253,44 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function JobDetailPage({ params }: PageProps) {
+export default async function JobDetailPage({ params, searchParams }: PageProps) {
   const job = await fetchPublishedJobBySlug(params.slug);
-  if (!job) notFound();
+  const debug =
+    typeof searchParams?.debug === "string"
+      ? searchParams.debug
+      : Array.isArray(searchParams?.debug)
+        ? searchParams?.debug?.[0]
+        : "";
+
+  if (!job) {
+    if (debug === "1") {
+      const info = await debugResolveJob(params.slug);
+      return (
+        <div className="bg-[#F8F9FD] min-h-screen">
+          <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
+            <div className="rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] p-10">
+              <h1 className="text-2xl font-black text-slate-900">Job resolve debug</h1>
+              <p className="mt-2 text-sm text-slate-600 font-medium">
+                This view is only shown with <span className="font-mono">?debug=1</span>.
+              </p>
+              <pre className="mt-6 text-xs leading-relaxed bg-slate-50 border border-slate-200/70 rounded-2xl p-5 overflow-auto">
+                {JSON.stringify(info, null, 2)}
+              </pre>
+              <div className="mt-6">
+                <Link
+                  href="/jobs"
+                  className="inline-flex items-center justify-center px-6 py-3 rounded-2xl bg-indigo-600 text-white font-black shadow-xl shadow-indigo-100"
+                >
+                  Back to jobs
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    notFound();
+  }
 
   const similarJobs = await fetchSimilarPublishedJobs(job);
   const canonicalSlug = createJobSlug({ id: job.id, title: job.title || "role" });
