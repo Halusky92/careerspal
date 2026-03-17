@@ -41,6 +41,21 @@ export type SupabaseJobRow = {
   companies?: SupabaseCompanyRow;
 };
 
+function toStringArray(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map((v) => (v == null ? "" : String(v))).map((s) => s.trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    // Accept either CSV-ish or newline-ish strings from legacy imports.
+    return value
+      .split(/[\n,;]+/g)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
 export const mapSupabaseJob = (row: SupabaseJobRow): Job => ({
   id: row.id,
   title: row.title || "",
@@ -54,8 +69,8 @@ export const mapSupabaseJob = (row: SupabaseJobRow): Job => ({
   postedAt: row.posted_at_text || "Just now",
   category: row.category || "Operations",
   description: row.description || "",
-  tags: (row.tags as string[]) || [],
-  tools: (row.tools as string[]) || [],
+  tags: toStringArray(row.tags),
+  tools: toStringArray(row.tools),
   companyVerified: Boolean(row.companies?.verified),
   isFeatured: Boolean(row.is_featured),
   planType: (row.plan_type || undefined) as Job["planType"],
@@ -65,7 +80,7 @@ export const mapSupabaseJob = (row: SupabaseJobRow): Job => ({
   remotePolicy: row.remote_policy || "Remote",
   applyUrl: row.apply_url || "#",
   companyDescription: row.company_description || row.companies?.description || undefined,
-  benefits: (row.benefits as string[]) || [],
+  benefits: toStringArray(row.benefits),
   matchScore: row.match_score || undefined,
   timestamp: row.timestamp || undefined,
   status: row.status || "draft",
