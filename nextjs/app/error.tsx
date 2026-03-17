@@ -2,10 +2,22 @@
 
 import { useEffect } from "react";
 
-const Error = ({ error, reset }: { error: Error; reset: () => void }) => {
+const Error = ({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) => {
   useEffect(() => {
     console.error(error);
   }, [error]);
+
+  // Failsafe: if we landed on the apex domain and RSC navigation broke, hard-redirect to www.
+  // This avoids the "Server Components render" failure mode caused by cross-origin redirects.
+  useEffect(() => {
+    try {
+      if (window.location.hostname !== "careerspal.com") return;
+      const target = `https://www.careerspal.com${window.location.pathname}${window.location.search}${window.location.hash}`;
+      window.location.replace(target);
+    } catch {
+      // noop
+    }
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
@@ -14,6 +26,13 @@ const Error = ({ error, reset }: { error: Error; reset: () => void }) => {
         <p className="text-slate-500 font-medium mb-10">
           We hit an unexpected issue. Please try again.
         </p>
+
+        {error?.digest ? (
+          <div className="mb-8">
+            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Error digest</div>
+            <div className="mt-2 font-mono text-xs text-slate-700 break-all">{error.digest}</div>
+          </div>
+        ) : null}
         <button
           onClick={reset}
           className="inline-flex items-center justify-center px-8 py-4 rounded-2xl bg-indigo-600 text-white font-black shadow-xl shadow-indigo-100"

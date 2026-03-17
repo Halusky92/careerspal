@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -70,6 +71,18 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F8F9FD] text-slate-900`}>
         <Providers>
+          {/* Canonicalize apex -> www as early as possible (before client routing / RSC fetches). */}
+          <Script id="cp-canonical-host" strategy="beforeInteractive">
+            {`
+              (function () {
+                try {
+                  if (window.location.hostname !== "careerspal.com") return;
+                  var target = "https://www.careerspal.com" + window.location.pathname + window.location.search + window.location.hash;
+                  window.location.replace(target);
+                } catch (e) {}
+              })();
+            `}
+          </Script>
           <CanonicalHostRedirect />
           <Suspense fallback={null}>
             <AnalyticsTracker />

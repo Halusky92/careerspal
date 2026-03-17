@@ -55,7 +55,12 @@ export default function JobCard({
 }: JobCardProps) {
   const router = useRouter();
   const displayType = job.type && job.type !== "Unknown" ? job.type : "—";
-  const detailHref = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
+  const detailPath = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
+  // If user is on the apex domain, force hard-nav to canonical www to avoid RSC/cross-origin issues.
+  const detailHref =
+    typeof window !== "undefined" && window.location.hostname === "careerspal.com"
+      ? `https://www.careerspal.com${detailPath}`
+      : detailPath;
   const rawSlug = (job.companySlug || "").toString().trim();
   const safeSlug = rawSlug && rawSlug !== "undefined" && rawSlug !== "null" ? rawSlug : "";
   const companyPath = `/companies/${(safeSlug || createCompanySlug({ name: job.company || "Company" })).trim()}`;
