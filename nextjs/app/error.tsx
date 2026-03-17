@@ -3,6 +3,9 @@
 import { useEffect } from "react";
 
 const Error = ({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) => {
+  const debugEnabled =
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug") === "1";
+
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -31,6 +34,15 @@ const Error = ({ error, reset }: { error: Error & { digest?: string }; reset: ()
           <div className="mb-8">
             <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Error digest</div>
             <div className="mt-2 font-mono text-xs text-slate-700 break-all">{error.digest}</div>
+          </div>
+        ) : null}
+
+        {debugEnabled ? (
+          <div className="mb-8">
+            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Debug</div>
+            <div className="mt-2 font-mono text-xs text-slate-700 break-all whitespace-pre-wrap">
+              {String(error?.message || error)}
+            </div>
           </div>
         ) : null}
         <button

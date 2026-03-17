@@ -10,6 +10,9 @@ export default function JobError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const debugEnabled =
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug") === "1";
+
   useEffect(() => {
     // Helpful for local debugging; in prod Next omits details but keeps a digest.
     console.error(error);
@@ -43,6 +46,15 @@ export default function JobError({
               <p className="mt-3 text-xs text-slate-500">
                 Send this digest to support so we can pinpoint the server error.
               </p>
+            </div>
+          ) : null}
+
+          {debugEnabled ? (
+            <div className="mb-8">
+              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Debug</div>
+              <div className="mt-2 font-mono text-xs text-slate-700 break-all whitespace-pre-wrap">
+                {String(error?.message || error)}
+              </div>
             </div>
           ) : null}
 
