@@ -21,6 +21,21 @@ const getBaseUrl = () => {
   return "http://localhost:3000";
 };
 
+async function fetchPublicJobViaApi(jobId: string): Promise<Job | null> {
+  try {
+    const baseUrl = getBaseUrl();
+    const res = await fetch(`${baseUrl}/api/jobs/${encodeURIComponent(jobId)}`, {
+      cache: "no-store",
+      headers: { accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { job?: Job };
+    return json.job || null;
+  } catch {
+    return null;
+  }
+}
+
 const isExternalUrl = (value?: string | null) => {
   const url = (value || "").trim();
   if (!url || url === "#" || url.startsWith("/") || url.startsWith("mailto:")) return false;
@@ -91,21 +106,25 @@ const makeDescription = (job: Job) => {
 };
 
 async function fetchPublishedJobBySlug(slug: string): Promise<Job | null> {
-  if (!supabaseAdmin) return null;
   const jobId = getJobIdFromSlug(slug);
   if (!jobId) return null;
 
-  const { data } = await supabaseAdmin
-    .from("jobs")
-    .select(
-      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description,verified)",
-    )
-    .eq("id", jobId)
-    .eq("status", "published")
-    .maybeSingle();
+  // Primary: direct Supabase query (fast path).
+  if (supabaseAdmin) {
+    const { data, error } = await supabaseAdmin
+      .from("jobs")
+      .select(
+        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description,verified)",
+      )
+      .eq("id", jobId)
+      .eq("status", "published")
+      .single();
 
-  if (!data) return null;
-  return mapSupabaseJob(data as SupabaseJobRow);
+    if (data && !error) return mapSupabaseJob(data as SupabaseJobRow);
+  }
+
+  // Fallback: use the already-working public API handler (prevents false "not found").
+  return await fetchPublicJobViaApi(jobId);
 }
 
 async function fetchSimilarPublishedJobs(job: Job): Promise<Job[]> {
