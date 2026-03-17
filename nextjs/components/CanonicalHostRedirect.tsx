@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 export default function CanonicalHostRedirect() {
+  const pathname = usePathname();
+
   useEffect(() => {
     try {
       const host = window.location.hostname;
@@ -13,7 +16,7 @@ export default function CanonicalHostRedirect() {
     } catch {
       // noop
     }
-  }, []);
+  }, [pathname]);
 
   return null;
 }
