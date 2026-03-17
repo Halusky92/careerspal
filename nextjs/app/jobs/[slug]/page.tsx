@@ -258,9 +258,11 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
   const { slug } = await params;
   const job = await fetchPublishedJobBySlug(slug);
   let debug = "";
+  let ua = "";
   try {
     const h = await headers();
     debug = (h.get("x-cp-debug") || "").trim();
+    ua = (h.get("user-agent") || "").toLowerCase();
   } catch {
     // ignore
   }
@@ -272,6 +274,8 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
           ? searchParams?.debug?.[0]
           : "";
   }
+  // Last resort for diagnostics: allow debug rendering for our scripted probes.
+  if (!debug && ua.includes("cp-debug")) debug = "1";
 
   if (!job) {
     if (debug === "1") {
