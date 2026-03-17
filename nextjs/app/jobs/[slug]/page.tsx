@@ -37,9 +37,13 @@ async function fetchPublicJobViaApi(jobId: string): Promise<Job | null> {
     } catch {
       // ignore
     }
+    // Canonicalize apex -> www for internal fetches (avoids redirect edge-cases).
+    if (baseUrl.startsWith("https://careerspal.com")) baseUrl = baseUrl.replace("https://careerspal.com", "https://www.careerspal.com");
+    if (baseUrl.startsWith("http://careerspal.com")) baseUrl = baseUrl.replace("http://careerspal.com", "https://www.careerspal.com");
     const res = await fetch(`${baseUrl}/api/jobs/${encodeURIComponent(jobId)}`, {
       cache: "no-store",
       headers: { accept: "application/json" },
+      redirect: "follow",
     });
     if (!res.ok) return null;
     const json = (await res.json()) as { job?: Job };
