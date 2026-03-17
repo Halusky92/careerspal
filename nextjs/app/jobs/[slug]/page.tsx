@@ -190,6 +190,10 @@ export default async function JobDetailPage({ params }: PageProps) {
 
   const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl.trim() !== "#");
   const applyExternal = isExternalUrl(job.applyUrl);
+  const companySlug = (job.companySlug || "").toString().trim();
+  const companyHref = `/companies/${(companySlug && companySlug !== "undefined" && companySlug !== "null"
+    ? companySlug
+    : createCompanySlug({ name: job.company || "Company" })).trim()}`;
 
   const stack = (job.tools && job.tools.length > 0 ? job.tools : job.tags || []).filter(Boolean).slice(0, 12);
   const benefits = (job.benefits || []).filter(Boolean).slice(0, 12);
@@ -267,7 +271,7 @@ export default async function JobDetailPage({ params }: PageProps) {
                 </h1>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
                   <Link
-                    href={`/companies/${createCompanySlug({ name: job.company })}`}
+                    href={companyHref}
                     className="text-sm sm:text-base font-black text-indigo-700 hover:text-indigo-800 hover:underline decoration-indigo-300 underline-offset-2"
                   >
                     {job.company}
@@ -276,7 +280,7 @@ export default async function JobDetailPage({ params }: PageProps) {
                   <span className="text-sm sm:text-base font-black text-slate-900">{job.salary || "Salary listed"}</span>
                 </div>
 
-                <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {hasApplyUrl ? (
                     <a
                       href={job.applyUrl}
@@ -284,7 +288,7 @@ export default async function JobDetailPage({ params }: PageProps) {
                       rel={applyExternal ? "noopener noreferrer nofollow" : undefined}
                       className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 text-white px-7 py-4 text-[11px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
                     >
-                      Apply on employer site →
+                      Apply now →
                     </a>
                   ) : (
                     <span className="inline-flex items-center justify-center rounded-2xl bg-slate-200 text-slate-500 px-7 py-4 text-[11px] font-black uppercase tracking-widest">
@@ -295,8 +299,28 @@ export default async function JobDetailPage({ params }: PageProps) {
                     href={canonicalUrl}
                     className="inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-7 py-4 text-[11px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-700 transition-colors"
                   >
-                    Share link
+                    Copy / share link
                   </a>
+                  {hasApplyUrl ? (
+                    <a
+                      href={job.applyUrl}
+                      target={applyExternal ? "_blank" : undefined}
+                      rel={applyExternal ? "noopener noreferrer nofollow" : undefined}
+                      className="inline-flex items-center justify-center rounded-2xl bg-slate-900 text-white px-7 py-4 text-[11px] font-black uppercase tracking-widest hover:bg-black transition-colors"
+                    >
+                      Apply (backup) →
+                    </a>
+                  ) : (
+                    <span className="inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-7 py-4 text-[11px] font-black uppercase tracking-widest text-slate-500">
+                      No apply URL yet
+                    </span>
+                  )}
+                  <Link
+                    href={alertsHref}
+                    className="inline-flex items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-700 px-7 py-4 text-[11px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors"
+                  >
+                    Get alerts →
+                  </Link>
                 </div>
 
                 <p className="mt-4 text-xs text-slate-500 font-medium">
@@ -423,6 +447,26 @@ export default async function JobDetailPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Mobile sticky apply bar (WWR-inspired) */}
+      {hasApplyUrl && (
+        <div className="fixed bottom-0 inset-x-0 z-50 lg:hidden bg-white/90 backdrop-blur border-t border-slate-200/70">
+          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate">{job.company}</div>
+              <div className="text-sm font-black text-slate-900 truncate">{job.title}</div>
+            </div>
+            <a
+              href={job.applyUrl}
+              target={applyExternal ? "_blank" : undefined}
+              rel={applyExternal ? "noopener noreferrer nofollow" : undefined}
+              className="h-11 px-5 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors flex items-center justify-center whitespace-nowrap"
+            >
+              Apply →
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

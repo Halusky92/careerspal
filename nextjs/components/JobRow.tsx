@@ -200,7 +200,7 @@ export default function JobRow({
                 <Link
                   href={detailHref}
                   onClick={(e) => e.stopPropagation()}
-                  className="hover:text-indigo-700 hover:underline decoration-indigo-300 underline-offset-2"
+                  className="block hover:text-indigo-700 hover:underline decoration-indigo-300 underline-offset-2 relative z-10"
                   title="Open role page"
                 >
                   {job.title}
