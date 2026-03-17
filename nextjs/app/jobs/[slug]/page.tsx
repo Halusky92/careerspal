@@ -24,21 +24,17 @@ const getBaseUrl = () => {
   return "http://localhost:3000";
 };
 
-const getRequestBaseUrl = () => {
-  try {
-    const h = headers();
-    const host = (h.get("x-forwarded-host") || h.get("host") || "").trim();
-    const proto = (h.get("x-forwarded-proto") || "https").trim();
-    if (host) return `${proto}://${host}`;
-  } catch {
-    // ignore
-  }
-  return getBaseUrl();
-};
-
 async function fetchPublicJobViaApi(jobId: string): Promise<Job | null> {
   try {
-    const baseUrl = getRequestBaseUrl();
+    let baseUrl = getBaseUrl();
+    try {
+      const h = await headers();
+      const host = (h.get("x-forwarded-host") || h.get("host") || "").trim();
+      const proto = (h.get("x-forwarded-proto") || "https").trim();
+      if (host) baseUrl = `${proto}://${host}`;
+    } catch {
+      // ignore
+    }
     const res = await fetch(`${baseUrl}/api/jobs/${encodeURIComponent(jobId)}`, {
       cache: "no-store",
       headers: { accept: "application/json" },
