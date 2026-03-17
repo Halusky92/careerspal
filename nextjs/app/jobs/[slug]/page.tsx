@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import CompanyLogo from "../../../components/CompanyLogo";
 import FormattedDescriptionStatic from "../../../components/FormattedDescriptionStatic";
 import { getCategoryHubForDbCategory } from "../../../lib/categories";
@@ -8,6 +9,8 @@ import { createCompanySlug, createJobSlug, getJobIdFromSlug } from "../../../lib
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
+
+export const runtime = "nodejs";
 
 type PageProps = {
   params: { slug: string };
@@ -21,9 +24,21 @@ const getBaseUrl = () => {
   return "http://localhost:3000";
 };
 
+const getRequestBaseUrl = () => {
+  try {
+    const h = headers();
+    const host = (h.get("x-forwarded-host") || h.get("host") || "").trim();
+    const proto = (h.get("x-forwarded-proto") || "https").trim();
+    if (host) return `${proto}://${host}`;
+  } catch {
+    // ignore
+  }
+  return getBaseUrl();
+};
+
 async function fetchPublicJobViaApi(jobId: string): Promise<Job | null> {
   try {
-    const baseUrl = getBaseUrl();
+    const baseUrl = getRequestBaseUrl();
     const res = await fetch(`${baseUrl}/api/jobs/${encodeURIComponent(jobId)}`, {
       cache: "no-store",
       headers: { accept: "application/json" },
