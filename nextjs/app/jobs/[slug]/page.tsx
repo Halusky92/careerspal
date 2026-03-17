@@ -255,12 +255,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function JobDetailPage({ params, searchParams }: PageProps) {
   const job = await fetchPublishedJobBySlug(params.slug);
-  const debug =
-    typeof searchParams?.debug === "string"
-      ? searchParams.debug
-      : Array.isArray(searchParams?.debug)
-        ? searchParams?.debug?.[0]
-        : "";
+  let debug = "";
+  try {
+    const h = await headers();
+    debug = (h.get("x-cp-debug") || "").trim();
+  } catch {
+    // ignore
+  }
+  if (!debug) {
+    debug =
+      typeof searchParams?.debug === "string"
+        ? searchParams.debug
+        : Array.isArray(searchParams?.debug)
+          ? searchParams?.debug?.[0]
+          : "";
+  }
 
   if (!job) {
     if (debug === "1") {
