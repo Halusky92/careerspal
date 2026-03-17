@@ -8,6 +8,7 @@ import {
   ingestGreenhouseRawJobs,
   normalizeGreenhouseRawJobsToCandidates,
 } from "../../../../../../lib/sourcing/pipeline/greenhouseSteps";
+import { enrichCandidatesSalaryBulk } from "../../../../../../lib/sourcing/pipeline/salaryEnrichment";
 
 export const runtime = "nodejs";
 
@@ -61,6 +62,7 @@ async function runPipelineGreenhouse(args: { sourceId?: string | null; limitRaw?
     ingestion: { ran: 0, results: [] as any[] },
     normalization: { processed: 0, inserted: 0, updated: 0, skipped: 0, errors: 0 },
     evaluation: { processed: 0, evaluated: 0, errors: 0 },
+    salary_enrichment: { scanned: 0, attempted: 0, updated: 0, reopened: 0, not_found: 0, failed: 0, skipped_recent: 0 },
     auto_publish: {
       processed: 0,
       published: 0,
@@ -70,6 +72,7 @@ async function runPipelineGreenhouse(args: { sourceId?: string | null; limitRaw?
       failed: 0,
       minScore: null as number | null,
     },
+    per_source: [] as any[],
   };
 
   // 2) Ingest per source (keeps run rows separate and debuggable)
@@ -84,44 +87,87 @@ async function runPipelineGreenhouse(args: { sourceId?: string | null; limitRaw?
   pipeSummary.raw_inserted = pipeSummary.ingestion.results.reduce((acc: number, r: any) => acc + (Number(r?.insertedCount) || 0), 0);
   pipeSummary.raw_skipped = pipeSummary.ingestion.results.reduce((acc: number, r: any) => acc + (Number(r?.skippedCount) || 0), 0);
 
-  // 3) Normalize latest raw jobs (scoped by source if provided)
-  const norm = await normalizeGreenhouseRawJobsToCandidates(supabaseAdmin, { sourceId, limit: limitRaw });
-  pipeSummary.normalization.processed = Number(norm.processed || 0) || 0;
-  pipeSummary.normalization.inserted = Number(norm.inserted || 0) || 0;
-  pipeSummary.normalization.updated = Number(norm.updated || 0) || 0;
-  pipeSummary.normalization.skipped = Number(norm.skipped || 0) || 0;
-  pipeSummary.normalization.errors = Array.isArray(norm.errors) ? norm.errors.length : 0;
+  // 3-6) Normalize → Evaluate → Salary enrichment → Auto-publish
+  // IMPORTANT: when sourceId is NOT provided, run these per-source to avoid one busy source starving others via global limits.
+  const sourcesToProcess = sourceId ? eligibleSources : eligibleSources;
+  const perSourceRawLimit = sourceId ? limitRaw : Math.max(60, Math.ceil(limitRaw / Math.max(1, eligibleSources.length)));
+  const perSourceCandidateLimit = sourceId ? limitCandidates : Math.max(60, Math.ceil(limitCandidates / Math.max(1, eligibleSources.length)));
 
-  // 4) Evaluate candidates
-  const ev = await evaluateCandidates(supabaseAdmin, { sourceId, limit: limitCandidates });
-  pipeSummary.evaluation.processed = Number(ev.processed || 0) || 0;
-  pipeSummary.evaluation.evaluated = Number(ev.evaluated || 0) || 0;
-  pipeSummary.evaluation.errors = Array.isArray(ev.errors) ? ev.errors.length : 0;
+  const publishedJobIdsAll: string[] = [];
+  const duplicateJobIdsAll: string[] = [];
 
-  // 5) Auto-publish
-  const pub = await autoPublishEligibleCandidates(supabaseAdmin, { actorId: args.actorId, sourceId, limit: 100 });
-  pipeSummary.auto_publish.processed = Number(pub.processed || 0) || 0;
-  pipeSummary.auto_publish.published = Number(pub.published || 0) || 0;
-  pipeSummary.auto_publish.failed = Number(pub.failed || 0) || 0;
-  pipeSummary.auto_publish.minScore = typeof pub.minScore === "number" ? pub.minScore : null;
+  for (const s of sourcesToProcess) {
+    const sid = sourceId ? sourceId : s.id;
 
-  const pubResults = Array.isArray((pub as any).results) ? ((pub as any).results as any[]) : [];
-  pipeSummary.auto_publish.skipped_duplicates = pubResults.filter((r) => r?.status === "skipped_duplicate").length;
-  pipeSummary.auto_publish.skipped_not_eligible = pubResults.filter((r) => r?.status === "skipped").length;
+    const norm = await normalizeGreenhouseRawJobsToCandidates(supabaseAdmin, { sourceId: sid, limit: perSourceRawLimit });
+    pipeSummary.normalization.processed += Number(norm.processed || 0) || 0;
+    pipeSummary.normalization.inserted += Number(norm.inserted || 0) || 0;
+    pipeSummary.normalization.updated += Number(norm.updated || 0) || 0;
+    pipeSummary.normalization.skipped += Number(norm.skipped || 0) || 0;
+    pipeSummary.normalization.errors += Array.isArray(norm.errors) ? norm.errors.length : 0;
+
+    const ev = await evaluateCandidates(supabaseAdmin, { sourceId: sid, limit: perSourceCandidateLimit });
+    pipeSummary.evaluation.processed += Number(ev.processed || 0) || 0;
+    pipeSummary.evaluation.evaluated += Number(ev.evaluated || 0) || 0;
+    pipeSummary.evaluation.errors += Array.isArray(ev.errors) ? ev.errors.length : 0;
+
+    // Enrich salary for a small batch of missing-salary candidates (conservative, cooldown-aware).
+    const sal = await enrichCandidatesSalaryBulk(supabaseAdmin, {
+      sourceId: sid,
+      limit: 18,
+      concurrency: 2,
+      cooldownHours: 24,
+      scanLimit: 220,
+    });
+    pipeSummary.salary_enrichment.scanned += Number(sal.scanned || 0) || 0;
+    pipeSummary.salary_enrichment.attempted += Number(sal.attempted || 0) || 0;
+    pipeSummary.salary_enrichment.updated += Number(sal.updated || 0) || 0;
+    pipeSummary.salary_enrichment.reopened += Number(sal.reopened || 0) || 0;
+    pipeSummary.salary_enrichment.not_found += Number(sal.not_found || 0) || 0;
+    pipeSummary.salary_enrichment.failed += Number(sal.failed || 0) || 0;
+    pipeSummary.salary_enrichment.skipped_recent += Number(sal.skipped_recent || 0) || 0;
+
+    const pub = await autoPublishEligibleCandidates(supabaseAdmin, { actorId: args.actorId, sourceId: sid, limit: 120 });
+    pipeSummary.auto_publish.processed += Number(pub.processed || 0) || 0;
+    pipeSummary.auto_publish.published += Number(pub.published || 0) || 0;
+    pipeSummary.auto_publish.failed += Number(pub.failed || 0) || 0;
+    pipeSummary.auto_publish.minScore = typeof pub.minScore === "number" ? pub.minScore : pipeSummary.auto_publish.minScore;
+
+    const pubResults = Array.isArray((pub as any).results) ? ((pub as any).results as any[]) : [];
+    pipeSummary.auto_publish.skipped_duplicates += pubResults.filter((r) => r?.status === "skipped_duplicate").length;
+    pipeSummary.auto_publish.skipped_not_eligible += pubResults.filter((r) => r?.status === "skipped").length;
+
+    publishedJobIdsAll.push(
+      ...pubResults
+        .filter((r) => r?.status === "published" && typeof r?.jobId === "string")
+        .map((r) => String(r.jobId))
+        .filter(Boolean),
+    );
+    duplicateJobIdsAll.push(
+      ...pubResults
+        .filter((r) => r?.status === "skipped_duplicate" && typeof r?.jobId === "string")
+        .map((r) => String(r.jobId))
+        .filter(Boolean),
+    );
+
+    pipeSummary.per_source.push({
+      sourceId: sid,
+      normalization: norm,
+      evaluation: ev,
+      salary_enrichment: sal,
+      auto_publish: {
+        processed: Number((pub as any).processed || 0) || 0,
+        published: Number((pub as any).published || 0) || 0,
+        failed: Number((pub as any).failed || 0) || 0,
+      },
+    });
+
+    if (sourceId) break;
+  }
+
   pipeSummary.auto_publish.skipped_total = pipeSummary.auto_publish.skipped_duplicates + pipeSummary.auto_publish.skipped_not_eligible;
-
-  // Capture published job IDs for admin drill-down (cap to keep audit logs small).
-  // This is intentionally best-effort and non-essential for the pipeline logic.
-  const publishedJobIds = pubResults
-    .filter((r) => r?.status === "published" && typeof r?.jobId === "string")
-    .map((r) => String(r.jobId))
-    .filter(Boolean);
-  const duplicateJobIds = pubResults
-    .filter((r) => r?.status === "skipped_duplicate" && typeof r?.jobId === "string")
-    .map((r) => String(r.jobId))
-    .filter(Boolean);
-  (pipeSummary.auto_publish as any).published_job_ids = Array.from(new Set(publishedJobIds)).slice(0, 60);
-  (pipeSummary.auto_publish as any).duplicate_job_ids = Array.from(new Set(duplicateJobIds)).slice(0, 60);
+  (pipeSummary.auto_publish as any).published_job_ids = Array.from(new Set(publishedJobIdsAll)).slice(0, 60);
+  (pipeSummary.auto_publish as any).duplicate_job_ids = Array.from(new Set(duplicateJobIdsAll)).slice(0, 60);
 
   // Optional: audit a pipeline run (cron actorId=null).
   await supabaseAdmin.from("audit_logs").insert({
