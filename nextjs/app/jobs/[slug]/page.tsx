@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type PageProps = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
   searchParams?: Record<string, string | string[] | undefined>;
 };
 
@@ -221,7 +221,8 @@ async function fetchSimilarPublishedJobs(job: Job): Promise<Job[]> {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const job = await fetchPublishedJobBySlug(params.slug);
+  const { slug } = await params;
+  const job = await fetchPublishedJobBySlug(slug);
   if (!job) return {};
 
   const baseUrl = getBaseUrl();
@@ -254,7 +255,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function JobDetailPage({ params, searchParams }: PageProps) {
-  const job = await fetchPublishedJobBySlug(params.slug);
+  const { slug } = await params;
+  const job = await fetchPublishedJobBySlug(slug);
   let debug = "";
   try {
     const h = await headers();
@@ -273,7 +275,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
 
   if (!job) {
     if (debug === "1") {
-      const info = await debugResolveJob(params.slug);
+      const info = await debugResolveJob(slug);
       return (
         <div className="bg-[#F8F9FD] min-h-screen">
           <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
