@@ -11,6 +11,7 @@ import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
 import JobRow from "./JobRow";
 import JobDetailPanel from "./JobDetailPanel";
+import PredictiveField from "./PredictiveField";
 
 interface FindJobsProps {
   jobs: Job[];
@@ -784,7 +785,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               value={query}
               onChange={(e) => preserveFilterPosition(() => setQuery(e.target.value))}
               placeholder="Search everything..."
-              className="mt-2 w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
+              className="cp-field mt-2 w-full h-10 rounded-xl px-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400"
             />
           </div>
 
@@ -799,7 +800,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
             <button
               type="button"
               onClick={() => setOpenWwrDropdown((prev) => (prev === "category" ? null : "category"))}
-              className="mt-2 w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-medium text-slate-900 hover:border-slate-300"
+              className="cp-field mt-2 w-full h-10 rounded-xl bg-white px-3 text-left text-sm font-medium text-slate-900"
             >
               <span className={category !== "All Roles" ? "" : "text-slate-400"}>
                 {category !== "All Roles" ? CATEGORY_FILTER_LABELS[category] || category : "Search job category..."}
@@ -870,7 +871,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               value={locationQuery}
               onChange={(e) => preserveFilterPosition(() => setLocationQuery(e.target.value))}
               placeholder="Search country..."
-              className="mt-2 w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
+              className="cp-field mt-2 w-full h-10 rounded-xl px-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400"
             />
           </div>
 
@@ -885,7 +886,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
             <button
               type="button"
               onClick={() => setOpenWwrDropdown((prev) => (prev === "salary" ? null : "salary"))}
-              className="mt-2 w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-medium text-slate-900 hover:border-slate-300"
+              className="cp-field mt-2 w-full h-10 rounded-xl bg-white px-3 text-left text-sm font-medium text-slate-900"
             >
               <span className={selectedSalaryLabel ? "" : "text-slate-400"}>
                 {selectedSalaryLabel || "Search by salary range..."}
@@ -927,7 +928,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
             <button
               type="button"
               onClick={() => setOpenWwrDropdown((prev) => (prev === "skills" ? null : "skills"))}
-              className="mt-2 w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-medium text-slate-900 hover:border-slate-300"
+              className="cp-field mt-2 w-full h-10 rounded-xl bg-white px-3 text-left text-sm font-medium text-slate-900"
             >
               <span className={skillsSummary ? "" : "text-slate-400"}>
                 {skillsSummary || "Search skills..."}
@@ -997,7 +998,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     <div className="bg-[#F8F9FD]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
         <div>
-          <div className="rounded-xl border border-slate-200 bg-white px-3 sm:px-4 py-3">
+          <div className="cp-search rounded-2xl px-3 sm:px-4 py-3" style={{ border: "3px solid #0f172a" }}>
             <div className="flex flex-col lg:flex-row lg:items-end gap-2 lg:gap-3">
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 <div ref={titleRef} className="relative">
@@ -1005,55 +1006,24 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     Search
                   </label>
                   <div className="relative mt-1">
-                    <input
-                      type="text"
-                      placeholder="Role, company, tool…"
+                    <PredictiveField
                       value={query}
-                      onChange={(e) => {
-                        setQuery(e.target.value);
-                        setShowTitleSuggestions(true);
-                      }}
-                      onFocus={() => setShowTitleSuggestions(true)}
-                      autoComplete="off"
-                      inputMode="search"
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape") {
-                          setQuery("");
-                          setShowTitleSuggestions(false);
-                        }
-                        if (e.key === "Enter") setShowTitleSuggestions(false);
-                      }}
-                      className="w-full h-11 rounded-lg border border-slate-300 px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 pr-9"
+                      onChange={setQuery}
+                      placeholder="Role, company, tool…"
+                      ariaLabel="Role, company, tool…"
+                      inputClassName="cp-field w-full h-11 rounded-lg px-3 pr-9 text-[16px] sm:text-sm text-slate-900 outline-none bg-white"
                     />
                     {query && (
                       <button
-                        onClick={() => {
-                          setQuery("");
-                          setShowTitleSuggestions(false);
-                        }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600"
+                        type="button"
+                        onClick={() => setQuery("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900"
                         aria-label="Clear search"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
-                    )}
-                    {showTitleSuggestions && suggestions.length > 0 && (
-                      <div className="absolute left-0 right-0 mt-2 bg-white border border-indigo-50 rounded-2xl shadow-2xl overflow-hidden z-40">
-                        {suggestions.map((suggestion, idx) => (
-                          <button
-                            key={`${suggestion}-${idx}`}
-                            onClick={() => {
-                              setQuery(suggestion);
-                              setShowTitleSuggestions(false);
-                            }}
-                            className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-indigo-50/50 last:border-none"
-                          >
-                            {suggestion}
-                          </button>
-                        ))}
-                      </div>
                     )}
                   </div>
                 </div>
@@ -1063,54 +1033,25 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     Location
                   </label>
                   <div className="relative mt-1">
-                    <input
-                      type="text"
-                      placeholder="City, country, or remote"
+                    <PredictiveField
+                      kind="location"
                       value={locationQuery}
-                      onChange={(e) => {
-                        setLocationQuery(e.target.value);
-                        setShowLocationSuggestions(true);
-                      }}
-                      onFocus={() => setShowLocationSuggestions(true)}
-                      autoComplete="off"
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape") {
-                          setLocationQuery("");
-                          setShowLocationSuggestions(false);
-                        }
-                        if (e.key === "Enter") setShowLocationSuggestions(false);
-                      }}
-                      className="w-full h-11 rounded-lg border border-slate-300 px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 pr-9"
+                      onChange={setLocationQuery}
+                      placeholder="City, country, or remote"
+                      ariaLabel="City, country, or remote"
+                      inputClassName="cp-field w-full h-11 rounded-lg px-3 pr-9 text-[16px] sm:text-sm text-slate-900 outline-none bg-white"
                     />
                     {locationQuery && (
                       <button
-                        onClick={() => {
-                          setLocationQuery("");
-                          setShowLocationSuggestions(false);
-                        }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600"
+                        type="button"
+                        onClick={() => setLocationQuery("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900"
                         aria-label="Clear location"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
-                    )}
-                    {showLocationSuggestions && locationSuggestions.length > 0 && (
-                      <div className="absolute left-0 right-0 mt-2 bg-white border border-indigo-50 rounded-2xl shadow-2xl overflow-hidden z-40">
-                        {locationSuggestions.map((suggestion, idx) => (
-                          <button
-                            key={`${suggestion}-${idx}`}
-                            onClick={() => {
-                              setLocationQuery(suggestion);
-                              setShowLocationSuggestions(false);
-                            }}
-                            className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-indigo-50/50 last:border-none"
-                          >
-                            {suggestion}
-                          </button>
-                        ))}
-                      </div>
                     )}
                   </div>
                 </div>
@@ -1122,7 +1063,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                    className="mt-1 w-full h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400"
+                    className="cp-field mt-1 w-full h-11 rounded-lg bg-white px-3 text-sm text-slate-800 outline-none"
                   >
                     <option value="newest">Newest</option>
                     <option value="salary">Highest salary</option>

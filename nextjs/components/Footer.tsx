@@ -14,36 +14,37 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-sm text-slate-700">
-            Salary-first remote Ops roles with a clear apply link.
+            Ops and Systems roles. Search, save, apply on the company site.
           </p>
           <div className="flex gap-2">
             <Link href="/jobs" className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium inline-flex items-center">
               Browse jobs
             </Link>
-            <Link href="/post-a-job" className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-slate-800 text-sm font-medium inline-flex items-center">
-              Post a job
+            <Link href="/hire-talent" className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-slate-800 text-sm font-medium inline-flex items-center">
+              For employers
             </Link>
           </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
           <div className="col-span-2 md:col-span-1 space-y-2">
             <div className="font-semibold text-slate-900">CareersPal</div>
-            <p className="text-slate-500">Remote Ops, Systems, Automation, RevOps, Product Ops, Chief of Staff.</p>
+            <p className="text-slate-600">Remote Ops, Systems, Automation, RevOps, Product Ops, Chief of Staff.</p>
           </div>
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Jobs</h4>
             <ul className="space-y-1.5 text-slate-600">
-              <li><Link href="/jobs" className="hover:text-indigo-600">Browse Jobs</Link></li>
-              <li><Link href="/post-a-job" className="hover:text-indigo-600">Post a Job</Link></li>
-              <li><Link href="/salary-insights" className="hover:text-indigo-600">Salary Insights</Link></li>
+              <li><Link href="/jobs" className="hover:text-indigo-600">Browse jobs</Link></li>
+              <li><Link href="/companies" className="hover:text-indigo-600">Companies</Link></li>
+              <li><Link href="/alerts" className="hover:text-indigo-600">Email alerts</Link></li>
+              <li><Link href="/salary-insights" className="hover:text-indigo-600">Salary ranges</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Company</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Employers</h4>
             <ul className="space-y-1.5 text-slate-600">
-              <li><Link href="/about" className="hover:text-indigo-600">About</Link></li>
+              <li><Link href="/hire-talent" className="hover:text-indigo-600">Post a job</Link></li>
               <li><Link href="/pricing" className="hover:text-indigo-600">Pricing</Link></li>
-              <li><Link href="/hire-talent" className="hover:text-indigo-600">Hire Talent</Link></li>
+              <li><Link href="/about" className="hover:text-indigo-600">About</Link></li>
               <li><a href="mailto:info@careerspal.com" className="hover:text-indigo-600">Support</a></li>
             </ul>
           </div>

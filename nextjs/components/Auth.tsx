@@ -76,8 +76,10 @@ const Auth: React.FC<AuthProps> = () => {
             Sign in to CareersPal
           </h1>
           
-          <p className="font-medium mt-2 text-slate-600">
-            Save roles, set alerts, and manage your account.
+          <p className="font-medium mt-2 text-slate-700">
+            {role === "employer"
+              ? "Post a role, pay, and track listings."
+              : "Save roles and get email when a new one is published."}
           </p>
         </div>
 
@@ -86,17 +88,17 @@ const Auth: React.FC<AuthProps> = () => {
             onClick={() => setRole('employer')} 
             className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wide rounded-xl transition-all ${role === 'employer' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
           >
-            I am Hiring
+            Hiring
           </button>
           <button 
             onClick={() => setRole('candidate')} 
             className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wide rounded-xl transition-all ${role === 'candidate' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
           >
-            I am a Talent
+            Job seeker
           </button>
         </div>
         <p className="text-[11px] font-bold text-slate-600 text-center -mt-4 mb-6">
-          {role === 'employer' ? 'Use a company email address for your employer account' : 'Sign in to save roles and set alerts'}
+          {role === 'employer' ? 'Work email is best for an employer account' : 'Sign in to save roles and set alerts'}
         </p>
 
         <button
@@ -104,7 +106,7 @@ const Auth: React.FC<AuthProps> = () => {
           onClick={handleGoogleSignIn}
           disabled={isLoading}
           aria-busy={isLoading}
-          className="w-full mb-6 flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-4 font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:shadow-md disabled:opacity-60"
+          className="w-full mb-6 flex items-center justify-center gap-3 rounded-2xl border-2 border-slate-900 bg-white py-4 font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
         >
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white border border-slate-200">
             <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -125,7 +127,7 @@ const Auth: React.FC<AuthProps> = () => {
             type="email"
             inputMode="email"
             placeholder="name@company.com"
-            className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+            className="cp-field w-full px-4 py-3 rounded-2xl bg-white text-sm font-bold text-slate-700 outline-none"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />

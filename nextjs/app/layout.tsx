@@ -26,9 +26,9 @@ const baseUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
-  title: "CareersPal | Curated remote Ops & Systems roles",
+  title: "CareersPal | Remote Ops & Systems jobs",
   description:
-    "Curated remote roles in Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Salary-first listings with clear scope.",
+    "Find remote roles in Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Search, save, and apply on the company site.",
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
@@ -39,9 +39,9 @@ export const metadata: Metadata = {
     apple: [{ url: "/icon", type: "image/png", sizes: "512x512" }],
   },
   openGraph: {
-    title: "CareersPal | Curated remote Ops & Systems roles",
+    title: "CareersPal | Remote Ops & Systems jobs",
     description:
-      "Curated remote roles in Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Salary-first listings with clear scope.",
+      "Find remote roles in Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Search, save, and apply on the company site.",
     url: baseUrl,
     siteName: "CareersPal",
     images: [
@@ -57,9 +57,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "CareersPal | Curated remote Ops & Systems roles",
+    title: "CareersPal | Remote Ops & Systems jobs",
     description:
-      "Curated remote roles in Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Salary-first listings with clear scope.",
+      "Find remote roles in Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Search, save, and apply on the company site.",
     images: ["/mockups/job-board-concept.svg"],
   },
 };

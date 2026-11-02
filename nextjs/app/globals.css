@@ -21,8 +21,57 @@
 
 body {
   background: var(--background);
-  color: var(--foreground);
+  color: #0f172a;
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  body {
+    font-size: 16px;
+    line-height: 1.5;
+    color: #0f172a;
+  }
+}
+
+/* Indeed-like scan surface: one dark ring around search so it reads first. */
+.cp-search {
+  border: 3px solid #0f172a !important;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+.cp-search:focus-within {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.16);
+}
+.cp-field {
+  border: 2px solid #334155;
+  background: #ffffff;
+}
+.cp-field:focus,
+.cp-field:focus-within {
+  border-color: #4f46e5;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14);
+}
+.cp-table thead th {
+  color: #0f172a;
+  background: #f1f5f9;
+  border-bottom: 2px solid #cbd5e1;
+  font-weight: 600;
+}
+.cp-table tbody td {
+  border-bottom: 1px solid #e2e8f0;
+}
+.cp-table tbody tr:hover td {
+  background: #f8fafc;
 }
 
 /* Typography normalization:

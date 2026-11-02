@@ -89,9 +89,9 @@ const SalaryInsights: React.FC<SalaryInsightsProps> = ({ onBrowse }) => {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="text-center mb-6">
-        <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">Salary ranges on the board.</h1>
-        <p className="mt-4 text-slate-600 font-medium max-w-2xl mx-auto">
-          Taken from currently published listings. Not a market forecast.
+        <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">Ranges from live listings</h1>
+        <p className="mt-4 text-slate-700 font-medium max-w-2xl mx-auto">
+          Parsed from roles currently on the board. A snapshot, not a market forecast.
         </p>
       </div>
 

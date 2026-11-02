@@ -82,29 +82,35 @@ const Navbar: React.FC = () => {
               <span className="text-base font-semibold tracking-tight text-indigo-600">CareersPal</span>
             </Link>
 
-            <div className="hidden md:flex items-center gap-5">
+            <div className="hidden md:flex items-center gap-3 shrink-0">
               <Link
                 href="/jobs"
-                className={`text-sm ${pathname === "/jobs" ? "text-indigo-600 font-medium" : "text-slate-600 hover:text-slate-900"}`}
+                className={`text-sm ${pathname === "/jobs" || pathname.startsWith("/jobs/") ? "text-indigo-600 font-medium" : "text-slate-600 hover:text-slate-900"}`}
               >
                 Jobs
               </Link>
               <Link
+                href="/companies"
+                className={`hidden lg:inline text-sm ${pathname.startsWith("/companies") ? "text-indigo-600 font-medium" : "text-slate-600 hover:text-slate-900"}`}
+              >
+                Companies
+              </Link>
+              <Link
                 href="/alerts"
-                className={`text-sm ${pathname === "/alerts" ? "text-indigo-600 font-medium" : "text-slate-600 hover:text-slate-900"}`}
+                className={`hidden lg:inline text-sm ${pathname === "/alerts" ? "text-indigo-600 font-medium" : "text-slate-600 hover:text-slate-900"}`}
               >
                 Alerts
               </Link>
-              <Link href="/pricing" className={`text-sm ${pathname === "/pricing" ? "text-indigo-600 font-medium" : "text-slate-600 hover:text-slate-900"}`}>
+              <Link href="/pricing" className={`hidden xl:inline text-sm ${pathname === "/pricing" ? "text-indigo-600 font-medium" : "text-slate-600 hover:text-slate-900"}`}>
                 Pricing
               </Link>
 
-              <Link href={hireHref} className="text-sm text-slate-600 hover:text-slate-900">
+              <Link href={hireHref} className="h-9 px-3 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-black shrink-0">
                 {hireLabel}
               </Link>
 
               {!profile?.email ? (
-                <Link href="/auth" className="h-9 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:border-indigo-200">
+                <Link href="/auth" className="h-9 px-3 rounded-lg border-2 border-slate-900 text-sm font-medium text-slate-900 hover:bg-slate-50 shrink-0">
                   Sign in
                 </Link>
               ) : (
@@ -188,8 +194,9 @@ const Navbar: React.FC = () => {
       <div
         id="mobile-menu"
         className={`fixed inset-0 z-[101] bg-white md:hidden flex flex-col ${
-          isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          isMenuOpen ? "opacity-100 pointer-events-auto" : "hidden opacity-0 pointer-events-none"
         }`}
+        aria-hidden={!isMenuOpen}
       >
         <div className="px-4 pt-4 pb-3 flex items-center justify-between border-b border-slate-100">
           <span className="text-sm font-semibold text-slate-900">Menu</span>
@@ -205,6 +212,9 @@ const Navbar: React.FC = () => {
           )}
           <Link href="/jobs" onClick={closeMobile} className="block py-3 border-b border-slate-100">
             Jobs
+          </Link>
+          <Link href="/companies" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+            Companies
           </Link>
           <Link href="/alerts" onClick={closeMobile} className="block py-3 border-b border-slate-100">
             Alerts

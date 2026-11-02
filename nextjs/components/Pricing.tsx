@@ -18,8 +18,11 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
           <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 mb-2 tracking-tight">
             Post a role on the board.
           </h1>
-          <p className="text-sm sm:text-base text-slate-500 max-w-2xl mx-auto">
+          <p className="text-[15px] sm:text-base text-slate-700 max-w-2xl mx-auto">
             Salary-first listings for Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff.
+          </p>
+          <p className="mt-3 text-sm font-medium text-slate-800">
+            Launch: first 10 Standard listings per employer are $1, then the prices below. Stripe checkout. Reviewed before publish.
           </p>
         </div>
 
@@ -38,7 +41,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
         {/* Standard Tier */}
-        <div className="bg-white/90 backdrop-blur p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group flex flex-col">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border-2 border-slate-900 shadow-sm hover:shadow-md transition-all group flex flex-col">
           <h3 className="text-xl font-bold text-gray-900 mb-2 uppercase tracking-tight">Standard</h3>
           <p className="text-gray-500 text-sm mb-8 font-medium">A clean listing on the board.</p>
           <div className="text-4xl font-bold text-gray-900 mb-8 tracking-tighter">$79 <span className="text-sm font-normal text-gray-500">/ 30 days</span></div>

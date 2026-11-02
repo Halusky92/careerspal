@@ -111,20 +111,27 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
         <button
           type="button"
           onClick={() => router.push("/jobs")}
-          className="mt-4 w-full h-11 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-800 hover:border-indigo-200 hover:text-indigo-700"
+          className="mt-4 w-full h-11 rounded-xl border-2 border-slate-900 bg-white text-sm font-medium text-slate-800 hover:bg-slate-50"
         >
           {hasJobs ? `See all ${jobs.length} jobs` : "Browse jobs"}
         </button>
 
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-slate-500">
-          <span>Salary-first listings</span>
-          <span className="hidden sm:inline text-slate-300">·</span>
-          <button type="button" onClick={() => router.push("/alerts")} className="hover:text-indigo-700">
-            Daily alerts
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => router.push("/alerts")}
+            className="rounded-xl border-2 border-slate-900 bg-white px-4 py-3 text-left hover:bg-slate-50"
+          >
+            <div className="text-sm font-semibold text-slate-900">For candidates</div>
+            <p className="mt-1 text-xs text-slate-600">Email when a new role is published. Apply on the company site.</p>
           </button>
-          <span className="hidden sm:inline text-slate-300">·</span>
-          <button type="button" onClick={() => router.push("/post-a-job")} className="hover:text-indigo-700">
-            Post a job
+          <button
+            type="button"
+            onClick={() => router.push("/hire-talent")}
+            className="rounded-xl border-2 border-slate-900 bg-white px-4 py-3 text-left hover:bg-slate-50"
+          >
+            <div className="text-sm font-semibold text-slate-900">For employers</div>
+            <p className="mt-1 text-xs text-slate-600">Post a role on the board. Reviewed before it goes live.</p>
           </button>
         </div>
       </section>

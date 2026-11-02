@@ -60,8 +60,8 @@ export default async function CategoriesPage() {
             <h1 className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
               Browse by category
             </h1>
-            <p className="mt-3 text-slate-600 font-medium max-w-2xl">
-              Tight categories for Ops & Systems work. Each category lists published roles currently live on CareersPal.
+            <p className="mt-3 text-slate-700 font-medium max-w-2xl">
+              Published roles grouped the way people actually search this board.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -83,7 +83,7 @@ export default async function CategoriesPage() {
               <Link
                 key={hub.slug}
                 href={href}
-                className="rounded-[2.25rem] border border-slate-200/60 bg-white p-6 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors shadow-sm"
+                className="rounded-2xl border-2 border-slate-300 bg-white p-6 hover:border-slate-900 transition-colors shadow-sm"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">

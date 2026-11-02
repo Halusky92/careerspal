@@ -237,6 +237,7 @@ export async function GET(request: Request) {
   const from = getFromEmail();
 
   let sent = 0;
+  const emailed = new Set<string>();
   let matchedTotal = 0;
   const attempted: Array<{ alertId: string; email: string; matches: number; since: string }> = [];
   const summary = {
@@ -336,6 +337,7 @@ export async function GET(request: Request) {
         continue;
       }
       sent += 1;
+      emailed.add(toEmail.toLowerCase());
     }
 
     attempted.push({ alertId: alert.id, email: toEmail, matches: matches.length, since: since.toISOString() });
@@ -348,11 +350,68 @@ export async function GET(request: Request) {
     }
   }
 
+  const { data: subscribers } = await supabaseAdmin.from("subscribers").select("email,preference");
+  let subscriberSent = 0;
+  for (const sub of subscribers || []) {
+    const toEmail = String(sub.email || "").trim().toLowerCase();
+    if (!toEmail || emailed.has(toEmail)) continue;
+    const query = String(sub.preference || "").trim();
+    const { data: jobs } = await supabaseAdmin
+      .from("jobs")
+      .select("id,title,location,salary,apply_url,keywords,tags,category,timestamp,companies(name)")
+      .eq("status", "published")
+      .gte("timestamp", sinceDaily.getTime());
+    const jobRows = (jobs || []) as JobRow[];
+    const matches = jobRows.filter((job) => {
+      if (!isOnNicheJob(job)) return false;
+      if (!query || query.toLowerCase() === "all") return true;
+      return matchesAlert(job, query);
+    });
+    if (matches.length === 0) continue;
+    matchedTotal += matches.length;
+    if (dryRun) continue;
+    const rows = matches
+      .slice(0, 10)
+      .map((job) => {
+        const companyName = getCompanyName(job);
+        const jobUrl = `${baseUrl}/jobs/${createJobSlug({ title: job.title || "role", id: job.id })}`;
+        return `
+            <tr>
+              <td style="padding:16px;border:1px solid #eef0f5;background:#fbfbff;">
+                <div style="font-weight:600;color:#111827;">${escapeHtml(job.title || "Role")}</div>
+                <div style="color:#374151;font-size:13px;">${escapeHtml(companyName)} · ${escapeHtml(job.location || "Remote")}</div>
+                <div style="color:#374151;font-size:13px;margin-bottom:10px;">${escapeHtml(formatSalaryDisplay(job.salary))}</div>
+                <a href="${jobUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:8px 12px;border-radius:8px;font-size:13px;">View role</a>
+              </td>
+            </tr>
+            <tr><td style="height:12px;"></td></tr>
+          `;
+      })
+      .join("");
+    const sendResult = await resend.emails.send({
+      from,
+      to: toEmail,
+      subject: query && query.toLowerCase() !== "all" ? `New ${query} roles on CareersPal` : "New roles on CareersPal",
+      html: renderEmail({
+        title: "New published roles",
+        preheader: "Roles that went live on CareersPal.",
+        body: `<p style="margin:0 0 12px;">New published roles matching your category.</p><table role="presentation" width="100%">${rows}</table>`,
+        cta: { label: "Browse jobs", href: `${baseUrl}/jobs` },
+        footerNote: "You subscribed to CareersPal email alerts.",
+      }),
+    });
+    if (!sendResult.error) {
+      subscriberSent += 1;
+      emailed.add(toEmail);
+    }
+  }
+
   await supabaseAdmin.from("audit_logs").insert({
     action: dryRun ? "alerts_daily_dry_run" : "alerts_daily_sent",
     metadata: {
       totalAlerts: (alerts || []).length,
       sent,
+      subscriberSent,
       attempted,
       dryRun,
       matchedTotal,
@@ -363,6 +422,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ok: true,
     sent,
+    subscriberSent,
     dryRun,
     matchedTotal,
     backfillDays,

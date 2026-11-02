@@ -220,7 +220,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
 
       {founding?.enabled && founding.eligible && (
         <p className="mb-4 text-sm text-slate-600">
-          Founding launch: {founding.remainingSlots ?? 0} company slots and {founding.remainingJobs ?? 0} listing slots left.
+          Launch price: $1 for your next {founding.remainingJobs ?? 0} Standard listing{founding.remainingJobs === 1 ? "" : "s"} (first 10), then the public price list. Stripe checkout, then review.
         </p>
       )}
 
@@ -238,7 +238,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
             value={claimQuery}
             onChange={(event) => setClaimQuery(event.target.value)}
             placeholder="Search company name"
-            className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="cp-field mt-3 w-full rounded-lg px-3 py-2 text-sm"
           />
           {claimHits.length > 0 && (
             <div className="mt-2 space-y-1">
@@ -275,7 +275,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="cp-table w-full text-left text-sm">
               <thead>
                 <tr className="text-xs font-medium text-slate-400 border-b border-slate-100">
                   <th className="px-4 py-2.5 font-medium">Title</th>

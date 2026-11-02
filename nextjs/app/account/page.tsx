@@ -360,13 +360,13 @@ const AccountPageInner = () => {
                       value={fileName}
                       onChange={(e) => setFileName(e.target.value)}
                       placeholder="File name"
-                      className="w-full h-10 rounded-lg border border-slate-300 px-3 text-sm"
+                      className="cp-field w-full h-10 rounded-lg px-3 text-sm"
                     />
                     <input
                       value={fileUrl}
                       onChange={(e) => setFileUrl(e.target.value)}
                       placeholder="https://…"
-                      className="w-full h-10 rounded-lg border border-slate-300 px-3 text-sm"
+                      className="cp-field w-full h-10 rounded-lg px-3 text-sm"
                     />
                     <button
                       type="button"
@@ -388,7 +388,7 @@ const AccountPageInner = () => {
                       value={image}
                       onChange={(e) => setImage(e.target.value)}
                       placeholder="https://…"
-                      className="w-full h-10 rounded-lg border border-slate-300 px-3 text-sm"
+                      className="cp-field w-full h-10 rounded-lg px-3 text-sm"
                     />
                     <div className="flex gap-2">
                       <button

@@ -36,6 +36,7 @@ const PostJobPageInner = () => {
     const isAdmin = profile?.role === "admin";
     const isInternalPrice = selectedPlan.type === "Standard" && selectedPlan.price <= 5;
     if (!isInternalPrice) return;
+    if (foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price === 1) return;
 
     // Only allow internal cheap pricing when the backend explicitly allowlists the admin.
     if (!(isAdmin && showTestPlan)) {
@@ -47,7 +48,7 @@ const PostJobPageInner = () => {
         // ignore
       }
     }
-  }, [profile?.role, selectedPlan.price, selectedPlan.type, showTestPlan]);
+  }, [profile?.role, selectedPlan.price, selectedPlan.type, showTestPlan, foundingEligible]);
 
   useEffect(() => {
     sessionStorage.setItem(PLAN_KEY, JSON.stringify(selectedPlan));
@@ -106,6 +107,12 @@ const PostJobPageInner = () => {
     };
     load();
   }, [accessToken, editJobId]);
+
+  useEffect(() => {
+    if (!foundingEligible) return;
+    if (selectedPlan.type !== "Standard") return;
+    setSelectedPlan({ type: "Standard", price: 1 });
+  }, [foundingEligible, selectedPlan.type]);
 
   const handleJobSubmission = async (data: Job) => {
     const storagePlanPrice = Number.isFinite(selectedPlan.price)
@@ -191,15 +198,8 @@ const PostJobPageInner = () => {
         router.push("/dashboard/employer");
         return;
       }
-      if (payload.job?.id) {
+        if (payload.job?.id) {
         sessionStorage.setItem("cp_pending_job_id", payload.job.id);
-        if (foundingEligible) {
-          const submit = await authFetch(`/api/employer/jobs/${payload.job.id}/submit`, { method: "POST" }, accessToken);
-          if (submit.ok) {
-            router.push("/dashboard/employer");
-            return;
-          }
-        }
         router.push(`/checkout?jobId=${payload.job.id}`);
         return;
       }

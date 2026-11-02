@@ -155,10 +155,10 @@ export default function JobRow({
       className={[
         "group relative rounded-xl border transition-all overflow-hidden",
         isElite
-          ? "bg-amber-50 border-amber-200"
+          ? "bg-amber-50 border-2 border-amber-400"
           : isPro
-            ? "bg-amber-50/80 border-amber-200"
-            : "bg-amber-50/70 border-amber-200/80",
+            ? "bg-amber-50/80 border-2 border-amber-300"
+            : "bg-white border-2 border-slate-300",
         selected ? "ring-2 ring-indigo-600 ring-offset-2 ring-offset-[#F8F9FD]" : "hover:shadow-sm",
         isPrivate ? "opacity-80" : "",
       ].join(" ")}

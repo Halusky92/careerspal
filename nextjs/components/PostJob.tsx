@@ -28,7 +28,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const steps = [
     { id: 1, title: "Role details", desc: "Title, scope, salary" },
     { id: 2, title: "Company & apply", desc: "Brand + link" },
-    { id: 3, title: foundingEligible ? "Preview & submit" : "Preview & pay", desc: foundingEligible ? "Confirm & review" : "Confirm & checkout" },
+    { id: 3, title: "Preview & pay", desc: foundingEligible ? "$1 launch checkout" : "Confirm & checkout" },
   ] as const;
 
   const stepperProgress = steps.length > 1 ? ((step - 1) / (steps.length - 1)) * 100 : 0;
@@ -289,14 +289,14 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Job Title *</label>
-                    <input type="text" placeholder="e.g. Senior Notion Architect" className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                    <input type="text" placeholder="e.g. Senior Notion Architect" className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Keywords</label>
                     <input
                       type="text"
                       placeholder="Notion, Zapier, Ops, Automation"
-                      className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+                      className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
                       value={formData.keywords}
                       onChange={e => setFormData({...formData, keywords: e.target.value})}
                     />
@@ -305,7 +305,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</label>
-                      <select className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                      <select className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
                         {categoryOptions.map(cat => (
                           <option key={cat} value={cat}>{CATEGORY_FILTER_LABELS[cat] || cat}</option>
                         ))}
@@ -313,7 +313,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Job Type</label>
-                      <select className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as Job['type']})}>
+                      <select className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as Job['type']})}>
                         <option>Full-time</option>
                         <option>Contract</option>
                         <option>Part-time</option>
@@ -327,7 +327,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                         {isGenerating ? 'AI Writing...' : 'Draft with AI'}
                       </button>
                     </div>
-                    <textarea rows={8} className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl outline-none text-sm sm:text-base font-medium focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                    <textarea rows={8} className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl outline-none text-sm sm:text-base font-medium focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
                   </div>
                 </div>
                 <button onClick={handleStep1} className="w-full bg-indigo-600 text-white font-black py-4 sm:py-5 rounded-2xl hover:bg-indigo-700 transition-all text-base sm:text-lg shadow-[0_20px_60px_rgba(79,70,229,0.35)]">Next Step</button>
@@ -340,18 +340,18 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company Name *</label>
-                    <input type="text" placeholder="Your Company Name" className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
+                    <input type="text" placeholder="Your Company Name" className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Salary Range</label>
-                    <input type="text" placeholder="e.g. $80k - $120k" className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.salary} onChange={e => setFormData({...formData, salary: e.target.value})} />
+                    <input type="text" placeholder="e.g. $80k - $120k" className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.salary} onChange={e => setFormData({...formData, salary: e.target.value})} />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[11px] font-bold text-slate-700">Work mode</label>
                     <select
-                      className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+                      className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
                       value={formData.remotePolicy}
                       onChange={e => setFormData({...formData, remotePolicy: e.target.value})}
                     >
@@ -366,7 +366,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     <input
                       type="text"
                       placeholder="e.g. Worldwide, Europe, US, CET±2"
-                      className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+                      className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
                       value={formData.location}
                       onChange={e => setFormData({...formData, location: e.target.value})}
                     />
@@ -378,7 +378,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     type="text"
                     inputMode="url"
                     placeholder="company.com"
-                    className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+                    className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
                     value={formData.companyWebsite}
                     onChange={e => setFormData({...formData, companyWebsite: e.target.value})}
                     onBlur={() =>
@@ -397,7 +397,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                       <input 
                         type="url" 
                         placeholder="https://company.com/logo.png (optional)" 
-                        className="flex-1 px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl outline-none font-medium text-sm focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" 
+                        className="flex-1 px-5 py-3.5 sm:py-4 cp-field rounded-2xl outline-none font-medium text-sm focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" 
                         value={formData.logo.startsWith("data:") ? "" : formData.logo} 
                         onChange={e => setFormData({...formData, logo: e.target.value})}
                         onBlur={() =>
@@ -451,7 +451,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     type="text"
                     inputMode="url"
                     placeholder="company.com/careers or jobs@company.com"
-                    className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+                    className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
                     value={formData.applyUrl}
                     onChange={e => setFormData({...formData, applyUrl: e.target.value})}
                     onBlur={() =>
@@ -497,7 +497,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 </div>
                 <div className="flex flex-col gap-4">
                 <button onClick={handleFinalSubmit} className="w-full bg-slate-900 text-white font-semibold py-4 sm:py-6 rounded-2xl hover:bg-black shadow-[0_25px_70px_rgba(15,23,42,0.35)] active:scale-[0.98] transition-all text-base sm:text-xl">
-                    {foundingEligible ? "Submit for review" : `Proceed to Payment (${formatPrice(selectedPlan.price)})`}
+                    {foundingEligible
+                      ? "Pay $1 and submit for review"
+                      : `Proceed to Payment (${formatPrice(selectedPlan.price)})`}
                   </button>
                   <button onClick={() => setStep(2)} className="text-slate-600 font-medium hover:text-indigo-600 transition-colors">Edit details</button>
                 </div>
@@ -541,7 +543,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
                 <AccordionRow id="review" title="Review & publish timeline">
                   <div className="space-y-2 text-sm font-medium text-slate-700">
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span>{foundingEligible ? " Submit for review" : " Submit + pay"}</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span>{foundingEligible ? " $1 checkout, then review" : " Submit + pay"}</div>
                     <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">2</span> Review for quality + clarity</div>
                     <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">3</span> Publish when approved</div>
                     <p className="mt-3 text-xs text-slate-600">

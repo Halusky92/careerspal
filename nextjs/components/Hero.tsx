@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabaseAuth } from "./Providers";
+import PredictiveField from "./PredictiveField";
 
 interface HeroProps {
   onBrowse: () => void;
@@ -47,29 +48,36 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
           {firstName ? `Hello, ${firstName}` : "Find the next Ops role"}
         </h1>
-        <p className="mt-2 text-sm text-slate-500">
-          Salary on every listing. Search, or pick a category.
+        <p className="mt-2 text-[15px] sm:text-sm text-slate-700">
+          Search by title, company, or category.
         </p>
 
-        <form onSubmit={submit} className="mt-5 sm:mt-7 text-left">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0 rounded-2xl sm:rounded-full bg-white border border-slate-200 shadow-[0_10px_28px_rgba(15,23,42,0.08)] p-2 sm:p-1.5 sm:pl-4">
-            <input
+        <form onSubmit={submit} className="mt-5 sm:mt-7 text-left relative">
+          <div
+            className="cp-search flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0 rounded-2xl sm:rounded-full p-2 sm:p-1.5 sm:pl-4"
+            style={{ border: "3px solid #0f172a", boxShadow: "0 8px 24px rgba(15,23,42,0.12)" }}
+          >
+            <PredictiveField
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={setQuery}
               placeholder="Job title, company, or tool"
-              className="h-11 min-w-0 flex-1 rounded-xl sm:rounded-none border-0 bg-transparent px-3 sm:px-2 text-sm text-slate-900 outline-none"
-              aria-label="Search jobs"
+              ariaLabel="Search jobs"
+              inputClassName="h-11 w-full rounded-xl sm:rounded-none border-0 bg-transparent px-3 sm:px-2 text-[16px] sm:text-sm text-slate-900 outline-none"
             />
-            <div className="hidden sm:block h-6 w-px bg-slate-200 flex-shrink-0" aria-hidden />
-            <input
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Remote or city"
-              className="h-11 min-w-0 sm:w-40 sm:flex-none rounded-xl sm:rounded-none border-0 bg-transparent px-3 sm:px-3 text-sm text-slate-900 outline-none"
-              aria-label="Location"
-            />
+            <div className="hidden sm:block h-6 w-px bg-slate-800/40 flex-shrink-0" aria-hidden />
+            <div className="sm:w-40 sm:flex-none">
+              <PredictiveField
+                kind="location"
+                value={location}
+                onChange={setLocation}
+                placeholder="Remote or city"
+                ariaLabel="Location"
+                inputClassName="h-11 w-full rounded-xl sm:rounded-none border-0 bg-transparent px-3 text-[16px] sm:text-sm text-slate-900 outline-none"
+              />
+            </div>
             <button
               type="submit"
+              onClick={() => submit()}
               className="h-11 px-5 shrink-0 rounded-xl sm:rounded-full bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
             >
               Search
@@ -83,7 +91,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
               key={chip.label}
               type="button"
               onClick={() => router.push(`/jobs?category=${encodeURIComponent(chip.value)}`)}
-              className="h-8 px-3 rounded-full bg-white/80 border border-slate-200/80 text-xs font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
+              className="h-8 px-3 rounded-full bg-white border border-slate-300 text-xs font-medium text-slate-800 hover:border-slate-900"
             >
               {chip.label}
             </button>
@@ -96,7 +104,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
         <button
           type="button"
           onClick={onGetAlerts}
-          className="mt-3 text-xs font-medium text-slate-500 hover:text-indigo-700"
+          className="mt-3 text-sm font-medium text-slate-700 hover:text-indigo-700"
         >
           Email me new roles
         </button>

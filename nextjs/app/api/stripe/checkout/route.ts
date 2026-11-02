@@ -3,6 +3,8 @@ import Stripe from "stripe";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 import { checkRateLimit } from "../../../../lib/rateLimit";
+import { getFoundingStatus } from "../../../../lib/employer";
+import { FOUNDING_LAUNCH_PRICE } from "../../../../lib/founding";
 
 type StripeJobRow = {
   id: string;
@@ -70,13 +72,22 @@ export async function POST(request: Request) {
   }
   const companyName = Array.isArray(jobRow.companies) ? jobRow.companies[0]?.name : jobRow.companies?.name;
   const price = (body.price ?? jobRow.plan_price ?? 79);
-  const needsAdminApproval = Boolean(body.adminInternalPlan) || price < 1 || price <= 5;
-  if (needsAdminApproval) {
-    if (auth.profile.role !== "admin") {
-      return NextResponse.json({ error: "Internal plan is restricted." }, { status: 403 });
+  const isLaunchDollar =
+    Number(price) === FOUNDING_LAUNCH_PRICE && (body.planName || jobRow.plan_type || "Standard") === "Standard";
+  if (isLaunchDollar) {
+    const founding = await getFoundingStatus(auth.profile.id);
+    if (!founding.eligible) {
+      return NextResponse.json({ error: "The $1 launch price is no longer available for this account." }, { status: 403 });
     }
-    if (!isEmailAllowed(auth.profile.email)) {
-      return NextResponse.json({ error: "Internal plan is restricted." }, { status: 403 });
+  } else {
+    const needsAdminApproval = Boolean(body.adminInternalPlan) || price < 1 || price <= 5;
+    if (needsAdminApproval) {
+      if (auth.profile.role !== "admin") {
+        return NextResponse.json({ error: "Internal plan is restricted." }, { status: 403 });
+      }
+      if (!isEmailAllowed(auth.profile.email)) {
+        return NextResponse.json({ error: "Internal plan is restricted." }, { status: 403 });
+      }
     }
   }
   const planName = body.planName || jobRow.plan_type || "Standard";

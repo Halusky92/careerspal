@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 import { CATEGORY_HUBS, type CategoryHub, getCategoryHub } from "../../lib/categories";
+import { subscribeUser } from "../../services/notificationService";
 
 type AlertsClientProps = {
   initialCategory?: string | null;
@@ -23,6 +24,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
   const [hubSlug, setHubSlug] = useState<string>(() => getHubOrDefault(initialCategory).slug);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
+  const [guestStatus, setGuestStatus] = useState<"idle" | "ok" | "error">("idle");
 
   const hub = useMemo(() => getHubOrDefault(hubSlug), [hubSlug]);
   const hasSession = Boolean(profile?.email);
@@ -34,6 +36,18 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
   }, [hub.dbCategories, hub.label]);
 
   const fromPath = useMemo(() => `/alerts?category=${encodeURIComponent(hub.slug)}`, [hub.slug]);
+
+  const handleGuestSubscribe = async () => {
+    const trimmed = email.trim();
+    if (!trimmed) return;
+    setGuestStatus("idle");
+    setSaving(true);
+    const preference = (hub.dbCategories[0] || "All") as Parameters<typeof subscribeUser>[1];
+    const result = await subscribeUser(trimmed, preference);
+    setSaving(false);
+    setGuestStatus(result.success ? "ok" : "error");
+    setSaveMsg(result.message);
+  };
 
   const handleEmail = async () => {
     const trimmed = email.trim();
@@ -95,12 +109,12 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
       <div className="p-4 sm:p-5 border-b border-slate-100">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Alerts</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Email alerts</p>
         <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">
-          Get new roles by email.
+          One list. New published roles in your inbox.
         </h1>
-        <p className="mt-3 text-slate-600 font-medium max-w-2xl">
-          Pick a category. We’ll email you when new published roles match your saved alert.
+        <p className="mt-3 text-[15px] text-slate-700 max-w-2xl">
+          Alerts and the newsletter are the same thing: we email when a new Ops/Systems role goes live in your category. No extra blast.
         </p>
       </div>
 
@@ -114,7 +128,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
               id="alert-category"
               value={hubSlug}
               onChange={(e) => setHubSlug(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/30"
+              className="cp-field mt-2 w-full rounded-2xl bg-white px-4 py-4 text-sm font-bold text-slate-700 outline-none"
             >
               {CATEGORY_HUBS.map((c) => (
                 <option key={c.slug} value={c.slug}>
@@ -130,8 +144,8 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
               <div className="text-sm font-bold text-slate-900">
                 {hasSession ? `Signed in as ${profile?.email}` : "Not signed in"}
               </div>
-              <div className="mt-1 text-xs text-slate-600 font-medium">
-                Alerts are tied to your account email. You can manage them in your account.
+              <div className="mt-1 text-xs text-slate-700 font-medium">
+                Signed-in alerts live on your account. Guests can still join the same email list below.
               </div>
             </div>
           </div>
@@ -177,29 +191,37 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
                   placeholder="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 font-bold outline-none focus:ring-2 focus:ring-indigo-500/30"
+                  className="cp-field w-full px-5 py-4 rounded-2xl bg-white text-slate-900 placeholder:text-slate-400 font-bold outline-none"
                 />
               </div>
               <button
                 type="button"
-                onClick={handleEmail}
-                disabled={!email.trim()}
-                className="inline-flex items-center justify-center rounded-2xl bg-slate-900 text-white px-7 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-black disabled:opacity-60"
+                onClick={handleGuestSubscribe}
+                disabled={!email.trim() || saving}
+                className="inline-flex items-center justify-center rounded-2xl bg-slate-900 text-white px-7 py-4 text-sm font-semibold hover:bg-black disabled:opacity-60"
               >
-                Email me a sign-in link
+                {saving ? "Saving…" : "Subscribe"}
               </button>
 
               <div className="sm:col-span-3 flex flex-col sm:flex-row gap-3 items-center justify-between">
                 <button
                   type="button"
                   onClick={handleGoogle}
-                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-7 py-4 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
+                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-white border-2 border-slate-900 px-7 py-4 text-sm font-semibold text-slate-800"
                 >
                   Continue with Google
                 </button>
-                <div className={`text-xs font-bold ${authStatus === "error" ? "text-rose-600" : authStatus === "sent" ? "text-emerald-700" : "text-slate-600"}`}>
-                  {authMsg || "We’ll send a magic link to your email."}
-                </div>
+                <button
+                  type="button"
+                  onClick={handleEmail}
+                  disabled={!email.trim()}
+                  className="w-full sm:w-auto text-sm font-medium text-slate-700 underline-offset-2 hover:underline"
+                >
+                  Or send a sign-in link
+                </button>
+              </div>
+              <div className={`sm:col-span-3 text-sm font-medium ${guestStatus === "error" || authStatus === "error" ? "text-rose-700" : guestStatus === "ok" || authStatus === "sent" ? "text-emerald-800" : "text-slate-700"}`}>
+                {saveMsg || authMsg || "Subscribe with email only. Sign-in is optional, to manage alerts later."}
               </div>
             </div>
           )}

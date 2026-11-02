@@ -22,7 +22,7 @@ export default function HomePreviewCard({ job }: { job: Job }) {
   return (
     <Link
       href={href}
-      className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 hover:border-indigo-200 hover:shadow-sm transition-all"
+      className="group flex items-center gap-3 rounded-xl border-2 border-slate-300 bg-white px-3 py-2.5 hover:border-slate-900 hover:shadow-sm transition-all"
     >
       <div className="w-9 h-9 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0">
         <CompanyLogo

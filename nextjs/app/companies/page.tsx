@@ -149,7 +149,7 @@ export default async function CompaniesPage() {
               Browse jobs
             </Link>
             <Link
-              href="/post-a-job"
+              href="/hire-talent"
               className="hidden sm:inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
             >
               Post a job
@@ -181,7 +181,7 @@ export default async function CompaniesPage() {
                 <Link
                   key={c.id}
                   href={href}
-                  className="rounded-[2.25rem] border border-slate-200/60 bg-white p-6 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors shadow-sm"
+                  className="rounded-2xl border-2 border-slate-300 bg-white p-6 hover:border-slate-900 transition-colors shadow-sm"
                 >
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0">

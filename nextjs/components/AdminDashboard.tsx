@@ -399,7 +399,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     setTabReady(true);
   }, [tabReady, pendingJobs.length, jobs.length, accessToken]);
 
-  const fieldClass = "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm";
+  const fieldClass = "cp-field w-full rounded-lg px-3 py-2 text-sm";
   const labelClass = "text-xs font-medium text-slate-500";
 
   const renderJobRow = (job: Job, mode: "review" | "jobs") => {
@@ -560,7 +560,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               </button>
             </div>
           ) : (
-            <table className="w-full text-left text-sm">
+            <table className="cp-table w-full text-left text-sm">
               <thead>
                 <tr className="text-xs font-medium text-slate-400 border-b border-slate-100">
                   <th className="px-4 py-2.5 font-medium">Title</th>
@@ -678,7 +678,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             {listedJobs.length === 0 ? (
               <div className="px-4 py-12 text-center text-sm text-slate-500">No jobs in this filter.</div>
             ) : (
-              <table className="w-full text-left text-sm">
+              <table className="cp-table w-full text-left text-sm">
                 <thead>
                   <tr className="text-xs font-medium text-slate-400 border-b border-slate-100">
                     <th className="px-4 py-2.5 font-medium">Title</th>
@@ -757,7 +757,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             {subscribers.length === 0 ? (
               <p className="px-4 py-8 text-sm text-slate-500">No subscribers yet.</p>
             ) : (
-              <table className="w-full text-sm">
+              <table className="cp-table w-full text-sm">
                 <tbody>
                   {subscribers.map((sub) => (
                     <tr key={sub.email} className="border-b border-slate-100 last:border-0">
