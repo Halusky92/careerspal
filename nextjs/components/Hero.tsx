@@ -26,11 +26,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur border border-slate-200/60 px-4 py-2 rounded-full shadow-sm">
-            <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Curated • Salary-first • Remote</span>
-          </div>
-
-          <h1 className="mt-6 text-4xl sm:text-6xl md:text-7xl font-black text-slate-900 tracking-tight leading-[1.05]">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-slate-900 tracking-tight leading-[1.05]">
             Remote Ops & Systems roles.
           </h1>
 
@@ -58,20 +54,6 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
             >
               Post a job
             </a>
-          </div>
-
-          <div className="mt-6 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-600">
-            <span className="inline-flex items-center gap-2">
-              <span className="text-emerald-600 font-black">✓</span> Salary ranges required
-            </span>
-            <span className="hidden sm:inline text-slate-300">•</span>
-            <span className="inline-flex items-center gap-2">
-              <span className="text-emerald-600 font-black">✓</span> Reviewed for scope clarity
-            </span>
-            <span className="hidden sm:inline text-slate-300">•</span>
-            <span className="inline-flex items-center gap-2">
-              <span className="text-emerald-600 font-black">✓</span> Remote-first focus
-            </span>
           </div>
         </div>
       </div>

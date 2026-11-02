@@ -31,10 +31,12 @@ export const metadata: Metadata = {
     "Curated remote roles in Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Salary-first listings with clear scope.",
   icons: {
     icon: [
-      { url: "/icon", type: "image/png" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
       { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "/icon", type: "image/png", sizes: "512x512" },
     ],
-    shortcut: [{ url: "/icon", type: "image/png" }],
+    shortcut: [{ url: "/logo.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/icon", type: "image/png", sizes: "512x512" }],
   },
   openGraph: {
     title: "CareersPal | Curated remote Ops & Systems roles",
