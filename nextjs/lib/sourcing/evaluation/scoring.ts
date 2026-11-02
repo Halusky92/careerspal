@@ -278,6 +278,7 @@ export function scoreCandidate(c: CandidateForScoring): {
   meta += hasText(c.description_clean) && (c.description_clean || "").trim().length >= 200 ? 2 : 0;
   if (meta <= 5) reasons.push("METADATA_WEAK");
   if (!hasText(c.apply_url)) reasons.push("APPLY_MISSING");
+  if ((c.description_clean || "").trim().length < 280) reasons.push("DESCRIPTION_THIN");
 
   // Direct employer confidence 0-10
   let employer = 0;

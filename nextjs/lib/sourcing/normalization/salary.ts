@@ -233,6 +233,57 @@ export function parseSalaryFromText(text: string): ParsedSalary {
   });
 }
 
+export function parsedSalaryFromStructured(args: {
+  min?: number | null;
+  max?: number | null;
+  currency?: string | null;
+  period?: string | null;
+  rawText?: string | null;
+}): ParsedSalary {
+  const notes: string[] = [];
+  const min = typeof args.min === "number" && Number.isFinite(args.min) ? args.min : null;
+  const max = typeof args.max === "number" && Number.isFinite(args.max) ? args.max : null;
+  const currency = normalizeCurrency(args.currency || null);
+  const periodRaw = (args.period || "").toLowerCase();
+  const period: SalaryPeriod | null = periodRaw.includes("hour")
+    ? "hour"
+    : periodRaw.includes("day")
+      ? "day"
+      : periodRaw.includes("month")
+        ? "month"
+        : periodRaw.includes("year") || periodRaw.includes("annual")
+          ? "year"
+          : detectPeriod(args.rawText || "") || "year";
+  if (min == null && max == null) {
+    return parseSalaryFromText(args.rawText || "");
+  }
+  if (isImplausibleSalary(period, min, max)) {
+    notes.push("implausible_structured_salary");
+    return {
+      salary_text_raw: (args.rawText || "").slice(0, 240) || null,
+      salary_amount_min: min,
+      salary_amount_max: max,
+      salary_currency: currency,
+      salary_period: period,
+      salary_present: false,
+      salary_confidence: "low",
+      salary_detected_from: "ats_structured",
+      salary_parse_notes: notes,
+    };
+  }
+  return withRoundedSalaryAmounts({
+    salary_text_raw: (args.rawText || `${currency || ""} ${min ?? ""}-${max ?? ""} ${period}`).trim().slice(0, 240),
+    salary_amount_min: min,
+    salary_amount_max: max,
+    salary_currency: currency,
+    salary_period: period,
+    salary_present: true,
+    salary_confidence: "high",
+    salary_detected_from: "ats_structured" as SalaryDetectedFrom,
+    salary_parse_notes: notes.concat(["rounded_for_storage"]),
+  });
+}
+
 export function detectAndParseSalaryForGreenhouse(descriptionText: string): ParsedSalary {
   const clean = (descriptionText || "").trim();
   if (!clean) return parseSalaryFromText("");

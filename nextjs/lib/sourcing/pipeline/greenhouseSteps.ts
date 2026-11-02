@@ -8,6 +8,8 @@ import {
   sha256Json,
 } from "../connectors/greenhouse";
 import { normalizeGreenhouseRawPayload } from "../normalization/greenhouse";
+import { normalizeAshbyRawPayload } from "../normalization/ashby";
+import { normalizeLeverRawPayload } from "../normalization/lever";
 import { scoreCandidate } from "../evaluation/scoring";
 import { dedupeAgainst, type CandidateForDedupe } from "../evaluation/dedupe";
 import { prepareDecision } from "../evaluation/decision";
@@ -170,6 +172,9 @@ export async function ingestGreenhouseRawJobs(sb: AdminSb, args: { sourceId?: st
     } catch (e) {
       const finishedAt = new Date().toISOString();
       const msg = e instanceof Error ? e.message : "Greenhouse run failed";
+      if (/\(404\)/.test(msg) || msg.includes("Missing board token")) {
+        await sb.from("sourcing_sources").update({ enabled: false }).eq("id", s.id);
+      }
       if (runId) {
         await sb
           .from("sourcing_source_runs")
@@ -211,7 +216,7 @@ export async function normalizeGreenhouseRawJobsToCandidates(
   let q = sb
     .from("sourcing_sourced_jobs_raw")
     .select("id,source_id,source_run_id,source_type,source_url,external_job_id,job_url,title,raw_payload,payload_hash")
-    .eq("source_type", "greenhouse")
+    .in("source_type", ["greenhouse", "ashby", "lever"])
     .order("fetched_at", { ascending: false })
     .limit(limit);
 
@@ -240,18 +245,33 @@ export async function normalizeGreenhouseRawJobsToCandidates(
         continue;
       }
 
-      const normalized = normalizeGreenhouseRawPayload({
-        sourceUrl: row.source_url,
-        externalJobId: row.external_job_id,
-        companyName: null,
-        rawPayload: row.raw_payload,
-      });
+      const normalized =
+        row.source_type === "ashby"
+          ? normalizeAshbyRawPayload({
+              sourceUrl: row.source_url,
+              externalJobId: row.external_job_id,
+              companyName: null,
+              rawPayload: row.raw_payload,
+            })
+          : row.source_type === "lever"
+            ? normalizeLeverRawPayload({
+                sourceUrl: row.source_url,
+                externalJobId: row.external_job_id,
+                companyName: null,
+                rawPayload: row.raw_payload,
+              })
+            : normalizeGreenhouseRawPayload({
+                sourceUrl: row.source_url,
+                externalJobId: row.external_job_id,
+                companyName: null,
+                rawPayload: row.raw_payload,
+              });
 
       const upsertRow = {
         raw_job_id: row.id,
         source_id: row.source_id,
         source_run_id: row.source_run_id,
-        source_type: "greenhouse",
+        source_type: normalized.source_type,
         source_url: row.source_url,
         external_job_id: row.external_job_id,
         job_url: normalized.job_url,
@@ -730,10 +750,14 @@ export async function autoPublishEligibleCandidates(
     if (decision !== "auto_publish_candidate") ineligibleReasons.push(`decision=${decision || "null"}`);
     if (!(scoreTotal >= AUTO_PUBLISH_MIN_SCORE)) ineligibleReasons.push(`score_below_min(${scoreTotal}<${AUTO_PUBLISH_MIN_SCORE})`);
     if (candidate.salary_present !== true) ineligibleReasons.push("salary_missing");
+    if (candidate.salary_amount_min == null && candidate.salary_amount_max == null)
+      ineligibleReasons.push("salary_range_missing");
     if (dupConfidence === "high") ineligibleReasons.push("duplicate_high");
     if (blocking.length > 0) ineligibleReasons.push(`blocking=${blocking.join(",")}`);
     if (!Boolean(candidate.apply_url && candidate.apply_url.trim() && candidate.apply_url.trim() !== "#"))
       ineligibleReasons.push("apply_missing");
+    if (((candidate.description_clean || "").trim().length) < 280)
+      ineligibleReasons.push("description_thin");
     if (src?.enabled !== true) ineligibleReasons.push("source_disabled");
     if (src?.validation_state !== "allowed") ineligibleReasons.push(`source_not_allowed(${src?.validation_state || "null"})`);
     if (!SUPPORTED_SOURCE_TYPES.has((candidate.source_type || "").toLowerCase()))

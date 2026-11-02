@@ -700,7 +700,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         <div className="rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 bg-white border-b border-slate-200">
             <p className="text-sm font-medium text-slate-900">Greenhouse pipeline</p>
-            <p className="text-xs text-slate-500 mt-0.5">Run ingest, check salary, publish. This is the only place for sourcing tools.</p>
+            <p className="text-xs text-slate-500 mt-0.5">Greenhouse, Ashby, and Lever boards. Daily 05:00 UTC. No salary or apply link = no publish.</p>
           </div>
           <SourcingRegistrySection />
         </div>

@@ -8,9 +8,11 @@ import {
   ingestGreenhouseRawJobs,
   normalizeGreenhouseRawJobsToCandidates,
 } from "../../../../../../lib/sourcing/pipeline/greenhouseSteps";
+import { ingestAshbyRawJobs, ingestLeverRawJobs } from "../../../../../../lib/sourcing/pipeline/atsIngest";
 import { enrichCandidatesSalaryBulk } from "../../../../../../lib/sourcing/pipeline/salaryEnrichment";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 type SourceRow = {
   id: string;
@@ -22,7 +24,15 @@ type SourceRow = {
 async function requireAdminOrCronSecret(request: Request): Promise<{ ok: true; actorId: string | null } | { ok: false; res: NextResponse }> {
   const secret = new URL(request.url).searchParams.get("secret");
   const expected = getSourcingCronSecret();
+  const cron = (process.env.CRON_SECRET || "").trim();
+  const authHeader = request.headers.get("authorization") || "";
+  if (request.headers.get("x-vercel-cron") === "1") {
+    return { ok: true, actorId: null };
+  }
   if (expected && secret && secret === expected) {
+    return { ok: true, actorId: null };
+  }
+  if (cron && (secret === cron || authHeader === `Bearer ${cron}`)) {
     return { ok: true, actorId: null };
   }
   const auth = await getSupabaseProfile(request);
@@ -43,7 +53,7 @@ async function runPipelineGreenhouse(args: { sourceId?: string | null; limitRaw?
   let q = supabaseAdmin
     .from("sourcing_sources")
     .select("id,source_type,validation_state,enabled")
-    .eq("source_type", "greenhouse")
+    .in("source_type", ["greenhouse", "ashby", "lever"])
     .eq("validation_state", "allowed")
     .eq("enabled", true)
     .order("created_at", { ascending: false });
@@ -77,7 +87,13 @@ async function runPipelineGreenhouse(args: { sourceId?: string | null; limitRaw?
 
   // 2) Ingest per source (keeps run rows separate and debuggable)
   for (const s of eligibleSources) {
-    const out = await ingestGreenhouseRawJobs(supabaseAdmin, { sourceId: s.id });
+    const type = (s.source_type || "").toLowerCase();
+    const out =
+      type === "ashby"
+        ? await ingestAshbyRawJobs(supabaseAdmin, { sourceId: s.id })
+        : type === "lever"
+          ? await ingestLeverRawJobs(supabaseAdmin, { sourceId: s.id })
+          : await ingestGreenhouseRawJobs(supabaseAdmin, { sourceId: s.id });
     pipeSummary.ingestion.ran += Number(out.ran || 0) || 0;
     pipeSummary.ingestion.results.push(...(out.results || []));
   }

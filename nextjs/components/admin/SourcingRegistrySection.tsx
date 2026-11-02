@@ -1113,7 +1113,7 @@ export default function SourcingRegistrySection() {
                   <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Automation</div>
                   <div className="mt-1 text-sm font-black text-white">Daily pipeline summary</div>
                   <div className="mt-1 text-xs text-slate-500">
-                    Runs automatically once per day. This shows what got published, and what got skipped.
+                    Runs every morning at 05:00 UTC on Vercel. Salary, apply link, niche, and a real job description are required to publish.
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

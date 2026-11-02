@@ -5,7 +5,7 @@ export function getSourcingAutoPublishMinScore(): number {
 }
 
 export function getSourcingAutoPublishSupportedSourceTypes(): Set<string> {
-  const list = (process.env.SOURCING_AUTO_PUBLISH_SOURCES || "greenhouse")
+  const list = (process.env.SOURCING_AUTO_PUBLISH_SOURCES || "greenhouse,ashby,lever")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);

@@ -4,6 +4,7 @@ export type ReasonCode =
   | "OFF_NICHE"
   | "APPLY_MISSING"
   | "SALARY_MISSING"
+  | "DESCRIPTION_THIN"
   | "REMOTE_UNCLEAR"
   | "ONSITE_ONLY"
   | "DUPLICATE_POSSIBLE"
@@ -24,6 +25,7 @@ export const REASON_SEVERITY: Record<ReasonCode, ReasonSeverity> = {
   DUPLICATE_HIGH: "BLOCK",
 
   SALARY_MISSING: "WARN", // blocks auto-publish, but not a hard reject by itself
+  DESCRIPTION_THIN: "WARN",
   REMOTE_UNCLEAR: "WARN",
   DUPLICATE_POSSIBLE: "WARN",
   METADATA_WEAK: "WARN",
