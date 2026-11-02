@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
   }
 
-  const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review"]);
+  const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review", "closed", "archived"]);
   const status = body.status && allowedStatuses.has(body.status) ? body.status : "published";
 
   const nowIso = new Date().toISOString();

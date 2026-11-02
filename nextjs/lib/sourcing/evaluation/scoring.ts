@@ -1,5 +1,6 @@
 import type { ReasonCode } from "./reasonCodes";
 import { detectNotionSignal } from "../signals/notion";
+import { isOffNicheTitle } from "../../nicheScope";
 
 export type ScoreBreakdown = {
   niche_relevance: number; // 0-30
@@ -175,6 +176,21 @@ export function scoreCandidate(c: CandidateForScoring): {
 
   // Niche relevance 0-30
   let niche = 0;
+
+  if (isOffNicheTitle(c.title)) {
+    return {
+      total: 0,
+      breakdown: {
+        niche_relevance: 0,
+        salary_transparency: c.salary_present ? 20 : 0,
+        remote_clarity: 0,
+        source_trust: 0,
+        metadata_completeness: 0,
+        direct_employer_confidence: 0,
+      },
+      reasons: ["OFF_NICHE"],
+    };
+  }
 
   const coreKeywords = Object.values(NicheCore).flat();
   const coreHits = coreKeywords.reduce((acc, kw) => acc + (blob.includes(kw) ? 1 : 0), 0) || 0;

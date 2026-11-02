@@ -4,18 +4,20 @@
 import React, { useMemo, useState } from 'react';
 import { generateJobDescription } from '../services/geminiService';
 import { Job, PlanType } from '../types';
-import { CATEGORIES } from '../constants';
+import { CATEGORIES, CATEGORY_FILTER_LABELS } from '../constants';
 
 interface PostJobProps {
   onComplete: (data: Job) => void;
   selectedPlan: { type: PlanType; price: number };
   onUpgradePlan: (type: PlanType, price: number) => void;
   showTestPlan?: boolean;
+  foundingEligible?: boolean;
+  initialJob?: Partial<Job>;
 }
 
 type JobFormData = Omit<Job, 'id' | 'postedAt' | 'isFeatured' | 'planType' | 'plan' | 'timestamp' | 'status' | 'views' | 'matches'>;
 
-const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan }) => {
+const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan, foundingEligible, initialJob }) => {
   const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [logoFileName, setLogoFileName] = useState<string>("");
@@ -26,26 +28,26 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const steps = [
     { id: 1, title: "Role details", desc: "Title, scope, salary" },
     { id: 2, title: "Company & apply", desc: "Brand + link" },
-    { id: 3, title: "Preview & pay", desc: "Confirm & checkout" },
+    { id: 3, title: foundingEligible ? "Preview & submit" : "Preview & pay", desc: foundingEligible ? "Confirm & review" : "Confirm & checkout" },
   ] as const;
 
   const stepperProgress = steps.length > 1 ? ((step - 1) / (steps.length - 1)) * 100 : 0;
   const barProgress = (step / steps.length) * 100;
   
   const [formData, setFormData] = useState<JobFormData>({
-    title: '',
-    keywords: '',
-    description: '',
-    company: '',
-    companyWebsite: '',
-    logo: '', // Changed initial state to empty string
-    salary: '$100k - $140k',
-    location: 'Remote (Global)',
-    type: 'Full-time' as const,
-    remotePolicy: 'Global Remote',
-    category: 'Operations',
-    applyUrl: '',
-    tags: ['Notion', 'Remote']
+    title: initialJob?.title || '',
+    keywords: initialJob?.keywords || '',
+    description: initialJob?.description || '',
+    company: initialJob?.company || '',
+    companyWebsite: initialJob?.companyWebsite || '',
+    logo: initialJob?.logo || '',
+    salary: initialJob?.salary || '$100k - $140k',
+    location: initialJob?.location || 'Remote (Global)',
+    type: (initialJob?.type as JobFormData['type']) || 'Full-time',
+    remotePolicy: initialJob?.remotePolicy || 'Global Remote',
+    category: initialJob?.category || 'Operations',
+    applyUrl: initialJob?.applyUrl || '',
+    tags: initialJob?.tags?.length ? initialJob.tags : ['Notion', 'Remote']
   });
 
   const planHighlights = useMemo(() => {
@@ -60,7 +62,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
         ...base,
         "Featured badge + boosted visibility",
         "Top placement for 7 days",
-        "Newsletter feature",
+        "Top placement for 7 days",
       ];
     }
     if (selectedPlan.type === "Elite Managed") {
@@ -68,7 +70,6 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
         ...base,
         "Featured badge + priority review",
         "Permanent top-of-board placement",
-        "Curated candidate intros",
       ];
     }
     return base;
@@ -306,7 +307,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</label>
                       <select className="w-full px-5 py-3.5 sm:py-4 bg-white border border-slate-200/70 rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
                         {categoryOptions.map(cat => (
-                          <option key={cat} value={cat}>{cat}</option>
+                          <option key={cat} value={cat}>{CATEGORY_FILTER_LABELS[cat] || cat}</option>
                         ))}
                       </select>
                     </div>
@@ -496,7 +497,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 </div>
                 <div className="flex flex-col gap-4">
                 <button onClick={handleFinalSubmit} className="w-full bg-slate-900 text-white font-semibold py-4 sm:py-6 rounded-2xl hover:bg-black shadow-[0_25px_70px_rgba(15,23,42,0.35)] active:scale-[0.98] transition-all text-base sm:text-xl">
-                    Proceed to Payment ({formatPrice(selectedPlan.price)})
+                    {foundingEligible ? "Submit for review" : `Proceed to Payment (${formatPrice(selectedPlan.price)})`}
                   </button>
                   <button onClick={() => setStep(2)} className="text-slate-600 font-medium hover:text-indigo-600 transition-colors">Edit details</button>
                 </div>
@@ -540,7 +541,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
                 <AccordionRow id="review" title="Review & publish timeline">
                   <div className="space-y-2 text-sm font-medium text-slate-700">
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span> Submit + pay</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span>{foundingEligible ? " Submit for review" : " Submit + pay"}</div>
                     <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">2</span> Review for quality + clarity</div>
                     <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">3</span> Publish when approved</div>
                     <p className="mt-3 text-xs text-slate-600">

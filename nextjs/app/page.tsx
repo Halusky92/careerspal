@@ -4,6 +4,8 @@ import { Job } from "../types";
 import { createJobSlug } from "../lib/jobs";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../lib/supabaseJobs";
+import { isOnNicheJob } from "../lib/nicheScope";
+import { formatSalaryDisplay } from "../lib/formatSalary";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +28,7 @@ async function fetchPublishedJobs(): Promise<Job[]> {
     .range(0, 199);
 
   const { data } = await query;
-  return (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob);
+  return (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob).filter((job) => isOnNicheJob(job));
 }
 
 function StaticHomeJobs({ jobs }: { jobs: Job[] }) {
@@ -60,12 +62,12 @@ function StaticHomeJobs({ jobs }: { jobs: Job[] }) {
                       {job.title}
                     </Link>
                     <div className="mt-1 text-[12px] font-bold text-slate-600 truncate">
-                      {job.company} • {job.location}
+                      {job.company} • {job.location}{job.type && job.type !== "Unknown" ? ` • ${job.type}` : ""}
                     </div>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <span className="text-[12px] sm:text-sm font-black text-slate-900 whitespace-nowrap">
-                      {job.salary || "Salary listed"}
+                      {formatSalaryDisplay(job.salary)}
                     </span>
                     <span className="h-11 px-5 rounded-2xl bg-indigo-600 text-white text-[11px] font-black uppercase tracking-widest whitespace-nowrap inline-flex items-center">
                       Quick apply

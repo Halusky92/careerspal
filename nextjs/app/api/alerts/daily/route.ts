@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { createJobSlug } from "../../../../lib/jobs";
+import { formatSalaryDisplay } from "../../../../lib/formatSalary";
+import { isOnNicheJob } from "../../../../lib/nicheScope";
 
 export const runtime = "nodejs";
 
@@ -258,7 +260,7 @@ export async function GET(request: Request) {
       .gte("timestamp", sinceMs);
 
     const jobRows = (jobs || []) as JobRow[];
-    const matches = jobRows.filter((job) => matchesAlert(job, alert.query || ""));
+    const matches = jobRows.filter((job) => isOnNicheJob(job) && matchesAlert(job, alert.query || ""));
     matchedTotal += matches.length;
 
     if (matches.length > 0 && !dryRun) {
@@ -270,7 +272,7 @@ export async function GET(request: Request) {
           const safeTitle = escapeHtml(job.title || "Role");
           const safeCompany = escapeHtml(companyName);
           const safeLocation = escapeHtml(job.location || "Remote");
-          const safeSalary = escapeHtml(job.salary || "Salary not listed");
+          const safeSalary = escapeHtml(formatSalaryDisplay(job.salary));
           return `
             <tr>
               <td style="padding:16px;border:1px solid #eef0f5;border-radius:12px;background:#fbfbff;">

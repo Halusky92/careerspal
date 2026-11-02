@@ -7,6 +7,7 @@ import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import FormattedDescription from "./FormattedDescription";
+import { formatSalaryDisplay } from "../lib/formatSalary";
 
 export type JobCardVariant = "board" | "home";
 
@@ -54,7 +55,7 @@ export default function JobCard({
   className = "",
 }: JobCardProps) {
   const router = useRouter();
-  const displayType = job.type && job.type !== "Unknown" ? job.type : "—";
+  const displayType = job.type && job.type !== "Unknown" ? job.type : "";
   const detailPath = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
   // If user is on the apex domain, force hard-nav to canonical www to avoid RSC/cross-origin issues.
   const detailHref =
@@ -278,7 +279,7 @@ export default function JobCard({
             isElite ? "text-yellow-900" : "text-slate-900"
           }`}
         >
-          {job.salary}
+          {formatSalaryDisplay(job.salary)}
         </div>
 
         <button
@@ -352,11 +353,11 @@ export default function JobCard({
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
               <span className="text-[9px] uppercase tracking-widest text-slate-400">Employment type</span>
-              <div className="mt-1">{displayType}</div>
+              <div className="mt-1">{displayType || "—"}</div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
               <span className="text-[9px] uppercase tracking-widest text-slate-400">Salary</span>
-              <div className="mt-1">{job.salary || "N/A"}</div>
+              <div className="mt-1">{formatSalaryDisplay(job.salary)}</div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
               <span className="text-[9px] uppercase tracking-widest text-slate-400">Posted</span>

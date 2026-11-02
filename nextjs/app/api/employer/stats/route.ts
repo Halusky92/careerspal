@@ -14,11 +14,16 @@ export async function GET(request: Request) {
   const profileId = auth.profile.id;
   if (!profileId) return NextResponse.json({ jobs: 0, views: 0, matches: 0 });
 
-  const { data } = await supabaseAdmin
+  let { data, error } = await supabaseAdmin
     .from("jobs")
-    .select("views,matches")
+    .select("views,matches,origin")
     .eq("created_by", profileId);
-  const totals = (data || []).reduce<{ jobs: number; views: number; matches: number }>(
+  if (error) {
+    const retry = await supabaseAdmin.from("jobs").select("views,matches").eq("created_by", profileId);
+    data = retry.data as typeof data;
+  }
+  const owned = (data || []).filter((job: { origin?: string | null }) => (job.origin || "employer") !== "greenhouse");
+  const totals = owned.reduce<{ jobs: number; views: number; matches: number }>(
     (acc, job: { views?: number | null; matches?: number | null }) => ({
       jobs: acc.jobs + 1,
       views: acc.views + (job.views || 0),

@@ -3,6 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { Job } from "../types";
+import { formatSalaryDisplay } from "../lib/formatSalary";
 
 type JobMiniCardProps = {
   job: Job;
@@ -28,7 +29,7 @@ export default function JobMiniCard({ job, className = "" }: JobMiniCardProps) {
       </div>
 
       <div className="flex-shrink-0 text-[11px] font-semibold text-slate-900 whitespace-nowrap">
-        {job.salary}
+        {formatSalaryDisplay(job.salary)}
       </div>
     </button>
   );

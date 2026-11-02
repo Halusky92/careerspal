@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { subscribeUser, type Subscriber } from '../services/notificationService';
-import { CATEGORIES } from '../constants';
+import { CATEGORIES, CATEGORY_FILTER_LABELS } from '../constants';
 
 type NewsletterProps = {
   defaultPreference?: Subscriber["preference"];
@@ -63,7 +63,7 @@ const Newsletter: React.FC<NewsletterProps> = ({ defaultPreference }) => {
                 <option value="All">All categories</option>
                 {options.filter((o) => o !== "All").map((opt) => (
                   <option key={opt} value={opt}>
-                    {opt}
+                    {CATEGORY_FILTER_LABELS[opt] || opt}
                   </option>
                 ))}
               </select>

@@ -25,12 +25,14 @@ export async function GET(request: Request) {
 
   const { data: jobs } = await supabaseAdmin
     .from("jobs")
-    .select("id,title,status,views,matches,created_at")
+    .select("id,title,status,views,matches,created_at,origin")
     .eq("created_by", profileId)
     .order("created_at", { ascending: false });
 
   const header = ["id", "title", "status", "views", "matches", "createdAt"];
-  const rows = (jobs || []).map((job) =>
+  const rows = (jobs || [])
+    .filter((job) => ((job as { origin?: string | null }).origin || "employer") !== "greenhouse")
+    .map((job) =>
     [
       job.id,
       job.title,

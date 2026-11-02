@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { Job } from "../../../../types";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../../lib/supabaseJobs";
-import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
+import {
+  EMPLOYER_JOB_SELECT,
+  EMPLOYER_JOB_SELECT_FALLBACK,
+  EMPLOYER_STATUSES,
+  requireEmployer,
+  resolveEmployerCompany,
+} from "../../../../lib/employer";
 
 const MAX_JOBS_PER_HOUR = 5;
 
@@ -34,23 +40,8 @@ const isEmailAllowed = (email?: string | null) => {
   return allowList.includes(email.toLowerCase());
 };
 
-const ensureEmployer = async (request: Request) => {
-  const auth = await getSupabaseProfile(request);
-  if (!auth?.profile) {
-    return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  }
-  const role = auth.profile.role;
-  if (role !== "employer" && role !== "admin") {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-  }
-  if (!supabaseAdmin) {
-    return { error: NextResponse.json({ error: "Supabase not configured." }, { status: 500 }) };
-  }
-  return { profileId: auth.profile.id, email: auth.profile.email, role };
-};
-
 export const GET = async (request: Request) => {
-  const auth = await ensureEmployer(request);
+  const auth = await requireEmployer(request);
   if ("error" in auth) return auth.error;
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
@@ -65,9 +56,7 @@ export const GET = async (request: Request) => {
   const skip = Number.isFinite(skipParam) && skipParam > 0 ? skipParam : undefined;
   let queryBuilder = supabaseAdmin
     .from("jobs")
-    .select(
-      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,logo_url,website,description)",
-    )
+    .select(EMPLOYER_JOB_SELECT)
     .eq("created_by", auth.profileId)
     .order("created_at", { ascending: false });
 
@@ -81,8 +70,24 @@ export const GET = async (request: Request) => {
     queryBuilder = queryBuilder.range(0, take - 1);
   }
 
-  const { data } = await queryBuilder;
-  const mapped = (data as SupabaseJobRow[]).map(mapSupabaseJob);
+  let { data, error } = await queryBuilder;
+  if (error) {
+    let fallback = supabaseAdmin
+      .from("jobs")
+      .select(EMPLOYER_JOB_SELECT_FALLBACK)
+      .eq("created_by", auth.profileId)
+      .order("created_at", { ascending: false });
+    if (status) fallback = fallback.eq("status", status);
+    if (query) fallback = fallback.or(`title.ilike.%${query}%`);
+    if (take && typeof skip === "number") fallback = fallback.range(skip, skip + take - 1);
+    else if (take) fallback = fallback.range(0, take - 1);
+    const retry = await fallback;
+    data = retry.data as typeof data;
+  }
+  const rows = ((data || []) as Array<SupabaseJobRow & { origin?: string | null }>).filter(
+    (row) => (row.origin || "employer") !== "greenhouse",
+  );
+  const mapped = rows.map(mapSupabaseJob);
   const summary = mapped.reduce(
     (acc, job) => {
       acc.total += 1;
@@ -96,7 +101,7 @@ export const GET = async (request: Request) => {
 };
 
 export const POST = async (request: Request) => {
-  const auth = await ensureEmployer(request);
+  const auth = await requireEmployer(request);
   if ("error" in auth) return auth.error;
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
@@ -111,7 +116,7 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
   }
 
-  const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review"]);
+  const allowedStatuses = EMPLOYER_STATUSES;
   if (body.status && !allowedStatuses.has(body.status)) {
     return NextResponse.json({ error: "Invalid status." }, { status: 400 });
   }
@@ -147,57 +152,62 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ error: "Rate limit exceeded. Please try again later." }, { status: 429 });
   }
 
-  const { data: company } = await supabaseAdmin
-    .from("companies")
-    .upsert(
+  const companyResult = await resolveEmployerCompany({
+    profileId: auth.profileId,
+    name: body.company,
+    website: normalizeHttpUrl(body.companyWebsite),
+    logoUrl: normalizeHttpUrl(body.logo),
+    description: body.companyDescription || null,
+  });
+  if (companyResult.error === "claim_required") {
+    return NextResponse.json(
       {
-        name: body.company,
-        website: normalizeHttpUrl(body.companyWebsite),
-        logo_url: normalizeHttpUrl(body.logo),
-        description: body.companyDescription || null,
-        created_by: auth.profileId,
+        error: "This company profile already exists. Claim it from your dashboard first.",
+        companyId: companyResult.companyId,
+        claimRequired: true,
       },
-      { onConflict: "name" },
-    )
-    .select("id")
-    .single();
+      { status: 409 },
+    );
+  }
+  const company = { id: companyResult.companyId };
 
-  const { data } = await supabaseAdmin
-    .from("jobs")
-    .insert({
-      title: body.title,
-      description: body.description || "",
-      location: body.location || "Remote",
-      remote_policy: body.remotePolicy || "Remote",
-      type: body.type || "Full-time",
-      salary: body.salary || "",
-      posted_at_text: postedAt,
-      timestamp,
-      category: body.category || "Operations",
-      apply_url: normalizeApplyUrl(body.applyUrl),
-      company_description: body.companyDescription || null,
-      company_website: normalizeHttpUrl(body.companyWebsite),
-      logo_url: normalizeHttpUrl(body.logo),
-      tags: body.tags || [],
-      tools: body.tools || [],
-      benefits: body.benefits || [],
-      keywords: body.keywords || null,
-      match_score: body.matchScore || null,
-      is_featured: Boolean(body.isFeatured),
-      status,
-      plan_type: body.planType || null,
-      plan_price: storedPlanPrice,
-      plan_currency: "USD",
-      views: body.views || 0,
-      matches: body.matches || 0,
-      created_by: auth.profileId,
-      company_id: company?.id || null,
-      published_at: status === "published" ? new Date().toISOString() : null,
-    })
-    .select(
-      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,logo_url,website,description)",
-    )
-    .single();
+  const insertPayload: Record<string, unknown> = {
+    title: body.title,
+    description: body.description || "",
+    location: body.location || "",
+    remote_policy: body.remotePolicy || "",
+    type: body.type || "Full-time",
+    salary: body.salary || "",
+    posted_at_text: postedAt,
+    timestamp,
+    category: body.category || "Operations",
+    apply_url: normalizeApplyUrl(body.applyUrl),
+    company_description: body.companyDescription || null,
+    company_website: normalizeHttpUrl(body.companyWebsite),
+    logo_url: normalizeHttpUrl(body.logo),
+    tags: body.tags || [],
+    tools: body.tools || [],
+    benefits: body.benefits || [],
+    keywords: body.keywords || null,
+    match_score: body.matchScore || null,
+    is_featured: Boolean(body.isFeatured),
+    status,
+    plan_type: body.planType || null,
+    plan_price: storedPlanPrice,
+    plan_currency: "USD",
+    views: body.views || 0,
+    matches: body.matches || 0,
+    created_by: auth.profileId,
+    origin: "employer",
+    company_id: company?.id || null,
+    published_at: status === "published" ? new Date().toISOString() : null,
+  };
+  let { data } = await supabaseAdmin.from("jobs").insert(insertPayload).select(EMPLOYER_JOB_SELECT_FALLBACK).single();
+  if (!data) {
+    const { origin: _origin, ...withoutOrigin } = insertPayload;
+    const retry = await supabaseAdmin.from("jobs").insert(withoutOrigin).select(EMPLOYER_JOB_SELECT_FALLBACK).single();
+    data = retry.data;
+  }
 
   if (!data) {
     return NextResponse.json({ error: "Failed to create job." }, { status: 500 });

@@ -9,7 +9,7 @@ const Footer = () => {
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-500">CareersPal</p>
               <h3 className="text-2xl md:text-3xl font-bold text-slate-900 mt-3">
-                Build with teams who respect systems and salary transparency.
+                Browse roles. Post a listing.
               </h3>
               <p className="text-slate-500 font-medium mt-3 max-w-2xl">
                 Curated, salary-first roles with clear scope and direct apply links.
@@ -37,7 +37,7 @@ const Footer = () => {
               </div>
             </div>
             <p className="text-sm text-slate-500 font-medium">
-              Curated roles for modern operations, product, and automation talent.
+              Remote Ops, Systems, Automation, RevOps, Product Ops, and Chief of Staff.
             </p>
           </div>
 
@@ -85,11 +85,8 @@ const Footer = () => {
               Support
             </a>
             <span className="hidden md:inline text-slate-300">•</span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-emerald-700">
-              System: Operational
-            </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-600">
-              v0.1.0
+              careerspal.com
             </span>
           </div>
         </div>

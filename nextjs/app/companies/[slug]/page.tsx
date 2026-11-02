@@ -5,6 +5,8 @@ import { headers } from "next/headers";
 import CompanyLogo from "../../../components/CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../../../lib/jobs";
 import type { Company, Job } from "../../../types";
+import { formatSalaryDisplay } from "../../../lib/formatSalary";
+import { isOnNicheJob } from "../../../lib/nicheScope";
 
 // Ensure a consistent runtime (avoid edge differences that can cause production-only crashes).
 export const runtime = "nodejs";
@@ -159,7 +161,8 @@ export default async function CompanyPage({ params }: PageProps) {
   }
   if (result.kind === "not_found") notFound();
 
-  const { company, jobs } = result;
+  const { company, jobs: rawJobs } = result;
+  const jobs = rawJobs.filter((job) => isOnNicheJob(job));
   const companyName = company.name || "Company";
   const companyWebsite = (company.website || "").trim();
   const companyDescription = ((company.longDescription || company.description) || "").trim();
@@ -368,8 +371,12 @@ export default async function CompanyPage({ params }: PageProps) {
                               {job.category && <span className="truncate">{job.category}</span>}
                               {job.category && <span className="text-slate-300">•</span>}
                               <span className="truncate">{job.location}</span>
-                              <span className="text-slate-300">•</span>
-                              <span className="truncate">{job.type}</span>
+                              {job.type && job.type !== "Unknown" ? (
+                                <>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="truncate">{job.type}</span>
+                                </>
+                              ) : null}
                               {job.remotePolicy && (
                                 <>
                                   <span className="text-slate-300">•</span>
@@ -386,7 +393,7 @@ export default async function CompanyPage({ params }: PageProps) {
                           </div>
                           <div className="flex-shrink-0 text-right">
                             <div className="text-sm font-black text-slate-900 whitespace-nowrap">
-                              {job.salary || "Salary listed"}
+                              {formatSalaryDisplay(job.salary)}
                             </div>
                             <div className="mt-2">
                               <Link

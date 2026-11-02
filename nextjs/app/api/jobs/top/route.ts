@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../../lib/supabaseJobs";
+import { isOnNicheJob } from "../../../../lib/nicheScope";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
     .order("timestamp", { ascending: false })
     .limit(take);
   return NextResponse.json(
-    { jobs: (data as SupabaseJobRow[]).map(mapSupabaseJob) },
+    { jobs: ((data as SupabaseJobRow[]) || []).map(mapSupabaseJob).filter((job) => isOnNicheJob(job)) },
     { headers: { "Cache-Control": "s-maxage=60, stale-while-revalidate=300" } },
   );
 }

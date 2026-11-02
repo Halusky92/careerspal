@@ -9,11 +9,8 @@ export interface Subscriber {
     | 'Systems Design'
     | 'Automation'
     | 'Product Management'
-    | 'Engineering & AI'
     | 'Marketing & Growth Ops'
-    | 'Customer Success Ops'
-    | 'Executive & Staff'
-    | 'Finance & Admin';
+    | 'Executive & Staff';
   joinedAt: string;
 }
 

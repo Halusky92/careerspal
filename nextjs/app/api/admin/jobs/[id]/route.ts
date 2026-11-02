@@ -37,7 +37,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ error: "Job not found." }, { status: 404 });
   }
 
-  const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review"]);
+  const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review", "closed", "archived"]);
   if (body.status && !allowedStatuses.has(body.status)) {
     return NextResponse.json({ error: "Invalid status." }, { status: 400 });
   }

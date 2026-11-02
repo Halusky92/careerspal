@@ -7,6 +7,7 @@ import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import FormattedDescription from "./FormattedDescription";
+import { formatSalaryDisplay } from "../lib/formatSalary";
 
 type JobDetailPanelProps = {
   job: Job | null;
@@ -190,7 +191,7 @@ export default function JobDetailPanel({
               >
                 {job.company}
               </a>
-              <div className="text-sm font-semibold text-slate-900 mt-1">{job.salary}</div>
+              <div className="text-sm font-semibold text-slate-900 mt-1">{formatSalaryDisplay(job.salary)}</div>
             </div>
             <button
               onClick={() => onApply(job)}

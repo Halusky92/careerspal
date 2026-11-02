@@ -1,165 +1,138 @@
 "use client";
 
-
-import React, { useState } from 'react';
-import { MOCK_SALARIES } from '../constants';
+import React, { useEffect, useMemo, useState } from "react";
+import { Job } from "../types";
+import { parseSalaryFromText } from "../lib/sourcing/normalization/salary";
+import { CATEGORY_FILTER_LABELS } from "../constants";
+import { isOnNicheJob } from "../lib/nicheScope";
+import { formatSalaryDisplay } from "../lib/formatSalary";
 
 interface SalaryInsightsProps {
   onBrowse: () => void;
 }
 
-const SalaryInsights: React.FC<SalaryInsightsProps> = ({ onBrowse }) => {
-  const [activeTab, setActiveTab] = useState<'annual' | 'hourly'>('annual');
-  const [roleQuery, setRoleQuery] = useState('');
+type Bucket = {
+  category: string;
+  label: string;
+  count: number;
+  min: number;
+  max: number;
+  median: number;
+};
 
-  const formatCurrency = (val: number) => {
-    return activeTab === 'annual' 
-      ? `$${(val / 1000).toFixed(0)}k` 
-      : `$${val}`;
-  };
+function median(values: number[]) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (!sorted.length) return 0;
+  if (sorted.length % 2 === 0) return Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+  return sorted[mid];
+}
+
+function yearlyAmount(job: Job): number | null {
+  const parsed = parseSalaryFromText(job.salary || "");
+  if (!parsed.salary_present) return null;
+  const mid =
+    parsed.salary_amount_min != null && parsed.salary_amount_max != null
+      ? (parsed.salary_amount_min + parsed.salary_amount_max) / 2
+      : parsed.salary_amount_min ?? parsed.salary_amount_max;
+  if (mid == null) return null;
+  if (parsed.salary_period === "month") return mid * 12;
+  if (parsed.salary_period === "hour") return mid * 2080;
+  if (parsed.salary_period === "day") return mid * 260;
+  return mid;
+}
+
+const SalaryInsights: React.FC<SalaryInsightsProps> = ({ onBrowse }) => {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch("/api/jobs");
+        const data = (await res.json()) as { jobs?: Job[] };
+        setJobs(Array.isArray(data.jobs) ? data.jobs.filter((j) => isOnNicheJob(j)) : []);
+      } catch {
+        setJobs([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const buckets = useMemo(() => {
+    const byCat = new Map<string, number[]>();
+    jobs.forEach((job) => {
+      const amount = yearlyAmount(job);
+      if (amount == null) return;
+      const key = job.category || "Operations";
+      const list = byCat.get(key) || [];
+      list.push(amount);
+      byCat.set(key, list);
+    });
+    const out: Bucket[] = [];
+    byCat.forEach((amounts, category) => {
+      if (amounts.length < 3) return;
+      out.push({
+        category,
+        label: CATEGORY_FILTER_LABELS[category] || category,
+        count: amounts.length,
+        min: Math.min(...amounts),
+        max: Math.max(...amounts),
+        median: median(amounts),
+      });
+    });
+    return out.sort((a, b) => b.count - a.count);
+  }, [jobs]);
 
   return (
-    <div className="relative overflow-hidden">
-      <div className="absolute top-[-20%] left-[-15%] w-[70%] h-[70%] bg-indigo-300/20 rounded-full blur-[140px]"></div>
-      <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-violet-400/20 rounded-full blur-[140px]"></div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 animate-in fade-in relative z-10">
-      <div className="mb-16 text-center">
-        <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur border border-slate-200/60 px-4 py-2 rounded-full mb-6">
-          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Methodology notes</span>
-        </div>
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight mb-6">Market <span className="text-indigo-600">Intelligence.</span></h1>
-        <p className="text-base sm:text-xl text-slate-500 font-medium max-w-3xl mx-auto">
-          Salary benchmarks based on public listings and partner-submitted ranges. Directional guidance, not guarantees.
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="text-center mb-12">
+        <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">Salary ranges on the board.</h1>
+        <p className="mt-4 text-slate-600 font-medium max-w-2xl mx-auto">
+          Taken from currently published listings. Not a market forecast.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
-        {[
-          { label: "Regions", value: "NA + EU" },
-          { label: "Sources", value: "Public + partner" },
-          { label: "Update cadence", value: "Monthly" },
-        ].map((item) => (
-          <div key={item.label} className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-2xl px-4 py-4 text-center shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
-            <div className="text-2xl font-black text-slate-900">{item.value}</div>
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{item.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mb-12 bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2rem] p-6 text-left shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
-        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Methodology</h3>
-        <p className="text-sm text-slate-500 font-medium mt-3">
-          Ranges are aggregated from public job listings and partner-submitted ranges.
-          Sample sizes vary by role and region. Use as directional guidance while negotiating.
-        </p>
-      </div>
-
-      <div className="flex flex-col items-center gap-4 mb-12">
-        <div className="w-full max-w-2xl">
-          <input
-            value={roleQuery}
-            onChange={(e) => setRoleQuery(e.target.value)}
-            placeholder="Search by role (e.g. Ops Manager, Notion Architect)"
-            className="w-full rounded-2xl border border-slate-200/60 bg-white/80 backdrop-blur px-5 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
-          />
-        </div>
-        <div className="bg-slate-100 p-1.5 rounded-2xl flex flex-col sm:flex-row gap-1 w-full sm:w-auto">
-          <button 
-            onClick={() => setActiveTab('annual')}
-            className={`px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl font-black text-[11px] sm:text-sm transition-all ${activeTab === 'annual' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+      {loading ? (
+        <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center text-slate-500 font-medium">Loading…</div>
+      ) : buckets.length === 0 ? (
+        <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center">
+          <p className="text-lg font-black text-slate-900">No salary summary yet.</p>
+          <p className="mt-2 text-slate-600 font-medium">There aren’t enough live listings in a category to show a range.</p>
+          <button
+            onClick={onBrowse}
+            className="mt-6 px-6 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest"
           >
-            Annual Salary (Full-time)
-          </button>
-          <button 
-             onClick={() => setActiveTab('hourly')}
-             className={`px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl font-black text-[11px] sm:text-sm transition-all ${activeTab === 'hourly' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            Hourly Rate (Contract)
+            Browse jobs
           </button>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-8">
-        {MOCK_SALARIES.filter((stat) =>
-          stat.role.toLowerCase().includes(roleQuery.toLowerCase())
-        ).map((stat, idx) => {
-          const min = activeTab === 'annual' ? stat.min : stat.hourlyMin;
-          const max = activeTab === 'annual' ? stat.max : stat.hourlyMax;
-          const median = activeTab === 'annual' ? stat.median : (stat.hourlyMin + stat.hourlyMax) / 2;
-          
-          // Calculate percentage for bar visualization (relative to a fixed max for demo purposes)
-          const scaleMax = activeTab === 'annual' ? 250000 : 300;
-          const leftPercent = (min / scaleMax) * 100;
-          const widthPercent = ((max - min) / scaleMax) * 100;
-
-          return (
-            <div key={stat.role} className="bg-white p-6 sm:p-8 md:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      ) : (
+        <div className="space-y-4">
+          {buckets.map((bucket) => (
+            <div key={bucket.category} className="rounded-[1.8rem] border border-slate-200 bg-white p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                 <div>
-                   <h3 className="text-2xl font-black text-slate-900">{stat.role}</h3>
-                   <div className="flex gap-3 mt-2">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{stat.category}</span>
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest border ${
-                        stat.demand === 'Very High' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100'
-                      }`}>
-                         {stat.demand} Demand
-                      </span>
-                   </div>
+                  <h2 className="text-xl font-black text-slate-900">{bucket.label}</h2>
+                  <p className="text-sm text-slate-500 font-medium mt-1">{bucket.count} live listings with a parsed salary</p>
                 </div>
-                <div className="text-left md:text-right w-full md:w-auto">
-                   <div className="text-3xl font-black text-slate-900">{formatCurrency(median)}</div>
-                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Median</p>
+                <div className="text-2xl font-black text-slate-900">
+                  {formatSalaryDisplay(`USD ${bucket.min}-${bucket.max} year`)}
                 </div>
               </div>
-
-              {/* Visual Bar */}
-              <div className="relative h-14 sm:h-16 bg-slate-50 rounded-2xl mb-8 overflow-hidden">
-                 {/* Range Bar */}
-                 <div 
-                    className="absolute top-4 bottom-4 bg-indigo-100 rounded-lg"
-                    style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
-                 ></div>
-                 
-                 {/* Median Marker */}
-                 <div 
-                    className="absolute top-2 bottom-2 w-1 bg-indigo-600 rounded-full z-10"
-                    style={{ left: `${(median / scaleMax) * 100}%` }}
-                 ></div>
-                 
-                 {/* Labels */}
-                <div className="absolute top-1/2 -translate-y-1/2 text-[10px] sm:text-xs font-black text-indigo-900/50" style={{ left: `${leftPercent}%`, transform: 'translateX(-120%) translateY(-50%)' }}>
-                    {formatCurrency(min)}
-                 </div>
-                <div className="absolute top-1/2 -translate-y-1/2 text-[10px] sm:text-xs font-black text-indigo-900/50" style={{ left: `${leftPercent + widthPercent}%`, transform: 'translateX(20%) translateY(-50%)' }}>
-                    {formatCurrency(max)}
-                 </div>
-              </div>
-
-              <div className="flex justify-between items-center pt-6 border-t border-slate-50">
-                 <div>
-                    <p className="text-sm text-slate-500 font-medium">
-                       Trend: <span className={`${stat.trend === 'Up' ? 'text-emerald-500' : 'text-slate-900'} font-black`}>{stat.trend === 'Up' ? '↗ Increasing' : '→ Stable'}</span>
-                    </p>
-                 </div>
-                 <button onClick={onBrowse} className="text-indigo-600 font-black text-sm hover:underline">
-                    View Open Roles →
-                 </button>
-              </div>
+              <p className="mt-3 text-sm text-slate-600 font-medium">
+                Midpoint around {formatSalaryDisplay(`USD ${bucket.median} year`)}
+              </p>
             </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-16 bg-slate-900 rounded-[3rem] p-8 sm:p-12 text-center text-white">
-         <h2 className="text-2xl sm:text-3xl font-black mb-4">Are you earning enough?</h2>
-         <p className="text-slate-400 max-w-xl mx-auto mb-8 font-medium text-sm sm:text-base">
-            Join the Elite Talent Pool to get matched with companies that pay top-tier market rates. We filter out low-ball offers.
-         </p>
-         <button onClick={onBrowse} className="bg-white text-slate-900 px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-black hover:bg-indigo-50 transition-colors text-sm sm:text-base">
-            Find High-Paying Jobs
-         </button>
-      </div>
-      </div>
+          ))}
+          <div className="pt-4 text-center">
+            <button onClick={onBrowse} className="text-indigo-600 font-black text-sm hover:underline">
+              Browse jobs →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

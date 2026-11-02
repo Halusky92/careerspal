@@ -1,10 +1,8 @@
 "use client";
 
-
-import React, { useEffect, useState } from 'react';
-import { Job } from '../types';
-import { createJobSlug } from '../lib/jobs';
-import CompanyLogo from './CompanyLogo';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Job } from "../types";
+import { createJobSlug } from "../lib/jobs";
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
 
@@ -13,295 +11,358 @@ interface EmployerDashboardProps {
   onPostJob: () => void;
 }
 
+type FoundingStatus = {
+  enabled?: boolean;
+  eligible?: boolean;
+  remainingSlots?: number;
+  remainingJobs?: number;
+  reason?: string;
+};
+
+type ClaimHit = {
+  id: string;
+  name: string;
+  slug?: string | null;
+  claimed?: boolean;
+  owned?: boolean;
+};
+
+const formatCount = (value?: number | null) => {
+  if (!value) return "—";
+  return String(value);
+};
+
+const statusLabel = (status?: string) => {
+  switch (status) {
+    case "published":
+      return "Active";
+    case "pending_review":
+      return "In review";
+    case "paused":
+      return "Paused";
+    case "closed":
+      return "Closed";
+    case "archived":
+      return "Archived";
+    case "draft":
+      return "Draft";
+    default:
+      return status || "Draft";
+  }
+};
+
+const statusTone = (status?: string) => {
+  switch (status) {
+    case "published":
+      return "text-emerald-700 bg-emerald-50 border-emerald-200";
+    case "pending_review":
+      return "text-indigo-700 bg-indigo-50 border-indigo-200";
+    case "paused":
+      return "text-amber-700 bg-amber-50 border-amber-200";
+    case "closed":
+    case "archived":
+      return "text-slate-600 bg-slate-50 border-slate-200";
+    default:
+      return "text-slate-500 bg-slate-50 border-slate-200";
+  }
+};
+
 const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPostJob }) => {
+  const { accessToken } = useSupabaseAuth();
   const [myJobs, setMyJobs] = useState<Job[]>([]);
   const [summary, setSummary] = useState<Record<string, number>>({});
-  const { accessToken } = useSupabaseAuth();
-
-  useEffect(() => {
-    const loadJobs = async () => {
-      try {
-        if (!accessToken) return;
-        const response = await authFetch("/api/employer/jobs", {}, accessToken);
-        if (!response.ok) return;
-        const data = (await response.json()) as { jobs?: Job[]; summary?: Record<string, number> };
-        if (data.jobs) {
-          setMyJobs(data.jobs);
-        }
-        if (data.summary) {
-          setSummary(data.summary);
-        }
-      } catch {
-        // noop
-      }
-    };
-    loadJobs();
-  }, [accessToken]);
-
   const [stats, setStats] = useState({ jobs: 0, views: 0, matches: 0 });
+  const [founding, setFounding] = useState<FoundingStatus | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [claimQuery, setClaimQuery] = useState("");
+  const [claimHits, setClaimHits] = useState<ClaimHit[]>([]);
 
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        if (!accessToken) return;
-        const response = await authFetch("/api/employer/stats", {}, accessToken);
-        const data = (await response.json()) as { jobs?: number; views?: number; matches?: number };
-        setStats({
-          jobs: data.jobs || 0,
-          views: data.views || 0,
-          matches: data.matches || 0,
-        });
-      } catch {
-        // noop
-      }
-    };
-    loadStats();
+  const reload = useCallback(async () => {
+    if (!accessToken) return;
+    const [jobsRes, statsRes, foundingRes] = await Promise.all([
+      authFetch("/api/employer/jobs", {}, accessToken),
+      authFetch("/api/employer/stats", {}, accessToken),
+      authFetch("/api/employer/founding", {}, accessToken),
+    ]);
+    if (jobsRes.ok) {
+      const data = (await jobsRes.json()) as { jobs?: Job[]; summary?: Record<string, number> };
+      setMyJobs(data.jobs || []);
+      setSummary(data.summary || {});
+    }
+    if (statsRes.ok) {
+      const data = (await statsRes.json()) as { jobs?: number; views?: number; matches?: number };
+      setStats({ jobs: data.jobs || 0, views: data.views || 0, matches: data.matches || 0 });
+    }
+    if (foundingRes.ok) {
+      setFounding((await foundingRes.json()) as FoundingStatus);
+    }
   }, [accessToken]);
 
-  const handleExport = async () => {
+  useEffect(() => {
+    reload().catch(() => undefined);
+  }, [reload]);
+
+  useEffect(() => {
+    const q = claimQuery.trim();
+    if (!accessToken || q.length < 2) {
+      setClaimHits([]);
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      const res = await authFetch(`/api/employer/company/search?q=${encodeURIComponent(q)}`, {}, accessToken);
+      if (!res.ok) return;
+      const data = (await res.json()) as { companies?: ClaimHit[] };
+      setClaimHits(data.companies || []);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [accessToken, claimQuery]);
+
+  const activeCount = useMemo(
+    () => myJobs.filter((job) => job.status === "published").length,
+    [myJobs],
+  );
+
+  const runAction = async (job: Job, action: "pause" | "close" | "republish" | "archive" | "delete") => {
     if (!accessToken) return;
+    setBusyId(job.id);
+    setMessage(null);
     try {
-      const response = await authFetch("/api/employer/jobs/export", {}, accessToken);
-      if (!response.ok) return;
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = "my-jobs-export.csv";
-      anchor.click();
-      window.URL.revokeObjectURL(url);
-    } catch {
-      // noop
+      if (action === "delete") {
+        const res = await authFetch(`/api/employer/jobs/${job.id}`, { method: "DELETE" }, accessToken);
+        const data = (await res.json()) as { error?: string };
+        if (!res.ok) {
+          setMessage(data.error || "Could not delete draft.");
+          return;
+        }
+      } else {
+        const res = await authFetch(
+          `/api/employer/jobs/${job.id}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action }),
+          },
+          accessToken,
+        );
+        const data = (await res.json()) as { error?: string };
+        if (!res.ok) {
+          setMessage(data.error || "Could not update listing.");
+          return;
+        }
+      }
+      await reload();
+    } finally {
+      setBusyId(null);
     }
   };
 
-  const getStatusTone = (status?: string) => {
-    switch (status) {
-      case "published":
-        return "bg-emerald-50 text-emerald-700 border-emerald-200";
-      case "draft":
-        return "bg-slate-50 text-slate-500 border-slate-200";
-      case "paused":
-        return "bg-amber-50 text-amber-700 border-amber-200";
-      case "private":
-      case "invite_only":
-        return "bg-indigo-50 text-indigo-600 border-indigo-200";
-      default:
-        return "bg-slate-50 text-slate-500 border-slate-200";
+  const claimCompany = async (companyId: string) => {
+    if (!accessToken) return;
+    const res = await authFetch(
+      "/api/employer/company/claim",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId }),
+      },
+      accessToken,
+    );
+    const data = (await res.json()) as { error?: string; note?: string };
+    setMessage(data.error || data.note || "Company claimed.");
+    if (res.ok) {
+      setClaimQuery("");
+      setClaimHits([]);
     }
-  };
-
-  const formatDate = (value?: number) => {
-    if (!value) return "N/A";
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString();
-  };
-
-  const getExpiryDate = (job: Job) => {
-    if (!job.timestamp) return null;
-    const expires = new Date(job.timestamp + 30 * 24 * 60 * 60 * 1000);
-    return Number.isNaN(expires.getTime()) ? null : expires.toLocaleDateString();
   };
 
   return (
     <div className="relative overflow-hidden">
       <div className="absolute top-[-20%] left-[-15%] w-[70%] h-[70%] bg-indigo-300/20 rounded-full blur-[140px]"></div>
-      <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-violet-400/20 rounded-full blur-[140px]"></div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 relative z-10">
-      <div className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
-        <div>
-          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-2">Employer console</p>
-          <h1 className="text-5xl sm:text-6xl font-black text-slate-900 tracking-tighter mb-4">Dashboard.</h1>
-          <p className="text-xl text-slate-500 font-medium italic">Manage your roles and analyze candidate flow.</p>
-        </div>
-        <div className="flex gap-4 flex-wrap">
-          <div className="bg-white/80 backdrop-blur p-8 rounded-[2.5rem] border border-slate-200/60 shadow-xl flex items-center gap-10">
-            <div className="text-center">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Views</p>
-              <p className="text-3xl font-black text-indigo-600">{stats.views}</p>
-            </div>
-            <div className="w-px h-12 bg-slate-100"></div>
-            <div className="text-center">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Applications</p>
-              <p className="text-3xl font-black text-slate-900">{stats.matches}</p>
-            </div>
+        <div className="mb-10 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8">
+          <div>
+            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-2">My company</p>
+            <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tighter mb-3">Dashboard</h1>
+            <p className="text-lg text-slate-500 font-medium">Your listings, status, and apply clicks in one place.</p>
           </div>
-          <button
-            onClick={onUpgrade}
-            className="bg-white text-slate-900 px-8 py-6 rounded-[2rem] font-black text-xs uppercase tracking-widest border border-slate-200 shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-all"
-          >
-            Upgrade Plan
-          </button>
-          <button 
-            onClick={onPostJob}
-            className="bg-indigo-600 text-white px-10 py-6 rounded-[2rem] font-black text-xl shadow-2xl shadow-indigo-100 hover:scale-105 transition-transform"
-          >
-            Post a Role
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={myJobs.length === 0 || !accessToken}
-            className={`bg-white text-slate-900 px-6 py-6 rounded-[2rem] font-black text-xs uppercase tracking-widest border border-slate-200 shadow-sm transition-all ${
-              myJobs.length === 0 || !accessToken
-                ? "opacity-60 cursor-not-allowed"
-                : "hover:border-indigo-200 hover:text-indigo-600"
-            }`}
-          >
-            Export CSV
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
-        {[
-          { label: "Board", value: "Active" },
-          { label: "Review", value: "Before publish" },
-          { label: "Support", value: "Email" },
-        ].map((item) => (
-          <div key={item.label} className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-2xl px-4 py-4 text-center shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
-            <div className="text-xl font-black text-slate-900">{item.value}</div>
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{item.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mb-12 grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          { label: "Published roles", value: summary.published ?? 0 },
-          { label: "Draft roles", value: summary.draft ?? 0 },
-          { label: "Total views", value: stats.views },
-        ].map((item) => (
-          <div key={item.label} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-            <div className="text-2xl font-black text-slate-900">{item.value}</div>
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{item.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="space-y-6">
-        <div className="flex items-center justify-between px-4">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.4em]">Your Active Listings</h3>
-          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{summary.total ?? myJobs.length} Positions</span>
-        </div>
-        
-        {myJobs.length > 0 ? myJobs.map((job) => {
-          const isLocked = Boolean(job.status && job.status !== "published");
-          return (
-          <div key={job.id} className="bg-white p-8 rounded-[3.5rem] border border-slate-50 shadow-sm hover:shadow-2xl transition-all flex flex-col lg:flex-row items-center justify-between gap-8 group">
-            <div className="flex items-center gap-8 flex-1 w-full">
-              <div className="w-20 h-20 bg-slate-50 rounded-[1.8rem] flex items-center justify-center border border-slate-100 overflow-hidden flex-shrink-0 p-2">
-                 <CompanyLogo
-                   name={job.company}
-                   logoUrl={job.logo}
-                   website={job.companyWebsite || job.applyUrl}
-                   className="w-full h-full rounded-2xl overflow-hidden bg-white"
-                   imageClassName="w-full h-full object-contain"
-                   fallbackClassName="text-sm"
-                 />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-2xl font-black text-slate-900 mb-1 group-hover:text-indigo-600 transition-colors line-clamp-1">{job.title}</h4>
-                <div className="flex flex-wrap items-center gap-4">
-                  <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100`}>
-                    {job.plan?.type || 'Standard'}
-                  </span>
-                  <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-lg border ${getStatusTone(job.status)}`}>
-                    {job.status || "draft"}
-                  </span>
-                  {getExpiryDate(job) && (
-                    <span className="text-[9px] font-black uppercase px-3 py-1 rounded-lg bg-slate-50 text-slate-500 border border-slate-200">
-                      Expires: {getExpiryDate(job)}
-                    </span>
-                  )}
-                  <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest italic">
-                    Applications: {job.matches ?? 0}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 w-full lg:w-auto justify-end">
-               <a
-                 href={`/jobs/${createJobSlug(job)}`}
-                 onClick={(event) => {
-                   if (isLocked) {
-                     event.preventDefault();
-                   }
-                 }}
-                 className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest border transition-colors ${
-                   isLocked
-                     ? "bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed"
-                     : "bg-white text-slate-600 border-slate-200 hover:border-indigo-200 hover:text-indigo-600"
-                 }`}
-                 aria-disabled={isLocked}
-               >
-                 View listing
-               </a>
-               <button
-                 onClick={() => {
-                   if (!job.matches) return;
-                   alert("Applicants view is coming soon.");
-                 }}
-                 disabled={!job.matches}
-                 className="px-6 py-3 bg-slate-900 text-white rounded-xl text-xs font-black hover:bg-black transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-               >
-                 Applicants
-               </button>
-               <button className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:text-indigo-600 transition-colors">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-               </button>
-            </div>
-          </div>
-        );
-        }) : (
-          <div className="bg-white py-24 rounded-[4rem] text-center border-2 border-dashed border-slate-100">
-             <div className="w-24 h-24 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-8 text-4xl opacity-50">📂</div>
-             <h3 className="text-3xl font-black text-slate-900 mb-4">No active roles found.</h3>
-            <p className="text-slate-400 font-medium mb-12 max-w-sm mx-auto italic">Start by posting your first role to reach candidates browsing the board.</p>
-             <button 
+          <div className="flex gap-3 flex-wrap">
+            <button
               onClick={onPostJob}
-              className="bg-indigo-600 text-white px-10 py-5 rounded-2xl font-black text-lg shadow-xl shadow-indigo-100 hover:scale-105 transition-all"
-             >
-               Add First Job
-             </button>
+              className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700"
+            >
+              Post a job
+            </button>
+            <button
+              onClick={onUpgrade}
+              className="bg-white text-slate-900 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest border border-slate-200 hover:border-indigo-200"
+            >
+              Plans
+            </button>
+          </div>
+        </div>
+
+        {founding?.enabled && (
+          <div className="mb-8 rounded-3xl border border-indigo-100 bg-white/90 px-6 py-5">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Founding launch</p>
+            <p className="mt-2 text-slate-700 font-medium">
+              {founding.eligible
+                ? `Eligible companies can submit for review without checkout. ${founding.remainingSlots ?? 0} company slots and ${founding.remainingJobs ?? 0} listing slots remain.`
+                : "Checkout is required for additional listings. Stripe stays available when founding slots are used."}
+            </p>
           </div>
         )}
-      </div>
-      
-      {/* Visual Reports */}
-      <div className="mt-20 grid grid-cols-1 md:grid-cols-2 gap-10">
-         <div className="bg-slate-900 p-12 rounded-[4rem] text-white overflow-hidden relative group">
-            <h3 className="text-3xl font-black mb-6 relative z-10 tracking-tight">Need help hiring?</h3>
-            <p className="text-slate-400 mb-10 relative z-10 font-medium leading-relaxed">Email us and we&apos;ll discuss options for hands-on support.</p>
-            <a
-              href="mailto:hello@careerspal.com?subject=Elite%20Managed%20Hiring"
-              className="inline-flex items-center bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black relative z-10 hover:bg-white hover:text-slate-900 transition-all shadow-xl"
-            >
-              Contact Recruitment
-            </a>
-            <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-600/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
-         </div>
-         <div className="bg-indigo-50 p-12 rounded-[4rem] border border-indigo-100 flex flex-col justify-between">
-            <div>
-              <h3 className="text-3xl font-black text-indigo-900 mb-6 tracking-tight">Market Insights</h3>
-           <p className="text-indigo-700/60 font-medium leading-relaxed italic">&quot;The average salary for Notion-first Ops Managers has grown by 18% since January 2026.&quot;</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+          {[
+            { label: "Active roles", value: activeCount },
+            { label: "Views", value: stats.views || "—" },
+            { label: "Apply clicks", value: stats.matches || "—" },
+          ].map((item) => (
+            <div key={item.label} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+              <div className="text-3xl font-black text-slate-900">{item.value}</div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{item.label}</div>
             </div>
-            <div className="flex gap-4 mt-8">
-               <a
-                 href="/salary-insights"
-                 className="px-5 py-3 bg-white rounded-2xl text-[10px] font-black text-indigo-600 uppercase tracking-widest border border-indigo-100 shadow-sm hover:border-indigo-200"
-               >
-                 Global Benchmarks
-               </a>
-               <a
-                 href="/salary-insights"
-                 className="px-5 py-3 bg-white rounded-2xl text-[10px] font-black text-indigo-600 uppercase tracking-widest border border-indigo-100 shadow-sm hover:border-indigo-200"
-               >
-                 Salary Tool
-               </a>
+          ))}
+        </div>
+
+        {message && (
+          <div className="mb-6 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600">
+            {message}
+          </div>
+        )}
+
+        <div className="mb-10 rounded-[2rem] border border-slate-100 bg-white p-6">
+          <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Claim this company</h2>
+          <p className="mt-2 text-sm text-slate-500 font-medium">
+            If a profile was created from Greenhouse, claim it instead of making a duplicate. Sourced jobs stay separate.
+          </p>
+          <input
+            value={claimQuery}
+            onChange={(event) => setClaimQuery(event.target.value)}
+            placeholder="Search company name"
+            className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium"
+          />
+          {claimHits.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {claimHits.map((hit) => (
+                <div key={hit.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 px-4 py-3">
+                  <div>
+                    <div className="font-black text-slate-900">{hit.name}</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      {hit.owned ? "Already yours" : hit.claimed ? "Claimed" : "Unclaimed"}
+                    </div>
+                  </div>
+                  <button
+                    disabled={Boolean(hit.claimed)}
+                    onClick={() => claimCompany(hit.id)}
+                    className="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+                  >
+                    Claim
+                  </button>
+                </div>
+              ))}
             </div>
-         </div>
-      </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden">
+          <div className="px-6 py-4 flex items-center justify-between">
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.3em]">My job postings</h3>
+            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+              {summary.total ?? myJobs.length} listings
+            </span>
+          </div>
+          {myJobs.length === 0 ? (
+            <div className="px-6 py-16 text-center">
+              <h3 className="text-2xl font-black text-slate-900 mb-3">No listings yet</h3>
+              <p className="text-slate-500 font-medium mb-8">Post a role to see status, views, and apply clicks here.</p>
+              <button onClick={onPostJob} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black">
+                Add first job
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-t border-slate-100">
+                    <th className="px-6 py-3">Role</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Views</th>
+                    <th className="px-4 py-3">Apply clicks</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myJobs.map((job) => {
+                    const busy = busyId === job.id;
+                    return (
+                      <tr key={job.id} className="border-t border-slate-100">
+                        <td className="px-6 py-4">
+                          <div className="font-black text-slate-900">{job.title}</div>
+                          <div className="text-xs text-slate-400 font-medium">
+                            {job.company}
+                            {job.status === "published" && (
+                              <>
+                                {" · "}
+                                <a href={`/jobs/${createJobSlug(job)}`} className="text-indigo-600 hover:underline">
+                                  View
+                                </a>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-lg border ${statusTone(job.status)}`}>
+                            {statusLabel(job.status)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 font-black text-slate-700">{formatCount(job.views)}</td>
+                        <td className="px-4 py-4 font-black text-slate-700">{formatCount(job.matches)}</td>
+                        <td className="px-4 py-4">
+                          <div className="flex justify-end gap-2 flex-wrap">
+                            <a
+                              href={`/post-a-job?jobId=${job.id}`}
+                              className="h-9 w-9 inline-flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 hover:text-indigo-600"
+                              title="Edit"
+                            >
+                              ✎
+                            </a>
+                            {job.status === "published" && (
+                              <button disabled={busy} onClick={() => runAction(job, "pause")} className="h-9 w-9 rounded-xl bg-amber-50" title="Pause">
+                                ⏸
+                              </button>
+                            )}
+                            {(job.status === "paused" || job.status === "closed") && (
+                              <button disabled={busy} onClick={() => runAction(job, "republish")} className="h-9 w-9 rounded-xl bg-indigo-50" title="Republish">
+                                ↻
+                              </button>
+                            )}
+                            {(job.status === "published" || job.status === "paused") && (
+                              <button disabled={busy} onClick={() => runAction(job, "close")} className="h-9 w-9 rounded-xl bg-slate-100" title="Close">
+                                ✕
+                              </button>
+                            )}
+                            {job.status === "closed" && (
+                              <button disabled={busy} onClick={() => runAction(job, "archive")} className="h-9 w-9 rounded-xl bg-slate-100" title="Archive">
+                                📦
+                              </button>
+                            )}
+                            {job.status === "draft" && (
+                              <button disabled={busy} onClick={() => runAction(job, "delete")} className="h-9 w-9 rounded-xl bg-rose-50" title="Delete draft">
+                                🗑
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

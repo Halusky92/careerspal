@@ -9,13 +9,16 @@ import { createCompanySlug, createJobSlug, getJobIdFromSlug } from "../../../lib
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
+import { isOnNicheJob } from "../../../lib/nicheScope";
+import { formatSalaryDisplay } from "../../../lib/formatSalary";
+import { ApplyClickLink, JobViewTracker } from "../../../components/JobAnalytics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 const getBaseUrl = () => {
@@ -112,7 +115,7 @@ const extractLabeledSection = (value: string, label: string) => {
 
 const makeDescription = (job: Job) => {
   const bits: string[] = [];
-  if (job.salary) bits.push(`Salary: ${job.salary}.`);
+  if (job.salary) bits.push(`Salary: ${formatSalaryDisplay(job.salary)}.`);
   if (job.location) bits.push(`Location: ${job.location}.`);
   if (job.remotePolicy) bits.push(`Remote policy: ${job.remotePolicy}.`);
   if (job.category) bits.push(`Category: ${job.category}.`);
@@ -138,7 +141,7 @@ async function fetchPublishedJobBySlug(slug: string): Promise<Job | null> {
 
     if (data && !error) {
       const mapped = mapSupabaseJob(data as SupabaseJobRow);
-      if (mapped.status === "published") return mapped;
+      if (mapped.status === "published" && isOnNicheJob(mapped)) return mapped;
       return null;
     }
   }
@@ -221,7 +224,7 @@ async function fetchSimilarPublishedJobs(job: Job): Promise<Job[]> {
     .order("timestamp", { ascending: false })
     .range(0, 2);
 
-  return (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob);
+  return (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob).filter((job) => isOnNicheJob(job));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -233,7 +236,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const canonicalPath = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
   const canonicalUrl = `${baseUrl}${canonicalPath}`;
 
-  const title = `${job.title} at ${job.company} — ${job.salary || "Salary listed"} | CareersPal`;
+  const title = `${job.title} at ${job.company} — ${formatSalaryDisplay(job.salary)} | CareersPal`;
   const description = makeDescription(job) || `${job.title} at ${job.company}.`;
 
   const imageUrl = job.logo ? (job.logo.startsWith("http") ? job.logo : `${baseUrl}${job.logo}`) : undefined;
@@ -271,11 +274,12 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
     // ignore
   }
   if (!debug) {
+    const query = (await searchParams) || {};
     debug =
-      typeof searchParams?.debug === "string"
-        ? searchParams.debug
-        : Array.isArray(searchParams?.debug)
-          ? searchParams?.debug?.[0]
+      typeof query.debug === "string"
+        ? query.debug
+        : Array.isArray(query.debug)
+          ? query.debug[0]
           : "";
   }
   // Last resort for diagnostics: allow debug rendering for our scripted probes.
@@ -353,6 +357,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
 
   return (
     <div className="bg-[#F8F9FD] pb-20">
+      <JobViewTracker jobId={job.id} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingLd) }} />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
@@ -425,19 +430,19 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                     {job.company}
                   </Link>
                   <span className="text-slate-300">•</span>
-                  <span className="text-sm sm:text-base font-black text-slate-900">{job.salary || "Salary listed"}</span>
+                  <span className="text-sm sm:text-base font-black text-slate-900">{formatSalaryDisplay(job.salary)}</span>
                 </div>
 
                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {hasApplyUrl ? (
-                    <a
+                    <ApplyClickLink
+                      jobId={job.id}
                       href={job.applyUrl}
-                      target={applyExternal ? "_blank" : undefined}
-                      rel={applyExternal ? "noopener noreferrer nofollow" : undefined}
+                      external={applyExternal}
                       className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 text-white px-7 py-4 text-[11px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
                     >
                       Apply now →
-                    </a>
+                    </ApplyClickLink>
                   ) : (
                     <span className="inline-flex items-center justify-center rounded-2xl bg-slate-200 text-slate-500 px-7 py-4 text-[11px] font-black uppercase tracking-widest">
                       Apply link coming soon
@@ -450,14 +455,14 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                     Copy / share link
                   </a>
                   {hasApplyUrl ? (
-                    <a
+                    <ApplyClickLink
+                      jobId={job.id}
                       href={job.applyUrl}
-                      target={applyExternal ? "_blank" : undefined}
-                      rel={applyExternal ? "noopener noreferrer nofollow" : undefined}
+                      external={applyExternal}
                       className="inline-flex items-center justify-center rounded-2xl bg-slate-900 text-white px-7 py-4 text-[11px] font-black uppercase tracking-widest hover:bg-black transition-colors"
                     >
                       Apply (backup) →
-                    </a>
+                    </ApplyClickLink>
                   ) : (
                     <span className="inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-7 py-4 text-[11px] font-black uppercase tracking-widest text-slate-500">
                       No apply URL yet
@@ -564,7 +569,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                       <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500 line-clamp-1">
                         {s.company}
                       </div>
-                      <div className="mt-2 text-sm font-black text-slate-900">{s.salary || "Salary listed"}</div>
+                      <div className="mt-2 text-sm font-black text-slate-900">{formatSalaryDisplay(s.salary)}</div>
                     </Link>
                   ))}
                 </div>
@@ -604,14 +609,14 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
               <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate">{job.company}</div>
               <div className="text-sm font-black text-slate-900 truncate">{job.title}</div>
             </div>
-            <a
+            <ApplyClickLink
+              jobId={job.id}
               href={job.applyUrl}
-              target={applyExternal ? "_blank" : undefined}
-              rel={applyExternal ? "noopener noreferrer nofollow" : undefined}
+              external={applyExternal}
               className="h-11 px-5 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors flex items-center justify-center whitespace-nowrap"
             >
               Apply →
-            </a>
+            </ApplyClickLink>
           </div>
         </div>
       )}

@@ -3,6 +3,7 @@ import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../../lib/supabaseJobs";
 import type { Company } from "../../../../types";
 import { enrichCompanyFromWebsite } from "../../../../lib/companyEnrichment";
+import { isOnNicheJob } from "../../../../lib/nicheScope";
 
 type SupabaseCompanyRow = {
   id: string;
@@ -21,12 +22,12 @@ const mapCompany = (row: SupabaseCompanyRow): Company => ({
   name: row.name || "Unknown",
   logo: row.logo_url || "",
   website: row.website || "",
-  description: row.description || "Company profile coming soon.",
-  longDescription: row.long_description || row.description || "Company profile coming soon.",
+  description: row.description || "",
+  longDescription: row.long_description || row.description || "",
   verified: Boolean(row.verified),
   foundedYear: "—",
   employeeCount: row.employee_count || "—",
-  headquarters: row.location || "Remote",
+  headquarters: row.location || "",
   images: [],
   techStack: [],
   socialLinks: {},
@@ -134,7 +135,9 @@ export const GET = async (_request: Request, context: { params: Promise<{ slug: 
     .eq("status", "published")
     .order("timestamp", { ascending: false });
 
-  const mappedJobs = (jobs as SupabaseJobRow[] | null || []).map(mapSupabaseJob);
+  const mappedJobs = (jobs as SupabaseJobRow[] | null || [])
+    .map(mapSupabaseJob)
+    .filter((job) => isOnNicheJob(job));
 
   // Safe fallback: if company row is sparse, prefer a non-empty company_description from the newest job.
   // This mirrors the manual admin-post behavior without inventing facts.

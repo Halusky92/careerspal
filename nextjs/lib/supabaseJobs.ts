@@ -62,7 +62,7 @@ export const mapSupabaseJob = (row: SupabaseJobRow): Job => ({
   company: row.companies?.name || "Unknown",
   companySlug: row.companies?.slug || undefined,
   logo: row.logo_url || row.companies?.logo_url || "",
-  location: row.location || "Remote",
+  location: row.location || "",
   // Keep conservative: if we don't have a confident type stored, show Unknown rather than guessing.
   type: (row.type as Job["type"]) || "Unknown",
   salary: row.salary || "",
@@ -77,7 +77,7 @@ export const mapSupabaseJob = (row: SupabaseJobRow): Job => ({
   plan: row.plan_price
     ? { type: (row.plan_type || "Standard") as PlanType, price: row.plan_price }
     : undefined,
-  remotePolicy: row.remote_policy || "Remote",
+  remotePolicy: row.remote_policy || "",
   applyUrl: row.apply_url || "#",
   companyDescription: row.company_description || row.companies?.description || undefined,
   benefits: toStringArray(row.benefits),

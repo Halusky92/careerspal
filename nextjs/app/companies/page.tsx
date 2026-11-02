@@ -3,6 +3,7 @@ import Link from "next/link";
 import CompanyLogo from "../../components/CompanyLogo";
 import { createCompanySlug } from "../../lib/jobs";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
+import { isOnNicheJob } from "../../lib/nicheScope";
 
 type CompanyCard = {
   id: string;
@@ -30,6 +31,18 @@ const plainText = (value: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const isBoilerplateDescription = (value?: string | null) => {
+  const t = (value || "").toLowerCase();
+  return t.includes("greenhouse is more than a hiring platform") || t.includes("complete hiring ecosystem");
+};
+
+const publicHost = (value?: string | null) => {
+  const host = safeHost(value);
+  if (!host) return "";
+  if (host.includes("greenhouse.io") || host.includes("lever.co") || host.includes("ashbyhq.com")) return "";
+  return host;
+};
+
 const safeHost = (value?: string | null) => {
   const raw = (value || "").trim();
   if (!raw || raw === "#") return "";
@@ -46,7 +59,7 @@ async function fetchCompaniesWithLiveRoles(): Promise<CompanyCard[]> {
 
   const { data } = await supabaseAdmin
     .from("jobs")
-    .select("company_id,companies(id,name,slug,logo_url,website,description,location,verified)")
+    .select("company_id,title,category,description,companies(id,name,slug,logo_url,website,description,location,verified)")
     .eq("status", "published")
     .not("company_id", "is", null)
     .order("timestamp", { ascending: false })
@@ -55,6 +68,7 @@ async function fetchCompaniesWithLiveRoles(): Promise<CompanyCard[]> {
   const map = new Map<string, CompanyCard>();
 
   (data as any[] | null || []).forEach((row) => {
+    if (!isOnNicheJob({ title: row?.title, category: row?.category, description: row?.description })) return;
     const c = row?.companies;
     const id = (c?.id || row?.company_id || "").toString();
     const name = (c?.name || "").toString().trim();
@@ -160,8 +174,9 @@ export default async function CompaniesPage() {
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {companies.map((c) => {
               const href = `/companies/${c.slug || createCompanySlug({ name: c.name })}`;
-              const desc = plainText(c.description || "");
+              const desc = isBoilerplateDescription(c.description) ? "" : plainText(c.description || "");
               const shortDesc = desc.length > 120 ? `${desc.slice(0, 120).trim()}…` : desc;
+              const host = publicHost(c.website);
               return (
                 <Link
                   key={c.id}
@@ -191,7 +206,7 @@ export default async function CompaniesPage() {
                       <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
                         {c.liveRoles} live role{c.liveRoles === 1 ? "" : "s"}
                         {c.location ? ` • ${c.location}` : ""}
-                        {c.website ? ` • ${safeHost(c.website)}` : ""}
+                        {host ? ` • ${host}` : ""}
                       </div>
                       {shortDesc && !shortDesc.toLowerCase().includes("coming soon") && (
                         <div className="mt-3 text-sm text-slate-600 font-medium leading-relaxed line-clamp-3">

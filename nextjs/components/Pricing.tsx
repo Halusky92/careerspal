@@ -16,7 +16,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         <div className="text-center mb-16">
           <h2 className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide mb-4">Pricing plans</h2>
           <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6 tracking-tight">
-            Invest in the best talent.
+            Post a role on the board.
           </h1>
           <p className="text-lg sm:text-xl text-slate-500 max-w-2xl mx-auto font-medium">
             Post a role on a curated, salary-first board for Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff roles.
@@ -51,8 +51,6 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
             <li className="flex items-start gap-3"><span className="text-indigo-600">✓</span> Listing reviewed before publish</li>
             <li className="flex items-start gap-3"><span className="text-indigo-600">✓</span> 30 days live on the board</li>
             <li className="flex items-start gap-3"><span className="text-indigo-600">✓</span> Included in search + filters</li>
-            <li className="flex items-start gap-3 text-gray-300 font-medium">✕ Slack Community Announcement</li>
-            <li className="flex items-start gap-3 text-gray-300 font-medium">✕ Newsletter Promotion</li>
           </ul>
           <button onClick={() => onSelectPlan('Standard', 79)} className="w-full py-4 border-2 border-slate-100 rounded-2xl font-semibold text-gray-900 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-all active:scale-95">
             Select Standard
@@ -130,9 +128,9 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         <h4 className="text-[10px] font-semibold uppercase tracking-wide text-indigo-200">Why not agencies</h4>
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { label: "Avg. agency fee", value: "$8k+" },
-            { label: "Median hire time", value: "45 days" },
+            { label: "Typical agency fee", value: "Often $8k+" },
             { label: "CareersPal", value: "Board listing" },
+            { label: "Apply path", value: "Direct link" },
           ].map((item) => (
             <div key={item.label} className="bg-white/10 border border-white/10 rounded-2xl p-4 text-center">
               <div className="text-2xl font-bold">{item.value}</div>

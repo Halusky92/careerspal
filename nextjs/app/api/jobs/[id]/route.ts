@@ -3,6 +3,7 @@ import { Job } from "../../../../types";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../../lib/supabaseJobs";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
+import { isOnNicheJob } from "../../../../lib/nicheScope";
 
 export const GET = async (_request: NextRequest, context: { params: Promise<{ id: string }> }) => {
   const { id } = await context.params;
@@ -23,7 +24,8 @@ export const GET = async (_request: NextRequest, context: { params: Promise<{ id
   }
 
   const row = data as SupabaseJobRow & { created_by?: string | null };
-  if (row.status !== "published") {
+  const mapped = mapSupabaseJob(row);
+  if (row.status !== "published" || !isOnNicheJob(mapped)) {
     const auth = await getSupabaseProfile(_request);
     if (!auth?.profile) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
@@ -33,7 +35,7 @@ export const GET = async (_request: NextRequest, context: { params: Promise<{ id
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
   }
-  return NextResponse.json({ job: mapSupabaseJob(row) });
+  return NextResponse.json({ job: mapped });
 };
 
 export const PATCH = async (request: NextRequest, context: { params: Promise<{ id: string }> }) => {
@@ -46,7 +48,7 @@ export const PATCH = async (request: NextRequest, context: { params: Promise<{ i
     stripeSessionId?: string;
     stripePaymentStatus?: string;
   };
-  const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review"]);
+  const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review", "closed", "archived"]);
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }

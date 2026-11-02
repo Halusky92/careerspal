@@ -3,6 +3,7 @@ import { Job } from "../../../types";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../lib/supabaseJobs";
 import { getSupabaseProfile } from "../../../lib/supabaseServerAuth";
+import { isOnNicheJob } from "../../../lib/nicheScope";
 
 const isValidApplyUrl = (value: string) => {
   if (value === "#" || value.startsWith("/")) return true;
@@ -64,9 +65,11 @@ export const GET = async (request: Request) => {
   }
 
   const { data, count } = await query;
-  const mapped = (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob);
+  const mapped = (data as SupabaseJobRow[] | null || [])
+    .map(mapSupabaseJob)
+    .filter((job) => isOnNicheJob(job));
   return NextResponse.json(
-    { jobs: mapped, total: count ?? mapped.length },
+    { jobs: mapped, total: mapped.length },
     // Ensure public pages reflect archive/delete immediately.
     { headers: { "Cache-Control": "no-store" } },
   );
@@ -91,7 +94,7 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ error: "Invalid applyUrl." }, { status: 400 });
   }
 
-  const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review"]);
+  const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review", "closed", "archived"]);
   if (body.status && !allowedStatuses.has(body.status)) {
     return NextResponse.json({ error: "Invalid status." }, { status: 400 });
   }

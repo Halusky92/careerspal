@@ -7,6 +7,7 @@ import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import { stripHtmlToText } from "../lib/sourcing/normalization/text";
+import { formatSalaryDisplay } from "../lib/formatSalary";
 
 export type JobRowAction = "copy_link" | "open_new_tab";
 
@@ -29,8 +30,10 @@ type JobRowProps = {
 
 const getWorkMode = (job: Job) => {
   const policy = (job.remotePolicy || "").toLowerCase();
-  if (policy.includes("hybrid")) return "Hybrid";
-  if (policy.includes("remote")) return "Remote";
+  const loc = (job.location || "").toLowerCase();
+  if (policy.includes("hybrid") || loc.includes("hybrid")) return "Hybrid";
+  if (policy.includes("remote") || /\bremote\b/.test(loc)) return "Remote";
+  if (!policy && !loc) return "";
   return "Onsite";
 };
 
@@ -73,9 +76,10 @@ const getRemoteMeta = (job: Job, workMode: string) => {
             ? clean
             : "";
 
+  if (!workMode) return loc || "";
   if (workMode === "Remote") return region ? `Remote • ${region}` : "Remote";
   if (workMode === "Hybrid") return region ? `Hybrid • ${region}` : "Hybrid";
-  return region ? `Onsite • ${region}` : "Onsite";
+  return region ? `Onsite • ${region}` : loc || "Onsite";
 };
 
 export default function JobRow({
@@ -384,7 +388,7 @@ export default function JobRow({
             <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-start">
               <div className="flex-1 min-w-0">
                 <span className="block truncate text-[12px] sm:text-sm font-bold text-slate-900">
-                  {job.salary || "Salary listed"}
+                  {formatSalaryDisplay(job.salary)}
                 </span>
               </div>
               <button

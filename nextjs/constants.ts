@@ -195,17 +195,23 @@ export const MOCK_CANDIDATES: Candidate[] = [
 
 export const CATEGORIES = [
   'All Roles',
-  'Notion Ops',
   'Operations',
   'Systems Design',
   'Automation',
-  'Product Management',
-  'Engineering & AI',
   'Marketing & Growth Ops',
-  'Customer Success Ops',
+  'Product Management',
   'Executive & Staff',
-  'Finance & Admin'
 ];
+
+export const CATEGORY_FILTER_LABELS: Record<string, string> = {
+  'All Roles': 'All Roles',
+  Operations: 'Operations',
+  'Systems Design': 'Systems',
+  Automation: 'Automation',
+  'Marketing & Growth Ops': 'RevOps',
+  'Product Management': 'Product Ops',
+  'Executive & Staff': 'Chief of Staff',
+};
 
 export const MOCK_SALARIES: SalaryStat[] = [
   {

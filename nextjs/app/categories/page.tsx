@@ -91,11 +91,6 @@ export default async function CategoriesPage() {
                     <div className="mt-2 text-sm text-slate-600 font-medium leading-relaxed">
                       {hub.intro}
                     </div>
-                    {hub.temporaryMappingNote && (
-                      <div className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        Broad category mapping (temporary)
-                      </div>
-                    )}
                   </div>
                   {showCount && (
                     <span className="flex-shrink-0 inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">

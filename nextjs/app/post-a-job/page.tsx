@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import PostJob from "../../components/PostJob";
 import { Job, PlanType } from "../../types";
 import { useSupabaseAuth } from "../../components/Providers";
@@ -19,9 +19,13 @@ const getStoredPlan = () => {
   }
 };
 
-const PostJobPage = () => {
+const PostJobPageInner = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editJobId = searchParams.get("jobId");
   const { profile, accessToken, loading: authLoading, refreshProfile } = useSupabaseAuth();
+  const [foundingEligible, setFoundingEligible] = useState(false);
+  const [initialJob, setInitialJob] = useState<Partial<Job> | undefined>(undefined);
   const [selectedPlan, setSelectedPlan] = useState<{ type: PlanType; price: number }>(() => {
     return getStoredPlan() || { type: "Standard", price: 79 };
   });
@@ -80,6 +84,29 @@ const PostJobPage = () => {
     checkTestPlanAccess();
   }, [accessToken, profile?.role]);
 
+  useEffect(() => {
+    const load = async () => {
+      if (!accessToken) return;
+      try {
+        const foundingRes = await authFetch("/api/employer/founding", {}, accessToken);
+        if (foundingRes.ok) {
+          const data = (await foundingRes.json()) as { eligible?: boolean };
+          setFoundingEligible(Boolean(data.eligible));
+        }
+        if (editJobId) {
+          const jobRes = await authFetch(`/api/employer/jobs/${editJobId}`, {}, accessToken);
+          if (jobRes.ok) {
+            const data = (await jobRes.json()) as { job?: Job };
+            if (data.job) setInitialJob(data.job);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+    load();
+  }, [accessToken, editJobId]);
+
   const handleJobSubmission = async (data: Job) => {
     const storagePlanPrice = Number.isFinite(selectedPlan.price)
       ? selectedPlan.price < 1
@@ -120,6 +147,31 @@ const PostJobPage = () => {
 
     try {
       if (!accessToken) throw new Error("Missing auth");
+      if (editJobId) {
+        const update = await authFetch(
+          `/api/employer/jobs/${editJobId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: finalJobData.title,
+              description: finalJobData.description,
+              location: finalJobData.location,
+              remotePolicy: finalJobData.remotePolicy,
+              type: finalJobData.type,
+              salary: finalJobData.salary,
+              applyUrl: finalJobData.applyUrl,
+              companyWebsite: finalJobData.companyWebsite,
+              keywords: finalJobData.keywords,
+            }),
+          },
+          accessToken,
+        );
+        if (update.ok) {
+          router.push("/dashboard/employer");
+          return;
+        }
+      }
       const response = await authFetch(
         "/api/employer/jobs",
         {
@@ -134,9 +186,20 @@ const PostJobPage = () => {
         },
         accessToken,
       );
-      const payload = (await response.json()) as { job?: Job };
+      const payload = (await response.json()) as { job?: Job; claimRequired?: boolean; error?: string };
+      if (payload.claimRequired) {
+        router.push("/dashboard/employer");
+        return;
+      }
       if (payload.job?.id) {
         sessionStorage.setItem("cp_pending_job_id", payload.job.id);
+        if (foundingEligible) {
+          const submit = await authFetch(`/api/employer/jobs/${payload.job.id}/submit`, { method: "POST" }, accessToken);
+          if (submit.ok) {
+            router.push("/dashboard/employer");
+            return;
+          }
+        }
         router.push(`/checkout?jobId=${payload.job.id}`);
         return;
       }
@@ -158,13 +221,22 @@ const PostJobPage = () => {
         </button>
       </div>
       <PostJob
+        key={initialJob?.id || "new"}
         onComplete={handleJobSubmission}
         selectedPlan={selectedPlan}
         onUpgradePlan={(type, price) => setSelectedPlan({ type, price })}
         showTestPlan={showTestPlan}
+        foundingEligible={foundingEligible}
+        initialJob={initialJob}
       />
     </div>
   );
 };
+
+const PostJobPage = () => (
+  <Suspense fallback={<div className="py-24 text-center text-slate-500 font-bold">Loading…</div>}>
+    <PostJobPageInner />
+  </Suspense>
+);
 
 export default PostJobPage;

@@ -18,7 +18,7 @@ const AboutUs: React.FC = () => {
             <span className="text-indigo-600 text-gradient">Quality over Noise.</span>
           </h1>
           <p className="text-lg md:text-2xl text-slate-500 max-w-3xl mx-auto font-medium leading-relaxed">
-            We are the filter between a chaotic job market and systems-first operators. CareersPal reviews every listing, enforces clarity (salary + scope), and keeps the board high-signal.
+            A focused remote job board for Ops, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Listings need a salary range and a clear apply link.
           </p>
         </section>
 
@@ -72,39 +72,13 @@ const AboutUs: React.FC = () => {
         ))}
       </div>
 
-      {/* What we do vs what we don't */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-indigo-50 p-12 rounded-[3.5rem] space-y-8">
-          <h3 className="text-2xl font-black text-indigo-900">What we do</h3>
-          <ul className="space-y-4">
-            {[
-              "We review listings before publish for clarity and relevance.",
-              "We prioritize salary-first listings and clear scope.",
-              "We keep category hubs and canonical pages indexable for better discovery."
-            ].map(t => (
-              <li key={t} className="flex items-center gap-4 text-indigo-700 font-bold">
-                <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-[10px]">✓</span>
-                {t}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="bg-slate-50 p-12 rounded-[3.5rem] space-y-8">
-          <h3 className="text-2xl font-black text-slate-900">What we never do</h3>
-          <ul className="space-y-4">
-            {[
-              "We never sell your data to third parties.",
-              "We don't allow listings without salary.",
-              "We don't spam your inbox with noise.",
-              "We don't ignore reported unfair behavior."
-            ].map(t => (
-              <li key={t} className="flex items-center gap-4 text-slate-400 font-bold line-through opacity-70">
-                <span className="w-6 h-6 bg-slate-200 text-slate-400 rounded-full flex items-center justify-center text-[10px]">✕</span>
-                {t}
-              </li>
-            ))}
-          </ul>
-        </div>
+      <section className="bg-white p-8 sm:p-12 rounded-[2.5rem] border border-slate-100">
+        <h3 className="text-2xl font-black text-slate-900">What this board is</h3>
+        <ul className="mt-6 space-y-3 text-slate-600 font-medium">
+          <li>Reviewed listings with salary and a working apply link.</li>
+          <li>A narrow niche — not a general job board.</li>
+          <li>No talent marketplace, no hiring SLA, no fake metrics.</li>
+        </ul>
       </section>
 
       {/* The Mission Statement */}

@@ -17,22 +17,29 @@ export type ParsedSalary = {
 };
 
 const MIN_PLAUSIBLE_BY_PERIOD: Record<SalaryPeriod, number> = {
-  // Conservative: filters obvious false positives like "$1-$2".
-  // If we ever want to support ultra-low wages, we can make this configurable.
   hour: 10,
   day: 80,
   month: 1500,
   year: 20_000,
 };
 
+const MAX_PLAUSIBLE_BY_PERIOD: Record<SalaryPeriod, number> = {
+  hour: 500,
+  day: 4_000,
+  month: 80_000,
+  year: 800_000,
+};
+
 function isImplausibleSalary(period: SalaryPeriod | null, min: number | null, max: number | null): boolean {
   if (!period) return false;
   const floor = MIN_PLAUSIBLE_BY_PERIOD[period];
+  const ceil = MAX_PLAUSIBLE_BY_PERIOD[period];
   const lo = typeof min === "number" && Number.isFinite(min) ? min : null;
   const hi = typeof max === "number" && Number.isFinite(max) ? max : null;
-  // If either bound exists but is below our plausibility floor, treat as not-a-salary.
   if (lo != null && lo > 0 && lo < floor) return true;
   if (hi != null && hi > 0 && hi < floor) return true;
+  if (lo != null && lo > ceil) return true;
+  if (hi != null && hi > ceil) return true;
   return false;
 }
 
@@ -40,6 +47,7 @@ const CURRENCY_SYMBOL_TO_CODE: Record<string, string> = {
   "$": "USD",
   "€": "EUR",
   "£": "GBP",
+  "¥": "JPY",
 };
 
 function normalizeNumber(value: string): number | null {
@@ -51,7 +59,11 @@ function normalizeNumber(value: string): number | null {
     if (!Number.isFinite(n)) return null;
     const suf = (m[2] || "").toLowerCase();
     if (suf === "k") return Math.round(n * 1_000);
-    if (suf === "m") return Math.round(n * 1_000_000);
+    // Treat "m" as millions only for small magnitudes (e.g. 1.2m). "$325M" funding copy is not salary.
+    if (suf === "m") {
+      if (n > 20) return null;
+      return Math.round(n * 1_000_000);
+    }
     return Math.round(n);
   }
   const cleaned = raw.replace(/,/g, "");
@@ -64,16 +76,16 @@ function normalizeCurrency(symbolOrCode: string | null): string | null {
   if (!v) return null;
   if (CURRENCY_SYMBOL_TO_CODE[v]) return CURRENCY_SYMBOL_TO_CODE[v];
   const upper = v.toUpperCase();
-  if (["USD", "EUR", "GBP", "CAD", "AUD", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK"].includes(upper)) return upper;
+  if (["USD", "EUR", "GBP", "CAD", "AUD", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK", "JPY"].includes(upper)) return upper;
   return null;
 }
 
 function detectPeriod(text: string): SalaryPeriod | null {
   const t = text.toLowerCase();
-  if (t.includes("/hr") || t.includes("per hour") || t.includes("hourly")) return "hour";
-  if (t.includes("/day") || t.includes("per day") || t.includes("daily")) return "day";
-  if (t.includes("/mo") || t.includes("per month") || t.includes("monthly")) return "month";
-  if (t.includes("/yr") || t.includes("per year") || t.includes("annual") || t.includes("yearly") || t.includes(" a year")) return "year";
+  if (/\b(hour|hourly|\/hr|per hour)\b/.test(t)) return "hour";
+  if (/\b(day|daily|\/day|per day)\b/.test(t)) return "day";
+  if (/\b(month|monthly|\/mo|per month)\b/.test(t)) return "month";
+  if (/\b(year|years|yearly|annual|annually|\/yr|per year)\b/.test(t)) return "year";
   return null;
 }
 
@@ -123,7 +135,7 @@ export function parseSalaryFromText(text: string): ParsedSalary {
     };
   }
 
-  const period = detectPeriod(clean);
+  let period = detectPeriod(clean);
   if (!period) notes.push("period_missing");
 
   // Pattern: currency + min [- max] + period
@@ -131,7 +143,7 @@ export function parseSalaryFromText(text: string): ParsedSalary {
   // NOTE: don't use a word-boundary before currency symbols like "$" (it's a non-word char),
   // otherwise "$120,000" won't match after whitespace.
   const re =
-    /(?:^|[\s(>])\s*(USD|EUR|GBP|CAD|AUD|CHF|SEK|NOK|DKK|PLN|CZK|[$€£])\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:[-–]\s*(?:\1\s*)?([0-9][0-9,]*(?:\.[0-9]+)?[km]?))?/i;
+    /(?:^|[\s(>])\s*(USD|EUR|GBP|CAD|AUD|CHF|SEK|NOK|DKK|PLN|CZK|JPY|[$€£¥])\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:[-–]\s*(?:\1\s*)?([0-9][0-9,]*(?:\.[0-9]+)?[km]?))?/i;
   const m = clean.match(re);
   if (!m) {
     return {
@@ -156,6 +168,11 @@ export function parseSalaryFromText(text: string): ParsedSalary {
   if (m[3] && !max) notes.push("max_parse_failed");
 
   const salary_text_raw = m[0].trim().slice(0, 240);
+
+  if (!period && ((min && min >= 10_000) || (max && max >= 10_000))) {
+    period = "year";
+    notes.push("period_assumed_year");
+  }
 
   const present = Boolean(currency && period && (min || max));
   const confidence: SalaryConfidence = present ? "medium" : "low";

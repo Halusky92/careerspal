@@ -4,11 +4,13 @@ import { Job } from "../../types";
 import { createJobSlug } from "../../lib/jobs";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../lib/supabaseJobs";
+import { isOnNicheJob } from "../../lib/nicheScope";
+import { formatSalaryDisplay } from "../../lib/formatSalary";
 
 export const dynamic = "force-dynamic";
 
 type PageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 const getParam = (value: string | string[] | undefined) => (typeof value === "string" ? value : "");
@@ -31,8 +33,8 @@ async function fetchPublishedJobs(): Promise<{ jobs: Job[]; total: number }> {
     .range(0, 199);
 
   const { data, count } = await query;
-  const mapped = (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob);
-  return { jobs: mapped, total: typeof count === "number" ? count : mapped.length };
+  const mapped = (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob).filter((job) => isOnNicheJob(job));
+  return { jobs: mapped, total: mapped.length };
 }
 
 function StaticJobsList({ jobs, total }: { jobs: Job[]; total: number }) {
@@ -71,8 +73,12 @@ function StaticJobsList({ jobs, total }: { jobs: Job[]; total: number }) {
                       <span className="truncate">{job.company}</span>
                       <span className="text-slate-300">•</span>
                       <span className="truncate">{job.location}</span>
-                      <span className="text-slate-300">•</span>
-                      <span className="truncate">{job.type}</span>
+                      {job.type && job.type !== "Unknown" ? (
+                        <>
+                          <span className="text-slate-300">•</span>
+                          <span className="truncate">{job.type}</span>
+                        </>
+                      ) : null}
                       {job.companyVerified && (
                         <>
                           <span className="text-slate-300">•</span>
@@ -86,7 +92,7 @@ function StaticJobsList({ jobs, total }: { jobs: Job[]; total: number }) {
 
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <span className="text-[12px] sm:text-sm font-black text-slate-900 whitespace-nowrap">
-                      {job.salary || "Salary listed"}
+                      {formatSalaryDisplay(job.salary)}
                     </span>
                     {showApply ? (
                       <a
@@ -122,8 +128,9 @@ function StaticJobsList({ jobs, total }: { jobs: Job[]; total: number }) {
 }
 
 export default async function JobsPage({ searchParams }: PageProps) {
-  const initialQuery = getParam(searchParams?.query);
-  const initialLocation = getParam(searchParams?.location);
+  const params = (await searchParams) || {};
+  const initialQuery = getParam(params.query);
+  const initialLocation = getParam(params.location);
   const { jobs, total } = await fetchPublishedJobs();
 
   return (

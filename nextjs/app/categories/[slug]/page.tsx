@@ -6,6 +6,8 @@ import { createJobSlug } from "../../../lib/jobs";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
+import { isOnNicheJob } from "../../../lib/nicheScope";
+import { formatSalaryDisplay } from "../../../lib/formatSalary";
 
 type PageProps = {
   params: { slug: string };
@@ -43,7 +45,7 @@ async function fetchPublishedJobsForHub(hubSlug: string): Promise<{ hubLabel: st
     .order("timestamp", { ascending: false })
     .range(0, 59);
 
-  const jobs = (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob);
+  const jobs = (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob).filter((job) => isOnNicheJob(job));
   return { hubLabel: hub.label, intro: hub.intro, jobs, preference: hub.dbCategories[0] || "All" };
 }
 
@@ -99,11 +101,6 @@ export default async function CategoryPage({ params }: PageProps) {
             <h1 className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">{hubLabel}</h1>
             <p className="mt-3 text-slate-700 font-medium max-w-3xl">{intro}</p>
 
-            {hub.temporaryMappingNote && (
-              <p className="mt-4 text-xs text-slate-500 font-medium max-w-3xl">
-                Note: this category currently uses a broader internal taxonomy mapping.
-              </p>
-            )}
 
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <Link
@@ -195,7 +192,7 @@ export default async function CategoryPage({ params }: PageProps) {
                         </div>
                         <div className="flex-shrink-0 text-right">
                           <div className="text-sm font-black text-slate-900 whitespace-nowrap">
-                            {job.salary || "Salary listed"}
+                            {formatSalaryDisplay(job.salary)}
                           </div>
                           <div className="mt-2">
                             <Link

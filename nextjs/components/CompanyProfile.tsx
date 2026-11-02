@@ -3,6 +3,8 @@
 
 import React, { useEffect } from 'react';
 import { Company, Job } from '../types';
+import { formatSalaryDisplay } from '../lib/formatSalary';
+import { isOnNicheJob } from '../lib/nicheScope';
 import CompanyLogo from './CompanyLogo';
 
 interface CompanyProfileProps {
@@ -203,7 +205,7 @@ const CompanyProfile: React.FC<CompanyProfileProps> = ({ company, companyJobs, o
                 </div>
 
                 <div className="space-y-4">
-                   {companyJobs.length > 0 ? companyJobs.map(job => (
+                   {companyJobs.filter((job) => isOnNicheJob(job)).length > 0 ? companyJobs.filter((job) => isOnNicheJob(job)).map(job => (
                       <div 
                          key={job.id}
                          onClick={() => onSelectJob(job)}
@@ -214,11 +216,13 @@ const CompanyProfile: React.FC<CompanyProfileProps> = ({ company, companyJobs, o
                             <div className="flex gap-3 mt-1">
                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">{job.location}</span>
                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">•</span>
-                               <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">{job.type}</span>
+                               {job.type && job.type !== "Unknown" ? (
+                                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">{job.type}</span>
+                               ) : null}
                             </div>
                          </div>
                          <div className="text-right">
-                            <span className="block font-black text-slate-900">{job.salary}</span>
+                            <span className="block font-black text-slate-900">{formatSalaryDisplay(job.salary)}</span>
                             <span className="text-indigo-600 text-sm font-black group-hover:translate-x-1 transition-transform inline-block">View &rarr;</span>
                          </div>
                       </div>

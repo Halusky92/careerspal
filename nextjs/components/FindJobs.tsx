@@ -5,7 +5,8 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Job, UserSession } from '../types';
 import { createCompanySlug } from '../lib/jobs';
-import { CATEGORIES } from '../constants';
+import { CATEGORIES, CATEGORY_FILTER_LABELS } from '../constants';
+import { isOnNicheJob } from '../lib/nicheScope';
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
 import JobRow from "./JobRow";
@@ -67,13 +68,6 @@ const getToolSignals = (job: Job) => {
   const raw = [...(job.tools || []), ...(job.tags || [])].filter(Boolean);
   const normalized = raw.map((v) => v.toLowerCase());
   return new Set(normalized);
-};
-
-const isNotionHeavyRole = (job: Job) => {
-  const toolSignals = getToolSignals(job);
-  if (toolSignals.has("notion")) return true;
-  const blob = `${job.title || ""} ${job.company || ""} ${job.category || ""} ${job.location || ""} ${job.remotePolicy || ""} ${job.description || ""}`.toLowerCase();
-  return blob.includes("notion");
 };
 
 const FindJobs: React.FC<FindJobsProps> = ({
@@ -373,8 +367,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     const counts: Record<string, number> = { 'All Roles': jobs.length };
     CATEGORIES.forEach(cat => {
       if (cat !== 'All Roles') {
-        if (cat === "Notion Ops") counts[cat] = jobs.filter(isNotionHeavyRole).length;
-        else counts[cat] = jobs.filter(j => j.category === cat).length;
+        counts[cat] = jobs.filter(j => j.category === cat).length;
       }
     });
     return counts;
@@ -409,13 +402,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   const filteredAndSorted = useMemo(() => {
     let result = jobs.filter(j => {
+      if (!isOnNicheJob(j)) return false;
       const matchesQuery = j.title.toLowerCase().includes(query.toLowerCase()) || 
                           j.company.toLowerCase().includes(query.toLowerCase()) ||
                           j.tags.some(t => t.toLowerCase().includes(query.toLowerCase()));
       const matchesLocation =
         !locationQuery.trim() || j.location.toLowerCase().includes(locationQuery.toLowerCase());
-      const matchesCat =
-        category === 'All Roles' ? true : category === "Notion Ops" ? isNotionHeavyRole(j) : j.category === category;
+      const matchesCat = category === 'All Roles' ? true : j.category === category;
       const matchesWorkMode = workMode === 'All' || getWorkMode(j) === workMode;
       const matchesEmployment = employmentType === 'All' || j.type === employmentType;
       const salaryRange = parseSalaryRange(j.salary);
@@ -809,7 +802,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               className="mt-2 w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-medium text-slate-900 hover:border-slate-300"
             >
               <span className={category !== "All Roles" ? "" : "text-slate-400"}>
-                {category !== "All Roles" ? category : "Search job category..."}
+                {category !== "All Roles" ? CATEGORY_FILTER_LABELS[category] || category : "Search job category..."}
               </span>
             </button>
             {openWwrDropdown === "category" && (
@@ -856,7 +849,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                           category === c ? "bg-indigo-50 text-indigo-700" : "text-slate-900",
                         ].join(" ")}
                       >
-                        {c}
+                        {CATEGORY_FILTER_LABELS[c] || c}
                       </button>
                     ))}
                 </div>

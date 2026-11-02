@@ -18,6 +18,8 @@ import { detectEmploymentType } from "../normalization/employmentType";
 import { detectNotionSignal } from "../signals/notion";
 import { createCompanySlug } from "../../jobs";
 import { enrichCompanyFromWebsite } from "../../companyEnrichment";
+import { isOnNicheJob, isOffNicheTitle } from "../../nicheScope";
+import { formatSalaryForStorage } from "../../formatSalary";
 
 type AdminSb = SupabaseClient<any, "public", any>;
 
@@ -585,18 +587,29 @@ export async function autoPublishEligibleCandidates(
     return "";
   };
 
+  const isAtsHost = (hostname: string) => {
+    const h = hostname.replace(/^www\./, "").toLowerCase();
+    return (
+      h.endsWith("greenhouse.io") ||
+      h.endsWith("lever.co") ||
+      h.endsWith("ashbyhq.com") ||
+      h.endsWith("myworkdayjobs.com") ||
+      h.endsWith("workable.com")
+    );
+  };
+
   const deriveCompanyWebsite = (candidate: AutoPublishCandidateRow, src?: SourceRowForPublish) => {
     const tryUrl = (value?: string | null) => {
       const raw = (value || "").trim();
       if (!raw || raw === "#" || raw.startsWith("mailto:") || raw.startsWith("/")) return null;
       try {
         const u = new URL(raw);
+        if (isAtsHost(u.hostname)) return null;
         return `${u.protocol}//${u.hostname}`;
       } catch {
         return null;
       }
     };
-    // Prefer the public job page host (often has the right domain), then fall back to source URLs.
     return (
       tryUrl(candidate.job_url) ||
       tryUrl(candidate.apply_url) ||
@@ -730,6 +743,7 @@ export async function autoPublishEligibleCandidates(
     if (!src?.company_id) {
       if (!derivedCompanyName) ineligibleReasons.push("missing_company");
     }
+    if (isOffNicheTitle(candidate.title)) ineligibleReasons.push("off_niche_title");
 
     const eligible = ineligibleReasons.length === 0;
 
@@ -863,10 +877,12 @@ export async function autoPublishEligibleCandidates(
   const maxAmt = typeof candidate.salary_amount_max === "number" ? candidate.salary_amount_max : null;
   const floor =
     period === "hour" ? 10 : period === "day" ? 80 : period === "month" ? 1500 : period === "year" ? 20000 : null;
+  const ceil =
+    period === "hour" ? 500 : period === "day" ? 4000 : period === "month" ? 80000 : period === "year" ? 800000 : null;
   if (floor != null) {
     const loBad = minAmt != null && minAmt > 0 && minAmt < floor;
     const hiBad = maxAmt != null && maxAmt > 0 && maxAmt < floor;
-    if (loBad || hiBad) {
+    if (loBad || hiBad || (ceil != null && ((minAmt != null && minAmt > ceil) || (maxAmt != null && maxAmt > ceil)))) {
       skipped += 1;
       await sb
         .from("sourcing_sourced_job_candidates")
@@ -882,17 +898,36 @@ export async function autoPublishEligibleCandidates(
 
     const now = Date.now();
     const timestamp = candidate.posted_at ? Date.parse(candidate.posted_at) : now;
-    const salaryText =
+    const salaryText = formatSalaryForStorage(
       (candidate.salary_text_raw || "").trim() ||
-      (candidate.salary_amount_min || candidate.salary_amount_max
-        ? `${candidate.salary_amount_min ?? ""}-${candidate.salary_amount_max ?? ""} ${candidate.salary_currency ?? ""} ${candidate.salary_period ?? ""}`.trim()
-        : "");
+        (candidate.salary_amount_min || candidate.salary_amount_max
+          ? `${candidate.salary_currency ?? ""} ${candidate.salary_amount_min ?? ""}-${candidate.salary_amount_max ?? ""} ${candidate.salary_period ?? ""}`.trim()
+          : ""),
+    );
 
     const cleanedDescription = stripHtmlToText(
       ((candidate as any).description_raw || candidate.description_clean || "").toString(),
     ).trim();
     const formattedDescription = formatSourcedDescription(((candidate as any).description_raw || candidate.description_clean || "").toString());
     const category = inferCategory(candidate);
+    if (
+      !isOnNicheJob({
+        title: candidate.title,
+        category,
+        description: formattedDescription || cleanedDescription,
+      })
+    ) {
+      skipped += 1;
+      await sb
+        .from("sourcing_sourced_job_candidates")
+        .update({
+          publish_status: "skipped_not_eligible",
+          publish_notes: "Skipped: outside CareersPal niche (Ops / Systems / Automation / RevOps / Product Ops / Chief of Staff).",
+        })
+        .eq("id", candidate.id);
+      results.push({ candidateId: candidate.id, status: "skipped", reason: "off_niche" });
+      continue;
+    }
     const toolHits = extractTools(cleanedDescription);
     const emp = detectEmploymentType({
       title: candidate.title,
@@ -929,7 +964,13 @@ export async function autoPublishEligibleCandidates(
       category,
       apply_url: applyUrl,
       company_description: (companyForJob?.description || "").toString().trim() || null,
-      company_website: (companyForJob?.website || "").toString().trim() || derivedCompanyWebsite || src?.companies?.website || null,
+      company_website: (() => {
+        const raw = ((companyForJob?.website || "").toString().trim() || derivedCompanyWebsite || src?.companies?.website || "").trim();
+        const lower = raw.toLowerCase();
+        if (!raw) return null;
+        if (lower.includes("greenhouse.io") || lower.includes("lever.co") || lower.includes("ashbyhq.com")) return null;
+        return raw;
+      })(),
       logo_url: (companyForJob?.logo_url || "").toString().trim() || src?.companies?.logo_url || derivedLogoUrl || null,
       tags: toolHits.length > 0 ? toolHits : null,
       tools: toolHits.length > 0 ? toolHits : null,
@@ -945,6 +986,7 @@ export async function autoPublishEligibleCandidates(
     try {
       const { data: newJob, error: jErr } = await sb.from("jobs").insert(jobInsert).select("id").single();
       if (jErr || !newJob?.id) throw new Error("job_insert_failed");
+      await sb.from("jobs").update({ origin: "greenhouse" }).eq("id", newJob.id);
 
       await sb
         .from("sourcing_sourced_job_candidates")

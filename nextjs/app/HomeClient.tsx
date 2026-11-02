@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Hero from "../components/Hero";
 import { Job } from "../types";
 import JobRow from "../components/JobRow";
-import { CATEGORIES } from "../constants";
+import { CATEGORIES, CATEGORY_FILTER_LABELS } from "../constants";
+import { isOnNicheJob } from "../lib/nicheScope";
 
 const planWeight = { "Elite Managed": 3, "Featured Pro": 2, Standard: 1 };
 
@@ -58,21 +59,14 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
     });
   }, [jobs]);
 
-  const isNotionHeavyRole = (job: Job) => {
-    const tools = [...(job.tools || []), ...(job.tags || [])].filter(Boolean).map((t) => t.toLowerCase());
-    if (tools.includes("notion")) return true;
-    const blob = `${job.title || ""} ${job.company || ""} ${job.description || ""}`.toLowerCase();
-    return blob.includes("notion");
-  };
-
   const filteredTopJobs = useMemo(() => {
     const q = query.trim().toLowerCase();
     return topJobs.filter((j) => {
+      if (!isOnNicheJob(j)) return false;
       const matchesQuery = !q
         ? true
         : `${j.title || ""} ${j.company || ""} ${(j.tags || []).join(" ")} ${(j.tools || []).join(" ")}`.toLowerCase().includes(q);
-      const matchesCat =
-        category === "All Roles" ? true : category === "Notion Ops" ? isNotionHeavyRole(j) : (j.category || "") === category;
+      const matchesCat = category === "All Roles" ? true : (j.category || "") === category;
       return matchesQuery && matchesCat;
     });
   }, [topJobs, query, category]);
@@ -150,13 +144,12 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
 
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {[
-              { label: "Notion Ops", onClick: () => goToJobsWithQuery("Notion") },
               { label: "Operations", onClick: () => goToJobsWithCategory("Operations") },
               { label: "Systems", onClick: () => goToJobsWithCategory("Systems Design") },
               { label: "Automation", onClick: () => goToJobsWithCategory("Automation") },
-              { label: "RevOps", onClick: () => goToJobsWithQuery("RevOps") },
-              { label: "Product Ops", onClick: () => goToJobsWithQuery("Product Ops") },
-              { label: "Chief of Staff", onClick: () => goToJobsWithQuery("Chief of Staff") },
+              { label: "RevOps", onClick: () => goToJobsWithCategory("Marketing & Growth Ops") },
+              { label: "Product Ops", onClick: () => goToJobsWithCategory("Product Management") },
+              { label: "Chief of Staff", onClick: () => goToJobsWithCategory("Executive & Staff") },
             ].map((item) => (
               <button
                 key={item.label}
@@ -182,7 +175,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
                 {hasJobs ? "Salary-first roles worth your time." : "Curated remote roles, salary-first."}
               </h2>
               <p className="text-sm text-slate-600 font-medium mt-2 max-w-2xl">
-                Title, company, salary, remote/location, category, and posted date — easy to scan.
+                Title, company, salary, and location — easy to scan.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -264,7 +257,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
                     <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">No matches</div>
                     <div className="mt-2 text-lg font-black text-slate-900">No roles match your filters.</div>
                     <div className="mt-4 flex items-center justify-center gap-2">
-                      {["Notion", "Operations", "Automation"].map((t) => (
+                      {["Operations", "Automation", "RevOps"].map((t) => (
                         <button
                           key={t}
                           type="button"
@@ -319,7 +312,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
                       >
                         {CATEGORIES.map((c) => (
                           <option key={c} value={c}>
-                            {c}
+                            {CATEGORY_FILTER_LABELS[c] || c}
                           </option>
                         ))}
                       </select>
@@ -355,17 +348,17 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-6">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">How curation works</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Every role is reviewed before it goes live.</h3>
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Reviewed before it goes live.</h3>
               <p className="text-slate-500 font-medium mt-2 max-w-2xl">
-                We prioritize salary clarity, scope clarity, and remote constraints you can trust.
+                Listings need a salary range, a clear scope, and a working apply link.
               </p>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
-              { title: "Review", copy: "We tighten scope, remove ambiguity, and require a salary range." },
-              { title: "Verify", copy: "We validate basic legitimacy signals when possible." },
-              { title: "Rank", copy: "We surface roles by category + remote constraints for fast scanning." },
+              { title: "Salary", copy: "A visible range is required." },
+              { title: "Scope", copy: "Title and responsibilities have to be readable." },
+              { title: "Niche", copy: "Ops, Systems, Automation, RevOps, Product Ops, Chief of Staff." },
             ].map((item) => (
               <div
                 key={item.title}
