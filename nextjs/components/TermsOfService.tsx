@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React from "react";
 
 const TermsOfService: React.FC = () => {
   const operatorName = process.env.NEXT_PUBLIC_OPERATOR_NAME || "Mgr. Marek Bilek";
@@ -13,70 +12,56 @@ const TermsOfService: React.FC = () => {
   ].filter(Boolean) as string[];
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-24 animate-in fade-in slide-in-from-bottom-4">
-      <div className="mb-12">
-        <h1 className="text-5xl font-bold text-slate-900 mb-4 tracking-tighter">Terms & Conditions</h1>
-        <p className="text-xl text-slate-500 font-medium italic">Rules for using the CareersPal platform.</p>
-      </div>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Terms</h1>
+      <p className="mt-2 text-sm text-slate-600">Rules for using CareersPal.</p>
 
-      <div className="bg-white p-12 rounded-[3.5rem] shadow-2xl shadow-indigo-100 border border-indigo-50 space-y-12">
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">1. Agreement to Terms</h2>
-          <p className="text-slate-600 leading-relaxed font-medium">
-            By accessing or using the CareersPal platform, you agree to be bound by these Terms and Conditions. These terms are governed by the laws of the Slovak Republic and the EU. Platform operated by Mgr. Marek Bilek.
+      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 sm:p-6 space-y-6 text-sm text-slate-700 leading-relaxed">
+        <section>
+          <h2 className="text-base font-semibold text-slate-900">1. Agreement</h2>
+          <p className="mt-2">
+            By using CareersPal you agree to these terms. They are governed by the laws of the Slovak Republic and the EU.
+            Platform operated by {operatorName}.
           </p>
         </section>
-
-        <section className="space-y-6">
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">2. Candidates</h2>
-          <div className="space-y-4 text-slate-600 font-medium">
-            <p>If you browse or apply through CareersPal, you agree to:</p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Use the board to find published roles and apply on the employer’s own link.</li>
-              <li>Keep your account information accurate.</li>
-              <li>We do not run a talent pool or send your profile to employers.</li>
-            </ul>
-          </div>
+        <section>
+          <h2 className="text-base font-semibold text-slate-900">2. Candidates</h2>
+          <ul className="mt-2 list-disc pl-5 space-y-1">
+            <li>Use the board to find published roles and apply on the employer’s own link.</li>
+            <li>Keep your account information accurate.</li>
+            <li>We do not run a talent pool or send your profile to employers.</li>
+          </ul>
         </section>
-
-        <section className="space-y-6">
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">3. Employer Responsibilities</h2>
-          <div className="space-y-4 text-slate-600 font-medium">
-            <p>Employers posting on CareersPal agree to:</p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Include transparent salary ranges for all listings.</li>
-              <li>Ensure all job advertisements comply with labor laws and equality standards.</li>
-              <li>Provide accurate, up-to-date information and a working application link.</li>
-            </ul>
-          </div>
+        <section>
+          <h2 className="text-base font-semibold text-slate-900">3. Employers</h2>
+          <ul className="mt-2 list-disc pl-5 space-y-1">
+            <li>Include a salary range for every listing.</li>
+            <li>Keep listings accurate and include a working apply link.</li>
+            <li>Listings are reviewed before they go live.</li>
+          </ul>
         </section>
-
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">4. Fees & Payments</h2>
-          <div className="text-slate-600 leading-relaxed font-medium space-y-4">
-            <p>
-              The first 10 Standard listings per employer are free (Start pack). After that, fees are in USD: Standard <strong>$79</strong> / 30 days, Featured Pro <strong>$149</strong>, Elite Managed <strong>$249</strong>. Paid listings go through Stripe. Listings are reviewed before they go live.
-            </p>
-            <p>
-              <strong>Refund Policy:</strong> If we cannot publish your listing after review (for example due to missing required information), contact support at <strong>info@careerspal.com</strong>. Refunds are handled case-by-case based on the reason and status of the listing.
-            </p>
-          </div>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">5. Limitation of Liability</h2>
-          <p className="text-slate-600 leading-relaxed font-medium">
-            CareersPal is a job board platform. While we review listings before publish, we do not guarantee hiring outcomes or working conditions. Users interact at their own professional risk.
+        <section>
+          <h2 className="text-base font-semibold text-slate-900">4. Fees</h2>
+          <p className="mt-2">
+            The first 10 Standard listings per employer are free (Start pack). After that: Standard $79 / 30 days,
+            Featured Pro $149, Elite Managed $249 (USD). Paid listings go through Stripe.
+          </p>
+          <p className="mt-2">
+            If we cannot publish after review, contact info@careerspal.com. Refunds are handled case-by-case.
           </p>
         </section>
-
-        <div className="pt-10 border-t border-slate-50">
-          <p className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-2">Legal Representative:</p>
-          <p className="text-slate-600 font-medium">{operatorName} • Operator</p>
-          <p className="text-slate-600 font-medium">Email: info@careerspal.com</p>
-          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-slate-600">
+        <section>
+          <h2 className="text-base font-semibold text-slate-900">5. Liability</h2>
+          <p className="mt-2">
+            CareersPal is a job board. We review listings before publish. We do not guarantee hiring outcomes or working
+            conditions.
+          </p>
+        </section>
+        <div className="pt-4 border-t border-slate-100 text-xs text-slate-500">
+          <p>{operatorName} · info@careerspal.com</p>
+          <p className="mt-1">
             {operatorDetails.length > 0
-              ? operatorDetails.join(" • ")
+              ? operatorDetails.join(" · ")
               : "Operator details provided on invoice or available on request."}
           </p>
         </div>

@@ -11,12 +11,12 @@ interface HeroProps {
 }
 
 const CATEGORY_CHIPS = [
-  { label: "Operations", value: "Operations" },
-  { label: "Systems", value: "Systems Design" },
-  { label: "Automation", value: "Automation" },
-  { label: "RevOps", value: "Marketing & Growth Ops" },
-  { label: "Product Ops", value: "Product Management" },
-  { label: "Chief of Staff", value: "Executive & Staff" },
+  { label: "Operations", value: "operations" },
+  { label: "Systems", value: "systems" },
+  { label: "Automation", value: "automation" },
+  { label: "RevOps", value: "revops" },
+  { label: "Product Ops", value: "product-ops" },
+  { label: "Chief of Staff", value: "chief-of-staff" },
 ];
 
 const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {

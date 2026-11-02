@@ -4,6 +4,7 @@ import CompanyLogo from "../../components/CompanyLogo";
 import { createCompanySlug } from "../../lib/jobs";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
 import { isOnNicheJob } from "../../lib/nicheScope";
+import { applyLiveBoardFilter, isLiveBoardJob } from "../../lib/liveBoard";
 
 type CompanyCard = {
   id: string;
@@ -57,18 +58,21 @@ const safeHost = (value?: string | null) => {
 async function fetchCompaniesWithLiveRoles(): Promise<CompanyCard[]> {
   if (!supabaseAdmin) return [];
 
-  const { data } = await supabaseAdmin
-    .from("jobs")
-    .select("company_id,title,category,description,companies(id,name,slug,logo_url,website,description,location,verified)")
-    .eq("status", "published")
-    .not("company_id", "is", null)
-    .order("timestamp", { ascending: false })
-    .range(0, 499);
+  const { data } = await applyLiveBoardFilter(
+    supabaseAdmin
+      .from("jobs")
+      .select("company_id,title,category,description,timestamp,companies(id,name,slug,logo_url,website,description,location,verified)")
+      .eq("status", "published")
+      .not("company_id", "is", null)
+      .order("timestamp", { ascending: false })
+      .range(0, 499),
+  );
 
   const map = new Map<string, CompanyCard>();
 
   (data as any[] | null || []).forEach((row) => {
     if (!isOnNicheJob({ title: row?.title, category: row?.category, description: row?.description })) return;
+    if (!isLiveBoardJob({ timestamp: row?.timestamp })) return;
     const c = row?.companies;
     const id = (c?.id || row?.company_id || "").toString();
     const name = (c?.name || "").toString().trim();
@@ -103,7 +107,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const baseUrl = getBaseUrl();
   const canonicalUrl = `${baseUrl}/companies`;
   const title = "Companies hiring — CareersPal";
-  const description = "Browse companies with live remote Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff roles.";
+  const description = "Browse companies with live Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff roles.";
 
   return {
     title,
@@ -138,7 +142,7 @@ export default async function CompaniesPage() {
               Companies with live roles
             </h1>
             <p className="mt-1 text-sm text-slate-600 max-w-2xl">
-              Only companies with published roles currently live on CareersPal.
+              Companies with a role live on the board (last 30 days).
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">

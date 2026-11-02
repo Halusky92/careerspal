@@ -23,7 +23,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       { status: 400 },
     );
   }
-  if (!isOnNicheJob({ title, category: null, description: owned.job.description as string | null })) {
+  if (!isOnNicheJob({ title, category: null, description: owned.job.description })) {
     return NextResponse.json(
       { error: NICHE_REJECT_MESSAGE },
       { status: 400 },

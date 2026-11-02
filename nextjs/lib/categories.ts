@@ -1,10 +1,5 @@
 /**
- * CareersPal category hubs (SEO / navigation).
- *
- * IMPORTANT:
- * - `dbCategories` maps a URL category slug to the current DB taxonomy (`jobs.category`).
- * - Some mappings are TEMPORARY fallbacks until the DB taxonomy is aligned with the niche IA.
- *   Do NOT spread ad-hoc mapping logic across pages. Use this file as the single source of truth.
+ * CareersPal category hubs. Title is the source of truth; DB category is a fallback.
  */
 
 export type CategorySlug =
@@ -18,14 +13,9 @@ export type CategorySlug =
 export type CategoryHub = {
   slug: CategorySlug;
   label: string;
-  /**
-   * Categories in Supabase `jobs.category` that should appear under this hub.
-   *
-   * NOTE: `revops` and `product-ops` are TEMPORARY fallbacks (DB taxonomy too broad).
-   */
   dbCategories: string[];
+  titlePatterns: RegExp[];
   intro: string;
-  temporaryMappingNote?: string;
 };
 
 export const CATEGORY_HUBS: CategoryHub[] = [
@@ -33,57 +23,117 @@ export const CATEGORY_HUBS: CategoryHub[] = [
     slug: "operations",
     label: "Operations",
     dbCategories: ["Operations"],
-    intro: "Operations roles focused on running the business: execution, processes, and operational clarity.",
+    titlePatterns: [
+      /\boperations\b/i,
+      /\bbizops\b/i,
+      /\bbiz ops\b/i,
+      /\bbusiness operations\b/i,
+      /\bstrategy (and|&) operations\b/i,
+    ],
+    intro: "Business operations, process, and operational leadership.",
   },
   {
     slug: "systems",
     label: "Systems",
     dbCategories: ["Systems Design"],
-    intro: "Systems roles focused on operating systems, workflows, and scalable internal tooling.",
+    titlePatterns: [/\bbusiness systems\b/i, /\bsystems analyst\b/i, /\bsystems architect\b/i],
+    intro: "Business systems, workflows, and internal operating systems.",
   },
   {
     slug: "automation",
     label: "Automation",
     dbCategories: ["Automation"],
-    intro: "Automation roles focused on integrations, workflows, and reducing manual work across teams.",
+    titlePatterns: [/\bworkflow automation\b/i, /\bautomation (engineer|specialist|manager|lead|ops)\b/i, /\binternal tools\b/i],
+    intro: "Automation, integrations, and internal tools.",
   },
   {
     slug: "revops",
     label: "RevOps",
-    // TEMP fallback until DB taxonomy includes a dedicated RevOps category.
     dbCategories: ["Marketing & Growth Ops"],
-    intro: "Revenue operations roles focused on funnel operations, CRM hygiene, and growth systems.",
-    temporaryMappingNote:
-      "TEMP: `revops` currently maps to DB category `Marketing & Growth Ops` until RevOps is its own DB category.",
+    titlePatterns: [
+      /\brevops\b/i,
+      /\brevenue operations\b/i,
+      /\bsales operations\b/i,
+      /\bsales ops\b/i,
+      /\bmarketing operations\b/i,
+      /\bmarketing ops\b/i,
+      /\bgtm operations\b/i,
+      /\bgtm ops\b/i,
+      /\bgo-to-market operations\b/i,
+      /\bcustomer operations\b/i,
+      /\bcustomer success operations\b/i,
+      /\bcs ops\b/i,
+      /\bdeal desk\b/i,
+    ],
+    intro: "Revenue, sales, marketing, and GTM operations.",
   },
   {
     slug: "product-ops",
     label: "Product Ops",
-    // TEMP fallback until DB taxonomy includes a dedicated Product Ops category.
     dbCategories: ["Product Management"],
-    intro: "Product operations roles focused on product workflows, cross-functional execution, and operational rigor.",
-    temporaryMappingNote:
-      "TEMP: `product-ops` currently maps to DB category `Product Management` until Product Ops is its own DB category.",
+    titlePatterns: [/\bproduct ops\b/i, /\bproduct operations\b/i],
+    intro: "Product operations and product workflow roles.",
   },
   {
     slug: "chief-of-staff",
     label: "Chief of Staff",
     dbCategories: ["Executive & Staff"],
-    intro: "Chief of Staff roles focused on strategic execution, operating cadence, and leadership support.",
+    titlePatterns: [/\bchief of staff\b/i],
+    intro: "Chief of Staff and office-of-the-CEO execution roles.",
   },
+];
+
+const HUB_MATCH_ORDER: CategorySlug[] = [
+  "revops",
+  "product-ops",
+  "chief-of-staff",
+  "automation",
+  "systems",
+  "operations",
 ];
 
 export const CATEGORY_SLUGS: CategorySlug[] = CATEGORY_HUBS.map((c) => c.slug);
 
 export const getCategoryHub = (slug: string): CategoryHub | null =>
-  (CATEGORY_HUBS.find((c) => c.slug === slug) as CategoryHub | undefined) || null;
+  CATEGORY_HUBS.find((c) => c.slug === slug) || null;
 
 export const getCategoryHubForDbCategory = (dbCategory: string): CategoryHub | null => {
   const needle = (dbCategory || "").trim();
   if (!needle) return null;
-  return (
-    CATEGORY_HUBS.find((hub) => hub.dbCategories.some((c) => c.trim() === needle)) ||
-    null
-  );
+  return CATEGORY_HUBS.find((hub) => hub.dbCategories.some((c) => c.trim() === needle)) || null;
 };
 
+const titleHitsHub = (title: string, hub: CategoryHub) => hub.titlePatterns.some((re) => re.test(title));
+
+export function resolveCategoryHub(job: { title?: string | null; category?: string | null }): CategoryHub | null {
+  const title = (job.title || "").trim();
+  for (const slug of HUB_MATCH_ORDER) {
+    const hub = getCategoryHub(slug);
+    if (hub && title && titleHitsHub(title, hub)) return hub;
+  }
+  return getCategoryHubForDbCategory(job.category || "");
+}
+
+export function jobMatchesHub(job: { title?: string | null; category?: string | null }, hub: CategoryHub): boolean {
+  return resolveCategoryHub(job)?.slug === hub.slug;
+}
+
+export function resolveCategoryParam(raw?: string | null): string {
+  const value = (raw || "").trim();
+  if (!value || value === "All Roles") return "All Roles";
+  const bySlug = getCategoryHub(value);
+  if (bySlug) return bySlug.slug;
+  const byDb = getCategoryHubForDbCategory(value);
+  if (byDb) return byDb.slug;
+  return "All Roles";
+}
+
+export function jobMatchesAlertQuery(job: { title?: string | null; category?: string | null }, query: string): boolean {
+  const raw = (query || "").trim();
+  if (!raw || raw.toLowerCase() === "all") return true;
+  const hub = getCategoryHub(raw) || getCategoryHubForDbCategory(raw);
+  if (hub) return jobMatchesHub(job, hub);
+  const needle = raw.toLowerCase();
+  const hay = `${job.title || ""} ${job.category || ""}`.toLowerCase();
+  return hay.includes(needle);
+}

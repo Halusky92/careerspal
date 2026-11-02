@@ -5,6 +5,7 @@ import { createJobSlug } from "../../lib/jobs";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../lib/supabaseJobs";
 import { isOnNicheJob } from "../../lib/nicheScope";
+import { applyLiveBoardFilter } from "../../lib/liveBoard";
 import { formatSalaryDisplay } from "../../lib/formatSalary";
 
 export const dynamic = "force-dynamic";
@@ -18,17 +19,15 @@ const getParam = (value: string | string[] | undefined) => (typeof value === "st
 async function fetchPublishedJobs(): Promise<{ jobs: Job[]; total: number }> {
   if (!supabaseAdmin) return { jobs: [], total: 0 };
 
-  const publishedCutoffMs = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const publishedCutoffIso = new Date(publishedCutoffMs).toISOString();
-
-  const query = supabaseAdmin
-    .from("jobs")
-    .select(
-      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
-      { count: "exact" },
-    )
-    .eq("status", "published")
-    .or(`timestamp.gte.${publishedCutoffMs},published_at.gte.${publishedCutoffIso},created_at.gte.${publishedCutoffIso}`)
+  const query = applyLiveBoardFilter(
+    supabaseAdmin
+      .from("jobs")
+      .select(
+        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
+        { count: "exact" },
+      )
+      .eq("status", "published"),
+  )
     .order("timestamp", { ascending: false })
     .range(0, 499);
 

@@ -63,7 +63,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
           <ul className="mt-3 space-y-1.5 text-sm text-indigo-50 flex-1">
             <li>Featured zone on the board</li>
             <li>Views, apply clicks, traffic source</li>
-            <li>Help on listing copy</li>
+            <li>Paid placement for 30 days</li>
           </ul>
           <button
             type="button"
@@ -82,7 +82,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
           <ul className="mt-3 space-y-1.5 text-sm text-slate-200 flex-1">
             <li>First in the featured zone</li>
             <li>Views, apply clicks, traffic source</li>
-            <li>Hands-on listing help</li>
+            <li>Paid placement for 30 days</li>
           </ul>
           <button
             type="button"

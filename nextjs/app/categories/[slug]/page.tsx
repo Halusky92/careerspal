@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CATEGORY_HUBS, getCategoryHub } from "../../../lib/categories";
+import { getCategoryHub, jobMatchesHub } from "../../../lib/categories";
 import { createJobSlug } from "../../../lib/jobs";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
 import { isOnNicheJob } from "../../../lib/nicheScope";
+import { applyLiveBoardFilter } from "../../../lib/liveBoard";
 import { formatSalaryDisplay } from "../../../lib/formatSalary";
 
 type PageProps = {
@@ -35,18 +36,22 @@ async function fetchPublishedJobsForHub(hubSlug: string): Promise<{ hubLabel: st
     return { hubLabel: hub.label, intro: hub.intro, jobs: [], preference: hub.dbCategories[0] || "All" };
   }
 
-  const { data } = await supabaseAdmin
-    .from("jobs")
-    .select(
-      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
-    )
-    .eq("status", "published")
-    .in("category", hub.dbCategories)
+  const { data } = await applyLiveBoardFilter(
+    supabaseAdmin
+      .from("jobs")
+      .select(
+        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
+      )
+      .eq("status", "published"),
+  )
     .order("timestamp", { ascending: false })
-    .range(0, 59);
+    .range(0, 499);
 
-  const jobs = (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob).filter((job) => isOnNicheJob(job));
-  return { hubLabel: hub.label, intro: hub.intro, jobs, preference: hub.dbCategories[0] || "All" };
+  const jobs = (data as SupabaseJobRow[] | null || [])
+    .map(mapSupabaseJob)
+    .filter((job) => isOnNicheJob(job) && jobMatchesHub(job, hub))
+    .slice(0, 60);
+  return { hubLabel: hub.label, intro: hub.intro, jobs, preference: hub.slug };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -58,10 +63,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const canonicalUrl = `${baseUrl}/categories/${hub.slug}`;
   const title = `${hub.label} roles — CareersPal`;
   // Keep copy neutral: DB taxonomy may be broader than the slug (especially TEMP mappings).
-  const description =
-    hub.temporaryMappingNote
-      ? `Browse published roles under a broad category mapping for ${hub.label}.`
-      : `Browse published remote ${hub.label} roles on CareersPal.`;
+  const description = `Browse published ${hub.label} roles on CareersPal.`;
 
   return {
     title,

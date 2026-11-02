@@ -622,14 +622,14 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                               <span className="text-indigo-600 mt-0.5">✓</span> First in the featured zone
                            </li>
                            <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
-                              <span className="text-indigo-600 mt-0.5">💎</span> Hands-on help with listing positioning and copy
+                              <span className="text-indigo-600 mt-0.5">✓</span> Paid placement for 30 days
                            </li>
                         </ul>
                         <div className="absolute -bottom-2 right-1.5 w-4 h-4 bg-white transform rotate-45 border-r border-b border-slate-100"></div>
                       </div>
                     </div>
                    </div>
-                   <p className="font-bold text-sm mb-4 text-left">Get hands-on help for high-stakes roles.</p>
+                   <p className="font-bold text-sm mb-4 text-left">First in the featured zone for 30 days.</p>
                    <button 
                     onClick={() => onUpgradePlan('Elite Managed', PLAN_PRICES.elite)}
                     className="w-full bg-white text-slate-900 py-3 rounded-xl font-black text-sm hover:bg-slate-200 transition-colors"

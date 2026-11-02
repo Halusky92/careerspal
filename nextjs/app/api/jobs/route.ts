@@ -4,6 +4,8 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../lib/supabaseJobs";
 import { getSupabaseProfile } from "../../../lib/supabaseServerAuth";
 import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../lib/nicheScope";
+import { applyLiveBoardFilter } from "../../../lib/liveBoard";
+import { getCategoryHub, jobMatchesHub, resolveCategoryParam } from "../../../lib/categories";
 import { formatSalaryForStorage } from "../../../lib/formatSalary";
 
 const isValidApplyUrl = (value: string) => {
@@ -36,9 +38,6 @@ export const GET = async (request: Request) => {
   const remote = searchParams.get("remote");
   // Note: we use `timestamp` (ms) for recency filtering because it's reliably set on publish.
   // Some legacy/imported records may have `published_at` missing, which would incorrectly hide live roles.
-  const publishedCutoffMs = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const publishedCutoffIso = new Date(publishedCutoffMs).toISOString();
-
   let query = supabaseAdmin
     .from("jobs")
     .select(
@@ -49,12 +48,10 @@ export const GET = async (request: Request) => {
 
   query = query.eq("status", status);
   if (status === "published") {
-    // Fallbacks: older records might lack `timestamp` but still have `published_at`/`created_at`.
-    query = query.or(
-      `timestamp.gte.${publishedCutoffMs},published_at.gte.${publishedCutoffIso},created_at.gte.${publishedCutoffIso}`,
-    );
+    query = applyLiveBoardFilter(query);
   }
-  if (category) query = query.eq("category", category);
+  const categoryParam = resolveCategoryParam(category);
+  const categoryHub = categoryParam !== "All Roles" ? getCategoryHub(categoryParam) : null;
   if (type) query = query.eq("type", type);
   if (planType) query = query.eq("plan_type", planType);
   if (remote) query = query.ilike("remote_policy", `%${remote}%`);
@@ -68,7 +65,7 @@ export const GET = async (request: Request) => {
   const { data, count } = await query;
   const mapped = (data as SupabaseJobRow[] | null || [])
     .map(mapSupabaseJob)
-    .filter((job) => isOnNicheJob(job));
+    .filter((job) => isOnNicheJob(job) && (!categoryHub || jobMatchesHub(job, categoryHub)));
   return NextResponse.json(
     { jobs: mapped, total: mapped.length },
     // Ensure public pages reflect archive/delete immediately.

@@ -5,7 +5,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Job, UserSession } from '../types';
 import { createCompanySlug } from '../lib/jobs';
-import { CATEGORIES, CATEGORY_FILTER_LABELS } from '../constants';
+import { CATEGORY_HUBS, getCategoryHub, jobMatchesHub, resolveCategoryParam } from '../lib/categories';
 import { isOnNicheJob } from '../lib/nicheScope';
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
@@ -168,7 +168,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
     if (typeof urlQuery === "string" && urlQuery !== query) setQuery(urlQuery);
     if (typeof urlLocation === "string" && urlLocation !== locationQuery) setLocationQuery(urlLocation);
-    if (urlCategory && CATEGORIES.includes(urlCategory)) setCategory(urlCategory);
+    if (urlCategory) setCategory(resolveCategoryParam(urlCategory));
     if (urlWorkMode && workModes.includes(urlWorkMode as any)) setWorkMode(urlWorkMode as any);
     if (urlType && employmentTypes.includes(urlType as any)) setEmploymentType(urlType as any);
     if (urlSort && (urlSort === "newest" || urlSort === "salary" || urlSort === "relevant")) setSortBy(urlSort);
@@ -370,10 +370,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { 'All Roles': jobs.length };
-    CATEGORIES.forEach(cat => {
-      if (cat !== 'All Roles') {
-        counts[cat] = jobs.filter(j => j.category === cat).length;
-      }
+    CATEGORY_HUBS.forEach((hub) => {
+      counts[hub.slug] = jobs.filter((j) => jobMatchesHub(j, hub)).length;
     });
     return counts;
   }, [jobs]);
@@ -413,7 +411,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
                           j.tags.some(t => t.toLowerCase().includes(query.toLowerCase()));
       const matchesLocation =
         !locationQuery.trim() || j.location.toLowerCase().includes(locationQuery.toLowerCase());
-      const matchesCat = category === 'All Roles' ? true : j.category === category;
+      const hub = category === "All Roles" ? null : getCategoryHub(category);
+      const matchesCat = !hub || jobMatchesHub(j, hub);
       const matchesWorkMode = workMode === 'All' || getWorkMode(j) === workMode;
       const matchesEmployment = employmentType === 'All' || j.type === employmentType;
       const salaryRange = parseSalaryRange(j.salary);
@@ -621,7 +620,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
         const display = locationQuery.length > 22 ? `${locationQuery.slice(0, 22)}…` : locationQuery;
         chips.push({ label: `Location: ${display}`, onClear: () => setLocationQuery('') });
       }
-      if (category !== 'All Roles') chips.push({ label: category, onClear: () => setCategory('All Roles') });
+      if (category !== 'All Roles') chips.push({ label: getCategoryHub(category)?.label || category, onClear: () => setCategory('All Roles') });
       if (workMode !== 'All') chips.push({ label: workMode, onClear: () => setWorkMode('All') });
       if (employmentType !== 'All') chips.push({ label: employmentType, onClear: () => setEmploymentType('All') });
       if (salaryMin > 0) chips.push({ label: `Min ${formatSalaryFloor(salaryMin)}`, onClear: () => setSalaryMin(0) });
@@ -738,7 +737,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [wwrCategoryQuery, setWwrCategoryQuery] = useState("");
   const [wwrSkillQuery, setWwrSkillQuery] = useState("");
 
-  const categoryOptions = CATEGORIES.filter((c) => c !== "All Roles");
+  const categoryOptions = CATEGORY_HUBS.map((hub) => hub.slug);
 
   const SALARY_RANGE_OPTIONS = useMemo(
     () =>
@@ -777,7 +776,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     >
       <div ref={filterScrollRef} className={["p-4", variant === "sheet" ? "max-h-[70vh] overflow-y-auto" : ""].join(" ")}>
         <div className="flex items-start justify-between gap-3">
-          <div className="text-sm font-semibold text-slate-900">Search remote jobs</div>
+          <div className="text-sm font-semibold text-slate-900">Search jobs</div>
           <button
             type="button"
             onClick={() =>
@@ -823,7 +822,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               className="cp-field mt-2 w-full h-10 rounded-xl bg-white px-3 text-left text-sm font-medium text-slate-900"
             >
               <span className={category !== "All Roles" ? "" : "text-slate-400"}>
-                {category !== "All Roles" ? CATEGORY_FILTER_LABELS[category] || category : "Search job category..."}
+                {category !== "All Roles" ? getCategoryHub(category)?.label || category : "Search job category..."}
               </span>
             </button>
             {openWwrDropdown === "category" && (
@@ -870,7 +869,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                           category === c ? "bg-indigo-50 text-indigo-700" : "text-slate-900",
                         ].join(" ")}
                       >
-                        {CATEGORY_FILTER_LABELS[c] || c}
+                        {getCategoryHub(c)?.label || c}
                       </button>
                     ))}
                 </div>
@@ -1179,8 +1178,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </aside>
 
           <div className="lg:col-span-5 space-y-3">
-            {featuredJobs.length > 0 && (
-              <FeaturedBoardZone count={featuredJobs.length}>
+            <FeaturedBoardZone count={featuredJobs.length}>
                 {visibleFeatured.map((job) => {
                   const isSaved = user?.savedJobIds?.includes(job.id);
                   const selected = isDesktop && selectedJobId === job.id;
@@ -1225,7 +1223,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   </button>
                 )}
               </FeaturedBoardZone>
-            )}
 
             {featuredJobs.length > 0 && boardJobs.length > 0 && (
               <p className="pt-1 px-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">All roles</p>

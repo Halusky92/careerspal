@@ -4,6 +4,7 @@ import { mapSupabaseJob, SupabaseJobRow } from "../../../../lib/supabaseJobs";
 import type { Company } from "../../../../types";
 import { enrichCompanyFromWebsite } from "../../../../lib/companyEnrichment";
 import { isOnNicheJob } from "../../../../lib/nicheScope";
+import { applyLiveBoardFilter, isLiveBoardJob } from "../../../../lib/liveBoard";
 
 type SupabaseCompanyRow = {
   id: string;
@@ -126,18 +127,21 @@ export const GET = async (_request: Request, context: { params: Promise<{ slug: 
     // ignore
   }
 
-  const { data: jobs } = await supabaseAdmin
-    .from("jobs")
-    .select(
-      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description)",
-    )
-    .eq("company_id", company.id)
-    .eq("status", "published")
-    .order("timestamp", { ascending: false });
+  const jobsQuery = applyLiveBoardFilter(
+    supabaseAdmin
+      .from("jobs")
+      .select(
+        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description)",
+      )
+      .eq("company_id", company.id)
+      .eq("status", "published")
+      .order("timestamp", { ascending: false }),
+  );
+  const { data: jobs } = await jobsQuery;
 
   const mappedJobs = (jobs as SupabaseJobRow[] | null || [])
     .map(mapSupabaseJob)
-    .filter((job) => isOnNicheJob(job));
+    .filter((job) => isOnNicheJob(job) && isLiveBoardJob(job));
 
   // Safe fallback: if company row is sparse, prefer a non-empty company_description from the newest job.
   // This mirrors the manual admin-post behavior without inventing facts.

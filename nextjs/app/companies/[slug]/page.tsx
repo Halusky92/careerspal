@@ -87,9 +87,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const canonicalPath = `/companies/${canonicalSlug}`;
     const canonicalUrl = `${baseUrl}${canonicalPath}`;
 
-    const title = `${companyName} — Remote Ops & Systems roles | CareersPal`;
+    const title = `${companyName} — Ops & Systems roles | CareersPal`;
     const desc = plainText(result.company.description || "").slice(0, 240);
-    const description = desc || `Explore live remote roles from ${companyName} on CareersPal.`;
+    const description = desc || `Live Ops and Systems roles from ${companyName} on CareersPal.`;
 
     const imageUrl = result.company.logo
       ? result.company.logo.startsWith("http")
@@ -337,9 +337,11 @@ export default async function CompanyPage({ params }: PageProps) {
 
             <section id="roles" className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Roles</div>
-              <h2 className="mt-1 text-base font-semibold text-slate-900">All {companyName} roles</h2>
+              <h2 className="mt-1 text-base font-semibold text-slate-900">{companyName} roles on the board</h2>
               <p className="mt-1 text-sm text-slate-600">
-                {jobs.length > 0 ? "Published roles currently live on CareersPal." : "No published roles live right now."}
+                {jobs.length > 0
+                  ? "Live on CareersPal for the last 30 days. Same window as the job board."
+                  : "No roles live on the board right now."}
               </p>
 
               {jobs.length > 0 ? (

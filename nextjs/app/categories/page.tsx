@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CATEGORY_HUBS } from "../../lib/categories";
+import { CATEGORY_HUBS, jobMatchesHub } from "../../lib/categories";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
+import { applyLiveBoardFilter } from "../../lib/liveBoard";
+import { isOnNicheJob } from "../../lib/nicheScope";
 
 const getBaseUrl = () => {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
@@ -16,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const canonicalUrl = `${baseUrl}/categories`;
   const title = "Categories — CareersPal";
   const description =
-    "Browse curated remote roles by category: Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff.";
+    "Browse roles by category: Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff.";
 
   return {
     title,
@@ -33,19 +35,16 @@ async function fetchLiveCounts(): Promise<Record<string, number>> {
   const sb = supabaseAdmin;
   if (!sb) return {};
 
-  const pairs = await Promise.all(
-    CATEGORY_HUBS.map(async (hub) => {
-      const { count } = await sb
-        .from("jobs")
-        // head:true avoids downloading rows; count:"exact" gives a real count.
-        .select("id", { count: "exact", head: true })
-        .eq("status", "published")
-        .in("category", hub.dbCategories);
-      return [hub.slug, typeof count === "number" ? count : 0] as const;
-    }),
-  );
+  const { data } = await applyLiveBoardFilter(
+    sb.from("jobs").select("id,title,category,timestamp").eq("status", "published"),
+  ).range(0, 499);
 
-  return Object.fromEntries(pairs);
+  const jobs = (data || []).filter((job) => isOnNicheJob(job));
+  const counts: Record<string, number> = {};
+  for (const hub of CATEGORY_HUBS) {
+    counts[hub.slug] = jobs.filter((job) => jobMatchesHub(job, hub)).length;
+  }
+  return counts;
 }
 
 export default async function CategoriesPage() {

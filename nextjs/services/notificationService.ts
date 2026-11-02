@@ -3,19 +3,11 @@ import { Job } from '../types';
 
 export interface Subscriber {
   email: string;
-  preference:
-    | 'All'
-    | 'Operations'
-    | 'Systems Design'
-    | 'Automation'
-    | 'Product Management'
-    | 'Marketing & Growth Ops'
-    | 'Executive & Staff';
+  preference: string;
   joinedAt: string;
 }
 
-// 1. Uloženie odberateľa do databázy (Supabase)
-export const subscribeUser = async (email: string, preference: Subscriber['preference']) => {
+export const subscribeUser = async (email: string, preference: string) => {
   try {
     const response = await fetch("/api/subscribers", {
       method: "POST",

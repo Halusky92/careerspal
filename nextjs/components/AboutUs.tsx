@@ -9,7 +9,7 @@ const AboutUs: React.FC = () => {
         A small board for Ops and Systems work.
       </h1>
       <p className="mt-4 text-[16px] text-slate-700 leading-relaxed">
-        CareersPal lists remote roles in Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff.
+        CareersPal lists Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff roles — remote, hybrid, and onsite.
         You search, open a role, and apply on the employer’s own page.
       </p>
 

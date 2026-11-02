@@ -28,7 +28,7 @@ const Footer = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
           <div className="col-span-2 md:col-span-1 space-y-2">
             <div className="font-semibold text-slate-900">CareersPal</div>
-            <p className="text-slate-600">Remote Ops, Systems, Automation, RevOps, Product Ops, Chief of Staff.</p>
+            <p className="text-slate-600">Ops, Systems, Automation, RevOps, Product Ops, Chief of Staff. Remote, hybrid, and onsite.</p>
           </div>
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Jobs</h4>

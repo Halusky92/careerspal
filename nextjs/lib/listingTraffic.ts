@@ -38,7 +38,7 @@ export const classifyListingSource = (input: {
   path?: string | null;
   referrer?: string | null;
   utm?: string | null;
-}) => {
+}): ListingSource => {
   const utm = (input.utm || "").trim().toLowerCase();
   if (utm) {
     if (utm.includes("alert") || utm === "email") return "alerts";

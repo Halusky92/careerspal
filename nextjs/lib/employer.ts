@@ -15,6 +15,63 @@ export const EMPLOYER_JOB_SELECT =
 export const EMPLOYER_JOB_SELECT_FALLBACK =
   "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,company_id,created_by,companies(name,slug,logo_url,website,description)";
 
+export type EmployerOwnedJob = {
+  id: string;
+  title: string | null;
+  description: string | null;
+  salary: string | null;
+  apply_url: string | null;
+  status: string | null;
+  origin?: string | null;
+  created_by: string | null;
+  company_id: string | null;
+  stripe_payment_status: string | null;
+  plan_type: string | null;
+  plan_price: number | null;
+  views: number | null;
+  matches: number | null;
+};
+
+const EMPLOYER_OWNED_JOB_SELECT =
+  "id,title,description,salary,apply_url,status,origin,created_by,company_id,stripe_payment_status,plan_type,plan_price,views,matches";
+
+const EMPLOYER_OWNED_JOB_SELECT_FALLBACK =
+  "id,title,description,salary,apply_url,status,created_by,company_id,stripe_payment_status,plan_type,plan_price,views,matches";
+
+function toEmployerOwnedJob(row: {
+  id: string;
+  title?: string | null;
+  description?: string | null;
+  salary?: string | null;
+  apply_url?: string | null;
+  status?: string | null;
+  origin?: string | null;
+  created_by?: string | null;
+  company_id?: string | null;
+  stripe_payment_status?: string | null;
+  plan_type?: string | null;
+  plan_price?: number | null;
+  views?: number | null;
+  matches?: number | null;
+}): EmployerOwnedJob {
+  return {
+    id: row.id,
+    title: row.title ?? null,
+    description: row.description ?? null,
+    salary: row.salary ?? null,
+    apply_url: row.apply_url ?? null,
+    status: row.status ?? null,
+    origin: row.origin ?? null,
+    created_by: row.created_by ?? null,
+    company_id: row.company_id ?? null,
+    stripe_payment_status: row.stripe_payment_status ?? null,
+    plan_type: row.plan_type ?? null,
+    plan_price: typeof row.plan_price === "number" ? row.plan_price : null,
+    views: typeof row.views === "number" ? row.views : null,
+    matches: typeof row.matches === "number" ? row.matches : null,
+  };
+}
+
 export const EMPLOYER_STATUSES = new Set([
   "draft",
   "published",
@@ -49,26 +106,30 @@ export async function requireEmployer(request: Request) {
   return { profileId: auth.profile.id, email: auth.profile.email, role };
 }
 
-export async function loadEmployerOwnedJob(jobId: string, profileId: string) {
-  if (!supabaseAdmin) return { job: null as Record<string, unknown> | null, error: "not_configured" };
+export async function loadEmployerOwnedJob(
+  jobId: string,
+  profileId: string,
+): Promise<{ job: EmployerOwnedJob | null; error: "not_configured" | "not_found" | "forbidden" | "sourced" | null }> {
+  if (!supabaseAdmin) return { job: null, error: "not_configured" };
   const full = await supabaseAdmin
     .from("jobs")
-    .select("id,title,description,salary,apply_url,status,origin,created_by,company_id,stripe_payment_status,plan_type,plan_price,views,matches")
+    .select(EMPLOYER_OWNED_JOB_SELECT)
     .eq("id", jobId)
     .maybeSingle();
   const data = full.error
     ? (
         await supabaseAdmin
           .from("jobs")
-          .select("id,title,description,salary,apply_url,status,created_by,company_id,stripe_payment_status,views,matches")
+          .select(EMPLOYER_OWNED_JOB_SELECT_FALLBACK)
           .eq("id", jobId)
           .maybeSingle()
       ).data
     : full.data;
   if (!data) return { job: null, error: "not_found" };
-  if (data.created_by !== profileId) return { job: null, error: "forbidden" };
-  if (((data as { origin?: string | null }).origin || "employer") === "greenhouse") return { job: null, error: "sourced" };
-  return { job: data, error: null };
+  const job = toEmployerOwnedJob(data);
+  if (job.created_by !== profileId) return { job: null, error: "forbidden" };
+  if ((job.origin || "employer") === "greenhouse") return { job: null, error: "sourced" };
+  return { job, error: null };
 }
 
 export async function resolveEmployerCompany(args: {

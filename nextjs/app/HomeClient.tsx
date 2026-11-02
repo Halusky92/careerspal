@@ -108,13 +108,11 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
 
         {!jobsLoading && hasJobs && (
           <div className="space-y-3">
-            {featuredPreview.length > 0 && (
-              <FeaturedBoardZone count={featuredPreview.length}>
-                {featuredPreview.map((job) => (
-                  <HomePreviewCard key={job.id} job={job} />
-                ))}
-              </FeaturedBoardZone>
-            )}
+            <FeaturedBoardZone count={featuredPreview.length}>
+              {featuredPreview.map((job) => (
+                <HomePreviewCard key={job.id} job={job} />
+              ))}
+            </FeaturedBoardZone>
             {previewJobs.length > 0 && (
               <div className="space-y-2">
                 {featuredPreview.length > 0 && (

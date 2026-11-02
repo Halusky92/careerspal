@@ -8,7 +8,7 @@ import { authFetch } from "../../lib/authFetch";
 import { createJobSlug } from "../../lib/jobs";
 import { Job } from "../../types";
 import { formatSalaryDisplay } from "../../lib/formatSalary";
-import { CATEGORY_HUBS } from "../../lib/categories";
+import { CATEGORY_HUBS, getCategoryHub, resolveCategoryParam } from "../../lib/categories";
 
 type AccountUser = {
   name?: string;
@@ -57,7 +57,7 @@ const AccountPageInner = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [subscriber, setSubscriber] = useState<SubscriberRow | null>(null);
-  const [alertQuery, setAlertQuery] = useState(CATEGORY_HUBS[0].dbCategories[0]);
+  const [alertQuery, setAlertQuery] = useState<string>(CATEGORY_HUBS[0].slug);
   const [alertBusy, setAlertBusy] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
 
@@ -104,7 +104,10 @@ const AccountPageInner = () => {
         const subRes = await authFetch("/api/subscribers", {}, accessToken);
         const subData = (await subRes.json()) as { subscriber?: SubscriberRow | null };
         setSubscriber(subData.subscriber || null);
-        if (subData.subscriber?.preference) setAlertQuery(subData.subscriber.preference);
+        if (subData.subscriber?.preference) {
+          const hub = getCategoryHub(resolveCategoryParam(subData.subscriber.preference));
+          setAlertQuery(hub?.slug || CATEGORY_HUBS[0].slug);
+        }
       } catch {
         // keep empty
       } finally {
@@ -431,7 +434,7 @@ const AccountPageInner = () => {
                       className="cp-field w-full h-10 rounded-lg px-3 text-sm"
                     >
                       {CATEGORY_HUBS.map((hub) => (
-                        <option key={hub.slug} value={hub.dbCategories[0]}>
+                        <option key={hub.slug} value={hub.slug}>
                           {hub.label}
                         </option>
                       ))}
@@ -459,7 +462,7 @@ const AccountPageInner = () => {
                     {alertMsg && <p className="text-sm text-slate-600">{alertMsg}</p>}
                     {subscriber && (
                       <p className="text-xs text-slate-500">
-                        Sending to {subscriber.email} · {subscriber.preference}
+                        Sending to {subscriber.email} · {getCategoryHub(resolveCategoryParam(subscriber.preference))?.label || subscriber.preference}
                       </p>
                     )}
                   </div>

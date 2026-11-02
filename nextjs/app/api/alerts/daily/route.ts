@@ -4,6 +4,7 @@ import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { createJobSlug } from "../../../../lib/jobs";
 import { formatSalaryDisplay } from "../../../../lib/formatSalary";
 import { isOnNicheJob } from "../../../../lib/nicheScope";
+import { jobMatchesAlertQuery } from "../../../../lib/categories";
 
 export const runtime = "nodejs";
 
@@ -125,51 +126,11 @@ const getBaseUrl = () => {
   return "http://localhost:3000";
 };
 
-const normalize = (value?: string | null) => (value || "").toLowerCase().trim();
-
-const splitQuery = (query: string) => {
-  const parts = query.split("@");
-  if (parts.length < 2) {
-    return { search: query.trim(), location: "" };
-  }
-  return { search: parts[0].trim(), location: parts.slice(1).join("@").trim() };
-};
-
-const getTags = (tags: unknown) => {
-  if (Array.isArray(tags)) return tags.map((t) => String(t));
-  return [];
-};
-
 const getCompanyName = (job: JobRow) => {
   if (Array.isArray(job.companies)) {
     return job.companies[0]?.name || "Company";
   }
   return job.companies?.name || "Company";
-};
-
-const matchesAlert = (job: JobRow, query: string) => {
-  const { search, location } = splitQuery(query);
-  const searchNeedle = normalize(search);
-  const locationNeedle = normalize(location);
-  const companyName = getCompanyName(job);
-  const tags = getTags(job.tags);
-
-  const haystack = normalize(
-    [
-      job.title,
-      companyName,
-      job.category,
-      job.keywords,
-      job.location,
-      ...tags,
-    ]
-      .filter(Boolean)
-      .join(" "),
-  );
-
-  const matchesSearch = !searchNeedle || haystack.includes(searchNeedle);
-  const matchesLocation = !locationNeedle || normalize(job.location).includes(locationNeedle);
-  return matchesSearch && matchesLocation;
 };
 
 function isAuthorized(request: Request): boolean {
@@ -274,7 +235,7 @@ export async function GET(request: Request) {
       .gte("timestamp", sinceMs);
 
     const jobRows = (jobs || []) as JobRow[];
-    const matches = jobRows.filter((job) => isOnNicheJob(job) && matchesAlert(job, alert.query || ""));
+    const matches = jobRows.filter((job) => isOnNicheJob(job) && jobMatchesAlertQuery(job, alert.query || ""));
     matchedTotal += matches.length;
 
     if (matches.length > 0 && !dryRun) {
@@ -364,7 +325,7 @@ export async function GET(request: Request) {
     const matches = jobRows.filter((job) => {
       if (!isOnNicheJob(job)) return false;
       if (!query || query.toLowerCase() === "all") return true;
-      return matchesAlert(job, query);
+      return jobMatchesAlertQuery(job, query);
     });
     if (matches.length === 0) continue;
     matchedTotal += matches.length;
