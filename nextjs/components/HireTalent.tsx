@@ -89,7 +89,7 @@ const HireTalent: React.FC<HireTalentProps> = ({ onPostJob }) => {
             </Link>
           </div>
           <p className="mt-4 text-sm text-indigo-100">
-            First 10 Standard listings: $1, then Standard $79 / Pro $149 / Elite $499.
+            First 10 Standard listings: $1, then Standard $79 / Pro $149 / Elite $249.
           </p>
         </div>
       </section>
@@ -141,7 +141,7 @@ const HireTalent: React.FC<HireTalentProps> = ({ onPostJob }) => {
           </button>
           <Link
             href="/jobs"
-            className="h-12 px-6 rounded-lg border-2 border-slate-900 text-slate-900 text-sm font-semibold inline-flex items-center justify-center hover:bg-slate-50"
+            className="h-12 px-6 rounded-lg border border-slate-200 text-slate-900 text-sm font-semibold inline-flex items-center justify-center hover:bg-slate-50"
           >
             Visit CareersPal for job seekers
           </Link>

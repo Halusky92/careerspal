@@ -41,7 +41,7 @@ const AboutUs: React.FC = () => {
         </Link>
         <Link
           href="/hire-talent"
-          className="h-12 px-6 rounded-lg border-2 border-slate-900 text-slate-900 text-sm font-semibold inline-flex items-center justify-center hover:bg-slate-50"
+          className="h-12 px-6 rounded-lg border border-slate-200 text-slate-900 text-sm font-semibold inline-flex items-center justify-center hover:bg-slate-50"
         >
           For employers
         </Link>

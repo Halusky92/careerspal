@@ -41,7 +41,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
         {/* Standard Tier */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border-2 border-slate-900 shadow-sm hover:shadow-md transition-all group flex flex-col">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group flex flex-col">
           <h3 className="text-xl font-bold text-gray-900 mb-2 uppercase tracking-tight">Standard</h3>
           <p className="text-gray-500 text-sm mb-8 font-medium">A clean listing on the board.</p>
           <div className="text-4xl font-bold text-gray-900 mb-8 tracking-tighter">$79 <span className="text-sm font-normal text-gray-500">/ 30 days</span></div>

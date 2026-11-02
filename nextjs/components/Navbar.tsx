@@ -82,7 +82,7 @@ const Navbar: React.FC = () => {
               <span className="text-base font-semibold tracking-tight text-indigo-600">CareersPal</span>
             </Link>
 
-            <div className="hidden md:flex items-center gap-3 shrink-0">
+            <div className="hidden md:flex items-center gap-4 shrink-0">
               <Link
                 href="/jobs"
                 className={`text-sm ${pathname === "/jobs" || pathname.startsWith("/jobs/") ? "text-indigo-600 font-medium" : "text-slate-600 hover:text-slate-900"}`}
@@ -105,12 +105,12 @@ const Navbar: React.FC = () => {
                 Pricing
               </Link>
 
-              <Link href={hireHref} className="h-9 px-3 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-black shrink-0">
+              <Link href={hireHref} className="h-9 px-3 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shrink-0">
                 {hireLabel}
               </Link>
 
               {!profile?.email ? (
-                <Link href="/auth" className="h-9 px-3 rounded-lg border-2 border-slate-900 text-sm font-medium text-slate-900 hover:bg-slate-50 shrink-0">
+                <Link href="/auth" className="h-9 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-800 hover:bg-slate-50 shrink-0">
                   Sign in
                 </Link>
               ) : (

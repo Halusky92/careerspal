@@ -55,7 +55,6 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
         <form onSubmit={submit} className="mt-5 sm:mt-7 text-left relative">
           <div
             className="cp-search flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0 rounded-2xl sm:rounded-full p-2 sm:p-1.5 sm:pl-4"
-            style={{ border: "3px solid #0f172a", boxShadow: "0 8px 24px rgba(15,23,42,0.12)" }}
           >
             <PredictiveField
               value={query}

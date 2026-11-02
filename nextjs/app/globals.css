@@ -43,16 +43,16 @@ textarea::placeholder {
 
 /* Indeed-like scan surface: one dark ring around search so it reads first. */
 .cp-search {
-  border: 3px solid #0f172a !important;
+  border: 1px solid #d8dee8;
   background: #ffffff;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
 }
 .cp-search:focus-within {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.16);
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 .cp-field {
-  border: 2px solid #334155;
+  border: 1px solid #d8dee8;
   background: #ffffff;
 }
 .cp-field:focus,

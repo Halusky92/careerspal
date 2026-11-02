@@ -181,7 +181,7 @@ export default async function CompaniesPage() {
                 <Link
                   key={c.id}
                   href={href}
-                  className="rounded-2xl border-2 border-slate-300 bg-white p-6 hover:border-slate-900 transition-colors shadow-sm"
+                  className="rounded-2xl border border-slate-200 bg-white p-6 hover:border-slate-300 transition-colors shadow-sm"
                 >
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0">

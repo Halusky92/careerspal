@@ -24,13 +24,11 @@ const CURRENCY_SYMBOL: Record<string, string> = {
 
 function formatAmount(n: number, currency: string, period: SalaryPeriod | null): string {
   const rounded = roundSalaryAmount(n, period);
-  const formatted = new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: 0,
-    minimumFractionDigits: 0,
-  }).format(rounded);
   const symbol = CURRENCY_SYMBOL[currency] || `${currency} `;
-  if (symbol.endsWith(" ")) return `${symbol}${formatted}`;
-  return `${symbol}${formatted}`;
+  const compact =
+    rounded >= 10_000 ? `${Math.round(rounded / 1000)}k` : new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(rounded);
+  if (symbol.endsWith(" ")) return `${symbol}${compact}`;
+  return `${symbol}${compact}`;
 }
 
 function formatParsed(parsed: ParsedSalary): string | null {
@@ -45,7 +43,7 @@ function formatParsed(parsed: ParsedSalary): string | null {
   if (lo == null || hi == null) return null;
   const range =
     lo === hi ? formatAmount(lo, currency, periodKey) : `${formatAmount(lo, currency, periodKey)}–${formatAmount(hi, currency, periodKey)}`;
-  return `${range} / ${period}`;
+  return period === "year" ? `${range} a year` : `${range} / ${period}`;
 }
 
 function tidyUnparsedSalary(text: string): string {

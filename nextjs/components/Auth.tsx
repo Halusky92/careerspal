@@ -106,7 +106,7 @@ const Auth: React.FC<AuthProps> = () => {
           onClick={handleGoogleSignIn}
           disabled={isLoading}
           aria-busy={isLoading}
-          className="w-full mb-6 flex items-center justify-center gap-3 rounded-2xl border-2 border-slate-900 bg-white py-4 font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+          className="w-full mb-6 flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-4 font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
         >
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white border border-slate-200">
             <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">

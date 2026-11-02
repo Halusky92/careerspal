@@ -152,7 +152,7 @@ export default function PredictiveField({
             <ul
               id={listId}
               role="listbox"
-              className="fixed z-[220] max-h-64 overflow-auto rounded-xl border-2 border-slate-900 bg-white py-1 shadow-lg"
+              className="fixed z-[220] max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
               style={{ top: box.bottom + 6, left: box.left, width: Math.max(box.width, 240) }}
             >
               {items.map((item, index) => (

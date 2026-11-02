@@ -111,7 +111,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
         <button
           type="button"
           onClick={() => router.push("/jobs")}
-          className="mt-4 w-full h-11 rounded-xl border-2 border-slate-900 bg-white text-sm font-medium text-slate-800 hover:bg-slate-50"
+          className="mt-4 w-full h-11 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-800 hover:border-slate-300 hover:bg-slate-50"
         >
           {hasJobs ? `See all ${jobs.length} jobs` : "Browse jobs"}
         </button>
@@ -120,7 +120,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
           <button
             type="button"
             onClick={() => router.push("/alerts")}
-            className="rounded-xl border-2 border-slate-900 bg-white px-4 py-3 text-left hover:bg-slate-50"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-slate-300 hover:bg-slate-50"
           >
             <div className="text-sm font-semibold text-slate-900">For candidates</div>
             <p className="mt-1 text-xs text-slate-600">Email when a new role is published. Apply on the company site.</p>
@@ -128,7 +128,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
           <button
             type="button"
             onClick={() => router.push("/hire-talent")}
-            className="rounded-xl border-2 border-slate-900 bg-white px-4 py-3 text-left hover:bg-slate-50"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-slate-300 hover:bg-slate-50"
           >
             <div className="text-sm font-semibold text-slate-900">For employers</div>
             <p className="mt-1 text-xs text-slate-600">Post a role on the board. Reviewed before it goes live.</p>

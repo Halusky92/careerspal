@@ -207,7 +207,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
                 <button
                   type="button"
                   onClick={handleGoogle}
-                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-white border-2 border-slate-900 px-7 py-4 text-sm font-semibold text-slate-800"
+                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-7 py-4 text-sm font-semibold text-slate-800"
                 >
                   Continue with Google
                 </button>
