@@ -30,6 +30,34 @@ const MAX_PLAUSIBLE_BY_PERIOD: Record<SalaryPeriod, number> = {
   year: 800_000,
 };
 
+/** Round for storage and display. Annual → nearest thousand; monthly → nearest 100; hour/day → whole units. */
+export function roundSalaryAmount(amount: number, period: SalaryPeriod | string | null): number {
+  if (!Number.isFinite(amount)) return amount;
+  const p = (period || "").toString();
+  if (p === "hour" || p === "day") return Math.round(amount);
+  if (p === "month") {
+    if (Math.abs(amount) < 1000) return Math.round(amount);
+    return Math.round(amount / 100) * 100;
+  }
+  if (Math.abs(amount) < 1000) return Math.round(amount);
+  return Math.round(amount / 1000) * 1000;
+}
+
+export function withRoundedSalaryAmounts<T extends {
+  salary_amount_min?: number | null;
+  salary_amount_max?: number | null;
+  salary_period?: SalaryPeriod | string | null;
+}>(parsed: T): T {
+  const period = (parsed.salary_period ?? null) as SalaryPeriod | null;
+  const min = parsed.salary_amount_min;
+  const max = parsed.salary_amount_max;
+  return {
+    ...parsed,
+    salary_amount_min: typeof min === "number" ? roundSalaryAmount(min, period) : min ?? null,
+    salary_amount_max: typeof max === "number" ? roundSalaryAmount(max, period) : max ?? null,
+  };
+}
+
 function isImplausibleSalary(period: SalaryPeriod | null, min: number | null, max: number | null): boolean {
   if (!period) return false;
   const floor = MIN_PLAUSIBLE_BY_PERIOD[period];
@@ -192,7 +220,7 @@ export function parseSalaryFromText(text: string): ParsedSalary {
     };
   }
 
-  return {
+  return withRoundedSalaryAmounts({
     salary_text_raw,
     salary_amount_min: min,
     salary_amount_max: max,
@@ -201,8 +229,8 @@ export function parseSalaryFromText(text: string): ParsedSalary {
     salary_present: present,
     salary_confidence: confidence,
     salary_detected_from: "text_body",
-    salary_parse_notes: notes,
-  };
+    salary_parse_notes: notes.concat(["rounded_for_storage"]),
+  });
 }
 
 export function detectAndParseSalaryForGreenhouse(descriptionText: string): ParsedSalary {

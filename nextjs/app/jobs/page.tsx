@@ -99,12 +99,12 @@ function StaticJobsList({ jobs, total }: { jobs: Job[]; total: number }) {
                         href={applyUrl}
                         target={isExternal ? "_blank" : undefined}
                         rel={isExternal ? "noopener noreferrer nofollow" : undefined}
-                        className="h-11 px-5 rounded-2xl bg-indigo-600 text-white text-[11px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100 whitespace-nowrap inline-flex items-center"
+                        className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 active:bg-indigo-800 transition-colors whitespace-nowrap inline-flex items-center"
                       >
-                        Quick apply
+                        Apply
                       </a>
                     ) : (
-                      <span className="h-11 px-5 rounded-2xl bg-slate-200 text-slate-500 text-[11px] font-black uppercase tracking-widest whitespace-nowrap inline-flex items-center">
+                      <span className="h-9 px-4 rounded-lg bg-slate-100 text-slate-500 text-sm font-medium whitespace-nowrap inline-flex items-center">
                         Details
                       </span>
                     )}

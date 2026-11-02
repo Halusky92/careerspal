@@ -1,6 +1,6 @@
 import { matchDenylistHost } from "../denylist";
 import { normalizeHost, normalizeUrlForRegistry } from "../domain";
-import { detectAndParseSalaryForGreenhouse, parseSalaryFromText } from "../normalization/salary";
+import { detectAndParseSalaryForGreenhouse, parseSalaryFromText, withRoundedSalaryAmounts } from "../normalization/salary";
 import { stripHtmlToText } from "../normalization/text";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -115,17 +115,25 @@ function parseSalaryFromJsonLd(html: string) {
     const amountMax = max ?? null;
     if (!currency || !period || !amountMin) return null;
 
-    return {
-      salary_text_raw:
-        amountMax && amountMax !== amountMin ? `${currency} ${amountMin}-${amountMax} ${period}` : `${currency} ${amountMin} ${period}`,
+    const rounded = withRoundedSalaryAmounts({
       salary_amount_min: amountMin,
       salary_amount_max: amountMax,
+      salary_period: period,
+    });
+    const rMin = rounded.salary_amount_min;
+    const rMax = rounded.salary_amount_max;
+
+    return {
+      salary_text_raw:
+        rMax && rMax !== rMin ? `${currency} ${rMin}-${rMax} ${period}` : `${currency} ${rMin} ${period}`,
+      salary_amount_min: rMin,
+      salary_amount_max: rMax,
       salary_currency: currency.toUpperCase(),
       salary_period: period as any,
       salary_present: true,
       salary_confidence: "high" as const,
       salary_detected_from: "official_json" as const,
-      salary_parse_notes: ["jsonld_baseSalary"],
+      salary_parse_notes: ["jsonld_baseSalary", "rounded_for_storage"],
     };
   };
 

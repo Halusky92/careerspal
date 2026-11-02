@@ -69,8 +69,8 @@ function StaticHomeJobs({ jobs }: { jobs: Job[] }) {
                     <span className="text-[12px] sm:text-sm font-black text-slate-900 whitespace-nowrap">
                       {formatSalaryDisplay(job.salary)}
                     </span>
-                    <span className="h-11 px-5 rounded-2xl bg-indigo-600 text-white text-[11px] font-black uppercase tracking-widest whitespace-nowrap inline-flex items-center">
-                      Quick apply
+                    <span className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium whitespace-nowrap inline-flex items-center">
+                      Apply
                     </span>
                   </div>
                 </div>

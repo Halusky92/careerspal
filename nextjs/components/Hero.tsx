@@ -37,20 +37,20 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
             <button
               onClick={onBrowse}
-              className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-xl shadow-indigo-100"
+              className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-4 rounded-2xl font-semibold text-sm hover:bg-indigo-700 transition-colors shadow-xl shadow-indigo-100"
             >
               Browse jobs
             </button>
             <button
               type="button"
               onClick={onGetAlerts}
-              className="w-full sm:w-auto bg-white/80 backdrop-blur text-slate-900 border border-slate-200 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:border-indigo-200 hover:text-indigo-700 transition-colors shadow-sm"
+              className="hidden sm:inline-flex w-full sm:w-auto items-center justify-center bg-white/80 backdrop-blur text-slate-900 border border-slate-200 px-8 py-4 rounded-2xl font-semibold text-sm hover:border-indigo-200 hover:text-indigo-700 transition-colors shadow-sm"
             >
               Get alerts
             </button>
             <a
               href="/post-a-job"
-              className="w-full sm:w-auto text-center bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-colors"
+              className="hidden sm:inline-flex w-full sm:w-auto items-center justify-center text-center bg-slate-900 text-white px-8 py-4 rounded-2xl font-semibold text-sm hover:bg-black transition-colors"
             >
               Post a job
             </a>

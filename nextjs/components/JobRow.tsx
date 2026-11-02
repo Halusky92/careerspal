@@ -205,7 +205,7 @@ export default function JobRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h3 className={[isHome ? "text-[15px]" : "text-[15px] sm:text-base", "font-bold text-slate-900 leading-snug truncate"].join(" ")}>
+              <h3 className={[isHome ? "text-[15px]" : "text-[15px] sm:text-base", "font-bold text-slate-900 leading-snug line-clamp-2"].join(" ")}>
                 <Link
                   href={detailHref}
                   onClick={(e) => e.stopPropagation()}
@@ -396,14 +396,9 @@ export default function JobRow({
                   e.stopPropagation();
                   onApply();
                 }}
-                className={[
-                  "h-11",
-                  "px-4 text-[10px] sm:px-5 sm:text-[11px]",
-                  "min-w-[124px] sm:min-w-[132px] flex-shrink-0 whitespace-nowrap",
-                  "rounded-2xl bg-indigo-600 text-white font-bold uppercase tracking-wide hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100",
-                ].join(" ")}
+                className="h-9 px-4 flex-shrink-0 whitespace-nowrap rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 active:bg-indigo-800 transition-colors"
               >
-                Quick apply
+                Apply
               </button>
             </div>
           </div>

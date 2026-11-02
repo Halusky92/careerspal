@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Job } from "../types";
 import { createJobSlug } from "../lib/jobs";
+import { formatSalaryDisplay } from "../lib/formatSalary";
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
 
@@ -27,11 +28,6 @@ type ClaimHit = {
   owned?: boolean;
 };
 
-const formatCount = (value?: number | null) => {
-  if (!value) return "—";
-  return String(value);
-};
-
 const statusLabel = (status?: string) => {
   switch (status) {
     case "published":
@@ -54,17 +50,25 @@ const statusLabel = (status?: string) => {
 const statusTone = (status?: string) => {
   switch (status) {
     case "published":
-      return "text-emerald-700 bg-emerald-50 border-emerald-200";
+      return "text-emerald-700 bg-emerald-50";
     case "pending_review":
-      return "text-indigo-700 bg-indigo-50 border-indigo-200";
+      return "text-indigo-700 bg-indigo-50";
     case "paused":
-      return "text-amber-700 bg-amber-50 border-amber-200";
-    case "closed":
-    case "archived":
-      return "text-slate-600 bg-slate-50 border-slate-200";
+      return "text-amber-700 bg-amber-50";
     default:
-      return "text-slate-500 bg-slate-50 border-slate-200";
+      return "text-slate-600 bg-slate-100";
   }
+};
+
+const postedDate = (job: Job) => {
+  if (job.timestamp) {
+    const ts = job.timestamp < 1e12 ? job.timestamp * 1000 : job.timestamp;
+    const d = new Date(ts);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    }
+  }
+  return job.postedAt || "—";
 };
 
 const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPostJob }) => {
@@ -77,6 +81,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   const [message, setMessage] = useState<string | null>(null);
   const [claimQuery, setClaimQuery] = useState("");
   const [claimHits, setClaimHits] = useState<ClaimHit[]>([]);
+  const [menuId, setMenuId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     if (!accessToken) return;
@@ -126,6 +131,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   const runAction = async (job: Job, action: "pause" | "close" | "republish" | "archive" | "delete") => {
     if (!accessToken) return;
     setBusyId(job.id);
+    setMenuId(null);
     setMessage(null);
     try {
       if (action === "delete") {
@@ -177,86 +183,77 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   };
 
   return (
-    <div className="relative overflow-hidden">
-      <div className="absolute top-[-20%] left-[-15%] w-[70%] h-[70%] bg-indigo-300/20 rounded-full blur-[140px]"></div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 relative z-10">
-        <div className="mb-10 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8">
-          <div>
-            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-2">My company</p>
-            <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tighter mb-3">Dashboard</h1>
-            <p className="text-lg text-slate-500 font-medium">Your listings, status, and apply clicks in one place.</p>
-          </div>
-          <div className="flex gap-3 flex-wrap">
-            <button
-              onClick={onPostJob}
-              className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700"
-            >
-              Post a job
-            </button>
-            <button
-              onClick={onUpgrade}
-              className="bg-white text-slate-900 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest border border-slate-200 hover:border-indigo-200"
-            >
-              Plans
-            </button>
-          </div>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Jobs</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {activeCount} active · {summary.total ?? myJobs.length} total
+          </p>
         </div>
-
-        {founding?.enabled && (
-          <div className="mb-8 rounded-3xl border border-indigo-100 bg-white/90 px-6 py-5">
-            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Founding launch</p>
-            <p className="mt-2 text-slate-700 font-medium">
-              {founding.eligible
-                ? `Eligible companies can submit for review without checkout. ${founding.remainingSlots ?? 0} company slots and ${founding.remainingJobs ?? 0} listing slots remain.`
-                : "Checkout is required for additional listings. Stripe stays available when founding slots are used."}
-            </p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-          {[
-            { label: "Active roles", value: activeCount },
-            { label: "Views", value: stats.views || "—" },
-            { label: "Apply clicks", value: stats.matches || "—" },
-          ].map((item) => (
-            <div key={item.label} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-              <div className="text-3xl font-black text-slate-900">{item.value}</div>
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{item.label}</div>
-            </div>
-          ))}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onUpgrade}
+            className="hidden sm:inline-flex h-9 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:border-indigo-200"
+          >
+            Plans
+          </button>
+          <button
+            onClick={onPostJob}
+            className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
+          >
+            Post a job
+          </button>
         </div>
+      </div>
 
-        {message && (
-          <div className="mb-6 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600">
-            {message}
-          </div>
-        )}
+      <div className="flex gap-6 mb-6 text-sm">
+        <div>
+          <span className="text-slate-400">Views</span>{" "}
+          <span className="font-semibold text-slate-900">{stats.views || "—"}</span>
+        </div>
+        <div>
+          <span className="text-slate-400">Applies</span>{" "}
+          <span className="font-semibold text-slate-900">{stats.matches || "—"}</span>
+        </div>
+      </div>
 
-        <div className="mb-10 rounded-[2rem] border border-slate-100 bg-white p-6">
-          <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Claim this company</h2>
-          <p className="mt-2 text-sm text-slate-500 font-medium">
-            If a profile was created from Greenhouse, claim it instead of making a duplicate. Sourced jobs stay separate.
+      {founding?.enabled && founding.eligible && (
+        <p className="mb-4 text-sm text-slate-600">
+          Founding launch: {founding.remainingSlots ?? 0} company slots and {founding.remainingJobs ?? 0} listing slots left.
+        </p>
+      )}
+
+      {message && (
+        <div className="mb-4 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">{message}</div>
+      )}
+
+      <details className="mb-5 rounded-lg border border-slate-200 bg-white">
+        <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium text-slate-700">Claim an existing company</summary>
+        <div className="px-4 pb-4">
+          <p className="text-sm text-slate-500">
+            If a profile already exists from Greenhouse, claim it instead of creating a duplicate.
           </p>
           <input
             value={claimQuery}
             onChange={(event) => setClaimQuery(event.target.value)}
             placeholder="Search company name"
-            className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium"
+            className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
           />
           {claimHits.length > 0 && (
-            <div className="mt-3 space-y-2">
+            <div className="mt-2 space-y-1">
               {claimHits.map((hit) => (
-                <div key={hit.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 px-4 py-3">
-                  <div>
-                    <div className="font-black text-slate-900">{hit.name}</div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <div key={hit.id} className="flex items-center justify-between gap-3 py-2 border-b border-slate-100 last:border-0">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-slate-900 truncate">{hit.name}</div>
+                    <div className="text-xs text-slate-400">
                       {hit.owned ? "Already yours" : hit.claimed ? "Claimed" : "Unclaimed"}
                     </div>
                   </div>
                   <button
                     disabled={Boolean(hit.claimed)}
                     onClick={() => claimCompany(hit.id)}
-                    className="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+                    className="h-8 px-3 rounded-lg bg-slate-900 text-white text-xs font-medium disabled:opacity-40"
                   >
                     Claim
                   </button>
@@ -265,104 +262,101 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
             </div>
           )}
         </div>
+      </details>
 
-        <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden">
-          <div className="px-6 py-4 flex items-center justify-between">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.3em]">My job postings</h3>
-            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
-              {summary.total ?? myJobs.length} listings
-            </span>
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+        {myJobs.length === 0 ? (
+          <div className="px-4 py-12 text-center">
+            <p className="text-slate-900 font-medium">No listings yet</p>
+            <p className="text-sm text-slate-500 mt-1 mb-4">Post a role to track it here.</p>
+            <button onClick={onPostJob} className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium">
+              Add first job
+            </button>
           </div>
-          {myJobs.length === 0 ? (
-            <div className="px-6 py-16 text-center">
-              <h3 className="text-2xl font-black text-slate-900 mb-3">No listings yet</h3>
-              <p className="text-slate-500 font-medium mb-8">Post a role to see status, views, and apply clicks here.</p>
-              <button onClick={onPostJob} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black">
-                Add first job
-              </button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-t border-slate-100">
-                    <th className="px-6 py-3">Role</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Views</th>
-                    <th className="px-4 py-3">Apply clicks</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {myJobs.map((job) => {
-                    const busy = busyId === job.id;
-                    return (
-                      <tr key={job.id} className="border-t border-slate-100">
-                        <td className="px-6 py-4">
-                          <div className="font-black text-slate-900">{job.title}</div>
-                          <div className="text-xs text-slate-400 font-medium">
-                            {job.company}
-                            {job.status === "published" && (
-                              <>
-                                {" · "}
-                                <a href={`/jobs/${createJobSlug(job)}`} className="text-indigo-600 hover:underline">
-                                  View
-                                </a>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-lg border ${statusTone(job.status)}`}>
-                            {statusLabel(job.status)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 font-black text-slate-700">{formatCount(job.views)}</td>
-                        <td className="px-4 py-4 font-black text-slate-700">{formatCount(job.matches)}</td>
-                        <td className="px-4 py-4">
-                          <div className="flex justify-end gap-2 flex-wrap">
-                            <a
-                              href={`/post-a-job?jobId=${job.id}`}
-                              className="h-9 w-9 inline-flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 hover:text-indigo-600"
-                              title="Edit"
-                            >
-                              ✎
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-xs font-medium text-slate-400 border-b border-slate-100">
+                  <th className="px-4 py-2.5 font-medium">Title</th>
+                  <th className="px-3 py-2.5 font-medium hidden sm:table-cell">Company</th>
+                  <th className="px-3 py-2.5 font-medium">Salary</th>
+                  <th className="px-3 py-2.5 font-medium">Status</th>
+                  <th className="px-3 py-2.5 font-medium hidden md:table-cell">Date</th>
+                  <th className="px-3 py-2.5 font-medium w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {myJobs.map((job) => {
+                  const busy = busyId === job.id;
+                  return (
+                    <tr key={job.id} className="border-b border-slate-100 last:border-0">
+                      <td className="px-4 py-2.5">
+                        <div className="font-medium text-slate-900 line-clamp-2">{job.title}</div>
+                        <div className="sm:hidden text-xs text-slate-500 mt-0.5">{job.company}</div>
+                      </td>
+                      <td className="px-3 py-2.5 text-slate-600 hidden sm:table-cell whitespace-nowrap">{job.company}</td>
+                      <td className="px-3 py-2.5 text-slate-700 whitespace-nowrap">{formatSalaryDisplay(job.salary)}</td>
+                      <td className="px-3 py-2.5">
+                        <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded ${statusTone(job.status)}`}>
+                          {statusLabel(job.status)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap hidden md:table-cell">{postedDate(job)}</td>
+                      <td className="px-3 py-2.5 relative">
+                        <button
+                          type="button"
+                          className="h-8 w-8 rounded-md text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+                          aria-label="Actions"
+                          onClick={() => setMenuId((prev) => (prev === job.id ? null : job.id))}
+                        >
+                          ⋯
+                        </button>
+                        {menuId === job.id && (
+                          <div className="absolute right-3 top-10 z-20 w-36 rounded-lg border border-slate-200 bg-white shadow-lg py-1 text-sm">
+                            <a href={`/post-a-job?jobId=${job.id}`} className="block px-3 py-1.5 hover:bg-slate-50">
+                              Edit
                             </a>
                             {job.status === "published" && (
-                              <button disabled={busy} onClick={() => runAction(job, "pause")} className="h-9 w-9 rounded-xl bg-amber-50" title="Pause">
-                                ⏸
+                              <a href={`/jobs/${createJobSlug(job)}`} className="block px-3 py-1.5 hover:bg-slate-50">
+                                View
+                              </a>
+                            )}
+                            {job.status === "published" && (
+                              <button disabled={busy} onClick={() => runAction(job, "pause")} className="w-full text-left px-3 py-1.5 hover:bg-slate-50">
+                                Pause
                               </button>
                             )}
                             {(job.status === "paused" || job.status === "closed") && (
-                              <button disabled={busy} onClick={() => runAction(job, "republish")} className="h-9 w-9 rounded-xl bg-indigo-50" title="Republish">
-                                ↻
+                              <button disabled={busy} onClick={() => runAction(job, "republish")} className="w-full text-left px-3 py-1.5 hover:bg-slate-50">
+                                Republish
                               </button>
                             )}
                             {(job.status === "published" || job.status === "paused") && (
-                              <button disabled={busy} onClick={() => runAction(job, "close")} className="h-9 w-9 rounded-xl bg-slate-100" title="Close">
-                                ✕
+                              <button disabled={busy} onClick={() => runAction(job, "close")} className="w-full text-left px-3 py-1.5 hover:bg-slate-50">
+                                Close
                               </button>
                             )}
                             {job.status === "closed" && (
-                              <button disabled={busy} onClick={() => runAction(job, "archive")} className="h-9 w-9 rounded-xl bg-slate-100" title="Archive">
-                                📦
+                              <button disabled={busy} onClick={() => runAction(job, "archive")} className="w-full text-left px-3 py-1.5 hover:bg-slate-50">
+                                Archive
                               </button>
                             )}
                             {job.status === "draft" && (
-                              <button disabled={busy} onClick={() => runAction(job, "delete")} className="h-9 w-9 rounded-xl bg-rose-50" title="Delete draft">
-                                🗑
+                              <button disabled={busy} onClick={() => runAction(job, "delete")} className="w-full text-left px-3 py-1.5 text-rose-600 hover:bg-rose-50">
+                                Delete
                               </button>
                             )}
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

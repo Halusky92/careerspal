@@ -9,6 +9,7 @@ import {
   requireEmployer,
   resolveEmployerCompany,
 } from "../../../../lib/employer";
+import { formatSalaryForStorage } from "../../../../lib/formatSalary";
 
 const MAX_JOBS_PER_HOUR = 5;
 
@@ -177,7 +178,7 @@ export const POST = async (request: Request) => {
     location: body.location || "",
     remote_policy: body.remotePolicy || "",
     type: body.type || "Full-time",
-    salary: body.salary || "",
+    salary: formatSalaryForStorage(body.salary || ""),
     posted_at_text: postedAt,
     timestamp,
     category: body.category || "Operations",

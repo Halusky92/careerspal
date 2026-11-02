@@ -193,7 +193,7 @@ export default function JobCard({
 
         <div className="flex-1 min-w-0 pr-9">
           <h3
-            className={`${isHome ? "text-sm sm:text-base" : "text-sm sm:text-base"} font-black tracking-tight leading-tight truncate ${
+            className={`${isHome ? "text-sm sm:text-base" : "text-sm sm:text-base"} font-black tracking-tight leading-tight line-clamp-2 ${
               isElite ? "text-slate-900 group-hover:text-yellow-700" : "text-slate-900 group-hover:text-indigo-600"
             } transition-colors`}
           >
@@ -298,17 +298,15 @@ export default function JobCard({
             window.open(job.applyUrl, "_blank", "noopener,noreferrer");
           }}
           disabled={!isPrivate && !hasApplyUrl}
-          className={`inline-flex items-center justify-center rounded-full ${
-            isHome ? "px-4 py-2 text-[10px]" : "px-5 py-2.5 text-[10px]"
-          } font-black uppercase tracking-widest transition-all w-auto ${
+          className={`inline-flex items-center justify-center h-9 px-4 rounded-lg text-sm font-medium transition-colors ${
             isElite
-              ? "bg-yellow-200 text-yellow-900 hover:bg-yellow-300"
+              ? "bg-slate-900 text-white hover:bg-black"
               : hasApplyUrl
-                ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                ? "bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800"
+                : "bg-slate-100 text-slate-400 cursor-not-allowed"
           }`}
         >
-          {isPrivate ? "Request access" : hasApplyUrl ? "Quick apply" : "Apply soon"}
+          {isPrivate ? "Request access" : hasApplyUrl ? "Apply" : "Apply soon"}
         </button>
       </div>
 

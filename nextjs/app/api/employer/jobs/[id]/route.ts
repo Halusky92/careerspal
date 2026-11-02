@@ -8,6 +8,7 @@ import {
   loadEmployerOwnedJob,
   requireEmployer,
 } from "../../../../../lib/employer";
+import { formatSalaryForStorage } from "../../../../../lib/formatSalary";
 
 const postedLabel = (status: string) => {
   if (status === "published") return "Just now";
@@ -98,7 +99,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (typeof body.location === "string") updateData.location = body.location;
   if (typeof body.remotePolicy === "string") updateData.remote_policy = body.remotePolicy;
   if (typeof body.type === "string") updateData.type = body.type;
-  if (typeof body.salary === "string") updateData.salary = body.salary;
+  if (typeof body.salary === "string") updateData.salary = formatSalaryForStorage(body.salary);
   if (typeof body.applyUrl === "string") updateData.apply_url = body.applyUrl;
   if (typeof body.companyWebsite === "string") updateData.company_website = body.companyWebsite;
   if (typeof body.keywords === "string") updateData.keywords = body.keywords;

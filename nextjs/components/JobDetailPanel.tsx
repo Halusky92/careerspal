@@ -195,9 +195,9 @@ export default function JobDetailPanel({
             </div>
             <button
               onClick={() => onApply(job)}
-              className="h-11 px-6 rounded-2xl bg-indigo-600 text-white text-[11px] font-semibold uppercase tracking-wide hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
+              className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 active:bg-indigo-800 transition-colors"
             >
-              Quick apply
+              Apply
             </button>
           </div>
 
@@ -246,7 +246,7 @@ export default function JobDetailPanel({
                   >
                     <div className="text-xs font-bold text-slate-900 truncate">{s.title}</div>
                     <div className="text-[10px] font-medium uppercase tracking-wide text-slate-600 mt-1 truncate">
-                      {s.company} • {s.salary}
+                      {s.company} • {formatSalaryDisplay(s.salary)}
                     </div>
                   </button>
                 ))}

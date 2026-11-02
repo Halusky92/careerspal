@@ -72,7 +72,7 @@ const Navbar: React.FC = () => {
               </div>
               <div className="flex flex-col">
                 <span className="text-lg font-bold tracking-tight text-indigo-600 leading-none">CareersPal</span>
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-700 mt-1">Curated remote ops roles</span>
+                <span className="hidden sm:block text-[10px] font-semibold uppercase tracking-wide text-slate-700 mt-1">Curated remote ops roles</span>
               </div>
             </Link>
             
@@ -157,22 +157,7 @@ const Navbar: React.FC = () => {
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="md:hidden relative z-[102] flex items-center gap-2">
-              {(profile?.role === "employer" || profile?.role === "admin") ? (
-                <Link
-                  href="/post-a-job"
-                  className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-semibold uppercase tracking-wide shadow-lg shadow-indigo-200"
-                >
-                  Post a Job
-                </Link>
-              ) : (
-                <Link
-                  href="/hire-talent"
-                  className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-semibold uppercase tracking-wide shadow-lg shadow-indigo-200"
-                >
-                  Hire Talent
-                </Link>
-              )}
+            <div className="md:hidden relative z-[102] flex items-center">
               <button 
                 onClick={() => setIsMenuOpen(!isMenuOpen)} 
                 className="p-2 text-slate-800 focus:outline-none"
@@ -190,38 +175,6 @@ const Navbar: React.FC = () => {
           </div>
         </div>
 
-        {/* Mobile Quick Nav */}
-        <div className="md:hidden border-t border-slate-100">
-          <div className="px-4 sm:px-6 py-3">
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`whitespace-nowrap rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
-                    pathname === item.href
-                      ? "bg-indigo-600 text-white shadow-md"
-                      : "bg-white text-slate-500 border border-slate-100"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-              {dashboardHref && (
-                <Link
-                  href={dashboardHref}
-                  className={`whitespace-nowrap rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
-                    pathname?.startsWith("/dashboard")
-                      ? "bg-indigo-600 text-white shadow-md"
-                      : "bg-indigo-50 text-indigo-700 border border-indigo-200"
-                  }`}
-                >
-                  Dashboard
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
       </nav>
 
       {/* Mobile Menu Overlay */}

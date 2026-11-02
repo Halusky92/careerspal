@@ -3,6 +3,7 @@ import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../../lib/supabaseJobs";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 import { Job } from "../../../../types";
+import { formatSalaryForStorage } from "../../../../lib/formatSalary";
 
 export const runtime = "nodejs";
 
@@ -117,7 +118,7 @@ export async function POST(request: Request) {
       location: body.location || "Remote",
       remote_policy: body.remotePolicy || "Remote",
       type: body.type || "Full-time",
-      salary: body.salary || "",
+      salary: formatSalaryForStorage(body.salary || ""),
       posted_at_text: postedAt,
       timestamp,
       category: body.category || "Operations",

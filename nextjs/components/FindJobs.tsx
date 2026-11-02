@@ -1058,7 +1058,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   </div>
                 </div>
 
-                <div ref={locationRef} className="relative">
+                <div ref={locationRef} className="relative hidden lg:block">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                     Location
                   </label>
@@ -1115,7 +1115,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   </div>
                 </div>
 
-                <div className="lg:col-start-3">
+                <div className="hidden lg:block lg:col-start-3">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                     Sort
                   </label>
@@ -1132,13 +1132,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
               </div>
 
               <div className="flex items-center justify-between lg:justify-end gap-3">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full lg:w-auto">
                   {canUseSaved && (
                     <button
                       onClick={() => setShowSavedOnly((prev) => !prev)}
                       disabled={savedCount === 0}
                       aria-pressed={showSavedOnly}
-                      className={`h-11 px-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      className={`hidden lg:inline-flex h-11 px-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
                         showSavedOnly
                           ? "bg-indigo-600 text-white border-indigo-600"
                           : "bg-white text-slate-600 border-slate-200/70 hover:border-indigo-200 hover:text-indigo-700"
@@ -1149,13 +1149,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   )}
                   <button
                     onClick={clearAllFilters}
-                    className="h-11 px-4 rounded-2xl border border-slate-200/70 bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
+                    className="hidden lg:inline-flex h-11 px-4 rounded-2xl border border-slate-200/70 bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
                   >
                     Reset
                   </button>
                   <button
                     onClick={() => setIsFilterOpen(true)}
-                    className="lg:hidden h-11 px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black"
+                    className="lg:hidden h-11 flex-1 px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black"
                   >
                     Filters
                   </button>
@@ -1224,13 +1224,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
               return (
                 <div
+                  key={job.id}
                   ref={(el) => {
                     rowRefs.current[job.id] = el;
                   }}
                   data-job-id={job.id}
                 >
                   <JobRow
-                    key={job.id}
                     job={job}
                     variant="board"
                     selected={selected}

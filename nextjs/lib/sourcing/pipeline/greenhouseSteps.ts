@@ -20,6 +20,7 @@ import { createCompanySlug } from "../../jobs";
 import { enrichCompanyFromWebsite } from "../../companyEnrichment";
 import { isOnNicheJob, isOffNicheTitle } from "../../nicheScope";
 import { formatSalaryForStorage } from "../../formatSalary";
+import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
 
 type AdminSb = SupabaseClient<any, "public", any>;
 
@@ -873,8 +874,9 @@ export async function autoPublishEligibleCandidates(
   // Salary sanity: block obviously wrong parsed salaries (e.g. "$1-$2") from being published.
   // (Salary parsing happens earlier; this is an extra last-line defense.)
   const period = (candidate.salary_period || "").toString().toLowerCase();
-  const minAmt = typeof candidate.salary_amount_min === "number" ? candidate.salary_amount_min : null;
-  const maxAmt = typeof candidate.salary_amount_max === "number" ? candidate.salary_amount_max : null;
+  const periodKey = (period || "year") as SalaryPeriod;
+  const minAmt = typeof candidate.salary_amount_min === "number" ? roundSalaryAmount(candidate.salary_amount_min, periodKey) : null;
+  const maxAmt = typeof candidate.salary_amount_max === "number" ? roundSalaryAmount(candidate.salary_amount_max, periodKey) : null;
   const floor =
     period === "hour" ? 10 : period === "day" ? 80 : period === "month" ? 1500 : period === "year" ? 20000 : null;
   const ceil =
@@ -900,8 +902,8 @@ export async function autoPublishEligibleCandidates(
     const timestamp = candidate.posted_at ? Date.parse(candidate.posted_at) : now;
     const salaryText = formatSalaryForStorage(
       (candidate.salary_text_raw || "").trim() ||
-        (candidate.salary_amount_min || candidate.salary_amount_max
-          ? `${candidate.salary_currency ?? ""} ${candidate.salary_amount_min ?? ""}-${candidate.salary_amount_max ?? ""} ${candidate.salary_period ?? ""}`.trim()
+        (minAmt || maxAmt
+          ? `${candidate.salary_currency ?? ""} ${minAmt ?? ""}-${maxAmt ?? ""} ${candidate.salary_period ?? ""}`.trim()
           : ""),
     );
 
@@ -956,8 +958,8 @@ export async function autoPublishEligibleCandidates(
       remote_policy: candidate.remote_policy || null,
       type: emp.type || null,
       salary: salaryText || null,
-      salary_min: candidate.salary_amount_min || null,
-      salary_max: candidate.salary_amount_max || null,
+      salary_min: minAmt || null,
+      salary_max: maxAmt || null,
       salary_currency: candidate.salary_currency || null,
       posted_at_text: candidate.posted_at ? new Date(candidate.posted_at).toISOString().slice(0, 10) : "Just now",
       timestamp: Number.isFinite(timestamp) ? Math.floor(timestamp) : now,

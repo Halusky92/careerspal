@@ -1,4 +1,9 @@
-import { parseSalaryFromText, type ParsedSalary, type SalaryPeriod } from "./sourcing/normalization/salary";
+import {
+  parseSalaryFromText,
+  roundSalaryAmount,
+  type ParsedSalary,
+  type SalaryPeriod,
+} from "./sourcing/normalization/salary";
 
 const PERIOD_LABEL: Record<SalaryPeriod, string> = {
   year: "year",
@@ -17,12 +22,12 @@ const CURRENCY_SYMBOL: Record<string, string> = {
   CHF: "CHF ",
 };
 
-function formatAmount(n: number, currency: string): string {
-  const digits = currency === "JPY" ? 0 : 0;
+function formatAmount(n: number, currency: string, period: SalaryPeriod | null): string {
+  const rounded = roundSalaryAmount(n, period);
   const formatted = new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: digits,
+    maximumFractionDigits: 0,
     minimumFractionDigits: 0,
-  }).format(Math.round(n));
+  }).format(rounded);
   const symbol = CURRENCY_SYMBOL[currency] || `${currency} `;
   if (symbol.endsWith(" ")) return `${symbol}${formatted}`;
   return `${symbol}${formatted}`;
@@ -34,11 +39,22 @@ function formatParsed(parsed: ParsedSalary): string | null {
   const max = parsed.salary_amount_max;
   if (!currency || (min == null && max == null)) return null;
   const period = parsed.salary_period ? PERIOD_LABEL[parsed.salary_period] : "year";
+  const periodKey = (parsed.salary_period || "year") as SalaryPeriod;
   const lo = min ?? max;
   const hi = max ?? min;
   if (lo == null || hi == null) return null;
-  const range = lo === hi ? formatAmount(lo, currency) : `${formatAmount(lo, currency)}–${formatAmount(hi, currency)}`;
+  const range =
+    lo === hi ? formatAmount(lo, currency, periodKey) : `${formatAmount(lo, currency, periodKey)}–${formatAmount(hi, currency, periodKey)}`;
   return `${range} / ${period}`;
+}
+
+function tidyUnparsedSalary(text: string): string {
+  return text.replace(/(\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?/g, (raw) => {
+    const n = Number(raw.replace(/,/g, ""));
+    if (!Number.isFinite(n)) return raw;
+    const rounded = n >= 1000 ? Math.round(n / 1000) * 1000 : Math.round(n);
+    return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(rounded);
+  });
 }
 
 export function formatSalaryDisplay(raw?: string | null): string {
@@ -47,19 +63,18 @@ export function formatSalaryDisplay(raw?: string | null): string {
   const parsed = parseSalaryFromText(text);
   const formatted = formatParsed(parsed);
   if (formatted) return formatted;
-  return text
-    .replace(/\s*-\s*/g, "–")
-    .replace(/\bUSD\b/gi, "$")
-    .replace(/\bEUR\b/gi, "€")
-    .replace(/\bGBP\b/gi, "£")
-    .replace(/\bJPY\b/gi, "¥")
-    .replace(/\bCAD\b/gi, "CA$")
-    .replace(/\.00\b/g, "")
-    .replace(/\s+year\b/i, " / year")
-    .replace(/\s+month\b/i, " / month")
-    .replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,")
-    .replace(/,{2,}/g, ",")
-    .trim();
+  return tidyUnparsedSalary(
+    text
+      .replace(/\s*-\s*/g, "–")
+      .replace(/\bUSD\b/gi, "$")
+      .replace(/\bEUR\b/gi, "€")
+      .replace(/\bGBP\b/gi, "£")
+      .replace(/\bJPY\b/gi, "¥")
+      .replace(/\bCAD\b/gi, "CA$")
+      .replace(/\.00\b/g, "")
+      .replace(/\s+year\b/i, " / year")
+      .replace(/\s+month\b/i, " / month"),
+  ).trim();
 }
 
 export function formatSalaryForStorage(raw?: string | null): string {
