@@ -6,6 +6,8 @@ import PostJob from "../../components/PostJob";
 import { Job, PlanType } from "../../types";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
+import { PLAN_PRICES } from "../../lib/plans";
+import type { StartPackStatus } from "../../lib/founding";
 
 const PLAN_KEY = "cp_selected_plan";
 
@@ -25,9 +27,10 @@ const PostJobPageInner = () => {
   const editJobId = searchParams.get("jobId");
   const { profile, accessToken, loading: authLoading, refreshProfile } = useSupabaseAuth();
   const [foundingEligible, setFoundingEligible] = useState(false);
+  const [foundingStatus, setFoundingStatus] = useState<StartPackStatus | null>(null);
   const [initialJob, setInitialJob] = useState<Partial<Job> | undefined>(undefined);
   const [selectedPlan, setSelectedPlan] = useState<{ type: PlanType; price: number }>(() => {
-    return getStoredPlan() || { type: "Standard", price: 79 };
+    return getStoredPlan() || { type: "Standard", price: PLAN_PRICES.standard };
   });
   const [showTestPlan, setShowTestPlan] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -37,13 +40,13 @@ const PostJobPageInner = () => {
     const isAdmin = profile?.role === "admin";
     const isInternalPrice = selectedPlan.type === "Standard" && selectedPlan.price <= 5;
     if (!isInternalPrice) return;
-    if (foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price < 79) return;
+    if (foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price < PLAN_PRICES.standard) return;
 
     // Only allow internal cheap pricing when the backend explicitly allowlists the admin.
     if (!(isAdmin && showTestPlan)) {
-      setSelectedPlan({ type: "Standard", price: 79 });
+      setSelectedPlan({ type: "Standard", price: PLAN_PRICES.standard });
       try {
-        sessionStorage.setItem(PLAN_KEY, JSON.stringify({ type: "Standard", price: 79 }));
+        sessionStorage.setItem(PLAN_KEY, JSON.stringify({ type: "Standard", price: PLAN_PRICES.standard }));
         sessionStorage.removeItem("cp_admin_internal_plan");
       } catch {
         // ignore
@@ -92,7 +95,8 @@ const PostJobPageInner = () => {
       try {
         const foundingRes = await authFetch("/api/employer/founding", {}, accessToken);
         if (foundingRes.ok) {
-          const data = (await foundingRes.json()) as { eligible?: boolean };
+          const data = (await foundingRes.json()) as StartPackStatus;
+          setFoundingStatus(data);
           setFoundingEligible(Boolean(data.eligible));
         }
         if (editJobId) {
@@ -118,7 +122,7 @@ const PostJobPageInner = () => {
 
   const handleJobSubmission = async (data: Job) => {
     const storagePlanPrice =
-      foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price < 79
+      foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price < PLAN_PRICES.standard
         ? 0
         : Number.isFinite(selectedPlan.price)
           ? Math.max(0, Math.round(selectedPlan.price))
@@ -204,7 +208,7 @@ const PostJobPageInner = () => {
       }
         if (payload.job?.id) {
         sessionStorage.setItem("cp_pending_job_id", payload.job.id);
-        const useStartPack = foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price < 79;
+        const useStartPack = foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price < PLAN_PRICES.standard;
         if (useStartPack) {
           const submit = await authFetch(`/api/employer/jobs/${payload.job.id}/submit`, { method: "POST" }, accessToken);
           if (submit.ok) {
@@ -254,6 +258,7 @@ const PostJobPageInner = () => {
         onUpgradePlan={(type, price) => setSelectedPlan({ type, price })}
         showTestPlan={showTestPlan}
         foundingEligible={foundingEligible}
+        foundingStatus={foundingStatus}
         initialJob={initialJob}
       />
     </div>

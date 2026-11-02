@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
+import { isOnNicheJob } from "../lib/nicheScope";
 
 config({ path: ".env.local" });
 config({ path: ".env" });
@@ -323,12 +324,18 @@ const run = async () => {
     };
   });
 
-  const { error } = await supabase.from("jobs").upsert(jobRows, { onConflict: "id" });
+  const onNicheRows = jobRows.filter((row) => isOnNicheJob(row));
+  const dropped = jobRows.length - onNicheRows.length;
+  if (dropped > 0) {
+    console.log(`Dropped ${dropped} off-niche rows before import.`);
+  }
+
+  const { error } = await supabase.from("jobs").upsert(onNicheRows, { onConflict: "id" });
   if (error) {
     throw error;
   }
 
-  console.log(`Imported ${jobRows.length} jobs into Supabase.`);
+  console.log(`Imported ${onNicheRows.length} jobs into Supabase.`);
 };
 
 run().catch((error) => {

@@ -5,6 +5,7 @@ import React, { useState, useMemo } from 'react';
 import { Job, ResumeAudit, UserSession } from '../types';
 import { createJobSlug } from '../lib/jobs';
 import { auditCandidateProfile } from '../services/geminiService';
+import { trackJobApply } from "../lib/trackJobEvent";
 
 interface CandidateDashboardProps {
   onBrowse: () => void;
@@ -325,11 +326,7 @@ const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ onBrowse, user,
                       <button
                         onClick={async (event) => {
                           event.stopPropagation();
-                          try {
-                            await fetch(`/api/jobs/${job.id}/match`, { method: "POST" });
-                          } catch {
-                            // no-op
-                          }
+                          trackJobApply(job.id);
                           if (job.applyUrl && job.applyUrl !== '#') {
                             window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
                           } else {

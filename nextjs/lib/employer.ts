@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { getSupabaseProfile } from "./supabaseServerAuth";
-import { FOUNDING_COMPANY_CAP, FOUNDING_JOBS_PER_COMPANY, isFoundingLaunchEnabled } from "./founding";
+import {
+  FOUNDING_COMPANY_CAP,
+  FOUNDING_JOBS_PER_COMPANY,
+  isFoundingLaunchEnabled,
+  START_PACK_NEXT_PRICE,
+  type StartPackStatus,
+} from "./founding";
 
 export const EMPLOYER_JOB_SELECT =
   "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,origin,company_id,created_by,companies(name,slug,logo_url,website,description)";
@@ -20,7 +26,13 @@ export const EMPLOYER_STATUSES = new Set([
   "archived",
 ]);
 
-const COUNTED_FOUNDING_STATUSES = new Set(["pending_review", "published", "paused", "closed"]);
+const COUNTED_FOUNDING_STATUSES = new Set([
+  "pending_review",
+  "published",
+  "paused",
+  "closed",
+  "archived",
+]);
 
 export async function requireEmployer(request: Request) {
   const auth = await getSupabaseProfile(request);
@@ -107,12 +119,24 @@ export async function resolveEmployerCompany(args: {
   return { companyId: created.id, error: null, existing: created };
 }
 
-export async function getFoundingStatus(profileId: string) {
+const emptyStartPack = (reason: string, extra?: Partial<StartPackStatus>): StartPackStatus => ({
+  enabled: false,
+  eligible: false,
+  remainingSlots: 0,
+  remainingJobs: 0,
+  usedJobs: 0,
+  quota: FOUNDING_JOBS_PER_COMPANY,
+  nextPrice: START_PACK_NEXT_PRICE,
+  reason,
+  ...extra,
+});
+
+export async function getFoundingStatus(profileId: string): Promise<StartPackStatus> {
   if (!supabaseAdmin) {
-    return { enabled: false, eligible: false, remainingSlots: 0, remainingJobs: 0, reason: "not_configured" };
+    return emptyStartPack("not_configured");
   }
   if (!isFoundingLaunchEnabled()) {
-    return { enabled: false, eligible: false, remainingSlots: 0, remainingJobs: 0, reason: "launch_closed" };
+    return emptyStartPack("launch_closed");
   }
 
   const { data: myCompany } = await supabaseAdmin
@@ -135,48 +159,36 @@ export async function getFoundingStatus(profileId: string) {
   const usedSlots = typeof foundingCompanies === "number" ? foundingCompanies : 0;
   const remainingSlots = Math.max(0, FOUNDING_COMPANY_CAP - usedSlots);
 
-  let usedJobs = 0;
-  if (myCompany?.id) {
-    const { data: jobs } = await supabaseAdmin
-      .from("jobs")
-      .select("id,status,origin,plan_price,stripe_payment_status")
-      .eq("company_id", myCompany.id)
-      .eq("created_by", profileId);
-    usedJobs = (jobs || []).filter((job) => {
-      if ((job.origin || "employer") === "greenhouse") return false;
-      if (!COUNTED_FOUNDING_STATUSES.has(job.status || "")) return false;
-      return job.plan_price === 0 || job.stripe_payment_status === "founding";
-    }).length;
-  }
+  const { data: jobs } = await supabaseAdmin
+    .from("jobs")
+    .select("id,status,origin,plan_price,stripe_payment_status")
+    .eq("created_by", profileId);
+  const usedJobs = (jobs || []).filter((job) => {
+    if ((job.origin || "employer") === "greenhouse") return false;
+    if (!COUNTED_FOUNDING_STATUSES.has(job.status || "")) return false;
+    return job.plan_price === 0 || job.stripe_payment_status === "founding";
+  }).length;
   const remainingJobs = Math.max(0, FOUNDING_JOBS_PER_COMPANY - usedJobs);
+  const base = {
+    enabled: true,
+    remainingSlots,
+    remainingJobs,
+    usedJobs,
+    quota: FOUNDING_JOBS_PER_COMPANY,
+    nextPrice: START_PACK_NEXT_PRICE,
+    companyId: myCompany?.id || null,
+  };
 
   if (!alreadyFounding && remainingSlots <= 0) {
-    return {
-      enabled: true,
-      eligible: false,
-      remainingSlots: 0,
-      remainingJobs,
-      companyId: myCompany?.id || null,
-      reason: "no_slots",
-    };
+    return { ...base, eligible: false, reason: "no_slots" };
   }
   if (remainingJobs <= 0) {
-    return {
-      enabled: true,
-      eligible: false,
-      remainingSlots: alreadyFounding ? remainingSlots : remainingSlots,
-      remainingJobs: 0,
-      companyId: myCompany?.id || null,
-      reason: "job_cap",
-    };
+    return { ...base, remainingJobs: 0, eligible: false, reason: "job_cap" };
   }
 
   return {
-    enabled: true,
+    ...base,
     eligible: true,
-    remainingSlots: alreadyFounding ? remainingSlots : remainingSlots,
-    remainingJobs,
-    companyId: myCompany?.id || null,
     reason: alreadyFounding ? "founding_member" : "open",
   };
 }

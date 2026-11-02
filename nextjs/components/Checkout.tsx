@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Job } from '../types';
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
+import { PLAN_PRICES } from "../lib/plans";
 
 interface CheckoutProps {
   jobData: Job | null;
@@ -34,11 +35,11 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
   }
 
   const [overridePrice, setOverridePrice] = useState<number | null>(null);
-  const price = overridePrice ?? jobData?.plan?.price ?? 79;
+  const price = overridePrice ?? jobData?.plan?.price ?? PLAN_PRICES.standard;
   const planName = jobData?.plan?.type || 'Standard';
   const formatPrice = (value: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-  const storagePlanPrice = Number.isFinite(price) ? Math.max(0, Math.round(price)) : 79;
+  const storagePlanPrice = Number.isFinite(price) ? Math.max(0, Math.round(price)) : PLAN_PRICES.standard;
 
   const authRedirectUrl = useMemo(() => {
     const from = jobId ? `/checkout?jobId=${encodeURIComponent(jobId)}` : "/checkout";
@@ -328,7 +329,9 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
                  <div className="flex justify-between items-center">
                     <div>
                        <p className="font-semibold text-white">{jobData?.title || "New Listing"}</p>
-                       <p className="text-[10px] text-slate-300 font-medium uppercase tracking-wide">{planName} 30-Day Listing</p>
+                       <p className="text-[10px] text-slate-300 font-medium uppercase tracking-wide">
+                         {price === 0 ? "Start pack · Standard" : `${planName} · 30-day listing · USD`}
+                       </p>
                     </div>
                     <span className="font-semibold">{formatPrice(price)}</span>
                  </div>

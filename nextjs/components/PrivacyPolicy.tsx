@@ -50,9 +50,9 @@ const PrivacyPolicy: React.FC = () => {
           <div className="space-y-4 text-slate-600 font-medium">
             <p>We collect and process the following categories of data:</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li><strong>Profile Information:</strong> Name, email, professional role, and Notion/system expertise.</li>
-              <li><strong>Professional Credentials:</strong> Resumes, portfolios (Notion sites), and work history provided for the Talent Pool.</li>
-              <li><strong>Employer Data:</strong> Company details, VAT numbers (for billing), and job descriptions.</li>
+              <li><strong>Profile Information:</strong> Name, email, and account role (candidate or employer).</li>
+              <li><strong>Account files:</strong> Document links you save in your account. We do not send them to employers.</li>
+              <li><strong>Employer Data:</strong> Company details, billing email, and job listings. Paid listings are charged in USD via Stripe.</li>
               <li><strong>Technical Data:</strong> IP address, browser type, and usage patterns via essential cookies.</li>
             </ul>
           </div>
@@ -70,7 +70,7 @@ const PrivacyPolicy: React.FC = () => {
             <br />
             - Operate the CareersPal platform (accounts, job posts, applications, alerts).
             <br />
-            - Facilitate job applications and employer tools.
+            - Let candidates apply on the employer’s own link.
             <br />
             - Send alerts and platform updates (only with consent).
             <br />

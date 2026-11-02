@@ -171,6 +171,13 @@ export async function POST(request: Request) {
       const jobId = session.metadata?.jobId;
       if (jobId) {
         const isPaid = session.payment_status === "paid";
+        const { data: paidJob } = await supabaseAdmin
+          .from("jobs")
+          .select("plan_type")
+          .eq("id", jobId)
+          .maybeSingle();
+        const paidPlan = (paidJob as { plan_type?: string | null } | null)?.plan_type;
+        const featuredPlan = paidPlan === "Featured Pro" || paidPlan === "Elite Managed";
         await supabaseAdmin
           .from("jobs")
           .update({
@@ -179,6 +186,7 @@ export async function POST(request: Request) {
             stripe_session_id: session.id,
             posted_at_text: isPaid ? "Just now" : undefined,
             timestamp: isPaid ? Date.now() : undefined,
+            is_featured: isPaid ? featuredPlan : false,
           })
           .eq("id", jobId);
         await supabaseAdmin.from("audit_logs").insert({

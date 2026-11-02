@@ -8,6 +8,7 @@ import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import FormattedDescription from "./FormattedDescription";
 import { formatSalaryDisplay } from "../lib/formatSalary";
+import { trackJobApply } from "../lib/trackJobEvent";
 
 export type JobCardVariant = "board" | "home";
 
@@ -104,10 +105,10 @@ export default function JobCard({
         containerClass,
         "transition-all cursor-pointer group flex flex-col items-stretch justify-between gap-2.5 relative active:scale-[0.99] animate-in fade-in slide-in-from-bottom-2 overflow-hidden",
         isElite
-          ? "bg-amber-50 border border-amber-200 shadow-sm text-slate-900 border-l-2 border-l-amber-400"
+          ? "bg-white border border-slate-900/20 shadow-sm text-slate-900 border-l-2 border-l-slate-900"
           : isPro
-            ? "bg-amber-50/80 border border-amber-200 shadow-sm hover:shadow-md border-l-2 border-l-amber-300"
-            : "bg-amber-50/70 border border-amber-200 shadow-sm hover:shadow-md border-l-2 border-l-amber-200",
+            ? "bg-white border border-indigo-200 shadow-sm hover:shadow-md border-l-2 border-l-indigo-500"
+            : "bg-white border border-slate-200 shadow-sm hover:shadow-md",
         isPrivate ? "opacity-70" : "",
         className,
       ].join(" ")}
@@ -115,10 +116,10 @@ export default function JobCard({
       {(isElite || isPro) && (
         <div
           className={`absolute -top-2 left-4 sm:left-7 px-2.5 py-1 rounded-full text-[7px] font-black uppercase tracking-widest shadow-md ${
-            isElite ? "bg-yellow-200 text-yellow-900" : "bg-indigo-600 text-white"
+            isElite ? "bg-slate-900 text-white" : "bg-indigo-600 text-white"
           }`}
         >
-          {isElite ? "Elite Managed" : "Featured"}
+          {isElite ? "Elite" : "Pro"}
         </div>
       )}
 
@@ -290,11 +291,7 @@ export default function JobCard({
               return;
             }
             if (!hasApplyUrl) return;
-            try {
-              await fetch(`/api/jobs/${job.id}/match`, { method: "POST" });
-            } catch {
-              // no-op
-            }
+            trackJobApply(job.id);
             window.open(job.applyUrl, "_blank", "noopener,noreferrer");
           }}
           disabled={!isPrivate && !hasApplyUrl}

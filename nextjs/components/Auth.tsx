@@ -1,20 +1,16 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useSupabaseAuth } from "./Providers";
 
-interface AuthProps {
-  onAuthSuccess?: (user: { email: string; role: 'candidate' | 'employer' }) => void;
-}
-
-const Auth: React.FC<AuthProps> = () => {
+const Auth: React.FC = () => {
   const { signInWithGoogle, signInWithEmail } = useSupabaseAuth();
   const searchParams = useSearchParams();
   const initialRole = searchParams.get("role") === "employer" ? "employer" : "candidate";
   const fromParam = searchParams.get("from");
   const desiredFrom = fromParam && fromParam.startsWith("/") ? fromParam : null;
-  const [role, setRole] = useState<'candidate' | 'employer'>(initialRole);
+  const [role, setRole] = useState<"candidate" | "employer">(initialRole);
   const [isLoading, setIsLoading] = useState(false);
   const [emailStatus, setEmailStatus] = useState<"idle" | "sent" | "error">("idle");
   const [emailMessage, setEmailMessage] = useState("");
@@ -31,8 +27,9 @@ const Auth: React.FC<AuthProps> = () => {
         localStorage.setItem("cp_auth_from", desiredFrom);
         return;
       }
-      // If a user is mid-checkout but the URL lost `from`, keep flow continuity.
-      const hasPending = Boolean(sessionStorage.getItem("cp_pending_job") || sessionStorage.getItem("cp_pending_job_id"));
+      const hasPending = Boolean(
+        sessionStorage.getItem("cp_pending_job") || sessionStorage.getItem("cp_pending_job_id"),
+      );
       if (hasPending) {
         sessionStorage.setItem("cp_auth_from", "/checkout");
         localStorage.setItem("cp_auth_from", "/checkout");
@@ -47,7 +44,8 @@ const Auth: React.FC<AuthProps> = () => {
     await signInWithGoogle({ role, from: desiredFrom });
   };
 
-  const handleEmailSignIn = async () => {
+  const handleEmailSignIn = async (event?: React.FormEvent) => {
+    event?.preventDefault();
     if (!email.trim()) return;
     setIsLoading(true);
     try {
@@ -57,7 +55,7 @@ const Auth: React.FC<AuthProps> = () => {
         setEmailMessage(result.error);
       } else {
         setEmailStatus("sent");
-        setEmailMessage("Magic link sent. Check your inbox.");
+        setEmailMessage("Check your email for a sign-in link.");
       }
     } finally {
       setIsLoading(false);
@@ -65,104 +63,84 @@ const Auth: React.FC<AuthProps> = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-24 animate-in fade-in slide-in-from-bottom-4">
-      <div className="p-10 rounded-[3.5rem] shadow-2xl border bg-white border-slate-50 shadow-indigo-100">
-        <div className="text-center mb-10">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold shadow-xl bg-indigo-600 text-white shadow-indigo-100">
+    <div className="w-full max-w-[400px] mx-auto">
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="text-center mb-7">
+          <div className="w-10 h-10 rounded-lg bg-indigo-600 text-white text-sm font-semibold flex items-center justify-center mx-auto mb-4">
             C
           </div>
-          
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            Sign in to CareersPal
-          </h1>
-          
-          <p className="font-medium mt-2 text-slate-700">
-            {role === "employer"
-              ? "Post a role, pay, and track listings."
-              : "Save roles and get email when a new one is published."}
-          </p>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Sign in</h1>
         </div>
-
-        <div className="bg-slate-50 p-1.5 rounded-2xl flex gap-1 mb-8">
-          <button 
-            onClick={() => setRole('employer')} 
-            className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wide rounded-xl transition-all ${role === 'employer' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-          >
-            Hiring
-          </button>
-          <button 
-            onClick={() => setRole('candidate')} 
-            className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wide rounded-xl transition-all ${role === 'candidate' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-          >
-            Job seeker
-          </button>
-        </div>
-        <p className="text-[11px] font-bold text-slate-600 text-center -mt-4 mb-6">
-          {role === 'employer' ? 'Work email is best for an employer account' : 'Sign in to save roles and set alerts'}
-        </p>
 
         <button
           type="button"
           onClick={handleGoogleSignIn}
           disabled={isLoading}
           aria-busy={isLoading}
-          className="w-full mb-6 flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-4 font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+          className="w-full h-11 flex items-center justify-center gap-2.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-60"
         >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white border border-slate-200">
-            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-              <path fill="#EA4335" d="M24 9.5c3.12 0 5.93 1.08 8.14 2.86l6.05-6.05C34.57 3.03 29.62 1 24 1 14.86 1 7.15 6.26 3.64 13.86l7.21 5.6C12.66 14.15 17.9 9.5 24 9.5z"/>
-              <path fill="#4285F4" d="M46.5 24c0-1.67-.15-3.27-.44-4.82H24v9.14h12.6c-.54 2.94-2.2 5.43-4.7 7.1l7.21 5.6C43.66 36.9 46.5 30.98 46.5 24z"/>
-              <path fill="#FBBC05" d="M10.85 28.54A14.4 14.4 0 0 1 10 24c0-1.57.27-3.1.75-4.54l-7.21-5.6A23.97 23.97 0 0 0 1.5 24c0 3.86.92 7.51 2.54 10.86l6.81-6.32z"/>
-              <path fill="#34A853" d="M24 46.5c5.62 0 10.35-1.86 13.8-5.05l-7.21-5.6c-2 1.35-4.55 2.15-6.59 2.15-6.08 0-11.3-4.65-13.13-10.96l-6.81 6.32C7.15 41.74 14.86 46.5 24 46.5z"/>
-            </svg>
-          </span>
-          {isLoading ? "Connecting..." : "Continue with Google"}
+          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+            <path fill="#EA4335" d="M24 9.5c3.12 0 5.93 1.08 8.14 2.86l6.05-6.05C34.57 3.03 29.62 1 24 1 14.86 1 7.15 6.26 3.64 13.86l7.21 5.6C12.66 14.15 17.9 9.5 24 9.5z" />
+            <path fill="#4285F4" d="M46.5 24c0-1.67-.15-3.27-.44-4.82H24v9.14h12.6c-.54 2.94-2.2 5.43-4.7 7.1l7.21 5.6C43.66 36.9 46.5 30.98 46.5 24z" />
+            <path fill="#FBBC05" d="M10.85 28.54A14.4 14.4 0 0 1 10 24c0-1.57.27-3.1.75-4.54l-7.21-5.6A23.97 23.97 0 0 0 1.5 24c0 3.86.92 7.51 2.54 10.86l6.81-6.32z" />
+            <path fill="#34A853" d="M24 46.5c5.62 0 10.35-1.86 13.8-5.05l-7.21-5.6c-2 1.35-4.55 2.15-6.59 2.15-6.08 0-11.3-4.65-13.13-10.96l-6.81 6.32C7.15 41.74 14.86 46.5 24 46.5z" />
+          </svg>
+          {isLoading ? "Connecting…" : "Continue with Google"}
         </button>
 
-        <div className="space-y-3 mb-6">
-          <div className="text-[11px] font-bold text-slate-600 text-center">
-            Or use email
+        <div className="relative my-5">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-slate-200" />
           </div>
-          <input
-            type="email"
-            inputMode="email"
-            placeholder="name@company.com"
-            className="cp-field w-full px-4 py-3 rounded-2xl bg-white text-sm font-bold text-slate-700 outline-none"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
+          <div className="relative flex justify-center">
+            <span className="bg-white px-2 text-xs text-slate-500">or</span>
+          </div>
+        </div>
+
+        <form onSubmit={handleEmailSignIn} className="space-y-3">
+          <label className="block">
+            <span className="sr-only">Email</span>
+            <input
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              required
+              placeholder="Email"
+              className="cp-field w-full h-11 px-3 rounded-lg bg-white text-sm text-slate-900 outline-none placeholder:text-slate-400"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </label>
           <button
-            type="button"
-            onClick={handleEmailSignIn}
+            type="submit"
             disabled={isLoading || !email.trim()}
-            className="w-full rounded-2xl bg-slate-900 text-white py-4 text-sm font-semibold uppercase tracking-wide hover:bg-black disabled:opacity-60"
+            className="w-full h-11 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-black disabled:opacity-60"
           >
-            {isLoading ? "Sending link..." : "Email me a sign-in link"}
+            {isLoading ? "Sending…" : "Send sign-in link"}
           </button>
-          <p className={`text-[11px] font-bold text-center ${
-            emailStatus === "error" ? "text-red-600" : emailStatus === "sent" ? "text-emerald-600" : "text-slate-600"
-          }`}>
-            {emailMessage || "We will send a magic link to your email."}
-          </p>
-        </div>
+        </form>
 
-        <div className="rounded-[2rem] border border-slate-100 bg-slate-50/70 p-5 text-left">
-          <p className="text-[11px] font-semibold text-slate-800">What you get</p>
-          <ul className="mt-3 space-y-2 text-sm font-medium text-slate-700">
-            <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Save roles</li>
-            <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Create email alerts for new published roles</li>
-            <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Manage your account and role</li>
-          </ul>
-          <p className="mt-4 text-xs font-medium text-slate-600">
-            By continuing you agree to our <a className="text-indigo-600 hover:underline" href="/privacy">privacy policy</a> and <a className="text-indigo-600 hover:underline" href="/terms">terms</a>.
+        {emailMessage ? (
+          <p
+            className={`mt-3 text-center text-sm ${
+              emailStatus === "error" ? "text-red-600" : "text-emerald-700"
+            }`}
+          >
+            {emailMessage}
           </p>
-        </div>
+        ) : null}
 
-        <div className="mt-8 text-center pt-8 border-t border-slate-50">
-          <div className="text-xs font-medium text-slate-600">
-            Need help? <a className="text-indigo-600 hover:underline" href="/about">Contact support</a>
-          </div>
-        </div>
+        <p className="mt-6 text-center text-xs text-slate-500">
+          By continuing you agree to our{" "}
+          <a className="text-slate-700 hover:underline" href="/privacy">
+            Privacy
+          </a>{" "}
+          and{" "}
+          <a className="text-slate-700 hover:underline" href="/terms">
+            Terms
+          </a>
+          .
+        </p>
       </div>
     </div>
   );

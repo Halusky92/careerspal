@@ -4,6 +4,7 @@ import { mapSupabaseJob, SupabaseJobRow } from "../../../../lib/supabaseJobs";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 import { Job } from "../../../../types";
 import { formatSalaryForStorage } from "../../../../lib/formatSalary";
+import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../lib/nicheScope";
 
 export const runtime = "nodejs";
 
@@ -67,6 +68,13 @@ export async function POST(request: Request) {
 
   const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review", "closed", "archived"]);
   const status = body.status && allowedStatuses.has(body.status) ? body.status : "published";
+
+  if (
+    status === "published" &&
+    !isOnNicheJob({ title: body.title, category: body.category, description: body.description })
+  ) {
+    return NextResponse.json({ error: NICHE_REJECT_MESSAGE }, { status: 400 });
+  }
 
   const nowIso = new Date().toISOString();
   const isPublished = status === "published";

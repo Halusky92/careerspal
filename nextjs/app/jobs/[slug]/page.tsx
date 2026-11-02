@@ -12,6 +12,8 @@ import type { Job } from "../../../types";
 import { isOnNicheJob } from "../../../lib/nicheScope";
 import { formatSalaryDisplay } from "../../../lib/formatSalary";
 import { ApplyClickLink, JobViewTracker } from "../../../components/JobAnalytics";
+import FeaturedBadge from "../../../components/FeaturedBadge";
+import { isPaidFeaturedListing } from "../../../lib/featuredListing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -431,6 +433,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                   </Link>
                   <span className="text-slate-300">•</span>
                   <span className="text-sm sm:text-base font-black text-slate-900">{formatSalaryDisplay(job.salary)}</span>
+                  {isPaidFeaturedListing(job) ? <FeaturedBadge job={job} size="md" /> : null}
                 </div>
 
                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">

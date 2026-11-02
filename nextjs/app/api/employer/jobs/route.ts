@@ -11,6 +11,7 @@ import {
   resolveEmployerCompany,
 } from "../../../../lib/employer";
 import { formatSalaryForStorage } from "../../../../lib/formatSalary";
+import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../lib/nicheScope";
 
 const MAX_JOBS_PER_HOUR = 5;
 
@@ -123,6 +124,11 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ error: "Invalid status." }, { status: 400 });
   }
   const status = auth.role === "admin" ? body.status || "draft" : "draft";
+  if (
+    !isOnNicheJob({ title: body.title, category: body.category, description: body.description })
+  ) {
+    return NextResponse.json({ error: NICHE_REJECT_MESSAGE }, { status: 400 });
+  }
   const timestamp = body.timestamp || (status === "published" ? Date.now() : null);
   const postedAt = body.postedAt || (status === "published" ? "Just now" : "Draft");
   const rawPlanPrice =
@@ -196,7 +202,7 @@ export const POST = async (request: Request) => {
     benefits: body.benefits || [],
     keywords: body.keywords || null,
     match_score: body.matchScore || null,
-    is_featured: Boolean(body.isFeatured),
+    is_featured: storedPlanType === "Featured Pro" || storedPlanType === "Elite Managed",
     status,
     plan_type: storedPlanType,
     plan_price: storedPlanPrice,

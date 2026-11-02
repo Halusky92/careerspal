@@ -36,9 +36,9 @@ const AuthPage = () => {
           await authFetch(
             "/api/account/role",
             {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ role: "employer" }),
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ role: "employer" }),
             },
             accessToken,
           );
@@ -58,7 +58,9 @@ const AuthPage = () => {
           if (stored && stored.startsWith("/")) finalFrom = stored;
           if (!finalFrom && storedPersistent && storedPersistent.startsWith("/")) finalFrom = storedPersistent;
           if (!finalFrom) {
-            const hasPending = Boolean(sessionStorage.getItem("cp_pending_job") || sessionStorage.getItem("cp_pending_job_id"));
+            const hasPending = Boolean(
+              sessionStorage.getItem("cp_pending_job") || sessionStorage.getItem("cp_pending_job_id"),
+            );
             if (hasPending) finalFrom = "/post-a-job";
           }
         } catch {
@@ -87,25 +89,14 @@ const AuthPage = () => {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-24 text-center">
-        <div className="inline-flex items-center gap-3 text-slate-500 font-bold">
-          <span className="h-3 w-3 rounded-full bg-indigo-500 animate-pulse"></span>
-          Checking session...
-        </div>
+      <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4">
+        <p className="text-sm text-slate-500">Checking session…</p>
       </div>
     );
   }
 
   return (
-    <div className="pt-6">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <button
-          onClick={() => router.back()}
-          className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600"
-        >
-          <span>← Back</span>
-        </button>
-      </div>
+    <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4 py-10">
       <Auth />
     </div>
   );

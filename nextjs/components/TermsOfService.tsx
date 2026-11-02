@@ -28,13 +28,13 @@ const TermsOfService: React.FC = () => {
         </section>
 
         <section className="space-y-6">
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">2. User Responsibilities (Architects)</h2>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">2. Candidates</h2>
           <div className="space-y-4 text-slate-600 font-medium">
-            <p>As a candidate on our platform, you agree to:</p>
+            <p>If you browse or apply through CareersPal, you agree to:</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Provide accurate and truthful information regarding your skills and experience.</li>
-              <li>Use the platform solely for professional recruitment purposes.</li>
-              <li>Respect the confidentiality of employer information shared during the application process.</li>
+              <li>Use the board to find published roles and apply on the employer’s own link.</li>
+              <li>Keep your account information accurate.</li>
+              <li>We do not run a talent pool or send your profile to employers.</li>
             </ul>
           </div>
         </section>
@@ -42,7 +42,7 @@ const TermsOfService: React.FC = () => {
         <section className="space-y-6">
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">3. Employer Responsibilities</h2>
           <div className="space-y-4 text-slate-600 font-medium">
-            <p>Employers using CareersPal Elite must:</p>
+            <p>Employers posting on CareersPal agree to:</p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Include transparent salary ranges for all listings.</li>
               <li>Ensure all job advertisements comply with labor laws and equality standards.</li>
@@ -55,7 +55,7 @@ const TermsOfService: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">4. Fees & Payments</h2>
           <div className="text-slate-600 leading-relaxed font-medium space-y-4">
             <p>
-              The first 10 Standard listings per employer are free (Start pack). After that, posting fees start at <strong>$79 per 30-day listing</strong> (Standard). Featured Pro is $149 and Elite Managed is $249.
+              The first 10 Standard listings per employer are free (Start pack). After that, fees are in USD: Standard <strong>$79</strong> / 30 days, Featured Pro <strong>$149</strong>, Elite Managed <strong>$249</strong>. Paid listings go through Stripe. Listings are reviewed before they go live.
             </p>
             <p>
               <strong>Refund Policy:</strong> If we cannot publish your listing after review (for example due to missing required information), contact support at <strong>info@careerspal.com</strong>. Refunds are handled case-by-case based on the reason and status of the listing.

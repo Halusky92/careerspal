@@ -6,19 +6,18 @@ import { createJobSlug } from "../lib/jobs";
 import { formatSalaryDisplay } from "../lib/formatSalary";
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
+import { listingSourceLabel } from "../lib/listingTraffic";
+import StartPackMeter from "./StartPackMeter";
+import type { StartPackStatus } from "../lib/founding";
+
+type TrafficSource = { source: string; label?: string; views: number; applyClicks: number };
 
 interface EmployerDashboardProps {
   onUpgrade: () => void;
   onPostJob: () => void;
 }
 
-type FoundingStatus = {
-  enabled?: boolean;
-  eligible?: boolean;
-  remainingSlots?: number;
-  remainingJobs?: number;
-  reason?: string;
-};
+type FoundingStatus = StartPackStatus;
 
 type ClaimHit = {
   id: string;
@@ -75,7 +74,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   const { accessToken } = useSupabaseAuth();
   const [myJobs, setMyJobs] = useState<Job[]>([]);
   const [summary, setSummary] = useState<Record<string, number>>({});
-  const [stats, setStats] = useState({ jobs: 0, views: 0, matches: 0 });
+  const [stats, setStats] = useState({ jobs: 0, views: 0, matches: 0, applyClicks: 0, sources: [] as TrafficSource[] });
   const [founding, setFounding] = useState<FoundingStatus | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -96,8 +95,20 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
       setSummary(data.summary || {});
     }
     if (statsRes.ok) {
-      const data = (await statsRes.json()) as { jobs?: number; views?: number; matches?: number };
-      setStats({ jobs: data.jobs || 0, views: data.views || 0, matches: data.matches || 0 });
+      const data = (await statsRes.json()) as {
+        jobs?: number;
+        views?: number;
+        matches?: number;
+        applyClicks?: number;
+        sources?: TrafficSource[];
+      };
+      setStats({
+        jobs: data.jobs || 0,
+        views: data.views || 0,
+        matches: data.matches || 0,
+        applyClicks: data.applyClicks ?? data.matches ?? 0,
+        sources: data.sources || [],
+      });
     }
     if (foundingRes.ok) {
       setFounding((await foundingRes.json()) as FoundingStatus);
@@ -207,21 +218,45 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
         </div>
       </div>
 
-      <div className="flex gap-6 mb-6 text-sm">
-        <div>
-          <span className="text-slate-400">Views</span>{" "}
-          <span className="font-semibold text-slate-900">{stats.views || "—"}</span>
+      <div className="mb-6">
+        <div className="flex flex-wrap gap-6 text-sm">
+          <div>
+            <span className="text-slate-400">Listings</span>{" "}
+            <span className="font-semibold text-slate-900">{stats.jobs || myJobs.length || "—"}</span>
+          </div>
+          <div>
+            <span className="text-slate-400">Views</span>{" "}
+            <span className="font-semibold text-slate-900">{stats.views || "—"}</span>
+          </div>
+          <div>
+            <span className="text-slate-400">Apply clicks</span>{" "}
+            <span className="font-semibold text-slate-900">{stats.applyClicks || stats.matches || "—"}</span>
+          </div>
         </div>
-        <div>
-          <span className="text-slate-400">Applies</span>{" "}
-          <span className="font-semibold text-slate-900">{stats.matches || "—"}</span>
-        </div>
+        {stats.sources.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {stats.sources.slice(0, 6).map((row) => (
+              <span
+                key={row.source}
+                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600"
+              >
+                <span className="font-medium text-slate-800">{row.label || listingSourceLabel(row.source)}</span>
+                <span className="text-slate-400">
+                  {row.views} views · {row.applyClicks} apply
+                </span>
+              </span>
+            ))}
+          </div>
+        )}
+        <p className="mt-2 text-xs text-slate-400">
+          Apply clicks are outbound Apply clicks, not confirmed applications.
+        </p>
       </div>
 
-      {founding?.enabled && founding.eligible && (
-        <p className="mb-4 text-sm text-slate-600">
-          Start pack: {founding.remainingJobs ?? 0} free Standard listing{founding.remainingJobs === 1 ? "" : "s"} left (first 10), then $79 / $149 / $249. Reviewed before publish.
-        </p>
+      {founding?.enabled && (
+        <div className="mb-4">
+          <StartPackMeter status={founding} />
+        </div>
       )}
 
       {message && (
@@ -282,7 +317,9 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
                   <th className="px-3 py-2.5 font-medium hidden sm:table-cell">Company</th>
                   <th className="px-3 py-2.5 font-medium">Salary</th>
                   <th className="px-3 py-2.5 font-medium">Status</th>
-                  <th className="px-3 py-2.5 font-medium hidden md:table-cell">Date</th>
+                  <th className="px-3 py-2.5 font-medium text-right">Views</th>
+                  <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Apply clicks</th>
+                  <th className="px-3 py-2.5 font-medium hidden lg:table-cell">Date</th>
                   <th className="px-3 py-2.5 font-medium w-10"></th>
                 </tr>
               </thead>
@@ -302,7 +339,9 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
                           {statusLabel(job.status)}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap hidden md:table-cell">{postedDate(job)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">{job.views ?? 0}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">{job.matches ?? 0}</td>
+                      <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap hidden lg:table-cell">{postedDate(job)}</td>
                       <td className="px-3 py-2.5 relative">
                         <button
                           type="button"

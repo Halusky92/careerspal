@@ -282,7 +282,7 @@ export async function GET(request: Request) {
         .slice(0, 10)
         .map((job) => {
           const companyName = getCompanyName(job);
-          const jobUrl = `${baseUrl}/jobs/${createJobSlug({ title: job.title || "role", id: job.id })}`;
+          const jobUrl = `${baseUrl}/jobs/${createJobSlug({ title: job.title || "role", id: job.id })}?utm_source=alerts`;
           const safeTitle = escapeHtml(job.title || "Role");
           const safeCompany = escapeHtml(companyName);
           const safeLocation = escapeHtml(job.location || "Remote");
@@ -373,7 +373,7 @@ export async function GET(request: Request) {
       .slice(0, 10)
       .map((job) => {
         const companyName = getCompanyName(job);
-        const jobUrl = `${baseUrl}/jobs/${createJobSlug({ title: job.title || "role", id: job.id })}`;
+        const jobUrl = `${baseUrl}/jobs/${createJobSlug({ title: job.title || "role", id: job.id })}?utm_source=alerts`;
         return `
             <tr>
               <td style="padding:16px;border:1px solid #eef0f5;background:#fbfbff;">

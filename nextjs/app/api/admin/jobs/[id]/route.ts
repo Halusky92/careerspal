@@ -3,6 +3,7 @@ import { supabaseAdmin } from "../../../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../../../lib/supabaseJobs";
 import { getSupabaseProfile } from "../../../../../lib/supabaseServerAuth";
 import { formatSalaryForStorage } from "../../../../../lib/formatSalary";
+import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../../lib/nicheScope";
 
 export const runtime = "nodejs";
 
@@ -31,7 +32,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   const { data: existing } = await supabaseAdmin
     .from("jobs")
-    .select("id,status,stripe_payment_status,plan_price,created_by")
+    .select("id,status,title,category,description,stripe_payment_status,plan_price,plan_type,created_by")
     .eq("id", id)
     .single();
   if (!existing) {
@@ -56,6 +57,15 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   if (body.status) {
     if (body.status === "published") {
+      const nextTitle = typeof body.title === "string" ? body.title : String((existing as { title?: string | null }).title || "");
+      const nextCategory = String((existing as { category?: string | null }).category || "");
+      const nextDescription =
+        typeof body.description === "string"
+          ? body.description
+          : String((existing as { description?: string | null }).description || "");
+      if (!isOnNicheJob({ title: nextTitle, category: nextCategory, description: nextDescription })) {
+        return NextResponse.json({ error: NICHE_REJECT_MESSAGE }, { status: 400 });
+      }
       const paymentStatus = String((existing as { stripe_payment_status?: string | null }).stripe_payment_status || "");
       const isPaid = paymentStatus === "paid" || paymentStatus === "founding";
       const planPrice = typeof (existing as { plan_price?: unknown }).plan_price === "number" ? (existing as { plan_price: number }).plan_price : null;
@@ -73,6 +83,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       updateData.published_at = now.toISOString();
       updateData.posted_at_text = "Just now";
       updateData.timestamp = Date.now();
+      const planType = String((existing as { plan_type?: string | null }).plan_type || "");
+      updateData.is_featured = planType === "Featured Pro" || planType === "Elite Managed";
     }
     if (existing.status === "published" && body.status !== "published") {
       updateData.published_at = null;

@@ -3,34 +3,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Job } from "../types";
+import { PLAN_PRICE_LINE } from "../lib/plans";
 
 interface HireTalentProps {
   onPostJob: () => void;
 }
 
-const GROUPS = [
-  {
-    heading: "On the board",
-    items: [
-      { title: "Post a job", text: "Salary, scope, and a working apply link. Reviewed before it is published." },
-      { title: "Boost visibility", text: "Pro and Elite place the listing higher on the board. Same review standard." },
-      { title: "Company page", text: "Live roles under your company, with no invented benefits or reviews." },
-    ],
-  },
-  {
-    heading: "How people apply",
-    items: [
-      { title: "Your apply link", text: "Candidates go to your ATS or careers page. We do not run a talent pool." },
-      { title: "Email alerts", text: "Job seekers can subscribe to new published roles in a category." },
-    ],
-  },
-  {
-    heading: "Before it goes live",
-    items: [
-      { title: "Salary on the listing", text: "A range or clear compensation is required." },
-      { title: "Reviewed before publish", text: "Title, scope, apply URL, niche. Not an SLA on timing." },
-    ],
-  },
+const STEPS = [
+  { title: "Post", text: "Salary, scope, and a working apply link." },
+  { title: "Review", text: "Checked before it is published. Not a timed SLA." },
+  { title: "Live", text: "On the public board. People apply on your link." },
 ];
 
 const HireTalent: React.FC<HireTalentProps> = ({ onPostJob }) => {
@@ -63,87 +45,93 @@ const HireTalent: React.FC<HireTalentProps> = ({ onPostJob }) => {
   return (
     <div>
       <section className="bg-indigo-700 text-white">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16 text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-100">
-            Post a job on CareersPal
-          </p>
-          <h1 className="mt-3 text-3xl sm:text-5xl font-semibold tracking-tight">
-            Post a role. Salary on the listing.
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-12 text-center">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-100">For employers</p>
+          <h1 className="mt-3 text-3xl sm:text-4xl font-semibold tracking-tight">
+            A listing on the board. Your apply link.
           </h1>
-          <p className="mt-4 text-[16px] sm:text-lg text-indigo-50 max-w-xl mx-auto leading-relaxed">
-            Ops, Systems, Automation, RevOps, Product Ops, Chief of Staff. It goes live on the public board after review.
+          <p className="mt-3 text-[15px] sm:text-base text-indigo-50 max-w-lg mx-auto leading-relaxed">
+            Ops, Systems, Automation, RevOps, Product Ops, Chief of Staff. Candidates apply on your ATS or careers page.
           </p>
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+
+          <ol className="mt-7 flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-sm font-semibold">
+            {STEPS.map((step, index) => (
+              <li key={step.title} className="inline-flex items-center gap-2 sm:gap-3">
+                <span className="inline-flex items-center rounded-full bg-white/15 px-3 py-1.5">
+                  <span className="text-indigo-200 mr-1.5">{index + 1}.</span>
+                  {step.title}
+                </span>
+                {index < STEPS.length - 1 ? (
+                  <span className="text-indigo-200" aria-hidden>
+                    →
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-8 flex flex-col items-center">
             <button
               type="button"
               onClick={onPostJob}
-              className="w-full sm:w-auto h-12 px-8 rounded-lg bg-amber-400 text-slate-900 text-base font-semibold hover:bg-amber-300"
+              className="h-12 px-10 rounded-lg bg-amber-400 text-slate-900 text-base font-semibold hover:bg-amber-300"
             >
               Post a job
             </button>
             <Link
               href="/pricing"
-              className="w-full sm:w-auto h-12 px-8 rounded-lg border border-white/40 text-white text-base font-medium hover:bg-white/10 inline-flex items-center justify-center"
+              className="mt-3 text-sm font-medium text-indigo-100 hover:text-white"
             >
               See pricing
             </Link>
           </div>
-          <p className="mt-4 text-sm text-indigo-100">
-            Start pack: first 10 Standard listings free, then $79 / $149 / $249.
-          </p>
+          <p className="mt-4 text-sm text-indigo-100">{PLAN_PRICE_LINE}</p>
         </div>
       </section>
 
       {logosLabel && (
         <section className="bg-indigo-800">
-          <div className="max-w-4xl mx-auto px-4 py-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-2">
+          <div className="max-w-4xl mx-auto px-4 py-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-2">
             {logosLabel.map((name) => (
               <span key={name} className="text-sm font-semibold text-white/90 tracking-tight">
                 {name}
               </span>
             ))}
           </div>
-          <p className="pb-4 text-center text-[11px] text-indigo-200">Companies with live roles on CareersPal. Not endorsements.</p>
+          <p className="pb-3 text-center text-[11px] text-indigo-200">Companies with live roles. Not endorsements.</p>
         </section>
       )}
 
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-        <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">
-          What you can do here
-        </h2>
-        <p className="mt-2 text-[15px] text-slate-700 max-w-2xl">
-          Post a listing, boost it, or show live roles on your company page. People apply on your link.
-        </p>
-
-        <div className="mt-8 space-y-8">
-          {GROUPS.map((group) => (
-            <div key={group.heading}>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{group.heading}</p>
-              <ul className="mt-3 divide-y divide-slate-200 border-t border-slate-200">
-                {group.items.map((item) => (
-                  <li key={item.title} className="py-4">
-                    <p className="text-base font-semibold text-slate-900">{item.title}</p>
-                    <p className="mt-1 text-[15px] text-slate-700">{item.text}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <ol className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {STEPS.map((step, index) => (
+            <li key={step.title} className="rounded-xl border border-slate-200 bg-white px-4 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                {index + 1}. {step.title}
+              </p>
+              <p className="mt-2 text-sm text-slate-700">{step.text}</p>
+            </li>
           ))}
-        </div>
+        </ol>
 
-        <div className="mt-10 flex flex-col sm:flex-row gap-3">
+        <ul className="mt-6 space-y-2 text-sm text-slate-700">
+          <li>The listing is public after review. We do not run a talent pool or send candidates.</li>
+          <li>Pro and Elite sit in a labeled featured zone on the same board.</li>
+        </ul>
+
+        <div className="mt-8 flex flex-col items-center">
           <button
             type="button"
             onClick={onPostJob}
-            className="h-12 px-6 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
+            className="h-11 px-6 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
           >
             Post a job
           </button>
           <Link
             href="/jobs"
-            className="h-12 px-6 rounded-lg border border-slate-200 text-slate-900 text-sm font-semibold inline-flex items-center justify-center hover:bg-slate-50"
+            className="mt-3 text-sm font-medium text-slate-600 hover:text-indigo-700"
           >
-            Visit CareersPal for job seekers
+            See the board
           </Link>
         </div>
       </section>

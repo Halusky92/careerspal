@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import { trackJobApply, trackJobView } from "../lib/trackJobEvent";
 
 export function JobViewTracker({ jobId }: { jobId: string }) {
   useEffect(() => {
     if (!jobId) return;
-    fetch(`/api/jobs/${jobId}/view`, { method: "POST" }).catch(() => undefined);
+    trackJobView(jobId);
   }, [jobId]);
   return null;
 }
@@ -24,7 +25,7 @@ export function ApplyClickLink({
   external?: boolean;
 }) {
   const onClick = () => {
-    fetch(`/api/jobs/${jobId}/match`, { method: "POST" }).catch(() => undefined);
+    trackJobApply(jobId);
   };
   return (
     <a

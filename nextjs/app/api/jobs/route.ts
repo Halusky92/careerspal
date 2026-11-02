@@ -3,7 +3,7 @@ import { Job } from "../../../types";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../lib/supabaseJobs";
 import { getSupabaseProfile } from "../../../lib/supabaseServerAuth";
-import { isOnNicheJob } from "../../../lib/nicheScope";
+import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../lib/nicheScope";
 import { formatSalaryForStorage } from "../../../lib/formatSalary";
 
 const isValidApplyUrl = (value: string) => {
@@ -100,6 +100,12 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ error: "Invalid status." }, { status: 400 });
   }
   const status = auth.profile.role === "admin" ? body.status || "draft" : "draft";
+  if (
+    status === "published" &&
+    !isOnNicheJob({ title: body.title, category: body.category, description: body.description })
+  ) {
+    return NextResponse.json({ error: NICHE_REJECT_MESSAGE }, { status: 400 });
+  }
   const timestamp = body.timestamp || (status === "published" ? Date.now() : null);
   const postedAt = body.postedAt || (status === "published" ? "Just now" : "Draft");
 

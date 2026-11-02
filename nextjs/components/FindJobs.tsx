@@ -12,6 +12,9 @@ import { authFetch } from "../lib/authFetch";
 import JobRow from "./JobRow";
 import JobDetailPanel from "./JobDetailPanel";
 import PredictiveField from "./PredictiveField";
+import { trackJobApply } from "../lib/trackJobEvent";
+import FeaturedBoardZone from "./FeaturedBoardZone";
+import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
 
 interface FindJobsProps {
   jobs: Job[];
@@ -125,6 +128,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   
   // Pagination State
   const [visibleCount, setVisibleCount] = useState(JOBS_PER_PAGE);
+  const [featuredOpen, setFeaturedOpen] = useState(false);
 
   const workModes: Array<'All' | 'Remote' | 'Hybrid' | 'Onsite'> = ['All', 'Remote', 'Hybrid', 'Onsite'];
   const employmentTypes: Array<'All' | Job['type']> = ['All', 'Full-time', 'Contract', 'Part-time', 'Freelance', 'Internship', 'Temporary'];
@@ -447,14 +451,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
       );
     });
 
-    // Sort order: Elite -> Featured -> Standard, then by user sort
     result = result.sort((a, b) => {
-      const planWeight = { 'Elite Managed': 3, 'Featured Pro': 2, 'Standard': 1 };
-      const weightA = planWeight[a.planType || 'Standard'] || 1;
-      const weightB = planWeight[b.planType || 'Standard'] || 1;
-      
-      if (weightA !== weightB) return weightB - weightA;
-
       if (sortBy === 'salary') {
         return getSalaryValue(b.salary) - getSalaryValue(a.salary);
       }
@@ -504,6 +501,17 @@ const FindJobs: React.FC<FindJobsProps> = ({
     showSavedOnly,
   ]);
 
+  const FEATURED_ZONE_CAP = 4;
+  const featuredJobs = useMemo(
+    () => sortFeaturedJobs(filteredAndSorted.filter(isPaidFeaturedListing)),
+    [filteredAndSorted],
+  );
+  const boardJobs = useMemo(
+    () => filteredAndSorted.filter((job) => !isPaidFeaturedListing(job)),
+    [filteredAndSorted],
+  );
+  const visibleFeatured = featuredOpen ? featuredJobs : featuredJobs.slice(0, FEATURED_ZONE_CAP);
+
   const suggestions = useMemo(() => {
     if (!query.trim() || query.length < 1) return [];
     const lowQuery = query.toLowerCase();
@@ -539,11 +547,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
       alert("Apply link is not available yet.");
       return;
     }
-    try {
-      await fetch(`/api/jobs/${job.id}/match`, { method: "POST" });
-    } catch {
-      // no-op
-    }
+    trackJobApply(job.id);
     window.open(job.applyUrl, "_blank", "noopener,noreferrer");
   };
 
@@ -648,9 +652,12 @@ const FindJobs: React.FC<FindJobsProps> = ({
     const exists = filteredAndSorted.some((j) => j.id === initial);
     if (!exists) return;
 
-    const idx = filteredAndSorted.findIndex((j) => j.id === initial);
+    const idx = boardJobs.findIndex((j) => j.id === initial);
     if (idx >= 0 && idx + 1 > visibleCount) {
-      setVisibleCount(Math.min(filteredAndSorted.length, idx + 1));
+      setVisibleCount(Math.min(boardJobs.length, idx + 1));
+    }
+    if (featuredJobs.some((j) => j.id === initial) && featuredJobs.length > FEATURED_ZONE_CAP) {
+      setFeaturedOpen(true);
     }
 
     // Deep link should behave like a real click:
@@ -663,13 +670,16 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
     window.setTimeout(() => scrollToJob(initial), 0);
     initialJobIdRef.current = null;
-  }, [filteredAndSorted, isDesktop, visibleCount]);
+  }, [filteredAndSorted, boardJobs, featuredJobs, isDesktop, visibleCount]);
 
   const handleSelectJobId = (jobId: string) => {
     if (!jobId) return;
-    const idx = filteredAndSorted.findIndex((j) => j.id === jobId);
+    const idx = boardJobs.findIndex((j) => j.id === jobId);
     if (idx >= 0 && idx + 1 > visibleCount) {
-      setVisibleCount(Math.min(filteredAndSorted.length, idx + 1));
+      setVisibleCount(Math.min(boardJobs.length, idx + 1));
+    }
+    if (featuredJobs.some((j) => j.id === jobId) && featuredJobs.length > FEATURED_ZONE_CAP) {
+      setFeaturedOpen(true);
     }
     if (isDesktop) setSelectedJobId(jobId);
     else setExpandedJobId(jobId);
@@ -683,15 +693,16 @@ const FindJobs: React.FC<FindJobsProps> = ({
       setSelectedJobId(null);
       return;
     }
+    const fallbackId = featuredJobs[0]?.id || boardJobs[0]?.id;
     if (!selectedJobId) {
-      setSelectedJobId(filteredAndSorted[0].id);
+      if (fallbackId) setSelectedJobId(fallbackId);
       return;
     }
     const stillVisible = filteredAndSorted.some((j) => j.id === selectedJobId);
-    if (!stillVisible) {
-      setSelectedJobId(filteredAndSorted[0].id);
+    if (!stillVisible && fallbackId) {
+      setSelectedJobId(fallbackId);
     }
-  }, [filteredAndSorted, isDesktop, selectedJobId]);
+  }, [filteredAndSorted, featuredJobs, boardJobs, isDesktop, selectedJobId]);
 
   const selectedJob = useMemo(
     () => filteredAndSorted.find((j) => j.id === selectedJobId) || null,
@@ -1168,7 +1179,59 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </aside>
 
           <div className="lg:col-span-5 space-y-3">
-            {filteredAndSorted.slice(0, visibleCount).map((job) => {
+            {featuredJobs.length > 0 && (
+              <FeaturedBoardZone count={featuredJobs.length}>
+                {visibleFeatured.map((job) => {
+                  const isSaved = user?.savedJobIds?.includes(job.id);
+                  const selected = isDesktop && selectedJobId === job.id;
+                  return (
+                    <div
+                      key={job.id}
+                      ref={(el) => {
+                        rowRefs.current[job.id] = el;
+                      }}
+                      data-job-id={job.id}
+                    >
+                      <JobRow
+                        job={job}
+                        variant="board"
+                        selected={selected}
+                        expanded={!isDesktop && expandedJobId === job.id}
+                        isSaved={Boolean(isSaved)}
+                        showSave={Boolean(canUseSaved)}
+                        showMenu={true}
+                        onToggleSave={() => onToggleBookmark(job.id)}
+                        onSelect={() => {
+                          if (isDesktop) {
+                            handleSelectJobId(job.id);
+                            return;
+                          }
+                          setExpandedJobId((prev) => (prev === job.id ? null : job.id));
+                        }}
+                        onApply={() => handleApply(job)}
+                      />
+                    </div>
+                  );
+                })}
+                {featuredJobs.length > FEATURED_ZONE_CAP && (
+                  <button
+                    type="button"
+                    onClick={() => setFeaturedOpen((open) => !open)}
+                    className="w-full h-9 rounded-lg bg-white border border-indigo-200 text-indigo-800 text-sm font-medium hover:bg-indigo-50"
+                  >
+                    {featuredOpen
+                      ? "Show fewer featured"
+                      : `Show all featured (${featuredJobs.length})`}
+                  </button>
+                )}
+              </FeaturedBoardZone>
+            )}
+
+            {featuredJobs.length > 0 && boardJobs.length > 0 && (
+              <p className="pt-1 px-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">All roles</p>
+            )}
+
+            {boardJobs.slice(0, visibleCount).map((job) => {
               const isSaved = user?.savedJobIds?.includes(job.id);
               const selected = isDesktop && selectedJobId === job.id;
 
@@ -1202,13 +1265,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
               );
             })}
 
-            {filteredAndSorted.length > visibleCount && (
+            {boardJobs.length > visibleCount && (
               <div className="pt-4 pb-2 text-center">
                 <button
                   onClick={handleLoadMore}
                   className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:border-indigo-200 hover:text-indigo-700"
                 >
-                  Show more ({filteredAndSorted.length - visibleCount} remaining)
+                  Show more ({boardJobs.length - visibleCount} remaining)
                 </button>
               </div>
             )}

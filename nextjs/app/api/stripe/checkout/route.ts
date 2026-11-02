@@ -5,6 +5,7 @@ import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 import { checkRateLimit } from "../../../../lib/rateLimit";
 import { getFoundingStatus } from "../../../../lib/employer";
 import { FOUNDING_LAUNCH_PRICE } from "../../../../lib/founding";
+import { PLAN_PRICES } from "../../../../lib/plans";
 
 type StripeJobRow = {
   id: string;
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
     );
   }
   const companyName = Array.isArray(jobRow.companies) ? jobRow.companies[0]?.name : jobRow.companies?.name;
-  const price = (body.price ?? jobRow.plan_price ?? 79);
+  const price = (body.price ?? jobRow.plan_price ?? PLAN_PRICES.standard);
   const isLaunchDollar =
     Number(price) === FOUNDING_LAUNCH_PRICE && (body.planName || jobRow.plan_type || "Standard") === "Standard";
   if (isLaunchDollar) {

@@ -7,6 +7,8 @@ import { Job } from '../types';
 import CompanyLogo from './CompanyLogo';
 import FormattedDescription from "./FormattedDescription";
 import { formatSalaryDisplay } from "../lib/formatSalary";
+import { trackJobApply, trackJobView } from "../lib/trackJobEvent";
+import FeaturedBadge from "./FeaturedBadge";
 
 interface JobDetailProps {
   job: Job;
@@ -27,14 +29,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
   }, [job]);
 
   useEffect(() => {
-    const trackView = async () => {
-      try {
-        await fetch(`/api/jobs/${job.id}/view`, { method: "POST" });
-      } catch {
-        // no-op
-      }
-    };
-    trackView();
+    trackJobView(job.id);
   }, [job.id]);
 
   useEffect(() => {
@@ -51,7 +46,6 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
     })
     .slice(0, 3);
 
-  const isElite = job.planType === 'Elite Managed';
   const isPrivate = job.status === 'private' || job.status === 'invite_only';
   const stack = job.tools && job.tools.length > 0 ? job.tools : job.tags;
   const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl !== '#');
@@ -73,11 +67,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
       alert("Apply link is not available yet.");
       return;
     }
-    try {
-      await fetch(`/api/jobs/${job.id}/match`, { method: "POST" });
-    } catch {
-      // no-op
-    }
+    trackJobApply(job.id);
     window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
   };
 
@@ -194,7 +184,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
       <div className="bg-white border-b border-slate-200/60 pt-5 pb-6">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
-               <div className={`w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center p-1.5 ${isElite ? 'bg-yellow-50 border border-yellow-200' : 'bg-white border border-slate-200'}`}>
+               <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center p-1.5 bg-white border border-slate-200">
                   <CompanyLogo
                     name={job.company}
                     logoUrl={job.logo}
@@ -206,9 +196,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                </div>
                <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-3 mb-3">
-                     {isElite && (
-                        <span className="px-3 py-1 bg-yellow-200 text-yellow-900 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">Elite Managed</span>
-                     )}
+                     <FeaturedBadge job={job} size="md" />
                      {isPrivate && (
                        <span className="px-3 py-1 bg-slate-900 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">Invite Only</span>
                      )}

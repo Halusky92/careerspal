@@ -8,6 +8,8 @@ import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import { stripHtmlToText } from "../lib/sourcing/normalization/text";
 import { formatSalaryDisplay } from "../lib/formatSalary";
+import { isPaidFeaturedListing } from "../lib/featuredListing";
+import FeaturedBadge from "./FeaturedBadge";
 
 export type JobRowAction = "copy_link" | "open_new_tab";
 
@@ -110,7 +112,7 @@ export default function JobRow({
       : companyPathResolved;
 
   const isElite = job.planType === "Elite Managed";
-  const isPro = job.planType === "Featured Pro";
+  const isBoosted = isPaidFeaturedListing(job);
   const isPrivate = job.status === "private" || job.status === "invite_only";
   const workMode = useMemo(() => getWorkMode(job), [job.remotePolicy]);
   const timeAgo = useMemo(() => formatTimeAgo(job), [job.timestamp, job.postedAt]);
@@ -154,11 +156,11 @@ export default function JobRow({
     <div
       className={[
         "group relative rounded-xl border transition-all overflow-hidden",
-        isElite
-          ? "bg-amber-50/70 border border-amber-200"
-            : isPro
-            ? "bg-amber-50/50 border border-amber-200/80"
-            : "bg-white border border-slate-200",
+        isBoosted
+          ? isElite
+            ? "bg-white border-slate-900/20 shadow-sm"
+            : "bg-white border-indigo-200 shadow-sm"
+          : "bg-white border-slate-200",
         selected ? "ring-2 ring-indigo-600 ring-offset-2 ring-offset-[#F8F9FD]" : "hover:shadow-sm",
         isPrivate ? "opacity-80" : "",
       ].join(" ")}
@@ -177,14 +179,12 @@ export default function JobRow({
       aria-current={selected ? "true" : undefined}
       aria-expanded={expanded ? "true" : "false"}
     >
-      {/* WWR-like thin accent strip */}
-      <div
-        aria-hidden="true"
-        className={[
-          "absolute inset-y-0 left-0 w-1",
-          isElite ? "bg-amber-400" : isPro ? "bg-amber-300" : "bg-amber-200",
-        ].join(" ")}
-      />
+      {isBoosted && (
+        <div
+          aria-hidden="true"
+          className={["absolute inset-y-0 left-0 w-1", isElite ? "bg-slate-900" : "bg-indigo-500"].join(" ")}
+        />
+      )}
       <div className={["flex items-start gap-3", isHome ? "px-3 py-2.5" : "px-3.5 py-2.5"].join(" ")}>
         <div
           className={[
@@ -233,19 +233,7 @@ export default function JobRow({
                   {job.company}
                 </a>
 
-                {(isElite || isPro) && (
-                  <span
-                    className={[
-                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                      isElite
-                        ? "bg-amber-200/70 text-amber-950 border border-amber-300"
-                        : "bg-amber-100 text-amber-900 border border-amber-200",
-                    ].join(" ")}
-                  >
-                    <span aria-hidden="true">★</span>
-                    {isElite ? "Featured" : "Featured"}
-                  </span>
-                )}
+                <FeaturedBadge job={job} />
 
                 {isPrivate && (
                   <span className="inline-flex items-center rounded-full bg-slate-900 text-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">

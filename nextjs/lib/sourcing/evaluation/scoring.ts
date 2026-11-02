@@ -1,6 +1,6 @@
 import type { ReasonCode } from "./reasonCodes";
 import { detectNotionSignal } from "../signals/notion";
-import { isOffNicheTitle } from "../../nicheScope";
+import { isOnNicheJob } from "../../nicheScope";
 
 export type ScoreBreakdown = {
   niche_relevance: number; // 0-30
@@ -45,7 +45,6 @@ const NicheCore = {
     "internal operations",
   ],
   systems: [
-    "systems",
     "business systems",
     "internal tooling",
     "internal tools",
@@ -177,7 +176,7 @@ export function scoreCandidate(c: CandidateForScoring): {
   // Niche relevance 0-30
   let niche = 0;
 
-  if (isOffNicheTitle(c.title)) {
+  if (!isOnNicheJob({ title: c.title, category: null, description: null })) {
     return {
       total: 0,
       breakdown: {

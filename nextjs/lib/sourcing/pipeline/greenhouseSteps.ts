@@ -20,7 +20,7 @@ import { detectEmploymentType } from "../normalization/employmentType";
 import { detectNotionSignal } from "../signals/notion";
 import { createCompanySlug } from "../../jobs";
 import { enrichCompanyFromWebsite } from "../../companyEnrichment";
-import { isOnNicheJob, isOffNicheTitle } from "../../nicheScope";
+import { isOnNicheJob } from "../../nicheScope";
 import { formatSalaryForStorage } from "../../formatSalary";
 import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
 
@@ -266,6 +266,27 @@ export async function normalizeGreenhouseRawJobsToCandidates(
                 companyName: null,
                 rawPayload: row.raw_payload,
               });
+
+      if (
+        !isOnNicheJob({
+          title: normalized.title,
+          category: null,
+          description: null,
+        })
+      ) {
+        skipped += 1;
+        if (existing?.id) {
+          await sb
+            .from("sourcing_sourced_job_candidates")
+            .update({
+              publish_status: "skipped_not_eligible",
+              publish_notes:
+                "Skipped at normalize: outside CareersPal niche (Ops / Systems / Automation / RevOps / Product Ops / Chief of Staff).",
+            })
+            .eq("id", existing.id);
+        }
+        continue;
+      }
 
       const upsertRow = {
         raw_job_id: row.id,
@@ -768,7 +789,15 @@ export async function autoPublishEligibleCandidates(
     if (!src?.company_id) {
       if (!derivedCompanyName) ineligibleReasons.push("missing_company");
     }
-    if (isOffNicheTitle(candidate.title)) ineligibleReasons.push("off_niche_title");
+    if (
+      !isOnNicheJob({
+        title: candidate.title,
+        category: null,
+        description: candidate.description_clean,
+      })
+    ) {
+      ineligibleReasons.push("off_niche_title");
+    }
 
     const eligible = ineligibleReasons.length === 0;
 

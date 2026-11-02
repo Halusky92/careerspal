@@ -48,11 +48,8 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
         <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900">
           {firstName ? `Hello, ${firstName}` : "Find the next Ops role"}
         </h1>
-        <p className="mt-2 text-[15px] sm:text-sm text-slate-700">
-          Search by title, company, or category.
-        </p>
 
-        <form onSubmit={submit} className="mt-5 sm:mt-7 text-left relative">
+        <form onSubmit={submit} className="mt-4 sm:mt-5 text-left relative">
           <div
             className="cp-search flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0 rounded-2xl sm:rounded-full p-2 sm:p-1.5 sm:pl-4"
           >

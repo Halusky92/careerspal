@@ -6,8 +6,8 @@ import Hero from "../components/Hero";
 import HomePreviewCard from "../components/HomePreviewCard";
 import { Job } from "../types";
 import { isOnNicheJob } from "../lib/nicheScope";
-
-const planWeight = { "Elite Managed": 3, "Featured Pro": 2, Standard: 1 };
+import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
+import FeaturedBoardZone from "../components/FeaturedBoardZone";
 
 export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
   const router = useRouter();
@@ -46,17 +46,23 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
     }
   }, []);
 
+  const liveJobs = useMemo(
+    () =>
+      [...jobs]
+        .filter((job) => isOnNicheJob(job))
+        .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0)),
+    [jobs],
+  );
+  const featuredPreview = useMemo(
+    () => sortFeaturedJobs(liveJobs.filter(isPaidFeaturedListing)).slice(0, 3),
+    [liveJobs],
+  );
   const previewJobs = useMemo(() => {
-    const sorted = [...jobs]
-      .filter((job) => isOnNicheJob(job))
-      .sort((a, b) => {
-        const weightA = planWeight[a.planType || "Standard"] || 1;
-        const weightB = planWeight[b.planType || "Standard"] || 1;
-        if (weightA !== weightB) return weightB - weightA;
-        return (b.timestamp ?? 0) - (a.timestamp ?? 0);
-      });
-    return sorted.slice(0, isSmUp ? 4 : 3);
-  }, [jobs, isSmUp]);
+    const rest = liveJobs.filter((job) => !isPaidFeaturedListing(job));
+    const take = isSmUp ? 4 : 3;
+    const room = featuredPreview.length > 0 ? Math.max(2, take - featuredPreview.length) : take;
+    return rest.slice(0, room);
+  }, [liveJobs, featuredPreview.length, isSmUp]);
 
   const hasJobs = jobs.length > 0;
 
@@ -101,10 +107,24 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
         )}
 
         {!jobsLoading && hasJobs && (
-          <div className="space-y-2">
-            {previewJobs.map((job) => (
-              <HomePreviewCard key={job.id} job={job} />
-            ))}
+          <div className="space-y-3">
+            {featuredPreview.length > 0 && (
+              <FeaturedBoardZone count={featuredPreview.length}>
+                {featuredPreview.map((job) => (
+                  <HomePreviewCard key={job.id} job={job} />
+                ))}
+              </FeaturedBoardZone>
+            )}
+            {previewJobs.length > 0 && (
+              <div className="space-y-2">
+                {featuredPreview.length > 0 && (
+                  <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">Latest roles</p>
+                )}
+                {previewJobs.map((job) => (
+                  <HomePreviewCard key={job.id} job={job} />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -131,7 +151,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
             className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-slate-300 hover:bg-slate-50"
           >
             <div className="text-sm font-semibold text-slate-900">For employers</div>
-            <p className="mt-1 text-xs text-slate-600">Post a role on the board. Reviewed before it goes live.</p>
+            <p className="mt-1 text-xs text-slate-600">Post → review → live. Candidates apply on your link.</p>
           </button>
         </div>
       </section>

@@ -5,6 +5,9 @@ import React, { useMemo, useState } from 'react';
 import { generateJobDescription } from '../services/geminiService';
 import { Job, PlanType } from '../types';
 import { CATEGORIES, CATEGORY_FILTER_LABELS } from '../constants';
+import { PLAN_PRICES } from '../lib/plans';
+import StartPackMeter from "./StartPackMeter";
+import type { StartPackStatus } from "../lib/founding";
 
 interface PostJobProps {
   onComplete: (data: Job) => void;
@@ -12,12 +15,13 @@ interface PostJobProps {
   onUpgradePlan: (type: PlanType, price: number) => void;
   showTestPlan?: boolean;
   foundingEligible?: boolean;
+  foundingStatus?: StartPackStatus | null;
   initialJob?: Partial<Job>;
 }
 
 type JobFormData = Omit<Job, 'id' | 'postedAt' | 'isFeatured' | 'planType' | 'plan' | 'timestamp' | 'status' | 'views' | 'matches'>;
 
-const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan, foundingEligible, initialJob }) => {
+const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan, foundingEligible, foundingStatus, initialJob }) => {
   const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [logoFileName, setLogoFileName] = useState<string>("");
@@ -41,13 +45,13 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     company: initialJob?.company || '',
     companyWebsite: initialJob?.companyWebsite || '',
     logo: initialJob?.logo || '',
-    salary: initialJob?.salary || '$100k - $140k',
+    salary: initialJob?.salary || '',
     location: initialJob?.location || 'Remote (Global)',
     type: (initialJob?.type as JobFormData['type']) || 'Full-time',
     remotePolicy: initialJob?.remotePolicy || 'Global Remote',
     category: initialJob?.category || 'Operations',
     applyUrl: initialJob?.applyUrl || '',
-    tags: initialJob?.tags?.length ? initialJob.tags : ['Notion', 'Remote']
+    tags: initialJob?.tags?.length ? initialJob.tags : []
   });
 
   const planHighlights = useMemo(() => {
@@ -60,16 +64,15 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     if (selectedPlan.type === "Featured Pro") {
       return [
         ...base,
-        "Featured badge + boosted visibility",
-        "Top placement for 7 days",
-        "Top placement for 7 days",
+        "Featured zone on the board",
+        "Pro badge on the listing",
       ];
     }
     if (selectedPlan.type === "Elite Managed") {
       return [
         ...base,
-        "Featured badge + priority review",
-        "Permanent top-of-board placement",
+        "First in the featured zone",
+        "Elite badge on the listing",
       ];
     }
     return base;
@@ -207,8 +210,15 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     reader.readAsDataURL(file);
   };
 
+  const usingStartPack = Boolean(foundingEligible && selectedPlan.type === "Standard");
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-5 sm:py-6">
+      {foundingStatus?.enabled && (
+        <div className="mb-4">
+          <StartPackMeter status={foundingStatus} pendingUse={usingStartPack} />
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8">
           <div className="mb-5">
@@ -513,9 +523,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-indigo-600">For employers</div>
-                  <h3 className="text-xl font-bold text-slate-900 mt-2">Everything you need to post confidently.</h3>
+                  <h3 className="text-xl font-bold text-slate-900 mt-2">Post → review → live.</h3>
                   <p className="mt-2 text-sm font-medium text-slate-600">
-                    Clear rules, fast review, and premium visibility options.
+                    Listing on the board. Candidates apply on your link.
                   </p>
                 </div>
               </div>
@@ -543,9 +553,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
                 <AccordionRow id="review" title="Review & publish timeline">
                   <div className="space-y-2 text-sm font-medium text-slate-700">
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span>{foundingEligible ? " Start pack: submit, then review" : " Submit + pay"}</div>
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">2</span> Review for quality + clarity</div>
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">3</span> Publish when approved</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span> Post{foundingEligible ? " (Start pack: submit, then review)" : " (submit + pay)"}</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">2</span> Review — salary, scope, apply link, niche. Not a timed SLA.</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">3</span> Live on the board. Apply stays on your link.</div>
                     <p className="mt-3 text-xs text-slate-600">
                       Listings are reviewed before publish. Timing can vary based on completeness and review queue.
                     </p>
@@ -561,8 +571,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
            <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 relative z-20">
               <h3 className="text-lg font-bold text-slate-900 mb-2">Selected Plan</h3>
               <div className="text-3xl font-bold text-indigo-600 mb-4">
-                {formatPrice(selectedPlan.price)}
-                <span className="text-lg text-slate-600 font-medium"> / 30 days</span>
+                {usingStartPack ? "Free" : formatPrice(selectedPlan.price)}
+                <span className="text-lg text-slate-600 font-medium"> {usingStartPack ? "Start pack" : "/ 30 days"}</span>
               </div>
               <div className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-6">{selectedPlan.type}</div>
               
@@ -578,7 +588,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                         <div className="text-xs font-black uppercase tracking-widest text-indigo-600 mb-3">Featured Pro</div>
                         <ul className="space-y-2">
                            <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
-                              <span className="text-indigo-600 mt-0.5">✓</span> 7 Days at Top of Board
+                              <span className="text-indigo-600 mt-0.5">✓</span> Featured zone on the board
                            </li>
                            <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
                               <span className="text-indigo-600 mt-0.5">✓</span> Prominent placement on the board
@@ -588,9 +598,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                       </div>
                     </div>
                   </div>
-                  <p className="font-bold text-sm mb-4 text-left">Boost visibility for roles that need extra reach.</p>
+                  <p className="font-bold text-sm mb-4 text-left">Puts this listing in the featured zone on the board.</p>
                   <button 
-                    onClick={() => onUpgradePlan('Featured Pro', 149)}
+                    onClick={() => onUpgradePlan('Featured Pro', PLAN_PRICES.pro)}
                     className="w-full bg-white text-indigo-800 py-3 rounded-xl font-black text-sm hover:bg-indigo-50 transition-colors"
                   >
                     Upgrade to Pro (+$70)
@@ -609,7 +619,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                         <div className="text-xs font-black uppercase tracking-widest text-indigo-600 mb-3">Elite Managed</div>
                         <ul className="space-y-2">
                            <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
-                              <span className="text-indigo-600 mt-0.5">💎</span> Permanent Top-of-Board placement
+                              <span className="text-indigo-600 mt-0.5">✓</span> First in the featured zone
                            </li>
                            <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
                               <span className="text-indigo-600 mt-0.5">💎</span> Hands-on help with listing positioning and copy
@@ -621,20 +631,20 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                    </div>
                    <p className="font-bold text-sm mb-4 text-left">Get hands-on help for high-stakes roles.</p>
                    <button 
-                    onClick={() => onUpgradePlan('Elite Managed', 249)}
+                    onClick={() => onUpgradePlan('Elite Managed', PLAN_PRICES.elite)}
                     className="w-full bg-white text-slate-900 py-3 rounded-xl font-black text-sm hover:bg-slate-200 transition-colors"
                    >
-                     Upgrade to Elite (+$100)
+                     Upgrade to Elite (+${PLAN_PRICES.elite - PLAN_PRICES.pro})
                    </button>
                 </div>
               )}
 
               {selectedPlan.type !== 'Standard' && (
                 <button
-                  onClick={() => onUpgradePlan('Standard', 79)}
+                  onClick={() => onUpgradePlan('Standard', PLAN_PRICES.standard)}
                   className="mt-6 w-full px-4 py-3 rounded-xl border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-indigo-200 hover:text-indigo-600 transition-colors"
                 >
-                  Switch to Standard ($79)
+                  Switch to Standard (${PLAN_PRICES.standard})
                 </button>
               )}
 

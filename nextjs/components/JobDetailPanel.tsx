@@ -8,6 +8,8 @@ import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import FormattedDescription from "./FormattedDescription";
 import { formatSalaryDisplay } from "../lib/formatSalary";
+import FeaturedBadge from "./FeaturedBadge";
+import { isPaidFeaturedListing } from "../lib/featuredListing";
 
 type JobDetailPanelProps = {
   job: Job | null;
@@ -181,6 +183,7 @@ export default function JobDetailPanel({
             <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[9px] font-medium uppercase tracking-wide text-slate-600">
               Posted {formatPosted(job)}
             </span>
+            {isPaidFeaturedListing(job) ? <FeaturedBadge job={job} /> : null}
           </div>
 
           <div className="mt-4 flex items-center justify-between gap-3">

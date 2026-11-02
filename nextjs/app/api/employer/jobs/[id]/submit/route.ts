@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../../../lib/supabaseAdmin";
 import { getFoundingStatus, loadEmployerOwnedJob, requireEmployer } from "../../../../../../lib/employer";
 import { foundingExpiresAt } from "../../../../../../lib/founding";
-import { isOnNicheJob } from "../../../../../../lib/nicheScope";
-import { sendListingReviewEmails } from "../../../../../../lib/listingNotify";
+import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../../../lib/nicheScope";
+import { maybeNotifyStartPackTwoLeft, sendListingReviewEmails } from "../../../../../../lib/listingNotify";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await requireEmployer(request);
@@ -25,7 +25,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
   if (!isOnNicheJob({ title, category: null, description: owned.job.description as string | null })) {
     return NextResponse.json(
-      { error: "This board is for Ops, Systems, Automation, RevOps, Product Ops, and Chief of Staff roles." },
+      { error: NICHE_REJECT_MESSAGE },
       { status: 400 },
     );
   }
@@ -123,5 +123,24 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     startPack: true,
   });
 
-  return NextResponse.json({ ok: true, status: "pending_review", jobId: data.id, plan: "Start pack" });
+  const remainingAfter = Math.max(0, (founding.remainingJobs || 1) - 1);
+  await maybeNotifyStartPackTwoLeft({
+    profileId: auth.profileId,
+    email: auth.email || null,
+    remainingAfter,
+    usedAfter: (founding.usedJobs || 0) + 1,
+    quota: founding.quota,
+    nextPrice: founding.nextPrice,
+    jobId: data.id,
+  });
+
+  return NextResponse.json({
+    ok: true,
+    status: "pending_review",
+    jobId: data.id,
+    plan: "Start pack",
+    remainingJobs: remainingAfter,
+    usedJobs: (founding.usedJobs || 0) + 1,
+    quota: founding.quota,
+  });
 }
