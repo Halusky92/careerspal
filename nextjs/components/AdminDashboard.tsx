@@ -1,11 +1,11 @@
 "use client";
 
-
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Subscriber } from '../services/notificationService';
-import { Job } from '../types';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Subscriber } from "../services/notificationService";
+import { Job } from "../types";
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
+import { formatSalaryDisplay } from "../lib/formatSalary";
 import SourcingRegistrySection from "./admin/SourcingRegistrySection";
 
 type AnalyticsPeriod = {
@@ -15,8 +15,6 @@ type AnalyticsPeriod = {
   returningVisitors: number;
 };
 
-type AnalyticsPoint = { date: string; count: number };
-
 type AnalyticsPayload = {
   periods: {
     today: AnalyticsPeriod;
@@ -24,16 +22,16 @@ type AnalyticsPayload = {
     month: AnalyticsPeriod;
     all: AnalyticsPeriod;
   };
-  dailyViews: AnalyticsPoint[];
-  dailyPosts: AnalyticsPoint[];
 };
 
 interface AdminDashboardProps {
   onLogout: () => void;
 }
 
+type AdminTab = "review" | "jobs" | "sourcing" | "more";
+
 const getLocalJson = <T,>(key: string, fallback: T): T => {
-  if (typeof window === 'undefined') return fallback;
+  if (typeof window === "undefined") return fallback;
   try {
     const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as T) : fallback;
@@ -42,15 +40,50 @@ const getLocalJson = <T,>(key: string, fallback: T): T => {
   }
 };
 
+const statusLabel = (status?: string) => {
+  switch (status) {
+    case "published":
+      return "Live";
+    case "pending_review":
+      return "Needs review";
+    case "paused":
+      return "Paused";
+    case "closed":
+      return "Closed";
+    case "archived":
+    case "private":
+      return "Archived";
+    case "draft":
+      return "Draft";
+    default:
+      return status || "Draft";
+  }
+};
+
+const statusTone = (status?: string) => {
+  switch (status) {
+    case "published":
+      return "text-emerald-700 bg-emerald-50";
+    case "pending_review":
+      return "text-amber-800 bg-amber-50";
+    case "paused":
+      return "text-amber-700 bg-amber-50";
+    default:
+      return "text-slate-600 bg-slate-100";
+  }
+};
+
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
-  const [jobs, setJobs] = useState<Job[]>(() => getLocalJson<Job[]>('cp_my_jobs', []));
+  const [jobs, setJobs] = useState<Job[]>(() => getLocalJson<Job[]>("cp_my_jobs", []));
   const [adminStats, setAdminStats] = useState({ users: 0, jobs: 0, savedJobs: 0, files: 0 });
-  const [roleSummary, setRoleSummary] = useState<Record<string, number>>({});
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [jobQuery, setJobQuery] = useState("");
   const [showJobSuggestions, setShowJobSuggestions] = useState(false);
   const [jobSort, setJobSort] = useState<"newest" | "oldest">("newest");
+  const [jobFilter, setJobFilter] = useState<"all" | "live" | "draft" | "archived">("live");
+  const [tab, setTab] = useState<AdminTab>("review");
+  const [tabReady, setTabReady] = useState(false);
   const jobSearchRef = useRef<HTMLDivElement>(null);
   const [analytics, setAnalytics] = useState<AnalyticsPayload | null>(null);
   const { accessToken } = useSupabaseAuth();
@@ -65,27 +98,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   } | null>(null);
   const [showAdminCreate, setShowAdminCreate] = useState(false);
   const [adminCreateStatus, setAdminCreateStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
-  const [adminCreateMsg, setAdminCreateMsg] = useState<string>("");
+  const [adminCreateMsg, setAdminCreateMsg] = useState("");
   const [jobActionTone, setJobActionTone] = useState<"idle" | "success" | "error">("idle");
-  const [jobActionMsg, setJobActionMsg] = useState<string>("");
-  const [adminCreateDraft, setAdminCreateDraft] = useState<{
-    title: string;
-    company: string;
-    applyUrl: string;
-    companyWebsite: string;
-    logo: string;
-    location: string;
-    remotePolicy: string;
-    type: Job["type"];
-    category: string;
-    salary: string;
-    description: string;
-    tagsCsv: string;
-    toolsCsv: string;
-    status: "published" | "pending_review" | "draft" | "private";
-    planType: "Standard" | "Featured Pro" | "Elite Managed";
-    isFeatured: boolean;
-  }>(() => ({
+  const [jobActionMsg, setJobActionMsg] = useState("");
+  const [adminCreateDraft, setAdminCreateDraft] = useState({
     title: "",
     company: "",
     applyUrl: "",
@@ -93,39 +109,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     logo: "",
     location: "Remote",
     remotePolicy: "Remote (Global)",
-    type: "Full-time",
+    type: "Full-time" as Job["type"],
     category: "Operations",
     salary: "",
     description: "",
     tagsCsv: "",
     toolsCsv: "",
-    status: "published",
-    planType: "Standard",
+    status: "published" as "published" | "pending_review" | "draft" | "private",
+    planType: "Standard" as "Standard" | "Featured Pro" | "Elite Managed",
     isFeatured: false,
-  }));
+  });
+
   const formatDate = (value?: number) => {
-    if (!value) return "N/A";
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString();
+    if (!value) return "—";
+    const date = new Date(value < 1e12 ? value * 1000 : value);
+    return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   };
-  const getPlanDurationDays = (job: Job) => {
-    const plan = job.planType || job.plan?.type;
-    if (plan === "Elite Managed") return 60;
-    if (plan === "Featured Pro") return 45;
-    return 30;
-  };
-  const getExpiryDate = (job: Job) => {
-    if (!job.timestamp) return "N/A";
-    const expires = new Date(job.timestamp + getPlanDurationDays(job) * 24 * 60 * 60 * 1000);
-    return Number.isNaN(expires.getTime()) ? "N/A" : expires.toLocaleDateString();
-  };
-  const getRemainingDays = (job: Job) => {
-    if (!job.timestamp) return null;
-    const expires = new Date(job.timestamp + getPlanDurationDays(job) * 24 * 60 * 60 * 1000);
-    if (Number.isNaN(expires.getTime())) return null;
-    const diffMs = expires.getTime() - Date.now();
-    return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-  };
+
   const startEditJob = (job: Job) => {
     setEditingJobId(job.id);
     setEditDraft({
@@ -155,9 +155,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       );
       if (!response.ok) return;
       const data = (await response.json()) as { job?: Job };
-      if (data.job) {
-        setJobs((prev) => prev.map((j) => (j.id === id ? data.job! : j)));
-      }
+      if (data.job) setJobs((prev) => prev.map((j) => (j.id === id ? data.job! : j)));
       cancelEditJob();
     } catch {
       // noop
@@ -168,7 +166,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     if (!accessToken) return;
     if (!adminCreateDraft.title.trim() || !adminCreateDraft.company.trim() || !adminCreateDraft.applyUrl.trim()) {
       setAdminCreateStatus("error");
-      setAdminCreateMsg("Missing required fields: title, company, apply URL.");
+      setAdminCreateMsg("Need title, company, and apply URL.");
       return;
     }
     setAdminCreateStatus("saving");
@@ -179,24 +177,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: adminCreateDraft.title,
-            company: adminCreateDraft.company,
-            applyUrl: adminCreateDraft.applyUrl,
-            companyWebsite: adminCreateDraft.companyWebsite,
-            logo: adminCreateDraft.logo,
-            location: adminCreateDraft.location,
-            remotePolicy: adminCreateDraft.remotePolicy,
-            type: adminCreateDraft.type,
-            category: adminCreateDraft.category,
-            salary: adminCreateDraft.salary,
-            description: adminCreateDraft.description,
-            tagsCsv: adminCreateDraft.tagsCsv,
-            toolsCsv: adminCreateDraft.toolsCsv,
-            status: adminCreateDraft.status,
-            planType: adminCreateDraft.planType,
-            isFeatured: adminCreateDraft.isFeatured,
-          }),
+          body: JSON.stringify(adminCreateDraft),
         },
         accessToken,
       );
@@ -231,11 +212,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const stats = useMemo(() => {
-    const revenue = jobs.reduce((acc, job) => acc + (job.plan?.price || 0), 0);
-    return { revenue };
-  }, [jobs]);
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (jobSearchRef.current && !jobSearchRef.current.contains(event.target as Node)) {
@@ -248,8 +224,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   useEffect(() => {
     const loadAdminStats = async () => {
+      if (!accessToken) return;
       try {
-        if (!accessToken) return;
         const response = await authFetch("/api/admin/stats", {}, accessToken);
         const data = (await response.json()) as { users?: number; jobs?: number; savedJobs?: number; files?: number };
         setAdminStats({
@@ -258,9 +234,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           savedJobs: data.savedJobs || 0,
           files: data.files || 0,
         });
-        const rolesRes = await authFetch("/api/admin/role-summary", {}, accessToken);
-        const rolesData = (await rolesRes.json()) as { summary?: Record<string, number> };
-        setRoleSummary(rolesData.summary || {});
       } catch {
         // noop
       }
@@ -270,8 +243,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   useEffect(() => {
     const loadSubscribers = async () => {
+      if (!accessToken) return;
       try {
-        if (!accessToken) return;
         const response = await authFetch("/api/admin/subscribers", {}, accessToken);
         if (!response.ok) return;
         const data = (await response.json()) as { subscribers?: Subscriber[] };
@@ -285,12 +258,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   useEffect(() => {
     const loadAnalytics = async () => {
+      if (!accessToken) return;
       try {
-        if (!accessToken) return;
         const response = await authFetch("/api/admin/analytics", {}, accessToken);
         if (!response.ok) return;
-        const data = (await response.json()) as AnalyticsPayload;
-        setAnalytics(data);
+        setAnalytics((await response.json()) as AnalyticsPayload);
       } catch {
         // noop
       }
@@ -300,14 +272,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   useEffect(() => {
     const loadJobs = async () => {
+      if (!accessToken) return;
       try {
-        if (!accessToken) return;
         const response = await authFetch("/api/admin/jobs", {}, accessToken);
         if (!response.ok) return;
         const data = (await response.json()) as { jobs?: Job[] };
-        if (data.jobs) {
-          setJobs(data.jobs);
-        }
+        if (data.jobs) setJobs(data.jobs);
       } catch {
         // fallback to local storage
       }
@@ -316,8 +286,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   }, [accessToken]);
 
   const updateJobStatus = async (id: string, status: string) => {
+    if (!accessToken) return;
     try {
-      if (!accessToken) return;
       const response = await authFetch(
         `/api/admin/jobs/${id}`,
         {
@@ -329,31 +299,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       );
       const data = (await response.json()) as { job?: Job; error?: string };
       if (!response.ok) {
-        const msg = data.error || "Action failed.";
         setJobActionTone("error");
-        setJobActionMsg(msg);
-        window.setTimeout(() => {
-          setJobActionTone("idle");
-          setJobActionMsg("");
-        }, 3500);
+        setJobActionMsg(data.error || "Action failed.");
         return;
       }
-      if (data.job) {
-        setJobs((prev) => prev.map((j) => (j.id === id ? data.job! : j)));
-      }
+      if (data.job) setJobs((prev) => prev.map((j) => (j.id === id ? data.job! : j)));
       setJobActionTone("success");
-      setJobActionMsg(status === "published" ? "Role published." : status === "private" ? "Role archived." : "Updated.");
-      window.setTimeout(() => {
-        setJobActionTone("idle");
-        setJobActionMsg("");
-      }, 2500);
+      setJobActionMsg(status === "published" ? "Published." : status === "private" ? "Archived." : "Updated.");
     } catch {
       setJobActionTone("error");
       setJobActionMsg("Action failed.");
-      window.setTimeout(() => {
-        setJobActionTone("idle");
-        setJobActionMsg("");
-      }, 3500);
     }
   };
 
@@ -361,11 +316,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     if (!accessToken) return;
     if (!confirm("Delete this job permanently?")) return;
     try {
-      const response = await authFetch(
-        `/api/admin/jobs/${id}`,
-        { method: "DELETE" },
-        accessToken,
-      );
+      const response = await authFetch(`/api/admin/jobs/${id}`, { method: "DELETE" }, accessToken);
       if (!response.ok) return;
       setJobs((prev) => prev.filter((job) => job.id !== id));
       setExpandedJobId((prev) => (prev === id ? null : prev));
@@ -376,7 +327,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const handleDeleteSubscriber = async (email: string) => {
     if (!accessToken) return;
-    if (!confirm(`Remove ${email} from list?`)) return;
+    if (!confirm(`Remove ${email} from the alert list?`)) return;
     try {
       const response = await authFetch(
         "/api/admin/subscribers",
@@ -414,11 +365,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const filteredJobs = useMemo(() => {
     const query = jobQuery.trim().toLowerCase();
     if (!query) return jobs;
-    return jobs.filter((job) => {
-      const title = job.title?.toLowerCase() || "";
-      return title.includes(query);
-    });
+    return jobs.filter((job) => (job.title || "").toLowerCase().includes(query) || (job.company || "").toLowerCase().includes(query));
   }, [jobs, jobQuery]);
+
   const sortedJobs = useMemo(() => {
     const direction = jobSort === "newest" ? -1 : 1;
     return [...filteredJobs].sort((a, b) => {
@@ -429,398 +378,228 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   }, [filteredJobs, jobSort]);
 
   const jobSuggestions = useMemo(() => {
-    if (!jobQuery.trim() || jobQuery.length < 1) return [];
+    if (!jobQuery.trim()) return [];
     const lowQuery = jobQuery.toLowerCase();
     const titles = jobs.filter((j) => j.title?.toLowerCase().includes(lowQuery)).map((j) => j.title);
     return Array.from(new Set(titles)).slice(0, 6);
   }, [jobQuery, jobs]);
 
-  const audienceSplit = useMemo(() => {
-    const period = analytics?.periods?.week;
-    if (!period || !period.uniqueVisitors) {
-      return { newPct: 0, returningPct: 0 };
-    }
-    const newPct = Math.round((period.newVisitors / period.uniqueVisitors) * 100);
-    return { newPct, returningPct: 100 - newPct };
-  }, [analytics]);
-
-  const chartViews = analytics?.dailyViews || [];
-  const chartPosts = analytics?.dailyPosts || [];
-  const maxViews = Math.max(...chartViews.map((item) => item.count), 1);
-  const maxPosts = Math.max(...chartPosts.map((item) => item.count), 1);
-
   const pendingJobs = sortedJobs.filter((job) => job.status === "pending_review");
-  const archivedJobs = sortedJobs.filter((job) => job.status === "private");
-  const activeJobs = sortedJobs.filter((job) => job.status !== "pending_review" && job.status !== "private");
+  const listedJobs = useMemo(() => {
+    if (jobFilter === "live") return sortedJobs.filter((job) => job.status === "published");
+    if (jobFilter === "draft") return sortedJobs.filter((job) => job.status === "draft");
+    if (jobFilter === "archived") return sortedJobs.filter((job) => job.status === "private" || job.status === "archived" || job.status === "closed");
+    return sortedJobs;
+  }, [sortedJobs, jobFilter]);
 
-  return (
-    <div className="min-h-screen bg-[#0B1120] text-slate-200 font-sans p-4 sm:p-6 md:p-10 animate-in fade-in">
-      {/* Top Bar */}
-      <div className="max-w-[1400px] mx-auto mb-8 sm:mb-10 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-6 border-b border-slate-800 pb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-xl sm:text-2xl shadow-[0_0_30px_rgba(79,70,229,0.3)]">
-            CP
-          </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Shadow Command</h1>
-            <div className="flex items-center gap-2">
-               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-               <p className="text-[10px] sm:text-xs font-mono text-emerald-500 uppercase tracking-widest">System Online • Encrypted</p>
-            </div>
-          </div>
-        </div>
-        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
-          <button onClick={onLogout} className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-slate-900 border border-slate-700 hover:border-red-500 hover:text-red-400 text-slate-400 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all">
-            Terminate Session
-          </button>
-        </div>
-      </div>
+  useEffect(() => {
+    if (tabReady) return;
+    if (jobs.length === 0 && !accessToken) return;
+    setTab(pendingJobs.length > 0 ? "review" : "jobs");
+    setTabReady(true);
+  }, [tabReady, pendingJobs.length, jobs.length, accessToken]);
 
-      <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4 order-6">
-          {[
-            { label: "Users", value: adminStats.users },
-            { label: "Jobs", value: adminStats.jobs },
-            { label: "Saved", value: adminStats.savedJobs },
-            { label: "Files", value: adminStats.files },
-          ].map((item) => (
-            <div key={item.label} className="bg-[#0F172A] border border-slate-800 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-black text-white">{item.value}</div>
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{item.label}</div>
-            </div>
-          ))}
-        </div>
-        <div className="lg:col-span-12 flex flex-wrap gap-2 order-7">
-          {Object.entries(roleSummary).map(([role, count]) => (
-            <span
-              key={role}
-              className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-indigo-200 border border-indigo-700/40 bg-indigo-900/30"
-            >
-              {role}: {count}
-            </span>
-          ))}
-        </div>
-        <div className="lg:col-span-12 flex flex-wrap gap-3 order-8">
-          {[
-            { label: "Users CSV", href: "/api/admin/users/export", file: "users-export.csv" },
-            { label: "Jobs CSV", href: "/api/admin/jobs/export", file: "jobs-export.csv" },
-            { label: "Saved CSV", href: "/api/admin/saved-jobs/export", file: "saved-jobs-export.csv" },
-            { label: "Files CSV", href: "/api/admin/files/export", file: "files-export.csv" },
-            { label: "Audit CSV", href: "/api/admin/audit/export", file: "audit-export.csv" },
-          ].map((item) => (
-            <button
-              key={item.href}
-              onClick={() => handleExport(item.href, item.file)}
-              disabled={!accessToken}
-              className={`px-4 py-2 rounded-xl border border-slate-800 text-[10px] font-black uppercase tracking-widest ${
-                accessToken ? "text-slate-300 hover:border-indigo-500 hover:text-indigo-300" : "text-slate-500 opacity-60 cursor-not-allowed"
-              }`}
-            >
-              {item.label}
+  const fieldClass = "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm";
+  const labelClass = "text-xs font-medium text-slate-500";
+
+  const renderJobRow = (job: Job, mode: "review" | "jobs") => {
+    const open = expandedJobId === job.id;
+    return (
+      <React.Fragment key={job.id}>
+        <tr className="border-b border-slate-100 last:border-0">
+          <td className="px-4 py-2.5">
+            <button type="button" className="text-left font-medium text-slate-900 line-clamp-2 hover:text-indigo-700" onClick={() => setExpandedJobId(open ? null : job.id)}>
+              {job.title}
             </button>
-          ))}
-        </div>
-
-        <div className="lg:col-span-12 order-0">
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl px-4 py-4 sm:px-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-              <div>
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">Job Board</h3>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-1">
-                  Manage pending approvals and active roles
+            <div className="sm:hidden text-xs text-slate-500 mt-0.5">{job.company}</div>
+          </td>
+          <td className="px-3 py-2.5 text-slate-600 hidden sm:table-cell whitespace-nowrap">{job.company}</td>
+          <td className="px-3 py-2.5 text-slate-700 whitespace-nowrap">{formatSalaryDisplay(job.salary)}</td>
+          {mode === "jobs" && (
+            <td className="px-3 py-2.5">
+              <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded ${statusTone(job.status)}`}>{statusLabel(job.status)}</span>
+            </td>
+          )}
+          <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap hidden md:table-cell">{formatDate(job.timestamp)}</td>
+          <td className="px-3 py-2.5 whitespace-nowrap text-right">
+            {mode === "review" ? (
+              <div className="flex justify-end gap-2">
+                <button onClick={() => updateJobStatus(job.id, "published")} className="h-8 px-3 rounded-lg bg-emerald-600 text-white text-xs font-medium">
+                  Publish
+                </button>
+                <button onClick={() => updateJobStatus(job.id, "private")} className="h-8 px-3 rounded-lg border border-slate-200 text-xs font-medium text-slate-600">
+                  Decline
+                </button>
+              </div>
+            ) : (
+              <button type="button" className="h-8 w-8 rounded-md text-slate-400 hover:bg-slate-50" onClick={() => setExpandedJobId(open ? null : job.id)} aria-label="Open">
+                {open ? "–" : "⋯"}
+              </button>
+            )}
+          </td>
+        </tr>
+        {open && (
+          <tr className="border-b border-slate-100 bg-slate-50/70">
+            <td colSpan={mode === "jobs" ? 6 : 5} className="px-4 py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700">
+                <p>
+                  <span className="text-slate-400">Apply</span>
+                  <br />
+                  {job.applyUrl ? (
+                    <a href={job.applyUrl} target="_blank" rel="noreferrer" className="text-indigo-600 break-all">
+                      {job.applyUrl}
+                    </a>
+                  ) : (
+                    "—"
+                  )}
+                </p>
+                <p>
+                  <span className="text-slate-400">Location</span>
+                  <br />
+                  {job.location || "—"} · {job.remotePolicy || "—"}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-amber-300 border border-amber-600/40 bg-amber-600/10">
-                  Pending {pendingJobs.length}
-                </span>
-                <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-emerald-300 border border-emerald-600/40 bg-emerald-600/10">
-                  Active {activeJobs.length}
-                </span>
-                <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-slate-300 border border-slate-700 bg-slate-800/60">
-                  Archived {archivedJobs.length}
-                </span>
-              </div>
-            </div>
-
-            {jobActionMsg && (
-              <div
-                className={`mb-4 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
-                  jobActionTone === "error"
-                    ? "border-red-600/30 bg-red-600/10 text-red-300"
-                    : "border-emerald-600/30 bg-emerald-600/10 text-emerald-300"
-                }`}
-                role="status"
-                aria-live="polite"
-              >
-                {jobActionMsg}
-              </div>
-            )}
-
-            <div className="mb-4">
-              <button
-                onClick={() => {
-                  setShowAdminCreate((prev) => !prev);
-                  setAdminCreateStatus("idle");
-                  setAdminCreateMsg("");
-                }}
-                className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 border border-slate-800 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:border-indigo-500/40 hover:text-indigo-300"
-              >
-                <span className="text-indigo-400">＋</span> Add job (admin, free)
-              </button>
-            </div>
-
-            {showAdminCreate && (
-              <div className="mb-6 rounded-2xl border border-slate-800 bg-slate-950/40 p-4 sm:p-6 space-y-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-xs font-black uppercase tracking-widest text-slate-400">Admin free posting</div>
-                    <div className="text-sm font-black text-white mt-1">Create a role directly on the board</div>
-                  </div>
-                  <button
-                    onClick={() => setShowAdminCreate(false)}
-                    className="text-slate-500 hover:text-slate-200 text-[10px] font-black uppercase tracking-widest"
-                  >
-                    Close
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Title *</label>
-                    <input
-                      value={adminCreateDraft.title}
-                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, title: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      placeholder="e.g. Notion Operations Lead"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Company *</label>
-                    <input
-                      value={adminCreateDraft.company}
-                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, company: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      placeholder="Company name"
-                    />
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Apply URL *</label>
-                    <input
-                      value={adminCreateDraft.applyUrl}
-                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, applyUrl: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      placeholder="https://..."
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Company website</label>
-                    <input
-                      value={adminCreateDraft.companyWebsite}
-                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, companyWebsite: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      placeholder="company.com"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Logo (URL or data:)</label>
-                    <input
-                      value={adminCreateDraft.logo}
-                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, logo: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      placeholder="https://... or data:image/..."
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Location</label>
-                    <input
-                      value={adminCreateDraft.location}
-                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, location: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      placeholder="Remote / City"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Remote policy</label>
-                    <input
-                      value={adminCreateDraft.remotePolicy}
-                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, remotePolicy: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      placeholder="Remote (Global)"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Type</label>
-                    <select
-                      value={adminCreateDraft.type}
-                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, type: e.target.value as Job["type"] }))}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none"
-                    >
-                      <option value="Full-time">Full-time</option>
-                      <option value="Contract">Contract</option>
-                      <option value="Part-time">Part-time</option>
-                      <option value="Freelance">Freelance</option>
-                      <option value="Internship">Internship</option>
-                      <option value="Temporary">Temporary</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Category</label>
-                    <input
-                      value={adminCreateDraft.category}
-                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, category: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      placeholder="Operations"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Salary</label>
-                    <input
-                      value={adminCreateDraft.salary}
-                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, salary: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      placeholder="$100k–$140k"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Status</label>
-                    <select
-                      value={adminCreateDraft.status}
-                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, status: e.target.value as typeof p.status }))}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none"
-                    >
-                      <option value="published">Published (live)</option>
-                      <option value="pending_review">Pending review</option>
-                      <option value="draft">Draft</option>
-                      <option value="private">Archived</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Plan</label>
-                    <select
-                      value={adminCreateDraft.planType}
-                      onChange={(e) => {
-                        const next = e.target.value as typeof adminCreateDraft.planType;
-                        setAdminCreateDraft((p) => ({
-                          ...p,
-                          planType: next,
-                          isFeatured: next !== "Standard" ? true : p.isFeatured,
-                        }));
-                      }}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none"
-                    >
-                      <option value="Standard">Standard</option>
-                      <option value="Featured Pro">Featured Pro</option>
-                      <option value="Elite Managed">Elite Managed</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tags (comma separated)</label>
-                    <input
-                      value={adminCreateDraft.tagsCsv}
-                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, tagsCsv: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      placeholder="Notion, Ops, Remote"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tools (comma separated)</label>
-                    <input
-                      value={adminCreateDraft.toolsCsv}
-                      onChange={(e) => setAdminCreateDraft((p) => ({ ...p, toolsCsv: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      placeholder="Notion, Zapier, Make"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</label>
+              {editingJobId === job.id && editDraft ? (
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input className={fieldClass} value={editDraft.title} onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })} />
+                  <input className={fieldClass} value={editDraft.salary} onChange={(e) => setEditDraft({ ...editDraft, salary: e.target.value })} />
+                  <input className={fieldClass} value={editDraft.location} onChange={(e) => setEditDraft({ ...editDraft, location: e.target.value })} />
+                  <input className={fieldClass} value={editDraft.type} onChange={(e) => setEditDraft({ ...editDraft, type: e.target.value })} />
                   <textarea
-                    value={adminCreateDraft.description}
-                    onChange={(e) => setAdminCreateDraft((p) => ({ ...p, description: e.target.value }))}
-                    className="w-full min-h-[160px] rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm font-medium text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
-                    placeholder="Role overview, responsibilities, requirements…"
+                    className={`${fieldClass} sm:col-span-2 min-h-[100px]`}
+                    value={editDraft.description}
+                    onChange={(e) => setEditDraft({ ...editDraft, description: e.target.value })}
                   />
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={adminCreateJob}
-                    disabled={!accessToken || adminCreateStatus === "saving"}
-                    className="flex-1 rounded-2xl bg-indigo-600 text-white px-4 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-60"
-                  >
-                    {adminCreateStatus === "saving" ? "Creating..." : "Create job"}
+                  <button onClick={() => saveJobEdits(job.id)} className="h-9 rounded-lg bg-indigo-600 text-white text-sm font-medium">
+                    Save
                   </button>
-                  <button
-                    onClick={() => {
-                      setShowAdminCreate(false);
-                      setAdminCreateStatus("idle");
-                      setAdminCreateMsg("");
-                    }}
-                    className="flex-1 rounded-2xl bg-slate-950 text-slate-400 border border-slate-800 px-4 py-3 text-[10px] font-black uppercase tracking-widest hover:text-white"
-                  >
+                  <button onClick={cancelEditJob} className="h-9 rounded-lg border border-slate-200 text-sm font-medium">
                     Cancel
                   </button>
                 </div>
-
-                {adminCreateMsg && (
-                  <div
-                    className={`text-[10px] font-black uppercase tracking-widest ${
-                      adminCreateStatus === "error" ? "text-red-400" : "text-emerald-400"
-                    }`}
-                    aria-live="polite"
-                  >
-                    {adminCreateMsg}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div ref={jobSearchRef} className="relative">
-              <div className="relative flex items-center bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3">
-                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  type="text"
-                  value={jobQuery}
-                  onChange={(event) => {
-                    setJobQuery(event.target.value);
-                    setShowJobSuggestions(true);
-                  }}
-                  onFocus={() => setShowJobSuggestions(true)}
-                  placeholder="Search job titles..."
-                  className="w-full bg-transparent px-3 text-sm font-bold text-slate-200 outline-none placeholder:text-slate-600"
-                />
-                {jobQuery && (
-                  <button
-                    onClick={() => {
-                      setJobQuery("");
-                      setShowJobSuggestions(false);
-                    }}
-                    className="text-slate-500 hover:text-indigo-400"
-                    aria-label="Clear search"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+              ) : (
+                <p className="mt-3 text-sm text-slate-600 line-clamp-4 whitespace-pre-wrap">{job.description || "No description."}</p>
+              )}
+              {mode === "jobs" && editingJobId !== job.id && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button onClick={() => startEditJob(job)} className="h-8 px-3 rounded-lg border border-slate-200 text-xs font-medium">
+                    Edit
                   </button>
-                )}
-              </div>
+                  {job.status !== "published" && (
+                    <button onClick={() => updateJobStatus(job.id, "published")} className="h-8 px-3 rounded-lg bg-emerald-600 text-white text-xs font-medium">
+                      Publish
+                    </button>
+                  )}
+                  {job.status === "published" && (
+                    <button onClick={() => updateJobStatus(job.id, "private")} className="h-8 px-3 rounded-lg border border-slate-200 text-xs font-medium">
+                      Archive
+                    </button>
+                  )}
+                  <button onClick={() => handleDeleteJob(job.id)} className="h-8 px-3 rounded-lg text-xs font-medium text-rose-600">
+                    Delete
+                  </button>
+                </div>
+              )}
+            </td>
+          </tr>
+        )}
+      </React.Fragment>
+    );
+  };
+
+  const tabs: { id: AdminTab; label: string; count?: number }[] = [
+    { id: "review", label: "Review", count: pendingJobs.length },
+    { id: "jobs", label: "Jobs", count: jobs.filter((j) => j.status === "published").length },
+    { id: "sourcing", label: "Sourcing" },
+    { id: "more", label: "More" },
+  ];
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Admin</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {pendingJobs.length > 0 ? `${pendingJobs.length} waiting for review.` : "Board is clear. Next: jobs or sourcing."}
+          </p>
+        </div>
+        <button onClick={onLogout} className="h-9 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-600">
+          Log out
+        </button>
+      </div>
+
+      <div className="flex gap-1 mb-6 border-b border-slate-200">
+        {tabs.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setTab(item.id)}
+            className={`h-10 px-3 text-sm font-medium border-b-2 -mb-px ${
+              tab === item.id ? "border-indigo-600 text-indigo-700" : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            {item.label}
+            {typeof item.count === "number" ? <span className="ml-1.5 text-slate-400">{item.count}</span> : null}
+          </button>
+        ))}
+      </div>
+
+      {jobActionMsg && (
+        <div className={`mb-4 rounded-lg border px-3 py-2 text-sm ${jobActionTone === "error" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
+          {jobActionMsg}
+        </div>
+      )}
+
+      {tab === "review" && (
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+          {pendingJobs.length === 0 ? (
+            <div className="px-4 py-12 text-center">
+              <p className="font-medium text-slate-900">Nothing to review</p>
+              <p className="text-sm text-slate-500 mt-1">Employer submissions show up here. Switch to Jobs to manage the board.</p>
+              <button onClick={() => setTab("jobs")} className="mt-4 h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium">
+                Open jobs
+              </button>
+            </div>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-xs font-medium text-slate-400 border-b border-slate-100">
+                  <th className="px-4 py-2.5 font-medium">Title</th>
+                  <th className="px-3 py-2.5 font-medium hidden sm:table-cell">Company</th>
+                  <th className="px-3 py-2.5 font-medium">Salary</th>
+                  <th className="px-3 py-2.5 font-medium hidden md:table-cell">Date</th>
+                  <th className="px-3 py-2.5 font-medium text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>{pendingJobs.map((job) => renderJobRow(job, "review"))}</tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {tab === "jobs" && (
+        <div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+            <div ref={jobSearchRef} className="relative flex-1">
+              <input
+                value={jobQuery}
+                onChange={(e) => {
+                  setJobQuery(e.target.value);
+                  setShowJobSuggestions(true);
+                }}
+                onFocus={() => setShowJobSuggestions(true)}
+                placeholder="Search title or company"
+                className={fieldClass}
+              />
               {showJobSuggestions && jobSuggestions.length > 0 && (
-                <div className="absolute left-0 right-0 mt-2 bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-30">
-                  {jobSuggestions.map((suggestion, idx) => (
+                <div className="absolute left-0 right-0 mt-1 rounded-lg border border-slate-200 bg-white shadow-lg z-20">
+                  {jobSuggestions.map((suggestion) => (
                     <button
-                      key={`${suggestion}-${idx}`}
+                      key={suggestion}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
                       onClick={() => {
-                        setJobQuery(suggestion);
+                        setJobQuery(suggestion || "");
                         setShowJobSuggestions(false);
                       }}
-                      className="w-full text-left px-4 py-3 text-sm font-bold text-slate-300 hover:bg-slate-900 hover:text-white transition-colors border-b border-slate-800 last:border-none"
                     >
                       {suggestion}
                     </button>
@@ -828,931 +607,175 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 </div>
               )}
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Sort</span>
+            <button
+              onClick={() => setShowAdminCreate((prev) => !prev)}
+              className="h-10 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium"
+            >
+              {showAdminCreate ? "Close form" : "Add job"}
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-4">
+            {(["live", "draft", "archived", "all"] as const).map((id) => (
               <button
-                onClick={() => setJobSort("newest")}
-                className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                  jobSort === "newest"
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "bg-slate-950 text-slate-400 border-slate-800 hover:border-indigo-500/40"
-                }`}
+                key={id}
+                onClick={() => setJobFilter(id)}
+                className={`h-8 px-3 rounded-full text-xs font-medium ${jobFilter === id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"}`}
               >
-                Newest
+                {id[0].toUpperCase() + id.slice(1)}
               </button>
-              <button
-                onClick={() => setJobSort("oldest")}
-                className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                  jobSort === "oldest"
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "bg-slate-950 text-slate-400 border-slate-800 hover:border-indigo-500/40"
-                }`}
-              >
-                Oldest
-              </button>
+            ))}
+            <button
+              onClick={() => setJobSort((prev) => (prev === "newest" ? "oldest" : "newest"))}
+              className="h-8 px-3 rounded-full text-xs font-medium text-slate-500"
+            >
+              {jobSort === "newest" ? "Newest first" : "Oldest first"}
+            </button>
+          </div>
+
+          {showAdminCreate && (
+            <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+              <p className="text-sm font-medium text-slate-900">Add a listing</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Title</label>
+                  <input className={fieldClass} value={adminCreateDraft.title} onChange={(e) => setAdminCreateDraft((p) => ({ ...p, title: e.target.value }))} />
+                </div>
+                <div>
+                  <label className={labelClass}>Company</label>
+                  <input className={fieldClass} value={adminCreateDraft.company} onChange={(e) => setAdminCreateDraft((p) => ({ ...p, company: e.target.value }))} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Apply URL</label>
+                  <input className={fieldClass} value={adminCreateDraft.applyUrl} onChange={(e) => setAdminCreateDraft((p) => ({ ...p, applyUrl: e.target.value }))} />
+                </div>
+                <div>
+                  <label className={labelClass}>Salary</label>
+                  <input className={fieldClass} value={adminCreateDraft.salary} onChange={(e) => setAdminCreateDraft((p) => ({ ...p, salary: e.target.value }))} placeholder="$100k–$140k" />
+                </div>
+                <div>
+                  <label className={labelClass}>Location</label>
+                  <input className={fieldClass} value={adminCreateDraft.location} onChange={(e) => setAdminCreateDraft((p) => ({ ...p, location: e.target.value }))} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Description</label>
+                  <textarea className={`${fieldClass} min-h-[100px]`} value={adminCreateDraft.description} onChange={(e) => setAdminCreateDraft((p) => ({ ...p, description: e.target.value }))} />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={adminCreateJob} disabled={adminCreateStatus === "saving"} className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium disabled:opacity-60">
+                  {adminCreateStatus === "saving" ? "Creating…" : "Create"}
+                </button>
+                <button onClick={() => setShowAdminCreate(false)} className="h-9 px-4 rounded-lg border border-slate-200 text-sm font-medium">
+                  Cancel
+                </button>
+              </div>
+              {adminCreateMsg && <p className={`text-sm ${adminCreateStatus === "error" ? "text-rose-600" : "text-emerald-700"}`}>{adminCreateMsg}</p>}
             </div>
-            <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
-              Showing {filteredJobs.length} / {jobs.length} jobs
-            </div>
+          )}
+
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+            {listedJobs.length === 0 ? (
+              <div className="px-4 py-12 text-center text-sm text-slate-500">No jobs in this filter.</div>
+            ) : (
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-xs font-medium text-slate-400 border-b border-slate-100">
+                    <th className="px-4 py-2.5 font-medium">Title</th>
+                    <th className="px-3 py-2.5 font-medium hidden sm:table-cell">Company</th>
+                    <th className="px-3 py-2.5 font-medium">Salary</th>
+                    <th className="px-3 py-2.5 font-medium">Status</th>
+                    <th className="px-3 py-2.5 font-medium hidden md:table-cell">Date</th>
+                    <th className="px-3 py-2.5 font-medium w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>{listedJobs.map((job) => renderJobRow(job, "jobs"))}</tbody>
+              </table>
+            )}
           </div>
         </div>
-        
-        {/* ROW 1: ANALYTICS CARDS (Left) */}
-        <div className="lg:col-span-3 space-y-6 order-10">
-           {/* Total Views Card */}
-           <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 backdrop-blur-sm relative overflow-hidden group">
-              <div className="relative z-10">
-                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Impressions</p>
-                 <p className="text-4xl font-black text-white">{(analytics?.periods.all.totalViews || 0).toLocaleString()}</p>
-                 <div className="mt-4 flex gap-2 text-[10px] font-bold">
-                    <span className="text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">
-                      {analytics ? `${analytics.periods.week.totalViews.toLocaleString()} last 7d` : "Loading..."}
-                    </span>
-                 </div>
-              </div>
-              <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/20 rounded-full blur-2xl group-hover:bg-indigo-500/30 transition-all"></div>
-           </div>
+      )}
 
-           {/* Unique vs Returning */}
-           <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 backdrop-blur-sm">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Audience Split</p>
-              <div className="flex items-end justify-between mb-2">
-                 <span className="text-indigo-400 font-bold text-xs">New</span>
-                 <span className="text-white font-black">{audienceSplit.newPct}%</span>
-              </div>
-              <div className="w-full bg-slate-800 h-2 rounded-full mb-4 overflow-hidden">
-                 <div className="h-full bg-indigo-500" style={{ width: `${audienceSplit.newPct}%` }}></div>
-              </div>
-              <div className="flex items-end justify-between mb-2">
-                 <span className="text-purple-400 font-bold text-xs">Returning</span>
-                 <span className="text-white font-black">{audienceSplit.returningPct}%</span>
-              </div>
-              <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                 <div className="h-full bg-purple-500" style={{ width: `${audienceSplit.returningPct}%` }}></div>
-              </div>
-           </div>
-
-           {/* Revenue */}
-           <div className="bg-gradient-to-br from-indigo-900/50 to-slate-900 p-6 rounded-3xl border border-indigo-500/30 backdrop-blur-sm relative overflow-hidden">
-              <div className="relative z-10">
-                 <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1">Total Revenue</p>
-                 <p className="text-4xl font-black text-white">${stats.revenue.toLocaleString()}</p>
-                 <p className="text-xs text-indigo-400/60 font-medium mt-1">Real-time DB Calc</p>
-              </div>
-           </div>
+      {tab === "sourcing" && (
+        <div className="rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 bg-white border-b border-slate-200">
+            <p className="text-sm font-medium text-slate-900">Greenhouse pipeline</p>
+            <p className="text-xs text-slate-500 mt-0.5">Run ingest, check salary, publish. This is the only place for sourcing tools.</p>
+          </div>
+          <SourcingRegistrySection />
         </div>
+      )}
 
-        {/* ROW 1: TRAFFIC CHARTS */}
-        <div className="lg:col-span-6 order-11">
-           <div className="bg-[#0F172A] rounded-[2.5rem] border border-slate-800 h-full relative overflow-hidden flex flex-col min-h-[500px]">
-              <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/30">
-                 <h3 className="text-sm font-black text-white uppercase tracking-widest">Traffic & Job Posts</h3>
-                 <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                    <span className="text-[10px] font-mono text-emerald-400">REAL-TIME</span>
-                 </div>
+      {tab === "more" && (
+        <div className="space-y-6">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-sm font-medium text-slate-900 mb-3">Snapshot</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div>
+                <div className="text-slate-400">Users</div>
+                <div className="font-semibold text-slate-900">{adminStats.users}</div>
               </div>
-              
-              <div className="flex-1 p-6 grid grid-cols-1 gap-6">
-                <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Page views · last 30 days</span>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300">
-                      {analytics ? analytics.periods.month.totalViews.toLocaleString() : "—"}
-                    </span>
-                  </div>
-                  <div className="flex items-end gap-1 h-28">
-                    {chartViews.map((point) => (
-                      <div
-                        key={`views-${point.date}`}
-                        className="flex-1 rounded-sm bg-indigo-500/70"
-                        style={{ height: `${Math.max(8, (point.count / maxViews) * 100)}%` }}
-                        title={`${point.date}: ${point.count}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Job posts · last 30 days</span>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-300">
-                      {chartPosts.reduce((sum, point) => sum + point.count, 0).toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex items-end gap-1 h-28">
-                    {chartPosts.map((point) => (
-                      <div
-                        key={`posts-${point.date}`}
-                        className="flex-1 rounded-sm bg-emerald-500/70"
-                        style={{ height: `${Math.max(8, (point.count / maxPosts) * 100)}%` }}
-                        title={`${point.date}: ${point.count}`}
-                      />
-                    ))}
-                  </div>
-                </div>
+              <div>
+                <div className="text-slate-400">Jobs</div>
+                <div className="font-semibold text-slate-900">{adminStats.jobs}</div>
               </div>
-           </div>
-        </div>
+              <div>
+                <div className="text-slate-400">Views today</div>
+                <div className="font-semibold text-slate-900">{analytics?.periods.today.totalViews ?? "—"}</div>
+              </div>
+              <div>
+                <div className="text-slate-400">Views 7d</div>
+                <div className="font-semibold text-slate-900">{analytics?.periods.week.totalViews ?? "—"}</div>
+              </div>
+            </div>
+          </div>
 
-        {/* ROW 1: TRAFFIC SUMMARY (Right) */}
-        <div className="lg:col-span-3 space-y-6 order-12">
-          <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 backdrop-blur-sm h-full flex flex-col justify-center">
-            <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Traffic Summary</h3>
-            <div className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-sm font-medium text-slate-900 mb-3">Export</p>
+            <div className="flex flex-wrap gap-2">
               {[
-                { label: "Today", value: analytics?.periods.today.totalViews ?? 0 },
-                { label: "Last 7 days", value: analytics?.periods.week.totalViews ?? 0 },
-                { label: "Last 30 days", value: analytics?.periods.month.totalViews ?? 0 },
-                { label: "All time", value: analytics?.periods.all.totalViews ?? 0 },
+                { label: "Jobs CSV", href: "/api/admin/jobs/export", file: "jobs-export.csv" },
+                { label: "Users CSV", href: "/api/admin/users/export", file: "users-export.csv" },
+                { label: "Alerts CSV", href: "/api/admin/saved-jobs/export", file: "saved-jobs-export.csv" },
               ].map((item) => (
-                <div key={item.label} className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{item.label}</span>
-                  <span className="text-sm font-black text-slate-100">{item.value.toLocaleString()}</span>
-                </div>
+                <button
+                  key={item.href}
+                  onClick={() => handleExport(item.href, item.file)}
+                  className="h-8 px-3 rounded-lg border border-slate-200 text-xs font-medium text-slate-600"
+                >
+                  {item.label}
+                </button>
               ))}
             </div>
           </div>
-        </div>
 
-
-        {/* ROW 2: SUBSCRIBERS */}
-        <div className="lg:col-span-12 order-13">
-          <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden shadow-2xl">
-            <div className="p-8 border-b border-slate-800 flex justify-between items-center bg-slate-900">
-              <div className="flex items-center gap-3">
-                 <h3 className="text-lg font-black text-white">Encrypted Subscriber DB</h3>
-                 <span className="bg-indigo-500/20 text-indigo-400 text-[10px] font-black px-2 py-1 rounded border border-indigo-500/30">
-                    {subscribers.length} RECORDS
-                 </span>
-              </div>
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100">
+              <p className="text-sm font-medium text-slate-900">Alert subscribers</p>
+              <p className="text-xs text-slate-500">{subscribers.length} people</p>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs sm:text-sm text-slate-400">
-                <thead className="bg-slate-950/50 uppercase text-[9px] sm:text-[10px] font-black tracking-widest text-slate-500">
-                  <tr>
-                    <th className="px-4 sm:px-8 py-3 sm:py-4 whitespace-nowrap">Identity</th>
-                    <th className="px-4 sm:px-8 py-3 sm:py-4 whitespace-nowrap">Preference</th>
-                    <th className="px-4 sm:px-8 py-3 sm:py-4 whitespace-nowrap">Timestamp</th>
-                    <th className="px-4 sm:px-8 py-3 sm:py-4 text-right whitespace-nowrap">Protocol</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {subscribers.length > 0 ? subscribers.map((sub, i) => (
-                    <tr key={i} className="hover:bg-slate-800/50 transition-colors group">
-                      <td className="px-4 sm:px-8 py-3 sm:py-4 font-bold text-slate-300 group-hover:text-white whitespace-nowrap">{sub.email}</td>
-                      <td className="px-4 sm:px-8 py-3 sm:py-4">
-                        <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider ${
-                          sub.preference === 'All' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'
-                        }`}>
-                          {sub.preference}
-                        </span>
-                      </td>
-                      <td className="px-4 sm:px-8 py-3 sm:py-4 font-mono text-xs text-slate-500 whitespace-nowrap">{new Date(sub.joinedAt).toLocaleDateString()}</td>
-                      <td className="px-4 sm:px-8 py-3 sm:py-4 text-right">
-                        <button onClick={() => handleDeleteSubscriber(sub.email)} className="text-slate-600 hover:text-red-500 font-bold text-xs uppercase tracking-widest transition-colors">Purge</button>
+            {subscribers.length === 0 ? (
+              <p className="px-4 py-8 text-sm text-slate-500">No subscribers yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <tbody>
+                  {subscribers.map((sub) => (
+                    <tr key={sub.email} className="border-b border-slate-100 last:border-0">
+                      <td className="px-4 py-2.5">{sub.email}</td>
+                      <td className="px-3 py-2.5 text-slate-500">{sub.preference}</td>
+                      <td className="px-3 py-2.5 text-right">
+                        <button onClick={() => handleDeleteSubscriber(sub.email)} className="text-xs text-rose-600">
+                          Remove
+                        </button>
                       </td>
                     </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={4} className="px-4 sm:px-8 py-10 sm:py-12 text-center text-slate-600 italic">
-                         <div className="mb-2 text-2xl">🕸️</div>
-                         Database is empty. Waiting for targets.
-                      </td>
-                    </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
-            </div>
+            )}
           </div>
         </div>
-
-        {/* ROW 2: PENDING REVIEW */}
-        <div className="lg:col-span-12 order-1">
-          <div className="bg-slate-900 rounded-[2.5rem] border border-amber-500/30 overflow-hidden">
-            <div className="p-8 border-b border-slate-800 bg-slate-900 flex items-center justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-black text-white">Pending Review</h3>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-2">
-                  {pendingJobs.length} waiting
-                </p>
-              </div>
-              <span className="px-3 py-2 rounded-full text-[9px] font-black uppercase tracking-widest text-amber-300 border border-amber-600/40 bg-amber-600/10">
-                Needs approval
-              </span>
-            </div>
-            <div className="p-4 bg-[#0B1120] max-h-[520px] overflow-y-auto custom-scrollbar pr-1">
-              {pendingJobs.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {pendingJobs.map((job) => (
-                    <React.Fragment key={job.id}>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setExpandedJobId((prev) => (prev === job.id ? null : job.id))}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter" && event.key !== " ") return;
-                        event.preventDefault();
-                        setExpandedJobId((prev) => (prev === job.id ? null : job.id));
-                      }}
-                      className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all cursor-pointer"
-                    >
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center text-lg">
-                        {job.planType === 'Elite Managed' ? '💎' : '💼'}
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-white text-sm line-clamp-1 group-hover:text-indigo-400 transition-colors">{job.title}</h4>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">{job.company}</p>
-                        <p className="text-[10px] text-slate-600 uppercase tracking-wider">
-                          {getRemainingDays(job) === null ? "Expiry N/A" : `Expires in ${getRemainingDays(job)} days`}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded border border-amber-600/40 text-amber-300 bg-amber-600/10">
-                      pending
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        updateJobStatus(job.id, "published");
-                      }}
-                      className="flex-1 bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/30"
-                    >
-                      Accept
-                    </button>
-                    <button
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        updateJobStatus(job.id, "private");
-                      }}
-                      className="flex-1 bg-red-600/10 text-red-400 border border-red-600/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
-                    >
-                      Decline
-                    </button>
-                  </div>
-                </div>
-                  {expandedJobId === job.id && (
-                    <div className="sm:col-span-2 xl:col-span-3 rounded-2xl border border-slate-800 bg-slate-950/50 p-5 text-xs text-slate-300 space-y-3">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            updateJobStatus(job.id, "published");
-                          }}
-                          className="flex-1 bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/30"
-                        >
-                          Accept
-                        </button>
-                        <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            updateJobStatus(job.id, "private");
-                          }}
-                          className="flex-1 bg-red-600/10 text-red-400 border border-red-600/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
-                        >
-                          Decline
-                        </button>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</p>
-                        {editingJobId === job.id && editDraft ? (
-                          <textarea
-                            value={editDraft.description}
-                            onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
-                            onClick={(event) => event.stopPropagation()}
-                            onKeyDown={(event) => event.stopPropagation()}
-                            className="mt-2 w-full min-h-[160px] rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-                          />
-                        ) : (
-                          <p className="mt-2 text-slate-300 whitespace-pre-wrap max-h-56 overflow-y-auto pr-2 custom-scrollbar">
-                            {job.description || "No description provided."}
-                          </p>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <p>
-                          <span className="text-slate-500 font-bold">Title:</span>{" "}
-                          {editingJobId === job.id && editDraft ? (
-                            <input
-                              value={editDraft.title}
-                              onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })}
-                              onClick={(event) => event.stopPropagation()}
-                              onKeyDown={(event) => event.stopPropagation()}
-                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                            />
-                          ) : (
-                            job.title || "N/A"
-                          )}
-                        </p>
-                        <p>
-                          <span className="text-slate-500 font-bold">Location:</span>{" "}
-                          {editingJobId === job.id && editDraft ? (
-                            <input
-                              value={editDraft.location}
-                              onChange={(event) => setEditDraft({ ...editDraft, location: event.target.value })}
-                              onClick={(event) => event.stopPropagation()}
-                              onKeyDown={(event) => event.stopPropagation()}
-                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                            />
-                          ) : (
-                            job.location || "N/A"
-                          )}
-                        </p>
-                        <p>
-                          <span className="text-slate-500 font-bold">Remote policy:</span>{" "}
-                          {editingJobId === job.id && editDraft ? (
-                            <input
-                              value={editDraft.remotePolicy}
-                              onChange={(event) => setEditDraft({ ...editDraft, remotePolicy: event.target.value })}
-                              onClick={(event) => event.stopPropagation()}
-                              onKeyDown={(event) => event.stopPropagation()}
-                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                            />
-                          ) : (
-                            job.remotePolicy || "N/A"
-                          )}
-                        </p>
-                        <p>
-                          <span className="text-slate-500 font-bold">Type:</span>{" "}
-                          {editingJobId === job.id && editDraft ? (
-                            <input
-                              value={editDraft.type}
-                              onChange={(event) => setEditDraft({ ...editDraft, type: event.target.value })}
-                              onClick={(event) => event.stopPropagation()}
-                              onKeyDown={(event) => event.stopPropagation()}
-                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                            />
-                          ) : (
-                            job.type || "N/A"
-                          )}
-                        </p>
-                        <p>
-                          <span className="text-slate-500 font-bold">Salary:</span>{" "}
-                          {editingJobId === job.id && editDraft ? (
-                            <input
-                              value={editDraft.salary}
-                              onChange={(event) => setEditDraft({ ...editDraft, salary: event.target.value })}
-                              onClick={(event) => event.stopPropagation()}
-                              onKeyDown={(event) => event.stopPropagation()}
-                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                            />
-                          ) : (
-                            job.salary || "N/A"
-                          )}
-                        </p>
-                        <p><span className="text-slate-500 font-bold">Apply URL:</span> {job.applyUrl || "N/A"}</p>
-                        <p><span className="text-slate-500 font-bold">Company website:</span> {job.companyWebsite || "N/A"}</p>
-                        <p><span className="text-slate-500 font-bold">Keywords:</span> {job.keywords || "N/A"}</p>
-                        <p><span className="text-slate-500 font-bold">Posted:</span> {formatDate(job.timestamp)}</p>
-                        <p><span className="text-slate-500 font-bold">Plan duration:</span> {getPlanDurationDays(job)} days</p>
-                        <p><span className="text-slate-500 font-bold">Expires:</span> {getExpiryDate(job)}</p>
-                        <p><span className="text-slate-500 font-bold">Days left:</span> {getRemainingDays(job) ?? "N/A"}</p>
-                      </div>
-                      {job.tags?.length ? (
-                        <div className="flex flex-wrap gap-2">
-                          {job.tags.map((tag) => (
-                            <span key={tag} className="px-2 py-1 rounded-lg bg-slate-800 text-slate-200 text-[10px] font-black uppercase tracking-widest">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
-                      <div className="flex flex-wrap gap-2">
-                        {editingJobId === job.id ? (
-                          <>
-                            <button
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                saveJobEdits(job.id);
-                              }}
-                              className="flex-1 bg-indigo-600/20 text-indigo-300 border border-indigo-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600/30"
-                            >
-                              Save changes
-                            </button>
-                            <button
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                cancelEditJob();
-                              }}
-                              className="flex-1 bg-slate-950 text-slate-400 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-white"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              startEditJob(job);
-                            }}
-                            className="w-full bg-slate-950 text-slate-400 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-indigo-300"
-                          >
-                            Edit text
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                    </React.Fragment>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-10 text-slate-600 text-sm italic">
-                  Nothing to review right now.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ROW 2: ACTIVE JOBS */}
-        <div className="lg:col-span-6 order-2">
-          <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden h-full flex flex-col">
-            <div className="p-8 border-b border-slate-800 bg-slate-900">
-              <h3 className="text-lg font-black text-white">Active Deployments</h3>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-2">
-                {activeJobs.length} active · {archivedJobs.length} archived
-              </p>
-            </div>
-            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120] max-h-[520px] pr-1">
-              {activeJobs.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {activeJobs.map(job => (
-                    <div
-                      key={job.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setExpandedJobId((prev) => (prev === job.id ? null : job.id))}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter" && event.key !== " ") return;
-                        event.preventDefault();
-                        setExpandedJobId((prev) => (prev === job.id ? null : job.id));
-                      }}
-                      className={`bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all cursor-pointer ${
-                        expandedJobId === job.id ? "sm:col-span-2 xl:col-span-3" : ""
-                      }`}
-                    >
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                       <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center text-lg">
-                          {job.planType === 'Elite Managed' ? '💎' : '💼'}
-                       </div>
-                       <div>
-                          <h4 className="font-bold text-white text-sm line-clamp-1 group-hover:text-indigo-400 transition-colors">{job.title}</h4>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-wider">{job.company}</p>
-                          <p className="text-[10px] text-slate-600 uppercase tracking-wider">
-                            {getRemainingDays(job) === null ? "Expiry N/A" : `Expires in ${getRemainingDays(job)} days`}
-                          </p>
-                       </div>
-                    </div>
-                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded border border-slate-700 text-slate-400">
-                      {job.status || "draft"}
-                    </span>
-                  </div>
-                  {job.stripePaymentStatus === "paid" && job.status !== "published" && (
-                    <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-emerald-300">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                      Paid · Awaiting Accept
-                    </div>
-                  )}
-                  <button
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setExpandedJobId((prev) => (prev === job.id ? null : job.id));
-                    }}
-                    className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-300 text-left"
-                  >
-                    {expandedJobId === job.id ? "Hide details" : "View details"}
-                  </button>
-                  {expandedJobId === job.id && (
-                    <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-xs text-slate-300 space-y-3">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</p>
-                        {editingJobId === job.id && editDraft ? (
-                          <textarea
-                            value={editDraft.description}
-                            onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
-                                onClick={(event) => event.stopPropagation()}
-                                onKeyDown={(event) => event.stopPropagation()}
-                            className="mt-2 w-full min-h-[120px] rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-                          />
-                        ) : (
-                          <p className="mt-2 text-slate-300 whitespace-pre-wrap max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                            {job.description || "No description provided."}
-                          </p>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 gap-2">
-                        <p>
-                          <span className="text-slate-500 font-bold">Title:</span>{" "}
-                          {editingJobId === job.id && editDraft ? (
-                            <input
-                              value={editDraft.title}
-                              onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })}
-                                  onClick={(event) => event.stopPropagation()}
-                                  onKeyDown={(event) => event.stopPropagation()}
-                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                            />
-                          ) : (
-                            job.title || "N/A"
-                          )}
-                        </p>
-                        <p>
-                          <span className="text-slate-500 font-bold">Location:</span>{" "}
-                          {editingJobId === job.id && editDraft ? (
-                            <input
-                              value={editDraft.location}
-                              onChange={(event) => setEditDraft({ ...editDraft, location: event.target.value })}
-                                  onClick={(event) => event.stopPropagation()}
-                                  onKeyDown={(event) => event.stopPropagation()}
-                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                            />
-                          ) : (
-                            job.location || "N/A"
-                          )}
-                        </p>
-                        <p>
-                          <span className="text-slate-500 font-bold">Remote policy:</span>{" "}
-                          {editingJobId === job.id && editDraft ? (
-                            <input
-                              value={editDraft.remotePolicy}
-                              onChange={(event) => setEditDraft({ ...editDraft, remotePolicy: event.target.value })}
-                                  onClick={(event) => event.stopPropagation()}
-                                  onKeyDown={(event) => event.stopPropagation()}
-                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                            />
-                          ) : (
-                            job.remotePolicy || "N/A"
-                          )}
-                        </p>
-                        <p>
-                          <span className="text-slate-500 font-bold">Type:</span>{" "}
-                          {editingJobId === job.id && editDraft ? (
-                            <input
-                              value={editDraft.type}
-                              onChange={(event) => setEditDraft({ ...editDraft, type: event.target.value })}
-                                  onClick={(event) => event.stopPropagation()}
-                                  onKeyDown={(event) => event.stopPropagation()}
-                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                            />
-                          ) : (
-                            job.type || "N/A"
-                          )}
-                        </p>
-                        <p>
-                          <span className="text-slate-500 font-bold">Salary:</span>{" "}
-                          {editingJobId === job.id && editDraft ? (
-                            <input
-                              value={editDraft.salary}
-                              onChange={(event) => setEditDraft({ ...editDraft, salary: event.target.value })}
-                                  onClick={(event) => event.stopPropagation()}
-                                  onKeyDown={(event) => event.stopPropagation()}
-                              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                            />
-                          ) : (
-                            job.salary || "N/A"
-                          )}
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-1 gap-2">
-                        <p><span className="text-slate-500 font-bold">Apply URL:</span> {job.applyUrl || "N/A"}</p>
-                        <p><span className="text-slate-500 font-bold">Company website:</span> {job.companyWebsite || "N/A"}</p>
-                        <p><span className="text-slate-500 font-bold">Keywords:</span> {job.keywords || "N/A"}</p>
-                        <p><span className="text-slate-500 font-bold">Posted:</span> {formatDate(job.timestamp)}</p>
-                        <p><span className="text-slate-500 font-bold">Plan duration:</span> {getPlanDurationDays(job)} days</p>
-                        <p><span className="text-slate-500 font-bold">Expires:</span> {getExpiryDate(job)}</p>
-                        <p><span className="text-slate-500 font-bold">Days left:</span> {getRemainingDays(job) ?? "N/A"}</p>
-                      </div>
-                      {job.tags?.length ? (
-                        <div className="flex flex-wrap gap-2">
-                          {job.tags.map((tag) => (
-                            <span key={tag} className="px-2 py-1 rounded-lg bg-slate-800 text-slate-200 text-[10px] font-black uppercase tracking-widest">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
-                      <div className="flex flex-wrap gap-2">
-                        {editingJobId === job.id ? (
-                          <>
-                            <button
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                saveJobEdits(job.id);
-                              }}
-                              className="flex-1 bg-indigo-600/20 text-indigo-300 border border-indigo-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600/30"
-                            >
-                              Save changes
-                            </button>
-                            <button
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                cancelEditJob();
-                              }}
-                              className="flex-1 bg-slate-950 text-slate-400 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-white"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              startEditJob(job);
-                            }}
-                            className="w-full bg-slate-950 text-slate-400 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-indigo-300"
-                          >
-                            Edit text
-                          </button>
-                        )}
-                      </div>
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleDeleteJob(job.id);
-                        }}
-                        className="w-full bg-red-600/10 text-red-400 border border-red-600/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
-                      >
-                        Delete job
-                      </button>
-                    </div>
-                  )}
-                  <div className="flex gap-2">
-                    {job.stripePaymentStatus === "paid" && job.status !== "published" && (
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          updateJobStatus(job.id, "published");
-                        }}
-                        className="flex-1 bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/30"
-                      >
-                        Accept
-                      </button>
-                    )}
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          updateJobStatus(job.id, "private");
-                        }}
-                        className={`${
-                        job.stripePaymentStatus === "paid" && job.status !== "published" ? "flex-1" : "w-full"
-                      } bg-slate-950 text-slate-500 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-red-400 hover:border-red-600/40`}
-                    >
-                      Archive
-                    </button>
-                  </div>
-                </div>
-                  ))}
-                </div>
-              ) : (
-                 <div className="h-full flex flex-col items-center justify-center text-slate-600 text-sm italic">
-                    <p>No active ops deployed.</p>
-                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ROW 2: ARCHIVED JOBS */}
-        <div className="lg:col-span-6 order-3">
-          <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden h-full flex flex-col">
-            <div className="p-8 border-b border-slate-800 bg-slate-900">
-              <h3 className="text-lg font-black text-white">Archived Jobs</h3>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-2">
-                {archivedJobs.length} archived
-              </p>
-            </div>
-            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar bg-[#0B1120] max-h-[520px] pr-1">
-              {archivedJobs.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {archivedJobs.map((job) => (
-                    <div
-                      key={job.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setExpandedJobId((prev) => (prev === job.id ? null : job.id))}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter" && event.key !== " ") return;
-                        event.preventDefault();
-                        setExpandedJobId((prev) => (prev === job.id ? null : job.id));
-                      }}
-                      className={`bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 group hover:border-indigo-500/50 transition-all cursor-pointer ${
-                        expandedJobId === job.id ? "sm:col-span-2 xl:col-span-3" : ""
-                      }`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center text-lg">
-                            {job.planType === "Elite Managed" ? "💎" : "💼"}
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-white text-sm line-clamp-1 group-hover:text-indigo-400 transition-colors">{job.title}</h4>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">{job.company}</p>
-                            <p className="text-[10px] text-slate-600 uppercase tracking-wider">
-                              {getRemainingDays(job) === null ? "Expiry N/A" : `Expires in ${getRemainingDays(job)} days`}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded border border-slate-700 text-slate-400">
-                          archived
-                        </span>
-                      </div>
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setExpandedJobId((prev) => (prev === job.id ? null : job.id));
-                        }}
-                        className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-300 text-left"
-                      >
-                        {expandedJobId === job.id ? "Hide details" : "View details"}
-                      </button>
-                      {expandedJobId === job.id && (
-                        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-xs text-slate-300 space-y-3">
-                          <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</p>
-                            {editingJobId === job.id && editDraft ? (
-                              <textarea
-                                value={editDraft.description}
-                                onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })}
-                                onClick={(event) => event.stopPropagation()}
-                                onKeyDown={(event) => event.stopPropagation()}
-                                className="mt-2 w-full min-h-[120px] rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-                              />
-                            ) : (
-                              <p className="mt-2 text-slate-300 whitespace-pre-wrap max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                                {job.description || "No description provided."}
-                              </p>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-1 gap-2">
-                            <p>
-                              <span className="text-slate-500 font-bold">Title:</span>{" "}
-                              {editingJobId === job.id && editDraft ? (
-                                <input
-                                  value={editDraft.title}
-                                  onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })}
-                                  onClick={(event) => event.stopPropagation()}
-                                  onKeyDown={(event) => event.stopPropagation()}
-                                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                                />
-                              ) : (
-                                job.title || "N/A"
-                              )}
-                            </p>
-                            <p>
-                              <span className="text-slate-500 font-bold">Location:</span>{" "}
-                              {editingJobId === job.id && editDraft ? (
-                                <input
-                                  value={editDraft.location}
-                                  onChange={(event) => setEditDraft({ ...editDraft, location: event.target.value })}
-                                  onClick={(event) => event.stopPropagation()}
-                                  onKeyDown={(event) => event.stopPropagation()}
-                                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                                />
-                              ) : (
-                                job.location || "N/A"
-                              )}
-                            </p>
-                            <p>
-                              <span className="text-slate-500 font-bold">Remote policy:</span>{" "}
-                              {editingJobId === job.id && editDraft ? (
-                                <input
-                                  value={editDraft.remotePolicy}
-                                  onChange={(event) => setEditDraft({ ...editDraft, remotePolicy: event.target.value })}
-                                  onClick={(event) => event.stopPropagation()}
-                                  onKeyDown={(event) => event.stopPropagation()}
-                                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                                />
-                              ) : (
-                                job.remotePolicy || "N/A"
-                              )}
-                            </p>
-                            <p>
-                              <span className="text-slate-500 font-bold">Type:</span>{" "}
-                              {editingJobId === job.id && editDraft ? (
-                                <input
-                                  value={editDraft.type}
-                                  onChange={(event) => setEditDraft({ ...editDraft, type: event.target.value })}
-                                  onClick={(event) => event.stopPropagation()}
-                                  onKeyDown={(event) => event.stopPropagation()}
-                                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                                />
-                              ) : (
-                                job.type || "N/A"
-                              )}
-                            </p>
-                            <p>
-                              <span className="text-slate-500 font-bold">Salary:</span>{" "}
-                              {editingJobId === job.id && editDraft ? (
-                                <input
-                                  value={editDraft.salary}
-                                  onChange={(event) => setEditDraft({ ...editDraft, salary: event.target.value })}
-                                  onClick={(event) => event.stopPropagation()}
-                                  onKeyDown={(event) => event.stopPropagation()}
-                                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-1 text-xs text-slate-200"
-                                />
-                              ) : (
-                                job.salary || "N/A"
-                              )}
-                            </p>
-                          </div>
-                          <div className="grid grid-cols-1 gap-2">
-                            <p><span className="text-slate-500 font-bold">Apply URL:</span> {job.applyUrl || "N/A"}</p>
-                            <p><span className="text-slate-500 font-bold">Company website:</span> {job.companyWebsite || "N/A"}</p>
-                            <p><span className="text-slate-500 font-bold">Keywords:</span> {job.keywords || "N/A"}</p>
-                            <p><span className="text-slate-500 font-bold">Posted:</span> {formatDate(job.timestamp)}</p>
-                            <p><span className="text-slate-500 font-bold">Plan duration:</span> {getPlanDurationDays(job)} days</p>
-                            <p><span className="text-slate-500 font-bold">Expires:</span> {getExpiryDate(job)}</p>
-                            <p><span className="text-slate-500 font-bold">Days left:</span> {getRemainingDays(job) ?? "N/A"}</p>
-                          </div>
-                          {job.tags?.length ? (
-                            <div className="flex flex-wrap gap-2">
-                              {job.tags.map((tag) => (
-                                <span key={tag} className="px-2 py-1 rounded-lg bg-slate-800 text-slate-200 text-[10px] font-black uppercase tracking-widest">
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          ) : null}
-                          <div className="flex flex-wrap gap-2">
-                            {editingJobId === job.id ? (
-                              <>
-                                <button
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    saveJobEdits(job.id);
-                                  }}
-                                  className="flex-1 bg-indigo-600/20 text-indigo-300 border border-indigo-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600/30"
-                                >
-                                  Save changes
-                                </button>
-                                <button
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    cancelEditJob();
-                                  }}
-                                  className="flex-1 bg-slate-950 text-slate-400 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-white"
-                                >
-                                  Cancel
-                                </button>
-                              </>
-                            ) : (
-                              <button
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  startEditJob(job);
-                                }}
-                                className="w-full bg-slate-950 text-slate-400 border border-slate-800 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:text-indigo-300"
-                              >
-                                Edit text
-                              </button>
-                            )}
-                          </div>
-                          <button
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleDeleteJob(job.id);
-                            }}
-                            className="w-full bg-red-600/10 text-red-400 border border-red-600/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20"
-                          >
-                            Delete job
-                          </button>
-                        </div>
-                      )}
-                      <div className="flex gap-2">
-                        <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            updateJobStatus(job.id, "published");
-                          }}
-                          className="flex-1 bg-indigo-600/20 text-indigo-300 border border-indigo-600/40 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600/30"
-                        >
-                          Restore
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-600 text-sm italic">
-                  <p>No archived jobs.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        <SourcingRegistrySection />
-
-        <div className="lg:col-span-12 text-center pt-8 pb-4">
-           <p className="text-[10px] font-mono text-slate-600 uppercase tracking-[0.2em]">
-              CareersPal Internal System v2.4.0 • Level 0 Clearance Required
-           </p>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
