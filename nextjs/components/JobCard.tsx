@@ -8,6 +8,7 @@ import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import FormattedDescription from "./FormattedDescription";
 import { formatSalaryDisplay } from "../lib/formatSalary";
+import { formatRelativePosted } from "../lib/formatPosted";
 import { trackJobApply } from "../lib/trackJobEvent";
 
 export type JobCardVariant = "board" | "home";
@@ -38,11 +39,8 @@ const getWorkMode = (job: Job) => {
   return "Onsite";
 };
 
-const formatPostedDate = (job: Job) => {
-  if (!job.timestamp) return job.postedAt;
-  const date = new Date(job.timestamp);
-  return Number.isNaN(date.getTime()) ? job.postedAt : date.toLocaleDateString();
-};
+const formatPostedDate = (job: Job) =>
+  formatRelativePosted(job.timestamp, job.postedAt || "");
 
 export default function JobCard({
   job,

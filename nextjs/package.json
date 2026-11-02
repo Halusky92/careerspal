@@ -13,7 +13,8 @@
     "cleanup:expired": "tsx scripts/expire-stale-jobs.ts",
     "cleanup:off-niche": "tsx scripts/cleanup-off-niche-jobs.ts",
     "cleanup:salary": "tsx scripts/cleanup-implausible-salary.ts",
-    "apply:employer-dashboard": "tsx scripts/apply-employer-dashboard.ts"
+    "apply:employer-dashboard": "tsx scripts/apply-employer-dashboard.ts",
+    "sourcing:ensure-boards": "tsx scripts/ensure-sourcing-boards.ts"
   },
   "dependencies": {
     "@google/genai": "^1.39.0",

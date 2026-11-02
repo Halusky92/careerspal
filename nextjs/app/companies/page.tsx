@@ -133,7 +133,7 @@ export default async function CompaniesPage() {
   const companies = await fetchCompaniesWithLiveRoles();
 
   return (
-    <div className="bg-[#F8F9FD] pb-8">
+    <div className="bg-[#F8F9FD] pb-4">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
         <div className="flex items-end justify-between gap-3">
           <div>
@@ -221,6 +221,28 @@ export default async function CompaniesPage() {
                 </Link>
               );
             })}
+          </div>
+        )}
+
+        {companies.length > 0 && companies.length < 6 && (
+          <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="text-sm text-slate-600">
+              More companies show up here as live roles are published.
+            </p>
+            <div className="flex gap-2 shrink-0">
+              <Link
+                href="/alerts"
+                className="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
+              >
+                Email alerts
+              </Link>
+              <Link
+                href="/jobs"
+                className="inline-flex h-8 items-center rounded-lg bg-indigo-600 px-3 text-xs font-medium text-white hover:bg-indigo-700"
+              >
+                Browse jobs
+              </Link>
+            </div>
           </div>
         )}
       </div>

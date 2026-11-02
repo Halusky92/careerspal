@@ -90,7 +90,7 @@ export default function RootLayout({
             <AnalyticsTracker />
           </Suspense>
           <Navbar />
-          <main className="min-h-screen">{children}</main>
+          <main>{children}</main>
           <Footer />
         </Providers>
       </body>

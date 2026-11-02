@@ -7,6 +7,7 @@ import { Job } from '../types';
 import CompanyLogo from './CompanyLogo';
 import FormattedDescription from "./FormattedDescription";
 import { formatSalaryDisplay } from "../lib/formatSalary";
+import { formatRelativePosted } from "../lib/formatPosted";
 import { trackJobApply, trackJobView } from "../lib/trackJobEvent";
 import FeaturedBadge from "./FeaturedBadge";
 
@@ -51,12 +52,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
   const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl !== '#');
   const displayType = job.type && job.type !== "Unknown" ? job.type : null;
   // description rendering is centralized in <FormattedDescription />
-  const formatDate = (value?: number) => {
-    if (!value) return job.postedAt;
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? job.postedAt : date.toLocaleDateString();
-  };
-  const postedDate = formatDate(job.timestamp);
+  const postedDate = formatRelativePosted(job.timestamp, job.postedAt || "");
 
   const handleApply = async () => {
     if (isPrivate) {

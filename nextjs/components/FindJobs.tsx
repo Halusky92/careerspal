@@ -1015,12 +1015,11 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   return (
     <div className="bg-[#F8F9FD]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 sm:py-3">
         <div>
           <div className="cp-search rounded-xl px-3 sm:px-4 py-2">
-            <div className="flex flex-col lg:flex-row lg:items-end gap-2 lg:gap-3">
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                <div ref={titleRef} className="relative">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,11rem)_auto] gap-2 lg:gap-3 lg:items-end">
+              <div ref={titleRef} className="relative">
                   <label className="text-[10px] font-medium text-slate-500">
                     Search
                   </label>
@@ -1075,7 +1074,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   </div>
                 </div>
 
-                <div className="hidden lg:block lg:col-start-3">
+                <div className="hidden lg:block">
                   <label className="text-[10px] font-medium text-slate-500">
                     Sort
                   </label>
@@ -1089,16 +1088,16 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     <option value="relevant">Most relevant</option>
                   </select>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between lg:justify-end gap-3">
-                <div className="flex items-center gap-2 w-full lg:w-auto">
+              <div className="sm:col-span-2 lg:col-span-1">
+                <label className="hidden lg:block text-[10px] font-medium text-slate-500">&nbsp;</label>
+                <div className="mt-1 flex items-center gap-2">
                   {canUseSaved && (
                     <button
                       onClick={() => setShowSavedOnly((prev) => !prev)}
                       disabled={savedCount === 0}
                       aria-pressed={showSavedOnly}
-                      className={`hidden lg:inline-flex h-10 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                      className={`hidden lg:inline-flex h-10 px-3 rounded-lg border text-sm font-medium leading-none transition-colors ${
                         showSavedOnly
                           ? "bg-indigo-600 text-white border-indigo-600"
                           : "bg-white text-slate-600 border-slate-300 hover:border-indigo-200 hover:text-indigo-700"
@@ -1109,7 +1108,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   )}
                   <button
                     onClick={clearAllFilters}
-                    className="hidden lg:inline-flex h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
+                    className="hidden lg:inline-flex h-10 px-3 items-center justify-center rounded-lg border border-slate-300 bg-white text-sm font-medium leading-none text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
                   >
                     Reset
                   </button>
@@ -1172,7 +1171,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
           <aside className="hidden lg:block lg:col-span-3">
             {FilterContent({ variant: "sidebar" })}
           </aside>

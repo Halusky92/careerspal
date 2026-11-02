@@ -8,6 +8,7 @@ import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import FormattedDescription from "./FormattedDescription";
 import { formatSalaryDisplay } from "../lib/formatSalary";
+import { formatRelativePosted } from "../lib/formatPosted";
 import FeaturedBadge from "./FeaturedBadge";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 
@@ -23,11 +24,7 @@ type JobDetailPanelProps = {
 
 // description rendering is centralized in <FormattedDescription />
 
-const formatPosted = (job: Job) => {
-  if (!job.timestamp) return job.postedAt;
-  const date = new Date(job.timestamp);
-  return Number.isNaN(date.getTime()) ? job.postedAt : date.toLocaleDateString();
-};
+const formatPosted = (job: Job) => formatRelativePosted(job.timestamp, job.postedAt || "");
 
 export default function JobDetailPanel({
   job,

@@ -133,7 +133,7 @@ export default async function JobsPage({ searchParams }: PageProps) {
   const { jobs, total } = await fetchPublishedJobs();
 
   return (
-    <div className="pt-6">
+    <div className="pt-3">
       <StaticJobsList jobs={jobs} total={total} />
       <JobsClient
         initialJobs={jobs}

@@ -35,8 +35,6 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     { id: 3, title: "Preview & pay", desc: foundingEligible ? "Start pack — submit for review" : "Confirm & checkout" },
   ] as const;
 
-  const stepperProgress = steps.length > 1 ? ((step - 1) / (steps.length - 1)) * 100 : 0;
-  const barProgress = (step / steps.length) * 100;
   
   const [formData, setFormData] = useState<JobFormData>({
     title: initialJob?.title || '',
@@ -93,13 +91,13 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
         <button
           type="button"
           onClick={() => setOpenInfoId((prev) => (prev === id ? null : id))}
-          className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left"
+          className="w-full px-3 py-2.5 flex items-center justify-between gap-3 text-left"
           aria-expanded={isOpen}
         >
           <span className="text-sm font-black text-slate-900">{title}</span>
           <span className="text-slate-400 font-black">{isOpen ? "−" : "+"}</span>
         </button>
-        {isOpen && <div className="px-5 pb-5">{children}</div>}
+        {isOpen && <div className="px-3 pb-3">{children}</div>}
       </div>
     );
   };
@@ -213,15 +211,15 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const usingStartPack = Boolean(foundingEligible && selectedPlan.type === "Standard");
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-5 sm:py-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3">
       {foundingStatus?.enabled && (
         <div className="mb-4">
           <StartPackMeter status={foundingStatus} pendingUse={usingStartPack} />
         </div>
       )}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div className="lg:col-span-8">
-          <div className="mb-5">
+          <div className="mb-3">
             <div className="flex items-start justify-between gap-6">
               <div>
                 <div className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-2">
@@ -238,84 +236,55 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               </div>
             </div>
 
-            <div className="mt-3">
-              <div className="hidden sm:block relative rounded-xl bg-white border border-slate-200 px-4 py-3">
-                <div className="relative">
-                  <div className="absolute left-6 right-6 top-5 h-[2px] bg-slate-200/70 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-600 rounded-full transition-all duration-500" style={{ width: `${stepperProgress}%` }} />
+            <div className="mt-3 hidden sm:flex items-center gap-2">
+              {steps.map((s) => {
+                const isActive = step === s.id;
+                const isDone = step > s.id;
+                return (
+                  <div key={s.id} className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={[
+                        "h-6 w-6 rounded-md flex items-center justify-center text-[11px] font-semibold",
+                        isActive ? "bg-indigo-600 text-white" : isDone ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-400",
+                      ].join(" ")}
+                      aria-current={isActive ? "step" : undefined}
+                    >
+                      {isDone ? "✓" : s.id}
+                    </span>
+                    <span className={["text-xs font-medium truncate", isActive ? "text-slate-900" : "text-slate-500"].join(" ")}>
+                      {s.title}
+                    </span>
+                    {s.id !== steps.length && <span className="text-slate-300 px-1">/</span>}
                   </div>
-                  <div className="flex items-start justify-between relative">
-                    {steps.map((s) => {
-                      const isActive = step === s.id;
-                      const isDone = step > s.id;
-                      return (
-                        <div key={s.id} className="flex flex-col items-center text-center w-1/3">
-                          <div
-                            className={[
-                              "w-11 h-11 rounded-2xl flex items-center justify-center text-sm font-black transition-all",
-                              isActive
-                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 ring-8 ring-indigo-50"
-                                : isDone
-                                  ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
-                                  : "bg-slate-100 text-slate-400 border border-slate-200",
-                            ].join(" ")}
-                            aria-current={isActive ? "step" : undefined}
-                          >
-                            {isDone ? "✓" : s.id}
-                          </div>
-                          <div className="mt-3">
-                            <div className={["text-xs font-black tracking-tight", isActive ? "text-slate-900" : "text-slate-700"].join(" ")}>
-                              {s.title}
-                            </div>
-                            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">
-                              {s.desc}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60">
-                <div
-                  className="h-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-500 rounded-full transition-all duration-500"
-                  style={{ width: `${barProgress}%` }}
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="mt-2 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
-                <span>{steps[step - 1]?.title ?? "Progress"}</span>
-                <span>{Math.round(barProgress)}%</span>
-              </div>
+                );
+              })}
             </div>
           </div>
 
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             {step === 1 && (
-              <div className="p-4 sm:p-6 space-y-4">
-                <h2 className="text-lg font-semibold tracking-tight">1. Job details</h2>
-                <div className="space-y-6">
+              <div className="p-4 space-y-3">
+                <h2 className="text-sm font-semibold tracking-tight">1. Job details</h2>
+                <div className="space-y-3">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Job Title *</label>
-                    <input type="text" placeholder="e.g. Senior Notion Architect" className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                    <input type="text" placeholder="e.g. Senior Notion Architect" className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Keywords</label>
                     <input
                       type="text"
                       placeholder="Notion, Zapier, Ops, Automation"
-                      className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+                      className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none"
                       value={formData.keywords}
                       onChange={e => setFormData({...formData, keywords: e.target.value})}
                     />
                     <p className="text-[9px] text-slate-400 font-bold">Used to improve AI drafting and search relevance.</p>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</label>
-                      <select className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                      <select className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
                         {categoryOptions.map(cat => (
                           <option key={cat} value={cat}>{CATEGORY_FILTER_LABELS[cat] || cat}</option>
                         ))}
@@ -323,7 +292,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Job Type</label>
-                      <select className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as Job['type']})}>
+                      <select className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as Job['type']})}>
                         <option>Full-time</option>
                         <option>Contract</option>
                         <option>Part-time</option>
@@ -337,31 +306,31 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                         {isGenerating ? 'AI Writing...' : 'Draft with AI'}
                       </button>
                     </div>
-                    <textarea rows={8} className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl outline-none text-sm sm:text-base font-medium focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                    <textarea rows={5} className="cp-field w-full rounded-lg px-3 py-2.5 text-sm outline-none" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
                   </div>
                 </div>
-                <button onClick={handleStep1} className="w-full bg-indigo-600 text-white font-black py-4 sm:py-5 rounded-2xl hover:bg-indigo-700 transition-all text-base sm:text-lg shadow-[0_20px_60px_rgba(79,70,229,0.35)]">Next Step</button>
+                <button onClick={handleStep1} className="w-full h-10 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Next</button>
               </div>
             )}
 
             {step === 2 && (
-              <div className="p-4 sm:p-6 space-y-4">
-                <h2 className="text-lg font-semibold tracking-tight">2. Company & apply</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-4 space-y-3">
+                <h2 className="text-sm font-semibold tracking-tight">2. Company & apply</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company Name *</label>
-                    <input type="text" placeholder="Your Company Name" className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
+                    <input type="text" placeholder="Your Company Name" className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Salary Range</label>
-                    <input type="text" placeholder="e.g. $80k - $120k" className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" value={formData.salary} onChange={e => setFormData({...formData, salary: e.target.value})} />
+                    <input type="text" placeholder="e.g. $80k - $120k" className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none" value={formData.salary} onChange={e => setFormData({...formData, salary: e.target.value})} />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <label className="text-[11px] font-bold text-slate-700">Work mode</label>
                     <select
-                      className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl text-sm sm:text-base outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+                      className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none"
                       value={formData.remotePolicy}
                       onChange={e => setFormData({...formData, remotePolicy: e.target.value})}
                     >
@@ -376,7 +345,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     <input
                       type="text"
                       placeholder="e.g. Worldwide, Europe, US, CET±2"
-                      className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+                      className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none"
                       value={formData.location}
                       onChange={e => setFormData({...formData, location: e.target.value})}
                     />
@@ -388,7 +357,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     type="text"
                     inputMode="url"
                     placeholder="company.com"
-                    className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+                    className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none"
                     value={formData.companyWebsite}
                     onChange={e => setFormData({...formData, companyWebsite: e.target.value})}
                     onBlur={() =>
@@ -407,7 +376,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                       <input 
                         type="url" 
                         placeholder="https://company.com/logo.png (optional)" 
-                        className="flex-1 px-5 py-3.5 sm:py-4 cp-field rounded-2xl outline-none font-medium text-sm focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all" 
+                        className="cp-field flex-1 h-10 rounded-lg px-3 text-sm outline-none" 
                         value={formData.logo.startsWith("data:") ? "" : formData.logo} 
                         onChange={e => setFormData({...formData, logo: e.target.value})}
                         onBlur={() =>
@@ -461,7 +430,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     type="text"
                     inputMode="url"
                     placeholder="company.com/careers or jobs@company.com"
-                    className="w-full px-5 py-3.5 sm:py-4 cp-field rounded-2xl outline-none text-sm sm:text-base font-bold focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+                    className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none"
                     value={formData.applyUrl}
                     onChange={e => setFormData({...formData, applyUrl: e.target.value})}
                     onBlur={() =>
@@ -473,19 +442,19 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                   />
                   <p className="text-[9px] text-slate-400 font-bold">Auto-formats after you leave the field.</p>
                 </div>
-                <div className="flex gap-4 pt-6">
-                  <button onClick={() => setStep(1)} className="px-6 sm:px-8 py-4 sm:py-5 bg-white text-slate-600 font-black rounded-2xl border border-slate-200/70 hover:border-slate-300 transition-all text-sm sm:text-base">Back</button>
-                  <button onClick={handleStep2} className="flex-1 bg-indigo-600 text-white font-black py-4 sm:py-5 rounded-2xl hover:bg-indigo-700 shadow-[0_20px_60px_rgba(79,70,229,0.35)] text-sm sm:text-base">Review Listing</button>
+                <div className="flex gap-2 pt-2">
+                  <button onClick={() => setStep(1)} className="h-10 px-4 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">Back</button>
+                  <button onClick={handleStep2} className="flex-1 h-10 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Review listing</button>
                 </div>
               </div>
             )}
 
             {step === 3 && (
-              <div className="p-4 sm:p-6 text-center space-y-5">
-                <div className="bg-emerald-50 text-emerald-700 px-6 py-3 rounded-2xl border border-emerald-100 inline-block font-black text-xs uppercase tracking-widest">Ready to Launch</div>
-                <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Final Preview</h2>
+              <div className="p-4 sm:p-5 text-center space-y-3">
+                <div className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-100 inline-block text-[11px] font-semibold uppercase tracking-wide">Ready to submit</div>
+                <h2 className="text-lg font-semibold text-slate-900 tracking-tight">Preview</h2>
                 <div className="bg-slate-50 p-4 sm:p-5 rounded-xl text-left border border-slate-200">
-                   <div className="flex items-center gap-6 mb-6">
+                   <div className="flex items-center gap-3 mb-3">
                       <div className="w-16 h-16 bg-white rounded-xl border flex items-center justify-center p-2">
                          <img src={previewLogo} alt="" className="max-h-full max-w-full object-contain" />
                       </div>
@@ -506,7 +475,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                    </div>
                 </div>
                 <div className="flex flex-col gap-4">
-                <button onClick={handleFinalSubmit} className="w-full bg-slate-900 text-white font-semibold py-4 sm:py-6 rounded-2xl hover:bg-black shadow-[0_25px_70px_rgba(15,23,42,0.35)] active:scale-[0.98] transition-all text-base sm:text-xl">
+                <button onClick={handleFinalSubmit} className="w-full h-10 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-black">
                     {foundingEligible && selectedPlan.type === "Standard"
                       ? "Submit with Start pack"
                       : `Proceed to Payment (${formatPrice(selectedPlan.price)})`}
@@ -518,12 +487,12 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
           </div>
         </div>
 
-        <div className="lg:col-span-4 space-y-8">
+        <div className="lg:col-span-4 space-y-3">
            <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-indigo-600">For employers</div>
-                  <h3 className="text-xl font-bold text-slate-900 mt-2">Post → review → live.</h3>
+                  <h3 className="text-base font-semibold text-slate-900 mt-1">Post → review → live.</h3>
                   <p className="mt-2 text-sm font-medium text-slate-600">
                     Listing on the board. Candidates apply on your link.
                   </p>
@@ -569,16 +538,16 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
            </div>
            
            <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 relative z-20">
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Selected Plan</h3>
-              <div className="text-3xl font-bold text-indigo-600 mb-4">
+              <h3 className="text-sm font-semibold text-slate-900 mb-1">Selected plan</h3>
+              <div className="text-2xl font-semibold text-indigo-600 mb-2">
                 {usingStartPack ? "Free" : formatPrice(selectedPlan.price)}
                 <span className="text-lg text-slate-600 font-medium"> {usingStartPack ? "Start pack" : "/ 30 days"}</span>
               </div>
-              <div className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-6">{selectedPlan.type}</div>
+              <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">{selectedPlan.type}</div>
               
               {/* Plan Upgrade Options */}
               {selectedPlan.type === 'Standard' && (
-                <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-2xl p-6 text-white text-center shadow-lg relative group/tooltip">
+                <div className="bg-indigo-600 rounded-xl p-4 text-white text-center relative group/tooltip">
                   <div className="flex justify-between items-start mb-2">
                     <p className="text-xs font-black uppercase tracking-widest opacity-80 text-left">Boost Visibility</p>
                     <div className="relative">
@@ -609,7 +578,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               )}
               
               {selectedPlan.type === 'Featured Pro' && (
-                <div className="bg-slate-900 rounded-2xl p-6 text-white text-center shadow-lg relative group/tooltip">
+                <div className="bg-slate-900 rounded-xl p-4 text-white text-center relative group/tooltip">
                    <div className="flex justify-between items-start mb-2">
                      <p className="text-xs font-black uppercase tracking-widest opacity-80 text-left">Go Elite</p>
                      <div className="relative">

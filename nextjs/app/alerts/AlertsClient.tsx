@@ -4,28 +4,23 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
-import { CATEGORY_HUBS, type CategoryHub, getCategoryHub, resolveCategoryParam } from "../../lib/categories";
+import { parseAlertQuery, serializeAlertQuery } from "../../lib/categories";
 import { subscribeUser } from "../../services/notificationService";
+import AlertCategoryPicker from "../../components/AlertCategoryPicker";
 
 type AlertsClientProps = {
   initialCategory?: string | null;
 };
 
-const getHubOrDefault = (value?: string | null): CategoryHub => {
-  const resolved = resolveCategoryParam(value);
-  const hub = resolved !== "All Roles" ? getCategoryHub(resolved) : null;
-  return hub || CATEGORY_HUBS[0];
-};
-
 export default function AlertsClient({ initialCategory }: AlertsClientProps) {
   const { profile, accessToken, loading } = useSupabaseAuth();
   const [email, setEmail] = useState("");
-  const [hubSlug, setHubSlug] = useState<string>(() => getHubOrDefault(initialCategory).slug);
+  const [selected, setSelected] = useState<string[]>(() => parseAlertQuery(initialCategory));
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
 
-  const hub = useMemo(() => getHubOrDefault(hubSlug), [hubSlug]);
+  const query = useMemo(() => serializeAlertQuery(selected), [selected]);
   const hasSession = Boolean(profile?.email);
 
   const handleSubscribe = async () => {
@@ -39,7 +34,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query: hub.slug }),
+            body: JSON.stringify({ query }),
           },
           accessToken,
         );
@@ -52,7 +47,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
         await fetch("/api/subscribers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: profile.email, preference: hub.slug }),
+          body: JSON.stringify({ email: profile.email, preference: query }),
         });
         setStatus("ok");
         setSaveMsg(payload.existing ? "Alert already on. Manage it in your account." : "Alert on. Manage it in your account.");
@@ -65,7 +60,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
         setSaveMsg("Enter an email address.");
         return;
       }
-      const result = await subscribeUser(trimmed, hub.slug);
+      const result = await subscribeUser(trimmed, query);
       setStatus(result.success ? "ok" : "error");
       setSaveMsg(
         result.success
@@ -85,29 +80,13 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
       <div className="p-4 sm:p-5 border-b border-slate-100">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Job alerts</p>
         <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Get new jobs by email</h1>
-        <p className="mt-3 text-[15px] text-slate-700 max-w-2xl">
-          One list, one category. We’ll email you when a matching role is published. Sign in to change or stop it later.
+        <p className="mt-2 text-sm text-slate-600 max-w-2xl">
+          Pick one category, several, or all. We’ll email new matching roles. Sign in to change or stop it later.
         </p>
       </div>
 
       <div className="p-4 sm:p-5 space-y-4">
-        <div>
-          <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500" htmlFor="alert-category">
-            Category
-          </label>
-          <select
-            id="alert-category"
-            value={hubSlug}
-            onChange={(e) => setHubSlug(e.target.value)}
-            className="cp-field mt-1.5 w-full h-10 rounded-lg bg-white px-3 text-sm text-slate-700 outline-none"
-          >
-            {CATEGORY_HUBS.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <AlertCategoryPicker selected={selected} onChange={setSelected} />
 
         {loading ? (
           <div className="text-sm text-slate-600">Loading…</div>
@@ -154,7 +133,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
           <div className={`text-sm ${status === "error" ? "text-rose-700" : "text-emerald-800"}`}>{saveMsg}</div>
         )}
 
-        <p className="text-xs text-slate-500">We’ll only email new published roles that match this category.</p>
+        <p className="text-xs text-slate-500">We’ll only email new published roles that match your selection.</p>
       </div>
     </div>
   );

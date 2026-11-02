@@ -13,7 +13,7 @@ export default function FeaturedBoardZone({
   return (
     <section
       aria-label="Featured listings"
-      className="rounded-2xl border border-indigo-200 bg-indigo-50/70 p-2.5 sm:p-3"
+      className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-2 sm:p-2.5"
     >
       <div className="flex items-baseline justify-between gap-3 px-1 pb-2">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-indigo-900">Featured</h2>

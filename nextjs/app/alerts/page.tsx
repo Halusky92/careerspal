@@ -36,8 +36,8 @@ export default async function AlertsPage({ searchParams }: PageProps) {
   const initialCategory = getParam(resolved.category) || null;
 
   return (
-    <div className="bg-[#F8F9FD] pb-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
+    <div className="bg-[#F8F9FD] pb-4">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-4">
         <AlertsClient initialCategory={initialCategory} />
       </div>
     </div>

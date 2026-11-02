@@ -70,7 +70,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
     <>
       <Hero onBrowse={() => router.push("/jobs")} onGetAlerts={() => router.push("/alerts")} />
 
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-5 sm:py-7">
         <div className="flex items-baseline justify-between gap-3 mb-3">
           <h2 className="text-sm font-semibold text-slate-900">A few live roles</h2>
           {!jobsLoading && hasJobs ? (

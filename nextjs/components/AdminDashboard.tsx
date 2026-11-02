@@ -6,6 +6,7 @@ import { Job } from "../types";
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
 import { formatSalaryDisplay } from "../lib/formatSalary";
+import { formatShortPostedDate } from "../lib/formatPosted";
 import SourcingRegistrySection from "./admin/SourcingRegistrySection";
 
 type AnalyticsPeriod = {
@@ -122,8 +123,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const formatDate = (value?: number) => {
     if (!value) return "—";
-    const date = new Date(value < 1e12 ? value * 1000 : value);
-    return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return formatShortPostedDate(value) || "—";
   };
 
   const startEditJob = (job: Job) => {

@@ -10,6 +10,7 @@ import { stripHtmlToText } from "../lib/sourcing/normalization/text";
 import { formatSalaryDisplay } from "../lib/formatSalary";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
+import { formatRelativePosted } from "../lib/formatPosted";
 
 export type JobRowAction = "copy_link" | "open_new_tab";
 
@@ -39,23 +40,7 @@ const getWorkMode = (job: Job) => {
   return "Onsite";
 };
 
-const formatTimeAgo = (job: Job) => {
-  if (!job.timestamp) return job.postedAt || "";
-  const diffMs = Date.now() - job.timestamp;
-  if (!Number.isFinite(diffMs) || diffMs < 0) return job.postedAt || "";
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays}d ago`;
-  try {
-    return new Date(job.timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  } catch {
-    return job.postedAt || "";
-  }
-};
+const formatTimeAgo = (job: Job) => formatRelativePosted(job.timestamp, job.postedAt || "");
 
 const getRemoteMeta = (job: Job, workMode: string) => {
   const loc = (job.location || "").trim();
@@ -185,7 +170,7 @@ export default function JobRow({
           className={["absolute inset-y-0 left-0 w-1", isElite ? "bg-slate-900" : "bg-indigo-500"].join(" ")}
         />
       )}
-      <div className={["flex items-start gap-3", isHome ? "px-3 py-2.5" : "px-3.5 py-2.5"].join(" ")}>
+      <div className={["flex items-start gap-2.5", isHome ? "px-3 py-2" : "px-3 py-2"].join(" ")}>
         <div
           className={[
             "mt-0.5 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0",
@@ -205,7 +190,7 @@ export default function JobRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h3 className={[isHome ? "text-[15px]" : "text-[15px] sm:text-base", "font-bold text-slate-900 leading-snug line-clamp-2"].join(" ")}>
+              <h3 className="text-[14px] sm:text-[15px] font-bold text-slate-900 leading-snug line-clamp-2">
                 <Link
                   href={detailHref}
                   onClick={(e) => e.stopPropagation()}

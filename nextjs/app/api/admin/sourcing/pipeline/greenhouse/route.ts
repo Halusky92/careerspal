@@ -10,6 +10,7 @@ import {
 } from "../../../../../../lib/sourcing/pipeline/greenhouseSteps";
 import { ingestAshbyRawJobs, ingestLeverRawJobs } from "../../../../../../lib/sourcing/pipeline/atsIngest";
 import { enrichCandidatesSalaryBulk } from "../../../../../../lib/sourcing/pipeline/salaryEnrichment";
+import { ensureSeedSourcingBoards } from "../../../../../../lib/sourcing/seedBoards";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -48,6 +49,10 @@ async function runPipelineGreenhouse(args: { sourceId?: string | null; limitRaw?
   const sourceId = (args.sourceId || "").trim() || null;
   const limitRaw = Math.min(500, Math.max(1, Number(args.limitRaw) || 300));
   const limitCandidates = Math.min(300, Math.max(1, Number(args.limitCandidates) || 200));
+
+  if (!sourceId) {
+    await ensureSeedSourcingBoards(supabaseAdmin);
+  }
 
   // 1) Load eligible sources
   let q = supabaseAdmin

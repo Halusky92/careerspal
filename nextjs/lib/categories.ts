@@ -128,12 +128,38 @@ export function resolveCategoryParam(raw?: string | null): string {
   return "All Roles";
 }
 
+export function parseAlertQuery(raw?: string | null): string[] {
+  const value = (raw || "").trim();
+  if (!value || value.toLowerCase() === "all" || value === "All Roles") return ["all"];
+  const parts = value.split(/[,+|]/).map((part) => part.trim()).filter(Boolean);
+  const slugs = [
+    ...new Set(
+      parts
+        .map((part) => getCategoryHub(part)?.slug || getCategoryHubForDbCategory(part)?.slug || "")
+        .filter(Boolean),
+    ),
+  ];
+  if (slugs.length === 0) return ["all"];
+  if (slugs.length >= CATEGORY_HUBS.length) return ["all"];
+  return slugs;
+}
+
+export function serializeAlertQuery(slugs: string[]): string {
+  if (slugs.includes("all") || slugs.length === 0 || slugs.length >= CATEGORY_HUBS.length) return "all";
+  return [...new Set(slugs)].join(",");
+}
+
+export function formatAlertQueryLabel(raw?: string | null): string {
+  const slugs = parseAlertQuery(raw);
+  if (slugs.includes("all")) return "All categories";
+  return slugs.map((slug) => getCategoryHub(slug)?.label || slug).join(", ");
+}
+
 export function jobMatchesAlertQuery(job: { title?: string | null; category?: string | null }, query: string): boolean {
-  const raw = (query || "").trim();
-  if (!raw || raw.toLowerCase() === "all") return true;
-  const hub = getCategoryHub(raw) || getCategoryHubForDbCategory(raw);
-  if (hub) return jobMatchesHub(job, hub);
-  const needle = raw.toLowerCase();
-  const hay = `${job.title || ""} ${job.category || ""}`.toLowerCase();
-  return hay.includes(needle);
+  const slugs = parseAlertQuery(query);
+  if (slugs.includes("all")) return true;
+  return slugs.some((slug) => {
+    const hub = getCategoryHub(slug);
+    return hub ? jobMatchesHub(job, hub) : false;
+  });
 }

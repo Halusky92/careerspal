@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Job } from "../types";
 import { createJobSlug } from "../lib/jobs";
 import { formatSalaryDisplay } from "../lib/formatSalary";
+import { formatShortPostedDate } from "../lib/formatPosted";
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
 import { listingSourceLabel } from "../lib/listingTraffic";
@@ -61,11 +62,8 @@ const statusTone = (status?: string) => {
 
 const postedDate = (job: Job) => {
   if (job.timestamp) {
-    const ts = job.timestamp < 1e12 ? job.timestamp * 1000 : job.timestamp;
-    const d = new Date(ts);
-    if (!Number.isNaN(d.getTime())) {
-      return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    }
+    const label = formatShortPostedDate(job.timestamp);
+    if (label) return label;
   }
   return job.postedAt || "—";
 };

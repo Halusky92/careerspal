@@ -8,7 +8,8 @@ import { authFetch } from "../../lib/authFetch";
 import { createJobSlug } from "../../lib/jobs";
 import { Job } from "../../types";
 import { formatSalaryDisplay } from "../../lib/formatSalary";
-import { CATEGORY_HUBS, getCategoryHub, resolveCategoryParam } from "../../lib/categories";
+import { parseAlertQuery, serializeAlertQuery, formatAlertQueryLabel } from "../../lib/categories";
+import AlertCategoryPicker from "../../components/AlertCategoryPicker";
 
 type AccountUser = {
   name?: string;
@@ -57,7 +58,7 @@ const AccountPageInner = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [subscriber, setSubscriber] = useState<SubscriberRow | null>(null);
-  const [alertQuery, setAlertQuery] = useState<string>(CATEGORY_HUBS[0].slug);
+  const [alertQuery, setAlertQuery] = useState<string>("all");
   const [alertBusy, setAlertBusy] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
 
@@ -105,8 +106,7 @@ const AccountPageInner = () => {
         const subData = (await subRes.json()) as { subscriber?: SubscriberRow | null };
         setSubscriber(subData.subscriber || null);
         if (subData.subscriber?.preference) {
-          const hub = getCategoryHub(resolveCategoryParam(subData.subscriber.preference));
-          setAlertQuery(hub?.slug || CATEGORY_HUBS[0].slug);
+          setAlertQuery(serializeAlertQuery(parseAlertQuery(subData.subscriber.preference)));
         }
       } catch {
         // keep empty
@@ -423,22 +423,11 @@ const AccountPageInner = () => {
                 <div className="space-y-4">
                   <div className="rounded-xl border border-slate-200 p-4 space-y-3">
                     <p className="text-sm font-medium text-slate-900">Get new jobs by email</p>
-                    <p className="text-sm text-slate-600">Change the category or stop alerts. Same list as the Alerts page.</p>
-                    <label className="block text-xs font-medium text-slate-500" htmlFor="account-alert-category">
-                      Category
-                    </label>
-                    <select
-                      id="account-alert-category"
-                      value={alertQuery}
-                      onChange={(e) => setAlertQuery(e.target.value)}
-                      className="cp-field w-full h-10 rounded-lg px-3 text-sm"
-                    >
-                      {CATEGORY_HUBS.map((hub) => (
-                        <option key={hub.slug} value={hub.slug}>
-                          {hub.label}
-                        </option>
-                      ))}
-                    </select>
+                    <p className="text-sm text-slate-600">Pick one, several, or all. Same list as the Alerts page.</p>
+                    <AlertCategoryPicker
+                      selected={parseAlertQuery(alertQuery)}
+                      onChange={(next) => setAlertQuery(serializeAlertQuery(next))}
+                    />
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -462,7 +451,7 @@ const AccountPageInner = () => {
                     {alertMsg && <p className="text-sm text-slate-600">{alertMsg}</p>}
                     {subscriber && (
                       <p className="text-xs text-slate-500">
-                        Sending to {subscriber.email} · {getCategoryHub(resolveCategoryParam(subscriber.preference))?.label || subscriber.preference}
+                        Sending to {subscriber.email} · {formatAlertQueryLabel(subscriber.preference)}
                       </p>
                     )}
                   </div>
