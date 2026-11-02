@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/stale-jobs",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/alerts/daily",
+      "schedule": "0 7 * * *"
     }
   ]
 }

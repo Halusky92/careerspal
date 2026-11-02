@@ -35,8 +35,8 @@ export default function AlertsPage({ searchParams }: PageProps) {
   const initialCategory = getParam(searchParams?.category) || null;
 
   return (
-    <div className="bg-[#F8F9FD] pb-20">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+    <div className="bg-[#F8F9FD] pb-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
         <AlertsClient initialCategory={initialCategory} />
       </div>
     </div>

@@ -81,8 +81,8 @@ export default async function CategoryPage({ params }: PageProps) {
   const hub = getCategoryHub(params.slug)!;
 
   return (
-    <div className="bg-[#F8F9FD] pb-20">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+    <div className="bg-[#F8F9FD] pb-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
         <div className="flex items-center justify-between gap-4">
           <Link href="/categories" className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-indigo-700">
             <span aria-hidden="true">←</span> Categories

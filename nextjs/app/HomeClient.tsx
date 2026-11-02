@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Hero from "../components/Hero";
 import { Job } from "../types";
 import JobRow from "../components/JobRow";
-import { CATEGORIES, CATEGORY_FILTER_LABELS } from "../constants";
 import { isOnNicheJob } from "../lib/nicheScope";
 
 const planWeight = { "Elite Managed": 3, "Featured Pro": 2, Standard: 1 };
@@ -16,8 +15,6 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
   const [jobsLoading, setJobsLoading] = useState(() => (initialJobs?.length ? false : true));
   const [isSmUp, setIsSmUp] = useState(false);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("All Roles");
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -59,17 +56,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
     });
   }, [jobs]);
 
-  const filteredTopJobs = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return topJobs.filter((j) => {
-      if (!isOnNicheJob(j)) return false;
-      const matchesQuery = !q
-        ? true
-        : `${j.title || ""} ${j.company || ""} ${(j.tags || []).join(" ")} ${(j.tools || []).join(" ")}`.toLowerCase().includes(q);
-      const matchesCat = category === "All Roles" ? true : (j.category || "") === category;
-      return matchesQuery && matchesCat;
-    });
-  }, [topJobs, query, category]);
+  const filteredTopJobs = useMemo(() => topJobs.filter((j) => isOnNicheJob(j)), [topJobs]);
 
   const hasJobs = jobs.length > 0;
   const showJobCounts = !jobsLoading && hasJobs;
@@ -111,84 +98,23 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
     router.push("/alerts");
   };
 
-  const goToJobsWithQuery = (query?: string) => {
-    const q = (query ?? "").trim();
-    router.push(q ? `/jobs?query=${encodeURIComponent(q)}` : "/jobs");
-  };
-
-  const goToJobsWithCategory = (category: string) => {
-    router.push(`/jobs?category=${encodeURIComponent(category)}`);
-  };
-
   return (
     <>
-      {/* 2) Hero */}
       <Hero onBrowse={() => router.push("/jobs")} onGetAlerts={goToAlerts} />
 
-      {/* 3) Top category quick nav */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 pb-10">
-        <div className="rounded-[2.5rem] border border-slate-200/60 bg-white/85 backdrop-blur p-6 sm:p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-xl sm:text-2xl font-black text-slate-900">Start with a category.</div>
-            </div>
-            <button
-              type="button"
-              onClick={() => router.push("/jobs")}
-              className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
-            >
-              View all jobs →
-            </button>
-          </div>
-
-          <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {[
-              { label: "Operations", onClick: () => goToJobsWithCategory("Operations") },
-              { label: "Systems", onClick: () => goToJobsWithCategory("Systems Design") },
-              { label: "Automation", onClick: () => goToJobsWithCategory("Automation") },
-              { label: "RevOps", onClick: () => goToJobsWithCategory("Marketing & Growth Ops") },
-              { label: "Product Ops", onClick: () => goToJobsWithCategory("Product Management") },
-              { label: "Chief of Staff", onClick: () => goToJobsWithCategory("Executive & Staff") },
-            ].map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                onClick={item.onClick}
-                className="rounded-2xl border border-slate-200/70 bg-white px-4 py-4 text-left hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors"
-              >
-                <div className="text-sm font-black text-slate-900">{item.label}</div>
-              </button>
-            ))}
-          </div>
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Open roles
+            {showJobCounts ? <span className="ml-2 font-normal text-slate-500">{jobs.length} live</span> : null}
+          </h2>
+          <button type="button" onClick={() => router.push("/jobs")} className="text-sm font-medium text-indigo-600">
+            View all
+          </button>
         </div>
-      </section>
-
-      {/* 4) Featured roles preview */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-14">
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 px-1">
-            <div>
-              <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em]">Featured roles</p>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Open roles</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              {showJobCounts && (
-                <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600">
-                  {jobs.length} live roles{lastUpdatedText ? ` • Updated ${lastUpdatedText}` : ""}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => router.push("/jobs")}
-                className="h-10 px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black"
-              >
-                Browse jobs
-              </button>
-            </div>
-          </div>
 
           {jobsLoading && (
-            <div className="rounded-[2.5rem] border border-slate-200/70 bg-white p-10 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
               <div className="h-6 w-64 bg-slate-100 rounded-xl mb-3"></div>
               <div className="h-4 w-96 max-w-full bg-slate-100 rounded-xl mb-8"></div>
               <div className="space-y-3">
@@ -200,9 +126,9 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
           )}
 
           {!jobsLoading && !hasJobs && (
-            <div className="rounded-[2.5rem] border border-slate-200/70 bg-white p-10 text-center shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-              <div className="text-2xl font-black text-slate-900">New roles are reviewed regularly.</div>
-              <p className="text-sm text-slate-600 font-medium mt-2">
+            <div className="rounded-xl border border-slate-200 bg-white p-6 text-center">
+              <div className="text-base font-semibold text-slate-900">New roles are reviewed regularly.</div>
+              <p className="text-sm text-slate-600 mt-1">
                 Browse the board, or post a role with a clear salary range.
               </p>
               <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
@@ -223,9 +149,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
           )}
 
           {hasJobs && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Narrower cards column */}
-              <div className="lg:col-span-8 space-y-4">
+            <div className="space-y-2">
                 {filteredTopJobs.slice(0, 7).map((job) => (
                   <JobRow
                     key={job.id}
@@ -246,219 +170,49 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
                 ))}
 
                 {filteredTopJobs.length === 0 && (
-                  <div className="rounded-[2.25rem] border border-slate-200/70 bg-white p-10 text-center shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">No matches</div>
-                    <div className="mt-2 text-lg font-black text-slate-900">No roles match your filters.</div>
-                    <div className="mt-4 flex items-center justify-center gap-2">
-                      {["Operations", "Automation", "RevOps"].map((t) => (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => setQuery(t)}
-                          className="px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest text-slate-600 border border-slate-200 bg-slate-50 hover:border-indigo-200 hover:text-indigo-700"
-                        >
-                          {t}
-                        </button>
-                      ))}
-                    </div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-5 text-center text-sm text-slate-600">
+                    No live roles in this niche yet.
                   </div>
                 )}
-              </div>
-
-              {/* Filter sidebar (right) */}
-              <aside className="lg:col-span-4">
-                <div className="sticky top-28 rounded-[2.25rem] border border-slate-200/70 bg-white shadow-sm p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Filter</div>
-                      <div className="mt-1 text-sm font-black text-slate-900">Refine featured roles</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setQuery("");
-                        setCategory("All Roles");
-                      }}
-                      className="text-xs font-bold text-slate-500 hover:text-slate-900"
-                    >
-                      Clear
-                    </button>
-                  </div>
-
-                  <div className="mt-4 space-y-3">
-                    <div>
-                      <div className="text-[11px] font-bold text-slate-700">Search</div>
-                      <input
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Role, company, tool…"
-                        className="mt-2 w-full h-11 rounded-2xl border border-slate-200/70 bg-white px-4 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="text-[11px] font-bold text-slate-700">Category</div>
-                      <select
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        className="mt-2 w-full h-11 rounded-2xl border border-slate-200/70 bg-white px-4 text-sm font-black text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
-                      >
-                        {CATEGORIES.map((c) => (
-                          <option key={c} value={c}>
-                            {CATEGORY_FILTER_LABELS[c] || c}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => router.push(query.trim() ? `/jobs?query=${encodeURIComponent(query.trim())}` : "/jobs")}
-                      className="mt-1 w-full h-11 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black"
-                    >
-                      Open full board →
-                    </button>
-                  </div>
-                </div>
-              </aside>
             </div>
           )}
 
-          <div className="pt-2">
-            <button
-              onClick={() => router.push("/jobs")}
-              className="w-full py-4 rounded-[2rem] bg-white border-2 border-slate-100 text-slate-700 font-black uppercase tracking-widest text-[10px] hover:border-indigo-200 hover:text-indigo-700 transition-colors shadow-sm"
-            >
-              {hasJobs ? `View all ${jobs.length} jobs →` : "Browse jobs →"}
+          <button
+            onClick={() => router.push("/jobs")}
+            className="mt-3 w-full h-10 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
+          >
+            {hasJobs ? `View all ${jobs.length} jobs` : "Browse jobs"}
+          </button>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 space-y-3">
+        {showJobCounts && (
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-600 border border-slate-200 rounded-lg bg-white px-4 py-2.5">
+            <span><strong className="text-slate-900">{jobs.length}</strong> live roles</span>
+            <span><strong className="text-slate-900">{companyCount}</strong> teams</span>
+            <span><strong className="text-slate-900">{rolesLast7Days}</strong> added (7d)</span>
+            {lastUpdatedText ? <span className="text-slate-400">Updated {lastUpdatedText}</span> : null}
+          </div>
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+            <div className="font-medium text-slate-900">Salary required</div>
+            <p className="text-slate-500">Visible range before publish.</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+            <div className="font-medium text-slate-900">Get alerts</div>
+            <button type="button" onClick={() => router.push("/alerts")} className="text-indigo-600">
+              New roles by email
+            </button>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+            <div className="font-medium text-slate-900">Hiring for Ops?</div>
+            <button type="button" onClick={() => router.push("/post-a-job")} className="text-indigo-600">
+              Post a job
             </button>
           </div>
         </div>
       </section>
-
-      {/* 5) How curation works */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-        <div className="rounded-[2.5rem] border border-slate-200/60 bg-white/70 backdrop-blur p-6 sm:p-8 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-6">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">How curation works</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Reviewed before it goes live.</h3>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { title: "Salary", copy: "A visible range is required." },
-              { title: "Scope", copy: "Title and responsibilities have to be readable." },
-              { title: "Niche", copy: "Ops, Systems, Automation, RevOps, Product Ops, Chief of Staff." },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="bg-white rounded-[1.8rem] border border-slate-200/60 p-5 shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
-              >
-                <div className="text-[11px] font-black uppercase tracking-widest text-indigo-500">{item.title}</div>
-                <p className="text-sm text-slate-500 font-medium mt-2">{item.copy}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 rounded-[1.8rem] border border-slate-200/60 bg-white p-5">
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">What we reject</div>
-            <ul className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-slate-600 font-medium">
-              <li className="flex items-center gap-2"><span className="text-rose-500 font-black">×</span> No salary range</li>
-              <li className="flex items-center gap-2"><span className="text-rose-500 font-black">×</span> Vague scope / responsibilities</li>
-              <li className="flex items-center gap-2"><span className="text-rose-500 font-black">×</span> Low-signal spam listings</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* 6) Alerts CTA */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <div className="rounded-[3rem] border border-slate-200/60 bg-white/85 backdrop-blur p-8 sm:p-12 shadow-[0_18px_55px_rgba(15,23,42,0.06)]">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500">Get alerts</p>
-              <h3 className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                New roles by email — no noise.
-              </h3>
-              <p className="mt-2 text-slate-600 font-medium max-w-2xl">
-                Set up an alert for your category focus. Alerts are tied to your account email.
-              </p>
-            </div>
-            <div className="w-full lg:w-auto flex flex-col sm:flex-row gap-3">
-              <button
-                type="button"
-                onClick={() => router.push("/alerts")}
-                className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700"
-              >
-                Get alerts →
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/jobs")}
-                className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-white border border-slate-200 text-slate-700 text-[10px] font-black uppercase tracking-widest hover:border-indigo-200 hover:text-indigo-700"
-              >
-                Browse jobs
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 7) Compact employer section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <div className="rounded-[2.75rem] border border-slate-200/60 bg-white p-8 sm:p-10 shadow-[0_18px_55px_rgba(15,23,42,0.06)]">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500">For employers</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Hiring for Ops?</h3>
-              <p className="text-slate-600 font-medium mt-2 max-w-2xl">
-                Salary-first listing, reviewed before it goes live.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-              <button
-                type="button"
-                onClick={() => router.push("/post-a-job")}
-                className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black"
-              >
-                Post a job
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/pricing")}
-                className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-white border border-slate-200 text-slate-700 text-[10px] font-black uppercase tracking-widest hover:border-indigo-200 hover:text-indigo-700"
-              >
-                View pricing
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 8) Proof section (real data only) */}
-      {showJobCounts && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-18">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { label: "Live roles", value: String(jobs.length) },
-              { label: "Teams with roles", value: String(companyCount) },
-              { label: "Added (7d)", value: String(rolesLast7Days) },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="bg-white/85 backdrop-blur border border-slate-200/60 rounded-[2rem] p-6 text-center shadow-[0_16px_40px_rgba(15,23,42,0.06)]"
-              >
-                <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">{item.label}</div>
-                <div className="text-3xl font-black text-slate-900 mt-3">{item.value}</div>
-                {lastUpdatedText && (
-                  <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    Updated {lastUpdatedText}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </>
   );
 }

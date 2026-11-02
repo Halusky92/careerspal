@@ -36,11 +36,11 @@ const Newsletter: React.FC<NewsletterProps> = ({ defaultPreference }) => {
   };
 
   return (
-    <section id="subscribe" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 scroll-mt-28">
-      <div className="rounded-[3rem] border border-slate-200/60 bg-white/85 backdrop-blur p-8 sm:p-12 shadow-[0_18px_55px_rgba(15,23,42,0.06)]">
+    <section id="subscribe" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 scroll-mt-20">
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500">Get alerts</p>
-          <h2 className="mt-3 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+          <h2 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">
             Salary-first roles in your inbox.
           </h2>
           <p className="mt-3 text-slate-600 font-medium">

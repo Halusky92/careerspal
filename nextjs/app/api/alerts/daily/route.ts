@@ -172,22 +172,36 @@ const matchesAlert = (job: JobRow, query: string) => {
   return matchesSearch && matchesLocation;
 };
 
+function isAuthorized(request: Request): boolean {
+  const url = new URL(request.url);
+  const secret = (url.searchParams.get("secret") || "").trim();
+  const alerts = (process.env.ALERTS_CRON_SECRET || "").trim();
+  const cron = (process.env.CRON_SECRET || "").trim();
+  const auth = request.headers.get("authorization") || "";
+  if (request.headers.get("x-vercel-cron") === "1") return true;
+  if (cron && auth === `Bearer ${cron}`) return true;
+  if (alerts && auth === `Bearer ${alerts}`) return true;
+  if (alerts && secret === alerts) return true;
+  if (cron && secret === cron) return true;
+  if (!alerts && !cron) return true;
+  return false;
+}
+
 export async function GET(request: Request) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }
 
   const url = new URL(request.url);
-  const secret = url.searchParams.get("secret");
   const dryRun = url.searchParams.get("dryRun") === "1";
   const includeAttempted = url.searchParams.get("includeAttempted") === "1";
   const backfillDaysParam = url.searchParams.get("backfillDays");
   const backfillDaysRaw = backfillDaysParam ? Number(backfillDaysParam) : NaN;
   const backfillDays =
     Number.isFinite(backfillDaysRaw) && backfillDaysRaw > 0 ? Math.min(Math.floor(backfillDaysRaw), 30) : null;
-  if (process.env.ALERTS_CRON_SECRET && secret !== process.env.ALERTS_CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   const resend = getResendClient();
   if (!resend) {
@@ -291,7 +305,7 @@ export async function GET(request: Request) {
         })
         .join("");
 
-      await resend.emails.send({
+      const sendResult = await resend.emails.send({
         from,
         to: toEmail,
         subject: `Daily job alert: ${alert.query}`,
@@ -306,21 +320,32 @@ export async function GET(request: Request) {
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;">
               ${rows}
             </table>
-            <p style="margin:12px 0 0;">Manage your alerts in your dashboard.</p>
+            <p style="margin:12px 0 0;">Manage your alerts at CareersPal.</p>
           `,
-          cta: { label: "Open candidate dashboard", href: `${baseUrl}/dashboard/candidate` },
+          cta: { label: "Manage alerts", href: `${baseUrl}/alerts` },
           footerNote: "You are receiving this email because you enabled job alerts.",
         }),
       });
+      if (sendResult.error) {
+        attempted.push({
+          alertId: alert.id,
+          email: toEmail,
+          matches: matches.length,
+          since: since.toISOString(),
+        });
+        continue;
+      }
       sent += 1;
     }
 
     attempted.push({ alertId: alert.id, email: toEmail, matches: matches.length, since: since.toISOString() });
 
-    await supabaseAdmin
-      .from("alerts")
-      .update({ last_run_at: now.toISOString() })
-      .eq("id", alert.id);
+    if (!dryRun) {
+      await supabaseAdmin
+        .from("alerts")
+        .update({ last_run_at: now.toISOString() })
+        .eq("id", alert.id);
+    }
   }
 
   await supabaseAdmin.from("audit_logs").insert({

@@ -208,16 +208,16 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+    <div className="max-w-7xl mx-auto px-4 py-5 sm:py-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8">
-          <div className="mb-10">
+          <div className="mb-5">
             <div className="flex items-start justify-between gap-6">
               <div>
                 <div className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-2">
                   Selected Package: {selectedPlan.type} ({formatPrice(selectedPlan.price)} / 30 days)
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Post a Role.</h1>
+                <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Post a role</h1>
               </div>
 
               <div className="sm:hidden">
@@ -228,8 +228,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               </div>
             </div>
 
-            <div className="mt-6">
-              <div className="hidden sm:block relative rounded-[1.75rem] bg-white border border-slate-200/60 shadow-sm px-6 py-5">
+            <div className="mt-3">
+              <div className="hidden sm:block relative rounded-xl bg-white border border-slate-200 px-4 py-3">
                 <div className="relative">
                   <div className="absolute left-6 right-6 top-5 h-[2px] bg-slate-200/70 rounded-full overflow-hidden">
                     <div className="h-full bg-indigo-600 rounded-full transition-all duration-500" style={{ width: `${stepperProgress}%` }} />
@@ -282,10 +282,10 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
             </div>
           </div>
 
-          <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_25px_80px_rgba(15,23,42,0.08)] border border-slate-200/60 overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             {step === 1 && (
-              <div className="p-6 sm:p-10 space-y-8">
-                <h2 className="text-2xl font-black tracking-tight flex items-center gap-3">1. Job Details</h2>
+              <div className="p-4 sm:p-6 space-y-4">
+                <h2 className="text-lg font-semibold tracking-tight">1. Job details</h2>
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Job Title *</label>
@@ -335,8 +335,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
             )}
 
             {step === 2 && (
-              <div className="p-6 sm:p-10 space-y-8">
-                <h2 className="text-2xl font-black tracking-tight flex items-center gap-3">2. Company & Apply</h2>
+              <div className="p-4 sm:p-6 space-y-4">
+                <h2 className="text-lg font-semibold tracking-tight">2. Company & apply</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company Name *</label>
@@ -471,10 +471,10 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
             )}
 
             {step === 3 && (
-              <div className="p-6 sm:p-10 text-center space-y-10">
+              <div className="p-4 sm:p-6 text-center space-y-5">
                 <div className="bg-emerald-50 text-emerald-700 px-6 py-3 rounded-2xl border border-emerald-100 inline-block font-black text-xs uppercase tracking-widest">Ready to Launch</div>
                 <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Final Preview</h2>
-                <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] text-left border border-slate-200/60 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
+                <div className="bg-slate-50 p-4 sm:p-5 rounded-xl text-left border border-slate-200">
                    <div className="flex items-center gap-6 mb-6">
                       <div className="w-16 h-16 bg-white rounded-xl border flex items-center justify-center p-2">
                          <img src={previewLogo} alt="" className="max-h-full max-w-full object-contain" />
@@ -507,7 +507,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
         </div>
 
         <div className="lg:col-span-4 space-y-8">
-           <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200/60 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
+           <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-indigo-600">For employers</div>
@@ -556,7 +556,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               </div>
            </div>
            
-           <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 shadow-sm relative z-20">
+           <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 relative z-20">
               <h3 className="text-lg font-bold text-slate-900 mb-2">Selected Plan</h3>
               <div className="text-3xl font-bold text-indigo-600 mb-4">
                 {formatPrice(selectedPlan.price)}

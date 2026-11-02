@@ -356,11 +356,11 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
   const alertsHref = alertHub ? `/alerts?category=${encodeURIComponent(alertHub.slug)}` : "/alerts";
 
   return (
-    <div className="bg-[#F8F9FD] pb-20">
+    <div className="bg-[#F8F9FD] pb-8">
       <JobViewTracker jobId={job.id} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingLd) }} />
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
         <div className="flex items-center justify-between gap-3">
           <Link
             href="/jobs"
@@ -376,8 +376,8 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
           </Link>
         </div>
 
-        <div className="mt-6 rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] overflow-hidden">
-          <div className="p-6 sm:p-10 border-b border-slate-100">
+        <div className="mt-3 rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <div className="p-4 sm:p-6 border-b border-slate-100">
             <div className="flex flex-col sm:flex-row sm:items-start gap-6">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0">
                 <CompanyLogo
@@ -483,7 +483,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
             </div>
           </div>
 
-          <div className="p-6 sm:p-10 space-y-8">
+          <div className="p-4 sm:p-6 space-y-5">
             <section>
               <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">Summary</h2>
               <p className="mt-3 text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">
@@ -578,7 +578,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
           </div>
         </div>
 
-        <div className="mt-12 rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] p-6 sm:p-10">
+        <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Alerts</p>

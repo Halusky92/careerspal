@@ -7,17 +7,15 @@ const AboutUs: React.FC = () => {
       <div className="absolute top-[-10%] left-[-15%] w-[70%] h-[70%] bg-indigo-300/20 rounded-full blur-[120px]"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-violet-400/20 rounded-full blur-[140px]"></div>
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-24 space-y-24 animate-in fade-in duration-700 relative z-10">
-        {/* Hero Section */}
-        <section className="text-center space-y-8">
-          <div className="inline-flex items-center space-x-2 bg-white/80 backdrop-blur border border-indigo-100 px-4 py-2 rounded-full shadow-sm">
-            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">Our Philosophy</span>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8 relative z-10">
+        <section className="text-center space-y-3">
+          <div className="inline-flex items-center space-x-2 bg-white border border-indigo-100 px-3 py-1 rounded-full">
+            <span className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wide">Our philosophy</span>
           </div>
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-slate-900 tracking-tight leading-none">
-            Curation Works. <br />
-            <span className="text-indigo-600 text-gradient">Quality over Noise.</span>
+          <h1 className="text-2xl md:text-4xl font-semibold text-slate-900 tracking-tight">
+            Curation works. Quality over noise.
           </h1>
-          <p className="text-lg md:text-2xl text-slate-500 max-w-3xl mx-auto font-medium leading-relaxed">
+          <p className="text-sm md:text-base text-slate-500 max-w-2xl mx-auto">
             A focused remote job board for Ops, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Listings need a salary range and a clear apply link.
           </p>
         </section>
@@ -64,15 +62,15 @@ const AboutUs: React.FC = () => {
             icon: "🧠" 
           }
         ].map(pillar => (
-          <div key={pillar.title} className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all group">
-            <div className="text-5xl mb-8 group-hover:scale-110 transition-transform inline-block bg-slate-50 w-20 h-20 flex items-center justify-center rounded-[1.8rem]">{pillar.icon}</div>
+          <div key={pillar.title} className="bg-white p-4 rounded-xl border border-slate-200">
+            <div className="text-2xl mb-3 inline-flex bg-slate-50 w-10 h-10 items-center justify-center rounded-lg">{pillar.icon}</div>
             <h3 className="text-xl font-black text-slate-900 mb-4">{pillar.title}</h3>
             <p className="text-slate-500 font-medium leading-relaxed text-sm">{pillar.desc}</p>
           </div>
         ))}
       </div>
 
-      <section className="bg-white p-8 sm:p-12 rounded-[2.5rem] border border-slate-100">
+      <section className="bg-white p-5 rounded-xl border border-slate-200">
         <h3 className="text-2xl font-black text-slate-900">What this board is</h3>
         <ul className="mt-6 space-y-3 text-slate-600 font-medium">
           <li>Reviewed listings with salary and a working apply link.</li>
@@ -82,10 +80,10 @@ const AboutUs: React.FC = () => {
       </section>
 
       {/* The Mission Statement */}
-      <section className="bg-slate-900 rounded-[4rem] p-12 md:p-24 text-white relative overflow-hidden">
+      <section className="bg-slate-900 rounded-2xl p-6 md:p-8 text-white relative overflow-hidden">
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div className="space-y-8">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight leading-tight">
               Why are we here? <br />
               <span className="text-indigo-400">Because systems compound results.</span>
             </h2>
@@ -118,8 +116,8 @@ const AboutUs: React.FC = () => {
       </section>
 
         {/* Leadership Note */}
-        <section className="text-center py-20">
-          <div className="w-24 h-24 bg-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-10 shadow-2xl">
+        <section className="text-center py-6">
+          <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-3">
             <span className="text-white text-4xl font-black">C</span>
           </div>
           <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tighter italic">
@@ -129,7 +127,7 @@ const AboutUs: React.FC = () => {
         </section>
 
         {/* Premium CTA */}
-        <section className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[3rem] p-10 md:p-16 text-center shadow-[0_25px_70px_rgba(15,23,42,0.08)]">
+        <section className="bg-white border border-slate-200 rounded-xl p-5 text-center">
           <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Get started</p>
           <h4 className="text-3xl md:text-4xl font-black text-slate-900 mt-3">Browse salary-first roles.</h4>
           <p className="text-slate-500 font-medium mt-3">Your next role should feel intentional, not accidental.</p>

@@ -750,7 +750,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const FilterContent = ({ variant }: { variant: "sidebar" | "sheet" }) => (
     <div
       className={[
-        variant === "sidebar" ? "sticky top-28" : "",
+        variant === "sidebar" ? "sticky top-16" : "",
         "rounded-2xl border border-slate-200 bg-white shadow-sm",
       ].join(" ")}
     >
@@ -995,16 +995,16 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   return (
     <div className="bg-[#F8F9FD]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
         <div>
-          <div className="rounded-[2.25rem] border border-slate-200/60 bg-white/90 backdrop-blur shadow-sm px-4 sm:px-5 py-4">
-            <div className="flex flex-col lg:flex-row lg:items-end gap-3 lg:gap-4">
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="rounded-xl border border-slate-200 bg-white px-3 sm:px-4 py-3">
+            <div className="flex flex-col lg:flex-row lg:items-end gap-2 lg:gap-3">
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 <div ref={titleRef} className="relative">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                  <label className="text-[10px] font-medium text-slate-500">
                     Search
                   </label>
-                  <div className="relative mt-1.5">
+                  <div className="relative mt-1">
                     <input
                       type="text"
                       placeholder="Role, company, tool…"
@@ -1023,7 +1023,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                         }
                         if (e.key === "Enter") setShowTitleSuggestions(false);
                       }}
-                      className="w-full rounded-2xl border border-slate-200/70 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 pr-10"
+                      className="w-full h-11 rounded-lg border border-slate-300 px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 pr-9"
                     />
                     {query && (
                       <button
@@ -1058,11 +1058,11 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   </div>
                 </div>
 
-                <div ref={locationRef} className="relative hidden lg:block">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                <div ref={locationRef} className="relative">
+                  <label className="text-[10px] font-medium text-slate-500">
                     Location
                   </label>
-                  <div className="relative mt-1.5">
+                  <div className="relative mt-1">
                     <input
                       type="text"
                       placeholder="City, country, or remote"
@@ -1080,7 +1080,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                         }
                         if (e.key === "Enter") setShowLocationSuggestions(false);
                       }}
-                      className="w-full rounded-2xl border border-slate-200/70 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 pr-10"
+                      className="w-full h-11 rounded-lg border border-slate-300 px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 pr-9"
                     />
                     {locationQuery && (
                       <button
@@ -1116,13 +1116,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
                 </div>
 
                 <div className="hidden lg:block lg:col-start-3">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                  <label className="text-[10px] font-medium text-slate-500">
                     Sort
                   </label>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                    className="mt-1.5 w-full rounded-2xl border border-slate-200/70 bg-white px-4 py-3 text-sm font-black text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
+                    className="mt-1 w-full h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400"
                   >
                     <option value="newest">Newest</option>
                     <option value="salary">Highest salary</option>
@@ -1138,10 +1138,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
                       onClick={() => setShowSavedOnly((prev) => !prev)}
                       disabled={savedCount === 0}
                       aria-pressed={showSavedOnly}
-                      className={`hidden lg:inline-flex h-11 px-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      className={`hidden lg:inline-flex h-11 px-3 rounded-lg border text-sm font-medium transition-colors ${
                         showSavedOnly
                           ? "bg-indigo-600 text-white border-indigo-600"
-                          : "bg-white text-slate-600 border-slate-200/70 hover:border-indigo-200 hover:text-indigo-700"
+                          : "bg-white text-slate-600 border-slate-300 hover:border-indigo-200 hover:text-indigo-700"
                       } ${savedCount === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
                       {showSavedOnly ? "Saved" : `Saved (${savedCount})`}
@@ -1149,13 +1149,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   )}
                   <button
                     onClick={clearAllFilters}
-                    className="hidden lg:inline-flex h-11 px-4 rounded-2xl border border-slate-200/70 bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
+                    className="hidden lg:inline-flex h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
                   >
                     Reset
                   </button>
                   <button
                     onClick={() => setIsFilterOpen(true)}
-                    className="lg:hidden h-11 flex-1 px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black"
+                    className="lg:hidden h-11 flex-1 px-4 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-black"
                   >
                     Filters
                   </button>
@@ -1163,9 +1163,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
               </div>
             </div>
 
-            <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400" aria-live="polite">
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[11px] font-medium text-slate-500" aria-live="polite">
                   {filteredAndSorted.length} roles
                 </span>
                 {(query.trim() || locationQuery.trim()) && (
@@ -1174,7 +1174,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-3">
                 {savedNotice && (
                   <span className="text-indigo-600 font-bold text-xs" aria-live="polite">
                     {savedNotice}
@@ -1256,7 +1256,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               <div className="pt-4 pb-2 text-center">
                 <button
                   onClick={handleLoadMore}
-                  className="bg-white border border-slate-200/70 text-slate-700 px-6 py-3 rounded-[2rem] font-black uppercase tracking-widest text-[10px] hover:border-indigo-200 hover:text-indigo-700 transition-all shadow-sm active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100"
+                  className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:border-indigo-200 hover:text-indigo-700"
                 >
                   Show more ({filteredAndSorted.length - visibleCount} remaining)
                 </button>
@@ -1264,7 +1264,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
             )}
 
             {filteredAndSorted.length === 0 && (
-              <div className="bg-white py-12 rounded-[3rem] text-center border border-dashed border-slate-200/70">
+              <div className="bg-white py-8 rounded-xl text-center border border-dashed border-slate-200">
                 <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                   No matches
                 </div>

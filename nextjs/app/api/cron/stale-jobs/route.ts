@@ -13,6 +13,7 @@ function isAuthorized(request: Request): boolean {
   const alerts = (process.env.ALERTS_CRON_SECRET || "").trim();
   const cron = (process.env.CRON_SECRET || "").trim();
   const auth = request.headers.get("authorization") || "";
+  if (request.headers.get("x-vercel-cron") === "1") return true;
   if (cron && auth === `Bearer ${cron}`) return true;
   if (sourcing && secret === sourcing) return true;
   if (alerts && secret === alerts) return true;

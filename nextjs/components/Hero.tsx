@@ -1,60 +1,85 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface HeroProps {
   onBrowse: () => void;
   onGetAlerts: () => void;
 }
 
-const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
+const CATEGORY_CHIPS = [
+  { label: "Operations", value: "Operations" },
+  { label: "Systems", value: "Systems Design" },
+  { label: "Automation", value: "Automation" },
+  { label: "RevOps", value: "Marketing & Growth Ops" },
+  { label: "Product Ops", value: "Product Management" },
+  { label: "Chief of Staff", value: "Executive & Staff" },
+];
+
+const Hero: React.FC<HeroProps> = ({ onBrowse }) => {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [location, setLocation] = useState("");
+
+  const submit = (event?: React.FormEvent) => {
+    event?.preventDefault();
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("query", query.trim());
+    if (location.trim()) params.set("location", location.trim());
+    const qs = params.toString();
+    router.push(qs ? `/jobs?${qs}` : "/jobs");
+  };
+
   return (
-    <section className="relative pt-12 pb-14 sm:pt-18 sm:pb-18 overflow-hidden">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 sm:hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.18),transparent_60%)]"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(139,92,246,0.14),transparent_55%)]"></div>
-          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(15,23,42,0.03)_0%,rgba(255,255,255,0)_55%,rgba(15,23,42,0.04)_100%)]"></div>
-        </div>
-        <div className="absolute inset-0 hidden sm:block bg-[radial-gradient(circle_at_top,rgba(79,70,229,0.12),transparent_60%)]"></div>
-        <div className="absolute top-[-20%] left-[-15%] w-[80%] h-[80%] bg-indigo-300/20 rounded-full blur-[100px] sm:blur-[160px] opacity-60"></div>
-        <div
-          className="absolute bottom-[-15%] right-[-10%] w-[70%] h-[70%] bg-violet-400/20 rounded-full blur-[100px] sm:blur-[160px] opacity-60"
-          style={{ animationDelay: "3.5s" }}
-        ></div>
-      </div>
+    <section className="border-b border-slate-200/70 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
+        <h1 className="text-lg sm:text-xl font-semibold text-slate-900 tracking-tight">
+          Remote Ops & Systems jobs
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Salary-first listings in Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff.
+        </p>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="max-w-3xl">
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-slate-900 tracking-tight leading-[1.05]">
-            Remote Ops & Systems roles.
-          </h1>
-
-          <p className="mt-5 text-base sm:text-lg text-slate-600 font-medium max-w-2xl">
-            Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff roles — reviewed for clarity and salary transparency.
-          </p>
-
-          <div className="mt-8 flex flex-col sm:flex-row gap-3">
+        <form onSubmit={submit} className="mt-3">
+          <div className="flex flex-col sm:flex-row gap-2 min-w-0">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Job title, company, or tool"
+              className="h-11 min-w-0 flex-1 rounded-lg border border-slate-300 px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              aria-label="Search jobs"
+            />
+            <input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Location or remote"
+              className="h-11 min-w-0 sm:w-40 sm:flex-none rounded-lg border border-slate-300 px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              aria-label="Location"
+            />
             <button
-              onClick={onBrowse}
-              className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-4 rounded-2xl font-semibold text-sm hover:bg-indigo-700 transition-colors shadow-xl shadow-indigo-100"
+              type="submit"
+              className="h-11 px-4 shrink-0 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
             >
-              Browse jobs
+              Find jobs
             </button>
-            <button
-              type="button"
-              onClick={onGetAlerts}
-              className="hidden sm:inline-flex w-full sm:w-auto items-center justify-center bg-white/80 backdrop-blur text-slate-900 border border-slate-200 px-8 py-4 rounded-2xl font-semibold text-sm hover:border-indigo-200 hover:text-indigo-700 transition-colors shadow-sm"
-            >
-              Get alerts
-            </button>
-            <a
-              href="/post-a-job"
-              className="hidden sm:inline-flex w-full sm:w-auto items-center justify-center text-center bg-slate-900 text-white px-8 py-4 rounded-2xl font-semibold text-sm hover:bg-black transition-colors"
-            >
-              Post a job
-            </a>
           </div>
+        </form>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {CATEGORY_CHIPS.map((chip) => (
+            <button
+              key={chip.label}
+              type="button"
+              onClick={() => router.push(`/jobs?category=${encodeURIComponent(chip.value)}`)}
+              className="h-8 px-3 rounded-full border border-slate-200 bg-slate-50 text-xs font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
+            >
+              {chip.label}
+            </button>
+          ))}
+          <button type="button" onClick={onBrowse} className="h-8 px-3 text-xs font-medium text-indigo-600">
+            All jobs
+          </button>
         </div>
       </div>
     </section>

@@ -153,7 +153,7 @@ export default function JobRow({
   return (
     <div
       className={[
-        "group relative rounded-2xl border transition-all overflow-hidden",
+        "group relative rounded-xl border transition-all overflow-hidden",
         isElite
           ? "bg-amber-50 border-amber-200"
           : isPro
@@ -185,7 +185,7 @@ export default function JobRow({
           isElite ? "bg-amber-400" : isPro ? "bg-amber-300" : "bg-amber-200",
         ].join(" ")}
       />
-      <div className={["flex items-start gap-3", isHome ? "px-3.5 py-3" : "px-4 py-3.5"].join(" ")}>
+      <div className={["flex items-start gap-3", isHome ? "px-3 py-2.5" : "px-3.5 py-2.5"].join(" ")}>
         <div
           className={[
             "mt-0.5 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0",

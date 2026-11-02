@@ -191,10 +191,10 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
       </div>
 
       {/* Hero Section */}
-      <div className="bg-white border-b border-slate-200/60 pt-12 pb-16">
+      <div className="bg-white border-b border-slate-200/60 pt-5 pb-6">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
-               <div className={`w-24 h-24 md:w-32 md:h-32 rounded-[2rem] flex items-center justify-center p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] ${isElite ? 'bg-yellow-50 border-2 border-yellow-200' : 'bg-white border border-slate-200/60'}`}>
+               <div className={`w-14 h-14 md:w-16 md:h-16 rounded-xl flex items-center justify-center p-1.5 ${isElite ? 'bg-yellow-50 border border-yellow-200' : 'bg-white border border-slate-200'}`}>
                   <CompanyLogo
                     name={job.company}
                     logoUrl={job.logo}
@@ -231,7 +231,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                        Posted {postedDate}
                      </span>
                   </div>
-                  <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-2">{job.title}</h1>
+                  <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight mb-1">{job.title}</h1>
                   <div className="flex items-center gap-2 text-lg font-bold text-slate-500">
                      <button onClick={() => onSelectCompany(job.company)} className="text-indigo-600 hover:text-indigo-800 hover:underline transition-all">{job.company}</button>
                      <span>•</span>
@@ -283,7 +283,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
             
             {/* Main Content */}

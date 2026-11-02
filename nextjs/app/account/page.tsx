@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 import { createJobSlug } from "../../lib/jobs";
 import { Job } from "../../types";
+import { formatSalaryDisplay } from "../../lib/formatSalary";
 
 type AccountUser = {
   name?: string;
@@ -23,29 +25,41 @@ type UserFile = {
   url: string;
   createdAt: string;
 };
-type Activity = {
-  savedJobs: { jobId: string; createdAt: string }[];
-  files: { name: string; createdAt: string }[];
+
+type Tab = "profile" | "saved" | "documents" | "settings";
+
+const initialsFrom = (name?: string, email?: string) => {
+  const source = (name || email || "C").trim();
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return source.slice(0, 2).toUpperCase();
 };
 
-const AccountPage = () => {
+const AccountPageInner = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { accessToken, loading: authLoading, signOut } = useSupabaseAuth();
   const [user, setUser] = useState<AccountUser | null>(null);
   const [name, setName] = useState("");
   const [image, setImage] = useState("");
+  const [editingName, setEditingName] = useState(false);
   const [files, setFiles] = useState<UserFile[]>([]);
   const [savedJobs, setSavedJobs] = useState<string[]>([]);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
-  const [activity, setActivity] = useState<Activity | null>(null);
-  const [healthStatus, setHealthStatus] = useState<"ok" | "error" | "unknown">("unknown");
   const [fileName, setFileName] = useState("");
   const [fileUrl, setFileUrl] = useState("");
-  const [fileType, setFileType] = useState("application/pdf");
-  const [fileSize, setFileSize] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const tab = (searchParams.get("tab") as Tab) || "profile";
+  const setTab = (next: Tab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "profile") params.delete("tab");
+    else params.set("tab", next);
+    const qs = params.toString();
+    router.replace(qs ? `/account?${qs}` : "/account");
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -75,13 +89,8 @@ const AccountPage = () => {
         const jobsRes = await fetch("/api/jobs");
         const jobsData = (await jobsRes.json()) as { jobs?: Job[] };
         setAllJobs(jobsData.jobs || []);
-        const activityRes = await authFetch("/api/account/activity", {}, accessToken);
-        const activityData = (await activityRes.json()) as { activity?: Activity };
-        if (activityData.activity) setActivity(activityData.activity);
-        const healthRes = await fetch("/api/health");
-        setHealthStatus(healthRes.ok ? "ok" : "error");
       } catch {
-        // noop
+        // keep empty
       } finally {
         setIsLoading(false);
       }
@@ -89,41 +98,54 @@ const AccountPage = () => {
     load();
   }, [accessToken, authLoading, router]);
 
+  const savedJobRows = useMemo(
+    () =>
+      savedJobs.map((jobId) => {
+        const job = allJobs.find((j) => j.id === jobId);
+        return { jobId, job };
+      }),
+    [savedJobs, allJobs],
+  );
+
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
       const response = await authFetch(
         "/api/account",
         {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, image }),
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, image }),
         },
         accessToken,
       );
       const data = (await response.json()) as { user?: AccountUser };
-      if (data.user) setUser(data.user);
+      if (data.user) {
+        setUser(data.user);
+        setName(data.user.name || "");
+        setImage(data.user.image || "");
+      }
+      setEditingName(false);
     } finally {
       setIsSaving(false);
     }
   };
 
-
   const handleUpload = async () => {
-    if (!fileName || !fileUrl || !fileType || !fileSize) return;
+    if (!fileName || !fileUrl) return;
     setIsUploading(true);
     try {
       const response = await authFetch(
         "/api/files",
         {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: fileName,
-          url: fileUrl,
-          mimeType: fileType,
-          size: fileSize,
-        }),
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: fileName,
+            url: fileUrl,
+            mimeType: "application/pdf",
+            size: 1,
+          }),
         },
         accessToken,
       );
@@ -132,8 +154,6 @@ const AccountPage = () => {
         setFiles((prev) => [data.file!, ...prev]);
         setFileName("");
         setFileUrl("");
-        setFileType("application/pdf");
-        setFileSize(0);
       }
     } finally {
       setIsUploading(false);
@@ -179,269 +199,281 @@ const AccountPage = () => {
     } catch {
       // noop
     } finally {
-      router.replace(nextRole === "employer" ? "/dashboard/employer" : "/dashboard/candidate");
+      router.replace(nextRole === "employer" ? "/dashboard/employer" : "/account");
     }
   };
 
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "profile", label: "Profile" },
+    { id: "saved", label: "Saved" },
+    { id: "documents", label: "Documents" },
+    { id: "settings", label: "Settings" },
+  ];
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <button
-        onClick={() => router.back()}
-        className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600"
-      >
-        <span>← Back</span>
-      </button>
-      <div className="mb-10">
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Account</p>
-        <h1 className="text-4xl font-black text-slate-900 mt-3">Profile & Security</h1>
-        <p className="text-slate-500 font-medium mt-2">
-          Manage your public profile, access settings, and verified files.
-        </p>
-        {user?.email && (
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-3">
-            Signed in as {user.email}{user.role ? ` • ${user.role}` : ""}
-          </p>
-        )}
-      </div>
-
-      {isLoading ? (
-        <div className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2.5rem] p-10 text-center shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
-          <div className="inline-flex items-center gap-3 text-slate-500 font-bold">
-            <span className="h-3 w-3 rounded-full bg-indigo-500 animate-pulse"></span>
-            Loading account...
-          </div>
-        </div>
-      ) : (
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-7 space-y-8">
-          <div className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2.5rem] p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Profile</h3>
-            <div className="mt-6 space-y-4">
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Name</label>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-slate-200/70 px-5 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
-                />
+    <div className="bg-white min-h-[calc(100vh-3.5rem)]">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {isLoading ? (
+          <div className="text-center py-16 text-sm text-slate-500">Loading profile…</div>
+        ) : (
+          <>
+            <div className="text-center">
+              <div className="mx-auto h-24 w-24 rounded-full bg-indigo-50 text-indigo-700 overflow-hidden border border-indigo-100 flex items-center justify-center text-2xl font-semibold">
+                {image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={image} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  initialsFrom(name, user?.email)
+                )}
               </div>
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Avatar URL</label>
-                <input
-                  value={image}
-                  onChange={(e) => setImage(e.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-slate-200/70 px-5 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
-                />
+              <div className="mt-3 flex items-center justify-center gap-2">
+                {editingName ? (
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onBlur={handleSaveProfile}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveProfile();
+                    }}
+                    autoFocus
+                    className="h-9 w-56 rounded-lg border border-slate-300 px-3 text-center text-lg font-semibold text-slate-900"
+                  />
+                ) : (
+                  <>
+                    <h1 className="text-xl font-semibold text-slate-900">{name || "Your profile"}</h1>
+                    <button
+                      type="button"
+                      onClick={() => setEditingName(true)}
+                      className="text-slate-400 hover:text-indigo-600"
+                      aria-label="Edit name"
+                    >
+                      ✎
+                    </button>
+                  </>
+                )}
+              </div>
+              {user?.email && <p className="mt-1 text-sm text-slate-500">{user.email}</p>}
+              <p className="mt-3 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
+                You apply directly. Employers don’t browse candidate profiles here.
+              </p>
+            </div>
+
+            <div className="mt-6 flex justify-center gap-6 border-b border-slate-200">
+              {tabs.map((item) => (
                 <button
-                  onClick={async () => {
-                    await authFetch("/api/account/avatar", { method: "DELETE" }, accessToken);
-                    setImage("");
-                  }}
-                  className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600"
+                  key={item.id}
+                  type="button"
+                  onClick={() => setTab(item.id)}
+                  className={`h-10 text-sm font-medium border-b-2 -mb-px ${
+                    tab === item.id
+                      ? "border-indigo-600 text-indigo-700"
+                      : "border-transparent text-slate-500 hover:text-slate-800"
+                  }`}
                 >
-                  Remove avatar
+                  {item.label}
+                  {item.id === "saved" && savedJobs.length > 0 ? ` (${savedJobs.length})` : ""}
                 </button>
-              </div>
-              <button
-                onClick={handleSaveProfile}
-                disabled={isSaving}
-                className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all disabled:opacity-60"
-              >
-                {isSaving ? "Saving..." : "Save profile"}
-              </button>
+              ))}
             </div>
-          </div>
 
-        </div>
-
-        <div className="lg:col-span-5 space-y-8">
-          <div className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2.5rem] p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Account status</h3>
-            <div className="mt-6 space-y-3 text-sm font-bold text-slate-600">
-              <div className="flex items-center justify-between">
-                <span>Email</span>
-                <span>{user?.email || "—"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Role</span>
-                <span className="uppercase">{user?.role || "—"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Onboarded</span>
-                <span>{user?.isOnboarded ? "Yes" : "No"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Saved jobs</span>
-                <span>{savedJobs.length}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>System</span>
-                <span className={healthStatus === "ok" ? "text-emerald-600" : "text-amber-500"}>
-                  {healthStatus === "ok" ? "Operational" : "Degraded"}
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={handleDeleteAccount}
-              disabled={isLoading}
-              className="mt-6 w-full border border-red-200 text-red-600 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              Delete account
-            </button>
-            <a
-              href="/api/account/activity"
-              target="_blank"
-              rel="noreferrer"
-              className={`mt-3 w-full inline-flex justify-center border border-slate-200 text-slate-600 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:border-indigo-200 hover:text-indigo-600 ${
-                isLoading ? "opacity-60 pointer-events-none" : ""
-              }`}
-            >
-              Download data
-            </a>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button
-                onClick={() => handleSwitchRole("candidate")}
-                disabled={user?.role === "candidate"}
-                className={`text-center border py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-indigo-600 hover:border-indigo-200 ${
-                  user?.role === "candidate"
-                    ? "border-indigo-200 text-indigo-600 cursor-default"
-                    : "border-slate-200 text-slate-500"
-                }`}
-              >
-                Candidate
-              </button>
-              <button
-                onClick={() => handleSwitchRole("employer")}
-                disabled={user?.role === "employer"}
-                className={`text-center border py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-indigo-600 hover:border-indigo-200 ${
-                  user?.role === "employer"
-                    ? "border-indigo-200 text-indigo-600 cursor-default"
-                    : "border-slate-200 text-slate-500"
-                }`}
-              >
-                Employer
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2.5rem] p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Saved jobs ({savedJobs.length})</h3>
-            <div className="mt-6 space-y-3">
-              {savedJobs.length === 0 ? (
-                <div className="text-sm text-slate-400 font-medium">
-                  <p>No saved roles yet.</p>
-                  <button
-                    onClick={() => router.push("/jobs")}
-                    className="mt-3 text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline"
-                  >
-                    Browse jobs
-                  </button>
+            <div className="mt-5">
+              {tab === "profile" && (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-slate-200 p-4">
+                    <p className="text-sm font-medium text-slate-900">What this account does</p>
+                    <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
+                      <li>Save roles and come back to them.</li>
+                      <li>Get email alerts for new published jobs.</li>
+                      <li>Apply on the employer’s own link — we don’t run a talent pool.</li>
+                    </ul>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Link href="/jobs" className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium inline-flex items-center">
+                        Browse jobs
+                      </Link>
+                      <Link href="/alerts" className="h-9 px-4 rounded-lg border border-slate-200 text-sm font-medium inline-flex items-center">
+                        Job alerts
+                      </Link>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                savedJobs.map((jobId) => {
-                  const job = allJobs.find((j) => j.id === jobId);
-                  const href = job ? `/jobs/${createJobSlug(job)}` : "#";
-                  return (
-                    <div key={jobId} className="flex items-center justify-between text-sm font-bold text-slate-600 gap-3">
-                      <span className="truncate">{job?.title || jobId}</span>
-                      <div className="flex items-center gap-3">
-                        <a href={href} className="text-indigo-600 hover:underline">
-                          View
-                        </a>
+              )}
+
+              {tab === "saved" && (
+                <div className="space-y-2">
+                  {savedJobRows.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center">
+                      <p className="text-sm text-slate-600">No saved roles yet.</p>
+                      <Link href="/jobs" className="mt-3 inline-flex text-sm font-medium text-indigo-600">
+                        Browse jobs
+                      </Link>
+                    </div>
+                  ) : (
+                    savedJobRows.map(({ jobId, job }) => (
+                      <div key={jobId} className="rounded-xl border border-slate-200 px-4 py-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <Link
+                            href={job ? `/jobs/${createJobSlug(job)}` : "/jobs"}
+                            className="block text-sm font-medium text-slate-900 truncate hover:text-indigo-700"
+                          >
+                            {job?.title || jobId}
+                          </Link>
+                          <p className="text-xs text-slate-500 truncate">
+                            {[job?.company, job?.location, job ? formatSalaryDisplay(job.salary) : ""]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                        </div>
                         <button
+                          type="button"
                           onClick={() => handleRemoveSaved(jobId)}
-                          className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-500"
+                          className="text-xs text-slate-500 hover:text-red-600 shrink-0"
                         >
                           Remove
                         </button>
                       </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {tab === "documents" && (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-500">
+                    Files stay in your account. We don’t send them to employers — you apply through their link.
+                  </p>
+                  {files.map((file) => (
+                    <div key={file.id} className="rounded-xl border border-slate-200 px-4 py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-slate-900 truncate">{file.name}</div>
+                        <div className="text-xs text-slate-500">
+                          {file.createdAt ? new Date(file.createdAt).toLocaleDateString() : ""}
+                        </div>
+                      </div>
+                      <a href={file.url} target="_blank" rel="noreferrer" className="text-sm text-indigo-600">
+                        Open
+                      </a>
                     </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2.5rem] p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Files ({files.length})</h3>
-            <div className="mt-6 space-y-3">
-              <input
-                value={fileName}
-                onChange={(e) => setFileName(e.target.value)}
-                placeholder="File name"
-                className="w-full rounded-2xl border border-slate-200/70 px-5 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
-              />
-              <input
-                value={fileUrl}
-                onChange={(e) => setFileUrl(e.target.value)}
-                placeholder="Public file URL"
-                className="w-full rounded-2xl border border-slate-200/70 px-5 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  value={fileType}
-                  onChange={(e) => setFileType(e.target.value)}
-                  placeholder="MIME type"
-                  className="w-full rounded-2xl border border-slate-200/70 px-5 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
-                />
-                <input
-                  type="number"
-                  value={fileSize || ""}
-                  onChange={(e) => setFileSize(Number(e.target.value))}
-                  placeholder="Size (bytes)"
-                  className="w-full rounded-2xl border border-slate-200/70 px-5 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300"
-                />
-              </div>
-              <button
-                onClick={handleUpload}
-                disabled={isUploading}
-                className="w-full bg-indigo-600 text-white py-3 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition-all disabled:opacity-60"
-              >
-                {isUploading ? "Uploading..." : "Add file"}
-              </button>
-            </div>
-
-            <div className="mt-6 space-y-3">
-              {files.length === 0 ? (
-                <p className="text-sm text-slate-400 font-medium">No files uploaded yet.</p>
-              ) : (
-                files.map((file) => (
-                  <div key={file.id} className="flex items-center justify-between text-sm font-bold text-slate-600">
-                    <span className="truncate">{file.name}</span>
-                    <a href={file.url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
-                      View
-                    </a>
+                  ))}
+                  <div className="rounded-xl border border-dashed border-slate-300 p-4 space-y-2">
+                    <p className="text-sm font-medium text-slate-800">Add a document link</p>
+                    <input
+                      value={fileName}
+                      onChange={(e) => setFileName(e.target.value)}
+                      placeholder="File name"
+                      className="w-full h-10 rounded-lg border border-slate-300 px-3 text-sm"
+                    />
+                    <input
+                      value={fileUrl}
+                      onChange={(e) => setFileUrl(e.target.value)}
+                      placeholder="https://…"
+                      className="w-full h-10 rounded-lg border border-slate-300 px-3 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleUpload}
+                      disabled={isUploading || !fileName || !fileUrl}
+                      className="h-10 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium disabled:opacity-50"
+                    >
+                      {isUploading ? "Saving…" : "Add"}
+                    </button>
                   </div>
-                ))
+                </div>
+              )}
+
+              {tab === "settings" && (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+                    <p className="text-sm font-medium text-slate-900">Photo URL</p>
+                    <input
+                      value={image}
+                      onChange={(e) => setImage(e.target.value)}
+                      placeholder="https://…"
+                      className="w-full h-10 rounded-lg border border-slate-300 px-3 text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSaveProfile}
+                        disabled={isSaving}
+                        className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium"
+                      >
+                        {isSaving ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await authFetch("/api/account/avatar", { method: "DELETE" }, accessToken);
+                          setImage("");
+                        }}
+                        className="h-9 px-3 text-sm text-slate-500"
+                      >
+                        Remove photo
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 p-4">
+                    <p className="text-sm font-medium text-slate-900">Account type</p>
+                    <p className="mt-1 text-sm text-slate-500">Switch only if you also hire on the board.</p>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchRole("candidate")}
+                        disabled={user?.role === "candidate"}
+                        className={`h-9 rounded-lg border text-sm ${
+                          user?.role === "candidate"
+                            ? "border-indigo-200 bg-indigo-50 text-indigo-700"
+                            : "border-slate-200 text-slate-600"
+                        }`}
+                      >
+                        Candidate
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchRole("employer")}
+                        disabled={user?.role === "employer"}
+                        className={`h-9 rounded-lg border text-sm ${
+                          user?.role === "employer"
+                            ? "border-indigo-200 bg-indigo-50 text-indigo-700"
+                            : "border-slate-200 text-slate-600"
+                        }`}
+                      >
+                        Employer
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 p-4 space-y-2">
+                    <a
+                      href="/api/account/activity"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block h-9 px-3 rounded-lg border border-slate-200 text-sm text-slate-700 inline-flex items-center"
+                    >
+                      Download my data
+                    </a>
+                    <button
+                      type="button"
+                      onClick={handleDeleteAccount}
+                      className="block w-full h-9 rounded-lg border border-red-200 text-sm text-red-600"
+                    >
+                      Delete account
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2.5rem] p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Recent activity</h3>
-            <div className="mt-6 space-y-3 text-sm font-bold text-slate-600">
-              {activity?.savedJobs?.slice(0, 3).map((item) => (
-                <div key={`saved-${item.jobId}`} className="flex items-center justify-between">
-                  <span className="truncate">
-                    Saved {allJobs.find((job) => job.id === item.jobId)?.title || `job ${item.jobId}`}
-                  </span>
-                  <span className="text-[10px] text-slate-400">{new Date(item.createdAt).toLocaleDateString()}</span>
-                </div>
-              ))}
-              {activity?.files?.slice(0, 3).map((item) => (
-                <div key={`file-${item.name}`} className="flex items-center justify-between">
-                  <span className="truncate">Uploaded {item.name}</span>
-                  <span className="text-[10px] text-slate-400">{new Date(item.createdAt).toLocaleDateString()}</span>
-                </div>
-              ))}
-              {!activity && <p className="text-slate-400 font-medium">No activity yet.</p>}
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
-      )}
     </div>
   );
 };
 
-export default AccountPage;
+export default function AccountPage() {
+  return (
+    <Suspense fallback={<div className="py-16 text-center text-sm text-slate-500">Loading profile…</div>}>
+      <AccountPageInner />
+    </Suspense>
+  );
+}

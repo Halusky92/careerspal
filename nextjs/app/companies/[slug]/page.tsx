@@ -132,7 +132,7 @@ export default async function CompanyPage({ params }: PageProps) {
   if (!result || result.kind === "error") {
     // Prefer a clean fallback over crashing into the global error boundary.
     return (
-      <div className="bg-[#F8F9FD] pb-20">
+      <div className="bg-[#F8F9FD] pb-8">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-16">
           <div className="rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] p-8 sm:p-12 text-center">
             <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Company</div>
@@ -189,8 +189,8 @@ export default async function CompanyPage({ params }: PageProps) {
   ).slice(0, 18);
 
   return (
-    <div className="bg-[#F8F9FD] pb-20">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+    <div className="bg-[#F8F9FD] pb-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
         <div className="flex items-center justify-between gap-3">
           <Link href="/jobs" className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-indigo-700">
             <span aria-hidden="true">←</span> Back to jobs

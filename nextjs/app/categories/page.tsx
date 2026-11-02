@@ -52,8 +52,8 @@ export default async function CategoriesPage() {
   const counts = await fetchLiveCounts();
 
   return (
-    <div className="bg-[#F8F9FD] pb-20">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+    <div className="bg-[#F8F9FD] pb-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Categories</p>

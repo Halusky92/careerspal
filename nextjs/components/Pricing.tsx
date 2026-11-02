@@ -12,14 +12,14 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
       <div className="absolute top-[-20%] left-[-15%] w-[70%] h-[70%] bg-indigo-300/20 rounded-full blur-[140px]"></div>
       <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-violet-400/20 rounded-full blur-[140px]"></div>
 
-      <div className="max-w-7xl mx-auto px-4 py-14 sm:py-20 relative z-10">
-        <div className="text-center mb-16">
-          <h2 className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide mb-4">Pricing plans</h2>
-          <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6 tracking-tight">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8 relative z-10">
+        <div className="text-center mb-6">
+          <h2 className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide mb-2">Pricing plans</h2>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 mb-2 tracking-tight">
             Post a role on the board.
           </h1>
-          <p className="text-lg sm:text-xl text-slate-500 max-w-2xl mx-auto font-medium">
-            Post a role on a curated, salary-first board for Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff roles.
+          <p className="text-sm sm:text-base text-slate-500 max-w-2xl mx-auto">
+            Salary-first listings for Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff.
           </p>
         </div>
 
@@ -38,7 +38,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
         {/* Standard Tier */}
-        <div className="bg-white/90 backdrop-blur p-7 sm:p-10 rounded-[3rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all group flex flex-col">
+        <div className="bg-white/90 backdrop-blur p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group flex flex-col">
           <h3 className="text-xl font-bold text-gray-900 mb-2 uppercase tracking-tight">Standard</h3>
           <p className="text-gray-500 text-sm mb-8 font-medium">A clean listing on the board.</p>
           <div className="text-4xl font-bold text-gray-900 mb-8 tracking-tighter">$79 <span className="text-sm font-normal text-gray-500">/ 30 days</span></div>
@@ -58,7 +58,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         </div>
 
         {/* Featured Tier */}
-        <div className="bg-indigo-600 p-7 sm:p-10 rounded-[3rem] shadow-2xl shadow-indigo-200 text-white relative transform md:-translate-y-4 flex flex-col">
+        <div className="bg-indigo-600 p-5 sm:p-6 rounded-2xl shadow-lg shadow-indigo-200 text-white relative flex flex-col">
           <div className="absolute top-5 right-5 sm:top-6 sm:right-8 bg-indigo-500 text-[9px] sm:text-[10px] font-semibold px-3 py-1 rounded-full uppercase tracking-wide border border-indigo-400">Recommended</div>
           <h3 className="text-xl font-bold mb-2 uppercase tracking-tight">Featured Pro</h3>
           <p className="text-indigo-100 text-sm mb-8 font-medium">Boosted visibility on the board.</p>
@@ -78,7 +78,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         </div>
 
         {/* Elite Tier */}
-        <div className="bg-slate-900 p-7 sm:p-10 rounded-[3rem] shadow-sm hover:shadow-2xl transition-all group flex flex-col text-white">
+        <div className="bg-slate-900 p-5 sm:p-6 rounded-2xl shadow-sm hover:shadow-md transition-all group flex flex-col text-white">
           <h3 className="text-xl font-bold mb-2 uppercase tracking-tight">Elite Managed</h3>
           <p className="text-slate-300 text-sm mb-8 font-medium">Hands-on help for high-stakes roles.</p>
           <div className="text-4xl font-bold mb-8 tracking-tighter">$249 <span className="text-sm font-normal text-slate-300/80">/ 30 days</span></div>
@@ -100,7 +100,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         </div>
       </div>
 
-      <div className="mt-10 sm:mt-12 bg-white/80 backdrop-blur border border-slate-200/60 rounded-[2.5rem] p-6 sm:p-8">
+      <div className="mt-6 bg-white border border-slate-200 rounded-xl p-4 sm:p-5">
         <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Plan comparison</h4>
         <div className="mt-6 overflow-x-auto">
           <div className="min-w-[520px] grid grid-cols-4 gap-x-6 gap-y-4 text-xs sm:text-sm font-bold text-slate-600">
@@ -124,7 +124,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         </div>
       </div>
 
-      <div className="mt-8 sm:mt-10 bg-slate-900 text-white rounded-[2.5rem] p-8 sm:p-10">
+      <div className="mt-5 bg-slate-900 text-white rounded-xl p-5">
         <h4 className="text-[10px] font-semibold uppercase tracking-wide text-indigo-200">Why not agencies</h4>
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
@@ -140,7 +140,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         </div>
       </div>
 
-      <div className="mt-12 sm:mt-20 text-center">
+      <div className="mt-6 text-center">
         <p className="text-slate-600 font-semibold text-xs uppercase tracking-wide mb-4">Built for teams using</p>
         <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-12 opacity-40 grayscale hover:grayscale-0 transition-all duration-700">
            <img src="https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg" className="h-5 sm:h-6" alt="Notion" />
@@ -153,7 +153,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         </p>
       </div>
 
-      <div className="mt-10 sm:mt-16 bg-white/80 backdrop-blur border border-slate-200/60 rounded-[3rem] p-8 sm:p-12 shadow-[0_25px_70px_rgba(15,23,42,0.08)]">
+      <div className="mt-6 bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
         <div className="text-center mb-8">
           <p className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide">FAQ</p>
           <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mt-3">Frequently asked questions</h3>

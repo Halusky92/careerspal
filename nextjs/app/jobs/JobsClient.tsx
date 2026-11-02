@@ -26,7 +26,7 @@ const setSaved = (ids: string[]) => {
 
 export default function JobsClient({
   initialJobs,
-  initialTotal,
+  initialTotal: _initialTotal,
   initialQuery,
   initialLocation,
 }: {
@@ -38,7 +38,6 @@ export default function JobsClient({
   const router = useRouter();
   const { profile, accessToken, loading: authLoading } = useSupabaseAuth();
   const [jobs] = useState<Job[]>(() => initialJobs || []);
-  const [totalJobs] = useState<number | null>(() => (typeof initialTotal === "number" ? initialTotal : null));
   const [savedJobIds, setSavedJobIds] = useState<string[]>(() => getSaved());
 
   useEffect(() => {
@@ -117,36 +116,6 @@ export default function JobsClient({
 
   return (
     <>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-3">
-          <button
-            onClick={() => router.back()}
-            className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600"
-          >
-            <span>← Back</span>
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600">
-              {(totalJobs ?? jobs.length) > 0 ? `${totalJobs ?? jobs.length} roles` : "Roles reviewed daily"}
-            </div>
-            {profile?.role !== "employer" && (
-              <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                Saved {savedJobIds.length}
-              </div>
-            )}
-            <button
-              onClick={() =>
-                router.push(profile?.role === "employer" ? "/post-a-job" : accessToken ? "/account" : "/auth")
-              }
-              disabled={authLoading}
-              className="h-10 px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black disabled:opacity-60"
-            >
-              {profile?.role === "employer" ? "Post a job" : "Job alerts"}
-            </button>
-          </div>
-        </div>
-      </div>
-
       <FindJobs
         jobs={jobs}
         initialQuery={initialQuery}

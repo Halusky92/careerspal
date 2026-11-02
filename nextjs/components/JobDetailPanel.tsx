@@ -76,7 +76,7 @@ export default function JobDetailPanel({
 
   if (!job) {
     return (
-      <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
+      <div className="sticky top-16 max-h-[calc(100vh-5rem)] overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
         <div className="p-6">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
             Role details
@@ -92,7 +92,7 @@ export default function JobDetailPanel({
   const saved = isSaved ? isSaved(job.id) : false;
 
   return (
-    <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
+    <div className="sticky top-16 max-h-[calc(100vh-5rem)] overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
       <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-100">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0">

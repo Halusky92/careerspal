@@ -1,98 +1,65 @@
-import Link from 'next/link';
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const Footer = () => {
+  const pathname = usePathname();
+  if (pathname?.startsWith("/account") || pathname?.startsWith("/auth") || pathname?.startsWith("/dashboard")) {
+    return null;
+  }
+
   return (
-    <footer className="bg-white border-t border-slate-200/60 mt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-        <div className="mb-12 rounded-[3rem] border border-slate-200/60 bg-white/80 backdrop-blur p-8 md:p-12 shadow-[0_25px_70px_rgba(15,23,42,0.08)]">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-500">CareersPal</p>
-              <h3 className="text-2xl md:text-3xl font-bold text-slate-900 mt-3">
-                Browse roles. Post a listing.
-              </h3>
-              <p className="text-slate-500 font-medium mt-3 max-w-2xl">
-                Curated, salary-first roles with clear scope and direct apply links.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link href="/jobs" className="px-8 py-4 rounded-2xl bg-indigo-600 text-white font-semibold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">
-                Browse roles
-              </Link>
-              <Link href="/post-a-job" className="px-8 py-4 rounded-2xl bg-white text-slate-900 border border-slate-200 font-semibold hover:border-indigo-200 hover:text-indigo-600 transition-all">
-                Post a job
-              </Link>
-            </div>
+    <footer className="bg-white border-t border-slate-200 mt-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p className="text-sm text-slate-700">
+            Salary-first remote Ops roles with a clear apply link.
+          </p>
+          <div className="flex gap-2">
+            <Link href="/jobs" className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium inline-flex items-center">
+              Browse jobs
+            </Link>
+            <Link href="/post-a-job" className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-slate-800 text-sm font-medium inline-flex items-center">
+              Post a job
+            </Link>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-lg">C</span>
-              </div>
-              <div>
-                <div className="text-lg font-bold text-slate-900 leading-none">CareersPal</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Curated job board</div>
-              </div>
-            </div>
-            <p className="text-sm text-slate-500 font-medium">
-              Remote Ops, Systems, Automation, RevOps, Product Ops, and Chief of Staff.
-            </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
+          <div className="col-span-2 md:col-span-1 space-y-2">
+            <div className="font-semibold text-slate-900">CareersPal</div>
+            <p className="text-slate-500">Remote Ops, Systems, Automation, RevOps, Product Ops, Chief of Staff.</p>
           </div>
-
           <div>
-            <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 mb-4">Jobs</h4>
-            <ul className="space-y-3 text-sm font-bold text-slate-600">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Jobs</h4>
+            <ul className="space-y-1.5 text-slate-600">
               <li><Link href="/jobs" className="hover:text-indigo-600">Browse Jobs</Link></li>
               <li><Link href="/post-a-job" className="hover:text-indigo-600">Post a Job</Link></li>
               <li><Link href="/salary-insights" className="hover:text-indigo-600">Salary Insights</Link></li>
             </ul>
           </div>
-
           <div>
-            <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 mb-4">Company</h4>
-            <ul className="space-y-3 text-sm font-bold text-slate-600">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Company</h4>
+            <ul className="space-y-1.5 text-slate-600">
               <li><Link href="/about" className="hover:text-indigo-600">About</Link></li>
               <li><Link href="/pricing" className="hover:text-indigo-600">Pricing</Link></li>
               <li><Link href="/hire-talent" className="hover:text-indigo-600">Hire Talent</Link></li>
               <li><a href="mailto:info@careerspal.com" className="hover:text-indigo-600">Support</a></li>
             </ul>
           </div>
-
           <div>
-            <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 mb-4">Legal</h4>
-            <ul className="space-y-3 text-sm font-bold text-slate-600">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Legal</h4>
+            <ul className="space-y-1.5 text-slate-600">
               <li><Link href="/privacy" className="hover:text-indigo-600">Privacy</Link></li>
               <li><Link href="/terms" className="hover:text-indigo-600">Terms</Link></li>
               <li><Link href="/accessibility" className="hover:text-indigo-600">Accessibility</Link></li>
             </ul>
           </div>
         </div>
-
-        <div className="pt-8 mt-10 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-            © 2026 CareersPal. All rights reserved.
-          </p>
-          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center md:justify-end gap-2 sm:gap-4 text-xs text-slate-600 font-medium text-center md:text-left">
-            <span className="leading-relaxed">Support: <a href="mailto:info@careerspal.com" className="font-semibold text-slate-700 hover:text-indigo-600">info@careerspal.com</a></span>
-            <span className="hidden md:inline text-slate-300">•</span>
-            <Link href="/privacy" className="text-slate-600 hover:text-indigo-600 font-semibold uppercase tracking-wide text-[10px]">
-              Privacy
-            </Link>
-            <span className="hidden md:inline text-slate-300">•</span>
-            <a href="mailto:info@careerspal.com" className="text-slate-600 hover:text-indigo-600 font-semibold uppercase tracking-wide text-[10px]">
-              Support
-            </a>
-            <span className="hidden md:inline text-slate-300">•</span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-600">
-              careerspal.com
-            </span>
-          </div>
+        <div className="pt-5 mt-6 border-t border-slate-100 text-xs text-slate-500">
+          © 2026 CareersPal. Independent platform, not affiliated with similarly named entities.{" "}
+          <a href="mailto:info@careerspal.com" className="text-slate-700 hover:text-indigo-600">info@careerspal.com</a>
         </div>
-        <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-center">
-          CareersPal is an independent platform and is not affiliated with similarly named entities.
-        </p>
       </div>
     </footer>
   );

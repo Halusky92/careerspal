@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSupabaseAuth } from "../../components/Providers";
+import { authFetch } from "../../lib/authFetch";
 import { CATEGORY_HUBS, type CategoryHub, getCategoryHub } from "../../lib/categories";
 
 type AlertsClientProps = {
@@ -15,7 +16,7 @@ const getHubOrDefault = (value?: string | null): CategoryHub => {
 };
 
 export default function AlertsClient({ initialCategory }: AlertsClientProps) {
-  const { profile, loading, signInWithEmail, signInWithGoogle } = useSupabaseAuth();
+  const { profile, accessToken, loading, signInWithEmail, signInWithGoogle } = useSupabaseAuth();
   const [email, setEmail] = useState("");
   const [authStatus, setAuthStatus] = useState<"idle" | "sent" | "error">("idle");
   const [authMsg, setAuthMsg] = useState("");
@@ -69,11 +70,15 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
     setSaving(true);
     setSaveMsg("");
     try {
-      const response = await fetch("/api/alerts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: alertQuery }),
-      });
+      const response = await authFetch(
+        "/api/alerts",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: alertQuery }),
+        },
+        accessToken,
+      );
       const payload = (await response.json()) as { error?: string; existing?: boolean };
       if (!response.ok) {
         setSaveMsg(payload.error || "Unable to enable alerts right now.");
@@ -88,10 +93,10 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
   };
 
   return (
-    <div className="rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] overflow-hidden">
-      <div className="p-6 sm:p-10 border-b border-slate-100">
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Alerts</p>
-        <h1 className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      <div className="p-4 sm:p-5 border-b border-slate-100">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Alerts</p>
+        <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">
           Get new roles by email.
         </h1>
         <p className="mt-3 text-slate-600 font-medium max-w-2xl">
@@ -99,7 +104,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
         </p>
       </div>
 
-      <div className="p-6 sm:p-10">
+      <div className="p-4 sm:p-5">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
           <div className="sm:col-span-1">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500" htmlFor="alert-category">
@@ -126,7 +131,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
                 {hasSession ? `Signed in as ${profile?.email}` : "Not signed in"}
               </div>
               <div className="mt-1 text-xs text-slate-600 font-medium">
-                Alerts are tied to your account email. You can manage them in your candidate dashboard.
+                Alerts are tied to your account email. You can manage them in your account.
               </div>
             </div>
           </div>
@@ -152,7 +157,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
                 {saving ? "Saving…" : "Enable alerts"}
               </button>
               <Link
-                href="/dashboard/candidate"
+                href="/account"
                 className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-7 py-4 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
               >
                 Manage alerts →
