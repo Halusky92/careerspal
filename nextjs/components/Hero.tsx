@@ -44,8 +44,8 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
 
   return (
     <section className="bg-[#EEF2F8]">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 sm:pt-14 pb-6 sm:pb-10 text-center">
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-5 sm:pb-7 text-center">
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900">
           {firstName ? `Hello, ${firstName}` : "Find the next Ops role"}
         </h1>
         <p className="mt-2 text-[15px] sm:text-sm text-slate-700">

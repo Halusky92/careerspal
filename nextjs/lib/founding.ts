@@ -1,6 +1,6 @@
 export const FOUNDING_COMPANY_CAP = 20;
 export const FOUNDING_JOBS_PER_COMPANY = 10;
-export const FOUNDING_LAUNCH_PRICE = 1;
+export const FOUNDING_LAUNCH_PRICE = 0;
 export const FOUNDING_DAYS = 90;
 
 export function isFoundingLaunchEnabled() {

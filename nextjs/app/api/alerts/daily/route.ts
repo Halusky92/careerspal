@@ -183,7 +183,6 @@ function isAuthorized(request: Request): boolean {
   if (alerts && auth === `Bearer ${alerts}`) return true;
   if (alerts && secret === alerts) return true;
   if (cron && secret === cron) return true;
-  if (!alerts && !cron) return true;
   return false;
 }
 
@@ -321,9 +320,9 @@ export async function GET(request: Request) {
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;">
               ${rows}
             </table>
-            <p style="margin:12px 0 0;">Manage your alerts at CareersPal.</p>
+            <p style="margin:12px 0 0;">Change or stop this in your account.</p>
           `,
-          cta: { label: "Manage alerts", href: `${baseUrl}/alerts` },
+          cta: { label: "Manage alerts", href: `${baseUrl}/account?tab=alerts` },
           footerNote: "You are receiving this email because you enabled job alerts.",
         }),
       });
@@ -397,7 +396,7 @@ export async function GET(request: Request) {
         preheader: "Roles that went live on CareersPal.",
         body: `<p style="margin:0 0 12px;">New published roles matching your category.</p><table role="presentation" width="100%">${rows}</table>`,
         cta: { label: "Browse jobs", href: `${baseUrl}/jobs` },
-        footerNote: "You subscribed to CareersPal email alerts.",
+        footerNote: `Stop these emails: ${baseUrl}/api/alerts/unsubscribe?email=${encodeURIComponent(toEmail)}`,
       }),
     });
     if (!sendResult.error) {

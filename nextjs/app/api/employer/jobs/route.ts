@@ -6,6 +6,7 @@ import {
   EMPLOYER_JOB_SELECT,
   EMPLOYER_JOB_SELECT_FALLBACK,
   EMPLOYER_STATUSES,
+  getFoundingStatus,
   requireEmployer,
   resolveEmployerCompany,
 } from "../../../../lib/employer";
@@ -126,8 +127,8 @@ export const POST = async (request: Request) => {
   const postedAt = body.postedAt || (status === "published" ? "Just now" : "Draft");
   const rawPlanPrice =
     typeof body.plan?.price === "number" ? body.plan.price : body.planPrice;
-  const isInternalCheapPrice = typeof rawPlanPrice === "number" && rawPlanPrice <= 5;
-  if (body.adminInternalPlan || isInternalCheapPrice) {
+  const isAdminTestPrice = Boolean(body.adminInternalPlan) || rawPlanPrice === 1;
+  if (isAdminTestPrice) {
     if (auth.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -135,12 +136,16 @@ export const POST = async (request: Request) => {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
+  if (typeof rawPlanPrice === "number" && rawPlanPrice === 0) {
+    const founding = await getFoundingStatus(auth.profileId);
+    if (!founding.eligible) {
+      return NextResponse.json({ error: "Start pack is not available for this account." }, { status: 403 });
+    }
+  }
   const storedPlanPrice =
-    typeof rawPlanPrice === "number"
-      ? rawPlanPrice < 1
-        ? 1
-        : Math.round(rawPlanPrice)
-      : null;
+    typeof rawPlanPrice === "number" ? Math.max(0, Math.round(rawPlanPrice)) : null;
+  const storedPlanType =
+    storedPlanPrice === 0 ? "Standard" : body.planType || body.plan?.type || "Standard";
 
   const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count: recentCount } = await supabaseAdmin
@@ -193,7 +198,7 @@ export const POST = async (request: Request) => {
     match_score: body.matchScore || null,
     is_featured: Boolean(body.isFeatured),
     status,
-    plan_type: body.planType || null,
+    plan_type: storedPlanType,
     plan_price: storedPlanPrice,
     plan_currency: "USD",
     views: body.views || 0,

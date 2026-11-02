@@ -279,7 +279,7 @@ export default function JobRow({
               </div>
             </div>
 
-            <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {showSave && onToggleSave && (
                 <button
                   onClick={(e) => {
@@ -449,10 +449,6 @@ export default function JobRow({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (job.applyUrl && job.applyUrl !== "#") {
-                      onApply();
-                      return;
-                    }
                     router.push(detailHref);
                   }}
                   className="h-11 flex-1 rounded-2xl border border-slate-200/80 bg-white text-[10px] font-semibold uppercase tracking-wide text-slate-700 hover:border-indigo-200 hover:text-indigo-700"

@@ -34,11 +34,11 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
   }
 
   const [overridePrice, setOverridePrice] = useState<number | null>(null);
-  const price = (overridePrice ?? jobData?.plan?.price) || 79;
+  const price = overridePrice ?? jobData?.plan?.price ?? 79;
   const planName = jobData?.plan?.type || 'Standard';
   const formatPrice = (value: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-  const storagePlanPrice = Number.isFinite(price) ? (price < 1 ? 1 : Math.round(price)) : 79;
+  const storagePlanPrice = Number.isFinite(price) ? Math.max(0, Math.round(price)) : 79;
 
   const authRedirectUrl = useMemo(() => {
     const from = jobId ? `/checkout?jobId=${encodeURIComponent(jobId)}` : "/checkout";
@@ -151,6 +151,14 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
           sessionStorage.setItem("cp_pending_job_id", effectiveJobId);
         } catch {
           // ignore
+        }
+      }
+
+      if (storagePlanPrice === 0 && planName === "Standard") {
+        const submit = await authFetch(`/api/employer/jobs/${effectiveJobId}/submit`, { method: "POST" }, accessToken);
+        if (submit.ok) {
+          router.push("/dashboard/employer");
+          return;
         }
       }
 
@@ -334,7 +342,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
            <div className="bg-white p-8 rounded-[2.5rem] flex items-start gap-4 border border-indigo-100 shadow-sm">
               <span className="text-2xl">🛡️</span>
               <p className="text-xs font-bold text-slate-500 leading-relaxed">
-                 All payments are encrypted via CareersPal Secure Gateway. Admin notifications are instant.
+                 Card payments go through Stripe. Listings go live after review.
               </p>
            </div>
         </div>

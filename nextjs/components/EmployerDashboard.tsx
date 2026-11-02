@@ -220,7 +220,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
 
       {founding?.enabled && founding.eligible && (
         <p className="mb-4 text-sm text-slate-600">
-          Launch price: $1 for your next {founding.remainingJobs ?? 0} Standard listing{founding.remainingJobs === 1 ? "" : "s"} (first 10), then the public price list. Stripe checkout, then review.
+          Start pack: {founding.remainingJobs ?? 0} free Standard listing{founding.remainingJobs === 1 ? "" : "s"} left (first 10), then $79 / $149 / $249. Reviewed before publish.
         </p>
       )}
 

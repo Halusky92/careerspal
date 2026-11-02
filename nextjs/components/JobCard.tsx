@@ -87,8 +87,8 @@ export default function JobCard({
 
   const containerClass =
     variant === "home"
-      ? "p-3.5 sm:p-4 rounded-[1.5rem] sm:rounded-[2rem]"
-      : "p-3.5 sm:p-4 rounded-2xl";
+      ? "p-3 rounded-xl"
+      : "p-3 rounded-xl";
 
   return (
     <div
@@ -171,13 +171,13 @@ export default function JobCard({
         </button>
       )}
 
-      <div className="flex items-start gap-4 w-full">
+      <div className="flex items-start gap-3 w-full">
         <div
           className={`${
             isHome
-              ? "w-9 h-9 sm:w-11 sm:h-11 rounded-[0.85rem] sm:rounded-[1.05rem]"
-              : "w-10 h-10 sm:w-12 sm:h-12 rounded-[0.9rem] sm:rounded-[1.1rem]"
-          } flex items-center justify-center overflow-hidden p-1 flex-shrink-0 ${
+              ? "w-8 h-8 sm:w-9 sm:h-9 rounded-lg"
+              : "w-9 h-9 sm:w-10 sm:h-10 rounded-lg"
+          } flex items-center justify-center overflow-hidden p-0.5 flex-shrink-0 ${
             isElite ? "bg-yellow-100 border border-yellow-200" : "bg-gray-50 border border-gray-100"
           }`}
         >
@@ -193,7 +193,7 @@ export default function JobCard({
 
         <div className="flex-1 min-w-0 pr-9">
           <h3
-            className={`${isHome ? "text-sm sm:text-base" : "text-sm sm:text-base"} font-black tracking-tight leading-tight line-clamp-2 ${
+            className={`${isHome ? "text-sm" : "text-sm"} font-semibold tracking-tight leading-tight line-clamp-2 ${
               isElite ? "text-slate-900 group-hover:text-yellow-700" : "text-slate-900 group-hover:text-indigo-600"
             } transition-colors`}
           >
@@ -275,7 +275,7 @@ export default function JobCard({
 
       <div className="w-full border-t border-slate-100 pt-2 flex items-center justify-between gap-3">
         <div
-          className={`${isHome ? "text-sm sm:text-base" : "text-sm sm:text-base"} font-black tracking-tight whitespace-nowrap ${
+          className={`${isHome ? "text-sm" : "text-sm"} font-semibold tracking-tight whitespace-nowrap ${
             isElite ? "text-yellow-900" : "text-slate-900"
           }`}
         >
@@ -326,7 +326,7 @@ export default function JobCard({
       </div>
 
       {expanded && (
-        <div className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 text-left">
+        <div className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 sm:p-4 text-left">
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Role overview</p>
             <div className="mt-2">

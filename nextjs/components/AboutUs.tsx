@@ -3,9 +3,9 @@ import Link from "next/link";
 
 const AboutUs: React.FC = () => {
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">About</p>
-      <h1 className="mt-2 text-3xl sm:text-4xl font-semibold text-slate-900 tracking-tight">
+      <h1 className="mt-2 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">
         A small board for Ops and Systems work.
       </h1>
       <p className="mt-4 text-[16px] text-slate-700 leading-relaxed">

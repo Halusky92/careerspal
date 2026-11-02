@@ -3,6 +3,7 @@ import { supabaseAdmin } from "../../../../../../lib/supabaseAdmin";
 import { getFoundingStatus, loadEmployerOwnedJob, requireEmployer } from "../../../../../../lib/employer";
 import { foundingExpiresAt } from "../../../../../../lib/founding";
 import { isOnNicheJob } from "../../../../../../lib/nicheScope";
+import { sendListingReviewEmails } from "../../../../../../lib/listingNotify";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await requireEmployer(request);
@@ -29,6 +30,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     );
   }
 
+  const planType = String(owned.job.plan_type || "Standard");
+  const planPrice = typeof owned.job.plan_price === "number" ? owned.job.plan_price : null;
+  if (planType !== "Standard" || (planPrice !== null && planPrice !== 0 && planPrice >= 79)) {
+    return NextResponse.json(
+      { error: "Checkout is required for this listing.", checkoutRequired: true },
+      { status: 402 },
+    );
+  }
+
   const founding = await getFoundingStatus(auth.profileId);
   if (!founding.eligible) {
     return NextResponse.json(
@@ -45,6 +55,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     status: "pending_review",
     posted_at_text: "Pending review",
     stripe_payment_status: "founding",
+    plan_type: "Standard",
+    plan_price: 0,
     origin: "employer",
   };
   let { data, error } = await supabaseAdmin!
@@ -89,8 +101,27 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     action: "employer_job_submitted_founding",
     job_id: id,
     actor_id: auth.profileId,
-    metadata: { status: "pending_review" },
+    metadata: { status: "pending_review", plan: "Start pack", planPrice: 0 },
   });
 
-  return NextResponse.json({ ok: true, status: "pending_review", jobId: data.id });
+  let companyName: string | null = null;
+  if (data.company_id) {
+    const { data: named } = await supabaseAdmin!
+      .from("companies")
+      .select("name")
+      .eq("id", data.company_id)
+      .maybeSingle();
+    companyName = named?.name || null;
+  }
+  await sendListingReviewEmails({
+    jobId: data.id,
+    title: title,
+    companyName,
+    planType: "Standard",
+    planPrice: 0,
+    buyerEmail: auth.email || null,
+    startPack: true,
+  });
+
+  return NextResponse.json({ ok: true, status: "pending_review", jobId: data.id, plan: "Start pack" });
 }

@@ -28,14 +28,17 @@ const AuthPage = () => {
       }
 
       const currentRole = profile.role || "candidate";
-      if (desiredRole && desiredRole !== currentRole) {
+      const hiringFrom =
+        Boolean(desiredFrom) &&
+        ["/post-a-job", "/checkout", "/hire-talent", "/pricing"].some((path) => (desiredFrom || "").startsWith(path));
+      if (desiredRole === "employer" && currentRole === "candidate" && hiringFrom) {
         try {
           await authFetch(
             "/api/account/role",
             {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ role: desiredRole }),
+            body: JSON.stringify({ role: "employer" }),
             },
             accessToken,
           );
@@ -45,7 +48,7 @@ const AuthPage = () => {
         }
       }
 
-      const finalRole = desiredRole || currentRole || "candidate";
+      const finalRole = hiringFrom && desiredRole === "employer" ? "employer" : currentRole || "candidate";
       if (!isActive) return;
       let finalFrom: string | null = desiredFrom;
       if (!finalFrom) {
@@ -56,7 +59,7 @@ const AuthPage = () => {
           if (!finalFrom && storedPersistent && storedPersistent.startsWith("/")) finalFrom = storedPersistent;
           if (!finalFrom) {
             const hasPending = Boolean(sessionStorage.getItem("cp_pending_job") || sessionStorage.getItem("cp_pending_job_id"));
-            if (hasPending) finalFrom = "/checkout";
+            if (hasPending) finalFrom = "/post-a-job";
           }
         } catch {
           // ignore
@@ -72,7 +75,7 @@ const AuthPage = () => {
       if (finalFrom) {
         router.replace(finalFrom);
       } else {
-        router.replace(finalRole === "employer" ? "/dashboard/employer" : "/dashboard/candidate");
+        router.replace(finalRole === "employer" ? "/dashboard/employer" : "/account");
       }
     };
 

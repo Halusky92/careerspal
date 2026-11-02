@@ -92,6 +92,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     if (!EMPLOYER_STATUSES.has(body.status)) {
       return NextResponse.json({ error: "Invalid status." }, { status: 400 });
     }
+    if (body.status === "published") {
+      return NextResponse.json({ error: "Listings go live after review." }, { status: 403 });
+    }
     updateData.status = body.status;
   }
   if (typeof body.title === "string") updateData.title = body.title;

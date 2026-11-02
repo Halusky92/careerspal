@@ -46,7 +46,11 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
     const result = await subscribeUser(trimmed, preference);
     setSaving(false);
     setGuestStatus(result.success ? "ok" : "error");
-    setSaveMsg(result.message);
+    setSaveMsg(
+      result.success
+        ? "You’re on the list. Sign in to change or stop this in your account."
+        : result.message,
+    );
   };
 
   const handleEmail = async () => {
@@ -98,7 +102,14 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
         setSaveMsg(payload.error || "Unable to enable alerts right now.");
         return;
       }
-      setSaveMsg(payload.existing ? "Alert already enabled." : "Alert enabled.");
+      if (profile?.email) {
+        await fetch("/api/subscribers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: profile.email, preference: alertQuery }),
+        });
+      }
+      setSaveMsg(payload.existing ? "Alert already enabled. Manage it in your account." : "Alert enabled. You can change it in your account.");
     } catch {
       setSaveMsg("Unable to enable alerts right now.");
     } finally {
@@ -109,26 +120,26 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
       <div className="p-4 sm:p-5 border-b border-slate-100">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Email alerts</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Job alerts</p>
         <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">
-          One list. New published roles in your inbox.
+          Get new jobs by email
         </h1>
         <p className="mt-3 text-[15px] text-slate-700 max-w-2xl">
-          Alerts and the newsletter are the same thing: we email when a new Ops/Systems role goes live in your category. No extra blast.
+          Pick a category. We’ll email you when a matching role is published. You can change or stop this anytime in your account.
         </p>
       </div>
 
       <div className="p-4 sm:p-5">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
           <div className="sm:col-span-1">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500" htmlFor="alert-category">
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500" htmlFor="alert-category">
               Category
             </label>
             <select
               id="alert-category"
               value={hubSlug}
               onChange={(e) => setHubSlug(e.target.value)}
-              className="cp-field mt-2 w-full rounded-2xl bg-white px-4 py-4 text-sm font-bold text-slate-700 outline-none"
+              className="cp-field mt-1.5 w-full h-10 rounded-lg bg-white px-3 text-sm text-slate-700 outline-none"
             >
               {CATEGORY_HUBS.map((c) => (
                 <option key={c.slug} value={c.slug}>
@@ -139,13 +150,13 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
           </div>
 
           <div className="sm:col-span-2">
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Status</div>
-            <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-4">
-              <div className="text-sm font-bold text-slate-900">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Status</div>
+            <div className="mt-1.5 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2.5">
+              <div className="text-sm font-medium text-slate-900">
                 {hasSession ? `Signed in as ${profile?.email}` : "Not signed in"}
               </div>
               <div className="mt-1 text-xs text-slate-700 font-medium">
-                Signed-in alerts live on your account. Guests can still join the same email list below.
+                Signed-in alerts live in your account. Email-only subscribe can be changed after you sign in.
               </div>
             </div>
           </div>
@@ -166,13 +177,13 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
                 type="button"
                 onClick={handleEnable}
                 disabled={saving}
-                className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-indigo-600 text-white px-7 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-60"
+                className="w-full sm:w-auto inline-flex h-9 items-center justify-center rounded-lg bg-indigo-600 text-white px-4 text-sm font-medium hover:bg-indigo-700 disabled:opacity-60"
               >
                 {saving ? "Saving…" : "Enable alerts"}
               </button>
               <Link
-                href="/account"
-                className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-7 py-4 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
+                href="/account?tab=alerts"
+                className="w-full sm:w-auto inline-flex h-9 items-center justify-center rounded-lg bg-white border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
               >
                 Manage alerts →
               </Link>
@@ -191,14 +202,14 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
                   placeholder="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="cp-field w-full px-5 py-4 rounded-2xl bg-white text-slate-900 placeholder:text-slate-400 font-bold outline-none"
+                  className="cp-field w-full h-10 px-3 rounded-lg bg-white text-slate-900 placeholder:text-slate-400 text-sm outline-none"
                 />
               </div>
               <button
                 type="button"
                 onClick={handleGuestSubscribe}
                 disabled={!email.trim() || saving}
-                className="inline-flex items-center justify-center rounded-2xl bg-slate-900 text-white px-7 py-4 text-sm font-semibold hover:bg-black disabled:opacity-60"
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 text-white px-4 text-sm font-medium hover:bg-black disabled:opacity-60"
               >
                 {saving ? "Saving…" : "Subscribe"}
               </button>
@@ -207,7 +218,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
                 <button
                   type="button"
                   onClick={handleGoogle}
-                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-7 py-4 text-sm font-semibold text-slate-800"
+                  className="w-full sm:w-auto inline-flex h-9 items-center justify-center rounded-lg bg-white border border-slate-200 px-4 text-sm font-medium text-slate-800"
                 >
                   Continue with Google
                 </button>
@@ -221,7 +232,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
                 </button>
               </div>
               <div className={`sm:col-span-3 text-sm font-medium ${guestStatus === "error" || authStatus === "error" ? "text-rose-700" : guestStatus === "ok" || authStatus === "sent" ? "text-emerald-800" : "text-slate-700"}`}>
-                {saveMsg || authMsg || "Subscribe with email only. Sign-in is optional, to manage alerts later."}
+                {saveMsg || authMsg || "We’ll email new matching jobs. Sign in later to change or stop this."}
               </div>
             </div>
           )}

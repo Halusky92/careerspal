@@ -30,7 +30,7 @@ async function fetchPublishedJobs(): Promise<{ jobs: Job[]; total: number }> {
     .eq("status", "published")
     .or(`timestamp.gte.${publishedCutoffMs},published_at.gte.${publishedCutoffIso},created_at.gte.${publishedCutoffIso}`)
     .order("timestamp", { ascending: false })
-    .range(0, 199);
+    .range(0, 499);
 
   const { data, count } = await query;
   const mapped = (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob).filter((job) => isOnNicheJob(job));

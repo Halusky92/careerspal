@@ -30,7 +30,7 @@ const OnboardingPage = () => {
         if (data.user?.name) setName(data.user.name);
         if (data.user?.role === "employer") setRole("employer");
         if (data.user?.isOnboarded) {
-          router.replace(data.user.role === "employer" ? "/dashboard/employer" : "/dashboard/candidate");
+          router.replace(data.user.role === "employer" ? "/dashboard/employer" : "/account");
         }
       } catch {
         // noop
@@ -54,7 +54,7 @@ const OnboardingPage = () => {
         },
         accessToken,
       );
-      router.push(role === "employer" ? "/dashboard/employer" : "/dashboard/candidate");
+      router.push(role === "employer" ? "/dashboard/employer" : "/account");
     } finally {
       setIsSaving(false);
     }

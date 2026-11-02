@@ -130,27 +130,27 @@ export default async function CompaniesPage() {
 
   return (
     <div className="bg-[#F8F9FD] pb-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
-        <div className="flex items-center justify-between gap-4">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
+        <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Companies</p>
-            <h1 className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Companies</p>
+            <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">
               Companies with live roles
             </h1>
-            <p className="mt-3 text-slate-600 font-medium max-w-2xl">
+            <p className="mt-1 text-sm text-slate-600 max-w-2xl">
               Only companies with published roles currently live on CareersPal.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Link
               href="/jobs"
-              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 text-white px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-black"
+              className="inline-flex h-8 items-center justify-center rounded-lg bg-slate-900 px-3 text-xs font-medium text-white hover:bg-black"
             >
               Browse jobs
             </Link>
             <Link
               href="/hire-talent"
-              className="hidden sm:inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
+              className="hidden sm:inline-flex h-8 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
             >
               Post a job
             </Link>
@@ -158,58 +158,57 @@ export default async function CompaniesPage() {
         </div>
 
         {companies.length === 0 ? (
-          <div className="mt-10 rounded-[2.75rem] border border-dashed border-slate-200 bg-white/70 backdrop-blur p-10 text-center">
-            <p className="text-slate-700 font-black text-lg">No companies to show yet.</p>
-            <p className="mt-2 text-slate-600 font-medium">Check the job board for the latest roles.</p>
-            <div className="mt-6">
+          <div className="mt-6 rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center">
+            <p className="text-slate-800 font-medium">No companies to show yet.</p>
+            <p className="mt-1 text-sm text-slate-600">Check the job board for the latest roles.</p>
+            <div className="mt-4">
               <Link
                 href="/jobs"
-                className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 text-white px-7 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700"
+                className="inline-flex h-9 items-center justify-center rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700"
               >
-                Browse jobs →
+                Browse jobs
               </Link>
             </div>
           </div>
         ) : (
-          <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {companies.map((c) => {
               const href = `/companies/${c.slug || createCompanySlug({ name: c.name })}`;
               const desc = isBoilerplateDescription(c.description) ? "" : plainText(c.description || "");
-              const shortDesc = desc.length > 120 ? `${desc.slice(0, 120).trim()}…` : desc;
+              const shortDesc = desc.length > 90 ? `${desc.slice(0, 90).trim()}…` : desc;
               const host = publicHost(c.website);
               return (
                 <Link
                   key={c.id}
                   href={href}
-                  className="rounded-2xl border border-slate-200 bg-white p-6 hover:border-slate-300 transition-colors shadow-sm"
+                  className="rounded-xl border border-slate-200 bg-white p-3.5 hover:border-slate-300 transition-colors"
                 >
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-lg overflow-hidden bg-white border border-slate-200 p-0.5 flex-shrink-0">
                       <CompanyLogo
                         name={c.name}
                         logoUrl={c.logoUrl}
                         website={c.website}
-                        className="w-full h-full rounded-xl overflow-hidden bg-white"
+                        className="w-full h-full rounded-md overflow-hidden bg-white"
                         imageClassName="w-full h-full object-contain"
                         fallbackClassName="text-[10px]"
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-base font-black text-slate-900 truncate">{c.name}</div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="text-sm font-semibold text-slate-900 truncate">{c.name}</div>
                         {Boolean(c.verified) && (
-                          <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-emerald-700">
+                          <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-emerald-700">
                             Verified
                           </span>
                         )}
                       </div>
-                      <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      <div className="mt-0.5 text-[11px] text-slate-500">
                         {c.liveRoles} live role{c.liveRoles === 1 ? "" : "s"}
-                        {c.location ? ` • ${c.location}` : ""}
-                        {host ? ` • ${host}` : ""}
+                        {host ? ` · ${host}` : ""}
                       </div>
                       {shortDesc && !shortDesc.toLowerCase().includes("coming soon") && (
-                        <div className="mt-3 text-sm text-slate-600 font-medium leading-relaxed line-clamp-3">
+                        <div className="mt-1.5 text-[13px] text-slate-600 leading-snug line-clamp-2">
                           {shortDesc}
                         </div>
                       )}

@@ -74,9 +74,10 @@ export const mapSupabaseJob = (row: SupabaseJobRow): Job => ({
   companyVerified: Boolean(row.companies?.verified),
   isFeatured: Boolean(row.is_featured),
   planType: (row.plan_type || undefined) as Job["planType"],
-  plan: row.plan_price
-    ? { type: (row.plan_type || "Standard") as PlanType, price: row.plan_price }
-    : undefined,
+  plan:
+    typeof row.plan_price === "number"
+      ? { type: (row.plan_type || "Standard") as PlanType, price: row.plan_price }
+      : undefined,
   remotePolicy: row.remote_policy || "",
   applyUrl: row.apply_url || "#",
   companyDescription: row.company_description || row.companies?.description || undefined,

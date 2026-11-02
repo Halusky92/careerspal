@@ -44,7 +44,9 @@ export async function middleware(_request: NextRequest) {
   if (!token) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/auth";
-    redirectUrl.searchParams.set("from", pathname);
+    const from = `${pathname}${request.nextUrl.search || ""}`;
+    redirectUrl.search = "";
+    redirectUrl.searchParams.set("from", from);
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -57,7 +59,9 @@ export async function middleware(_request: NextRequest) {
   if (!user) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/auth";
-    redirectUrl.searchParams.set("from", pathname);
+    const from = `${pathname}${request.nextUrl.search || ""}`;
+    redirectUrl.search = "";
+    redirectUrl.searchParams.set("from", from);
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -70,20 +74,22 @@ export async function middleware(_request: NextRequest) {
   if (!profile?.role) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/auth";
-    redirectUrl.searchParams.set("from", pathname);
+    const from = `${pathname}${request.nextUrl.search || ""}`;
+    redirectUrl.search = "";
+    redirectUrl.searchParams.set("from", from);
     return NextResponse.redirect(redirectUrl);
   }
 
   const role = profile.role || "candidate";
   if (matchesPath(pathname, adminPaths) && role !== "admin") {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/dashboard/candidate";
+    redirectUrl.pathname = "/account";
     return NextResponse.redirect(redirectUrl);
   }
 
   if (matchesPath(pathname, employerPaths) && role !== "employer" && role !== "admin") {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/dashboard/candidate";
+    redirectUrl.pathname = "/account";
     return NextResponse.redirect(redirectUrl);
   }
 

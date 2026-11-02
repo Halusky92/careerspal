@@ -28,7 +28,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const steps = [
     { id: 1, title: "Role details", desc: "Title, scope, salary" },
     { id: 2, title: "Company & apply", desc: "Brand + link" },
-    { id: 3, title: "Preview & pay", desc: foundingEligible ? "$1 launch checkout" : "Confirm & checkout" },
+    { id: 3, title: "Preview & pay", desc: foundingEligible ? "Start pack — submit for review" : "Confirm & checkout" },
   ] as const;
 
   const stepperProgress = steps.length > 1 ? ((step - 1) / (steps.length - 1)) * 100 : 0;
@@ -497,8 +497,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 </div>
                 <div className="flex flex-col gap-4">
                 <button onClick={handleFinalSubmit} className="w-full bg-slate-900 text-white font-semibold py-4 sm:py-6 rounded-2xl hover:bg-black shadow-[0_25px_70px_rgba(15,23,42,0.35)] active:scale-[0.98] transition-all text-base sm:text-xl">
-                    {foundingEligible
-                      ? "Pay $1 and submit for review"
+                    {foundingEligible && selectedPlan.type === "Standard"
+                      ? "Submit with Start pack"
                       : `Proceed to Payment (${formatPrice(selectedPlan.price)})`}
                   </button>
                   <button onClick={() => setStep(2)} className="text-slate-600 font-medium hover:text-indigo-600 transition-colors">Edit details</button>
@@ -543,7 +543,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
                 <AccordionRow id="review" title="Review & publish timeline">
                   <div className="space-y-2 text-sm font-medium text-slate-700">
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span>{foundingEligible ? " $1 checkout, then review" : " Submit + pay"}</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span>{foundingEligible ? " Start pack: submit, then review" : " Submit + pay"}</div>
                     <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">2</span> Review for quality + clarity</div>
                     <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">3</span> Publish when approved</div>
                     <p className="mt-3 text-xs text-slate-600">

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import AlertsClient from "./AlertsClient";
 
 type PageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 const getBaseUrl = () => {
@@ -31,8 +31,9 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function AlertsPage({ searchParams }: PageProps) {
-  const initialCategory = getParam(searchParams?.category) || null;
+export default async function AlertsPage({ searchParams }: PageProps) {
+  const resolved = (await searchParams) || {};
+  const initialCategory = getParam(resolved.category) || null;
 
   return (
     <div className="bg-[#F8F9FD] pb-8">

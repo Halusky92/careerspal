@@ -53,7 +53,7 @@ const Navbar: React.FC = () => {
   const accountLinks = [
     { label: "Profile", href: "/account" },
     { label: "Saved jobs", href: "/account?tab=saved" },
-    { label: "Alerts", href: "/alerts" },
+    { label: "Alerts", href: "/account?tab=alerts" },
     { label: "Settings", href: "/account?tab=settings" },
     ...(profile?.role === "employer" || profile?.role === "admin"
       ? [{ label: "Dashboard", href: dashboardHref || "/account" }]
@@ -105,12 +105,15 @@ const Navbar: React.FC = () => {
                 Pricing
               </Link>
 
-              <Link href={hireHref} className="h-9 px-3 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shrink-0">
+              <Link
+                href={hireHref}
+                className="inline-flex h-9 items-center justify-center px-3 rounded-lg bg-indigo-600 text-white text-sm font-medium leading-none hover:bg-indigo-700 shrink-0"
+              >
                 {hireLabel}
               </Link>
 
               {!profile?.email ? (
-                <Link href="/auth" className="h-9 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-800 hover:bg-slate-50 shrink-0">
+                <Link href={`/auth?from=${encodeURIComponent(pathname || "/")}`} className="inline-flex h-9 items-center justify-center px-3 rounded-lg border border-slate-200 text-sm font-medium leading-none text-slate-800 hover:bg-slate-50 shrink-0">
                   Sign in
                 </Link>
               ) : (
@@ -206,7 +209,7 @@ const Navbar: React.FC = () => {
         </div>
         <div className="px-4 py-3 space-y-1 text-base">
           {!profile?.email && (
-            <Link href="/auth" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+            <Link href={`/auth?from=${encodeURIComponent(pathname || "/")}`} onClick={closeMobile} className="block py-3 border-b border-slate-100">
               Sign in
             </Link>
           )}
@@ -229,6 +232,9 @@ const Navbar: React.FC = () => {
               </Link>
               <Link href="/account?tab=saved" onClick={closeMobile} className="block py-3 border-b border-slate-100">
                 Saved jobs
+              </Link>
+              <Link href="/account?tab=alerts" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                Alerts
               </Link>
               <Link href="/account?tab=settings" onClick={closeMobile} className="block py-3 border-b border-slate-100">
                 Settings

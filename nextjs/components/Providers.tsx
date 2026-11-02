@@ -156,6 +156,9 @@ const Providers = ({ children }: ProvidersProps) => {
     if (options?.role) {
       url.searchParams.set("role", options.role);
     }
+    if (options?.from && options.from.startsWith("/")) {
+      url.searchParams.set("from", options.from);
+    }
     return url.toString();
   }, []);
 

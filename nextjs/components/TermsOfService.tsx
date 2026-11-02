@@ -55,7 +55,7 @@ const TermsOfService: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">4. Fees & Payments</h2>
           <div className="text-slate-600 leading-relaxed font-medium space-y-4">
             <p>
-              Job posting fees start at <strong>$79 per 30-day listing</strong> (Standard). We also offer Featured Pro ($149) and Elite Managed ($249) tiers with additional visibility benefits.
+              The first 10 Standard listings per employer are free (Start pack). After that, posting fees start at <strong>$79 per 30-day listing</strong> (Standard). Featured Pro is $149 and Elite Managed is $249.
             </p>
             <p>
               <strong>Refund Policy:</strong> If we cannot publish your listing after review (for example due to missing required information), contact support at <strong>info@careerspal.com</strong>. Refunds are handled case-by-case based on the reason and status of the listing.

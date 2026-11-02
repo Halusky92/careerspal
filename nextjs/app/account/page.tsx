@@ -8,6 +8,7 @@ import { authFetch } from "../../lib/authFetch";
 import { createJobSlug } from "../../lib/jobs";
 import { Job } from "../../types";
 import { formatSalaryDisplay } from "../../lib/formatSalary";
+import { CATEGORY_HUBS } from "../../lib/categories";
 
 type AccountUser = {
   name?: string;
@@ -26,7 +27,10 @@ type UserFile = {
   createdAt: string;
 };
 
-type Tab = "profile" | "saved" | "documents" | "settings";
+type Tab = "profile" | "saved" | "alerts" | "documents" | "settings";
+
+type AlertRow = { id: string; query: string; created_at?: string };
+type SubscriberRow = { email: string; preference: string; created_at?: string };
 
 const initialsFrom = (name?: string, email?: string) => {
   const source = (name || email || "C").trim();
@@ -51,6 +55,11 @@ const AccountPageInner = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [alerts, setAlerts] = useState<AlertRow[]>([]);
+  const [subscriber, setSubscriber] = useState<SubscriberRow | null>(null);
+  const [alertQuery, setAlertQuery] = useState(CATEGORY_HUBS[0].dbCategories[0]);
+  const [alertBusy, setAlertBusy] = useState(false);
+  const [alertMsg, setAlertMsg] = useState("");
 
   const tab = (searchParams.get("tab") as Tab) || "profile";
   const setTab = (next: Tab) => {
@@ -89,6 +98,13 @@ const AccountPageInner = () => {
         const jobsRes = await fetch("/api/jobs");
         const jobsData = (await jobsRes.json()) as { jobs?: Job[] };
         setAllJobs(jobsData.jobs || []);
+        const alertsRes = await authFetch("/api/alerts", {}, accessToken);
+        const alertsData = (await alertsRes.json()) as { alerts?: AlertRow[] };
+        setAlerts(alertsData.alerts || []);
+        const subRes = await authFetch("/api/subscribers", {}, accessToken);
+        const subData = (await subRes.json()) as { subscriber?: SubscriberRow | null };
+        setSubscriber(subData.subscriber || null);
+        if (subData.subscriber?.preference) setAlertQuery(subData.subscriber.preference);
       } catch {
         // keep empty
       } finally {
@@ -185,6 +201,69 @@ const AccountPageInner = () => {
     router.replace("/auth");
   };
 
+  const handleSaveAlert = async () => {
+    setAlertBusy(true);
+    setAlertMsg("");
+    try {
+      const response = await authFetch(
+        "/api/alerts",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: alertQuery }),
+        },
+        accessToken,
+      );
+      const payload = (await response.json()) as { alert?: AlertRow; error?: string };
+      if (!response.ok) {
+        setAlertMsg(payload.error || "Unable to save alert.");
+        return;
+      }
+      if (payload.alert) {
+        setAlerts((prev) => (prev.some((row) => row.id === payload.alert!.id) ? prev : [payload.alert!, ...prev]));
+      }
+      const subRes = await authFetch(
+        "/api/subscribers",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ preference: alertQuery }),
+        },
+        accessToken,
+      );
+      const subData = (await subRes.json()) as { subscriber?: SubscriberRow };
+      if (subData.subscriber) setSubscriber(subData.subscriber);
+      setAlertMsg("Alert saved. We’ll email new matching jobs.");
+    } finally {
+      setAlertBusy(false);
+    }
+  };
+
+  const handleDeleteAlert = async (id: string) => {
+    await authFetch(
+      "/api/alerts",
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      },
+      accessToken,
+    );
+    setAlerts((prev) => prev.filter((row) => row.id !== id));
+  };
+
+  const handleStopEmail = async () => {
+    setAlertBusy(true);
+    try {
+      await authFetch("/api/subscribers", { method: "DELETE" }, accessToken);
+      setSubscriber(null);
+      setAlerts([]);
+      setAlertMsg("Email alerts stopped.");
+    } finally {
+      setAlertBusy(false);
+    }
+  };
+
   const handleSwitchRole = async (nextRole: "candidate" | "employer") => {
     try {
       await authFetch(
@@ -206,6 +285,7 @@ const AccountPageInner = () => {
   const tabs: { id: Tab; label: string }[] = [
     { id: "profile", label: "Profile" },
     { id: "saved", label: "Saved" },
+    { id: "alerts", label: "Alerts" },
     { id: "documents", label: "Documents" },
     { id: "settings", label: "Settings" },
   ];
@@ -258,7 +338,7 @@ const AccountPageInner = () => {
               </p>
             </div>
 
-            <div className="mt-6 flex justify-center gap-6 border-b border-slate-200">
+            <div className="mt-6 flex justify-center flex-wrap gap-x-6 gap-y-1 border-b border-slate-200">
               {tabs.map((item) => (
                 <button
                   key={item.id}
@@ -290,7 +370,7 @@ const AccountPageInner = () => {
                       <Link href="/jobs" className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium inline-flex items-center">
                         Browse jobs
                       </Link>
-                      <Link href="/alerts" className="h-9 px-4 rounded-lg border border-slate-200 text-sm font-medium inline-flex items-center">
+                      <Link href="/account?tab=alerts" className="h-9 px-4 rounded-lg border border-slate-200 text-sm font-medium inline-flex items-center">
                         Job alerts
                       </Link>
                     </div>
@@ -332,6 +412,72 @@ const AccountPageInner = () => {
                         </button>
                       </div>
                     ))
+                  )}
+                </div>
+              )}
+
+              {tab === "alerts" && (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+                    <p className="text-sm font-medium text-slate-900">Get new jobs by email</p>
+                    <p className="text-sm text-slate-600">Change the category or stop alerts. Same list as the Alerts page.</p>
+                    <label className="block text-xs font-medium text-slate-500" htmlFor="account-alert-category">
+                      Category
+                    </label>
+                    <select
+                      id="account-alert-category"
+                      value={alertQuery}
+                      onChange={(e) => setAlertQuery(e.target.value)}
+                      className="cp-field w-full h-10 rounded-lg px-3 text-sm"
+                    >
+                      {CATEGORY_HUBS.map((hub) => (
+                        <option key={hub.slug} value={hub.dbCategories[0]}>
+                          {hub.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSaveAlert}
+                        disabled={alertBusy}
+                        className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium disabled:opacity-50"
+                      >
+                        {alertBusy ? "Saving…" : subscriber ? "Update alert" : "Turn on alerts"}
+                      </button>
+                      {subscriber && (
+                        <button
+                          type="button"
+                          onClick={handleStopEmail}
+                          disabled={alertBusy}
+                          className="h-9 px-4 rounded-lg border border-slate-200 text-sm font-medium text-slate-700"
+                        >
+                          Stop email alerts
+                        </button>
+                      )}
+                    </div>
+                    {alertMsg && <p className="text-sm text-slate-600">{alertMsg}</p>}
+                    {subscriber && (
+                      <p className="text-xs text-slate-500">
+                        Sending to {subscriber.email} · {subscriber.preference}
+                      </p>
+                    )}
+                  </div>
+                  {alerts.length > 0 && (
+                    <div className="space-y-2">
+                      {alerts.map((row) => (
+                        <div key={row.id} className="rounded-xl border border-slate-200 px-4 py-3 flex items-center justify-between gap-3">
+                          <p className="text-sm text-slate-800 truncate">{row.query}</p>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAlert(row.id)}
+                            className="text-xs text-slate-500 hover:text-red-600 shrink-0"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}

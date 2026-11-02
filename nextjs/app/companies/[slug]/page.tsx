@@ -133,23 +133,23 @@ export default async function CompanyPage({ params }: PageProps) {
     // Prefer a clean fallback over crashing into the global error boundary.
     return (
       <div className="bg-[#F8F9FD] pb-8">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-16">
-          <div className="rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] p-8 sm:p-12 text-center">
-            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Company</div>
-            <h1 className="mt-3 text-3xl sm:text-4xl font-black text-slate-900">This page is temporarily unavailable</h1>
-            <p className="mt-4 text-slate-600 font-medium">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-10">
+          <div className="rounded-xl border border-slate-200 bg-white p-6 text-center">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Company</div>
+            <h1 className="mt-2 text-xl font-semibold text-slate-900">This page is temporarily unavailable</h1>
+            <p className="mt-2 text-sm text-slate-600">
               Please try again in a moment. You can still browse roles on the job board.
             </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="mt-5 flex flex-col sm:flex-row gap-2 justify-center">
               <Link
                 href="/jobs"
-                className="inline-flex items-center justify-center rounded-2xl bg-slate-900 text-white px-8 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-black"
+                className="inline-flex h-9 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white hover:bg-black"
               >
                 Browse jobs
               </Link>
               <Link
                 href={`/companies/${slug}`}
-                className="inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 text-slate-800 px-8 py-4 text-[10px] font-black uppercase tracking-widest hover:border-indigo-200 hover:text-indigo-700 transition-colors"
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-800 hover:border-indigo-200 hover:text-indigo-700"
               >
                 Retry
               </Link>
@@ -190,56 +190,47 @@ export default async function CompanyPage({ params }: PageProps) {
 
   return (
     <div className="bg-[#F8F9FD] pb-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
-        <div className="flex items-center justify-between gap-3">
-          <Link href="/jobs" className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-indigo-700">
-            <span aria-hidden="true">←</span> Back to jobs
-          </Link>
-          <Link
-            href="/post-a-job"
-            className="inline-flex items-center gap-2 rounded-full bg-slate-900 text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-black"
-          >
-            Post a job
-          </Link>
-        </div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
+        <Link href="/jobs" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-indigo-700">
+          <span aria-hidden="true">←</span> Back to jobs
+        </Link>
 
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Sidebar */}
+        <div className="mt-3 grid grid-cols-1 lg:grid-cols-12 gap-4">
           <aside className="lg:col-span-4">
-            <div className="lg:sticky lg:top-28 rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] overflow-hidden">
-              <div className="p-6 sm:p-8 border-b border-slate-100">
-                <div className="w-20 h-20 rounded-[1.6rem] overflow-hidden bg-white border border-slate-200/70 p-2">
+            <div className="lg:sticky lg:top-20 rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="p-4 border-b border-slate-100">
+                <div className="w-11 h-11 rounded-lg overflow-hidden bg-white border border-slate-200 p-1">
                   <CompanyLogo
                     name={companyName}
                     logoUrl={company.logo}
                     website={companyWebsite || undefined}
-                    className="w-full h-full rounded-xl overflow-hidden bg-white"
+                    className="w-full h-full rounded-md overflow-hidden bg-white"
                     imageClassName="w-full h-full object-contain"
                     fallbackClassName="text-[10px]"
                   />
                 </div>
 
-                <h1 className="mt-5 text-3xl font-black text-slate-900 tracking-tight">{companyName}</h1>
+                <h1 className="mt-3 text-lg font-semibold text-slate-900 tracking-tight">{companyName}</h1>
 
-                <div className="mt-3 flex flex-wrap items-center gap-2">
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   {showVerified && (
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700">
                       Verified
                     </span>
                   )}
-                  <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
-                    Jobs posted: {jobs.length}
+                  <span className="text-[11px] text-slate-500">
+                    {jobs.length} live role{jobs.length === 1 ? "" : "s"}
                   </span>
                 </div>
 
-                <div className="mt-5 space-y-3 text-sm font-bold text-slate-700">
+                <div className="mt-3 space-y-1.5 text-sm text-slate-700">
                   {companyLocation && (
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-slate-500">HQ</span>
                       <span className="text-slate-900">{companyLocation}</span>
                     </div>
                   )}
-                  {employeeCount && (
+                  {employeeCount && employeeCount !== "—" && (
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-slate-500">Size</span>
                       <span className="text-slate-900">{employeeCount}</span>
@@ -252,7 +243,7 @@ export default async function CompanyPage({ params }: PageProps) {
                         href={companyWebsite}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-indigo-700 hover:text-indigo-800 hover:underline decoration-indigo-300 underline-offset-2"
+                        className="text-indigo-700 hover:underline underline-offset-2"
                       >
                         {safeHost(companyWebsite)}
                       </a>
@@ -260,53 +251,52 @@ export default async function CompanyPage({ params }: PageProps) {
                   )}
                 </div>
 
-                <div className="mt-6 flex flex-col gap-2">
+                <div className="mt-4 flex flex-col gap-1.5">
                   <a
                     href="#roles"
-                    className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 text-white px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
+                    className="inline-flex h-9 items-center justify-center rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
                   >
-                    View roles →
+                    View roles
                   </a>
-                  <a
-                    href={companyWebsite || "#"}
-                    target={companyWebsite ? "_blank" : undefined}
-                    rel={companyWebsite ? "noopener noreferrer" : undefined}
-                    className="inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-700 transition-colors"
-                  >
-                    {companyWebsite ? "Visit website" : "Website not provided"}
-                  </a>
+                  {companyWebsite ? (
+                    <a
+                      href={companyWebsite}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
+                    >
+                      Visit website
+                    </a>
+                  ) : null}
                 </div>
               </div>
 
-              <div className="p-6 sm:p-8">
-                <div className="flex flex-wrap gap-2">
-                  <a href="#about" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
-                    About
+              <div className="px-4 py-3 flex flex-wrap gap-1.5">
+                <a href="#about" className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
+                  About
+                </a>
+                {stack.length > 0 && (
+                  <a href="#stack" className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
+                    Stack
                   </a>
-                  {stack.length > 0 && (
-                    <a href="#stack" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
-                      Stack
-                    </a>
-                  )}
-                  {benefits.length > 0 && (
-                    <a href="#benefits" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
-                      Benefits
-                    </a>
-                  )}
-                  <a href="#roles" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
-                    Roles
+                )}
+                {benefits.length > 0 && (
+                  <a href="#benefits" className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
+                    Benefits
                   </a>
-                </div>
+                )}
+                <a href="#roles" className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
+                  Roles
+                </a>
               </div>
             </div>
           </aside>
 
-          {/* Main */}
-          <div className="lg:col-span-8 space-y-6">
-            <section id="about" className="rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] p-6 sm:p-10">
-              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">About</div>
-              <h2 className="mt-3 text-2xl sm:text-3xl font-black text-slate-900">What they do</h2>
-              <p className="mt-4 text-slate-700 font-medium leading-relaxed">
+          <div className="lg:col-span-8 space-y-3">
+            <section id="about" className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">About</div>
+              <h2 className="mt-1 text-base font-semibold text-slate-900">What they do</h2>
+              <p className="mt-2 text-sm text-slate-700 leading-relaxed">
                 {companyDescription && !companyDescription.toLowerCase().includes("coming soon")
                   ? companyDescription
                   : "No company description yet. Always verify details on the official company site."}
@@ -314,30 +304,30 @@ export default async function CompanyPage({ params }: PageProps) {
             </section>
 
             {stack.length > 0 && (
-              <section id="stack" className="rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] p-6 sm:p-10">
-                <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Stack</div>
-                <h2 className="mt-3 text-2xl sm:text-3xl font-black text-slate-900">Tools & keywords seen in roles</h2>
-                <div className="mt-5 flex flex-wrap gap-2">
+              <section id="stack" className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Stack</div>
+                <h2 className="mt-1 text-base font-semibold text-slate-900">Tools & keywords seen in roles</h2>
+                <div className="mt-3 flex flex-wrap gap-1.5">
                   {stack.map((t) => (
-                    <span key={t} className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
+                    <span key={t} className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700">
                       {t}
                     </span>
                   ))}
                 </div>
-                <p className="mt-4 text-xs text-slate-500 font-medium">
+                <p className="mt-2 text-xs text-slate-500">
                   Derived from published role descriptions. Not guaranteed for every team.
                 </p>
               </section>
             )}
 
             {benefits.length > 0 && (
-              <section id="benefits" className="rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] p-6 sm:p-10">
-                <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Benefits</div>
-                <h2 className="mt-3 text-2xl sm:text-3xl font-black text-slate-900">Benefits mentioned in roles</h2>
-                <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700 font-medium">
+              <section id="benefits" className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Benefits</div>
+                <h2 className="mt-1 text-base font-semibold text-slate-900">Benefits mentioned in roles</h2>
+                <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm text-slate-700">
                   {benefits.map((b) => (
-                    <li key={b} className="flex items-start gap-2">
-                      <span className="text-emerald-600 font-black mt-0.5">✓</span>
+                    <li key={b} className="flex items-start gap-1.5">
+                      <span className="text-emerald-600 mt-0.5">✓</span>
                       <span>{b}</span>
                     </li>
                   ))}
@@ -345,64 +335,41 @@ export default async function CompanyPage({ params }: PageProps) {
               </section>
             )}
 
-            <section id="roles" className="rounded-[2.75rem] border border-slate-200/60 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] p-6 sm:p-10">
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Roles</div>
-                  <h2 className="mt-3 text-2xl sm:text-3xl font-black text-slate-900">All {companyName} roles</h2>
-                  <p className="mt-2 text-slate-600 font-medium">
-                    {jobs.length > 0 ? "Published roles currently live on CareersPal." : "No published roles live right now."}
-                  </p>
-                </div>
-              </div>
+            <section id="roles" className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Roles</div>
+              <h2 className="mt-1 text-base font-semibold text-slate-900">All {companyName} roles</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {jobs.length > 0 ? "Published roles currently live on CareersPal." : "No published roles live right now."}
+              </p>
 
               {jobs.length > 0 ? (
-                <ul className="mt-6 space-y-3">
+                <ul className="mt-3 space-y-2">
                   {jobs.map((job) => {
                     const href = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
                     return (
-                      <li key={job.id} className="rounded-3xl border border-slate-200/60 bg-white px-5 py-5 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors">
-                        <div className="flex items-start justify-between gap-4">
+                      <li key={job.id} className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 hover:border-indigo-200">
+                        <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <Link href={href} className="block text-base sm:text-lg font-black text-slate-900 hover:text-indigo-700">
+                            <Link href={href} className="block text-sm font-semibold text-slate-900 hover:text-indigo-700 truncate">
                               {job.title}
                             </Link>
-                            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-bold text-slate-600">
-                              {job.category && <span className="truncate">{job.category}</span>}
-                              {job.category && <span className="text-slate-300">•</span>}
-                              <span className="truncate">{job.location}</span>
-                              {job.type && job.type !== "Unknown" ? (
-                                <>
-                                  <span className="text-slate-300">•</span>
-                                  <span className="truncate">{job.type}</span>
-                                </>
-                              ) : null}
-                              {job.remotePolicy && (
-                                <>
-                                  <span className="text-slate-300">•</span>
-                                  <span className="truncate">{job.remotePolicy}</span>
-                                </>
-                              )}
+                            <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[12px] text-slate-500">
+                              {job.location && <span className="truncate">{job.location}</span>}
                               {job.postedAt && (
                                 <>
-                                  <span className="text-slate-300">•</span>
-                                  <span className="truncate">Posted {job.postedAt}</span>
+                                  <span className="text-slate-300">·</span>
+                                  <span className="truncate">{job.postedAt}</span>
                                 </>
                               )}
                             </div>
                           </div>
                           <div className="flex-shrink-0 text-right">
-                            <div className="text-sm font-black text-slate-900 whitespace-nowrap">
+                            <div className="text-sm font-medium text-slate-900 whitespace-nowrap">
                               {formatSalaryDisplay(job.salary)}
                             </div>
-                            <div className="mt-2">
-                              <Link
-                                href={href}
-                                className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
-                              >
-                                View role →
-                              </Link>
-                            </div>
+                            <Link href={href} className="mt-1 inline-flex text-xs font-medium text-indigo-700 hover:underline">
+                              View role
+                            </Link>
                           </div>
                         </div>
                       </li>
@@ -410,16 +377,14 @@ export default async function CompanyPage({ params }: PageProps) {
                   })}
                 </ul>
               ) : (
-                <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 p-8 text-center">
-                  <p className="text-slate-600 font-medium">Browse the job board for other live roles.</p>
-                  <div className="mt-4">
-                    <Link
-                      href="/jobs"
-                      className="inline-flex items-center justify-center rounded-2xl bg-slate-900 text-white px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-black"
-                    >
-                      Browse jobs
-                    </Link>
-                  </div>
+                <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-center">
+                  <p className="text-sm text-slate-600">Browse the job board for other live roles.</p>
+                  <Link
+                    href="/jobs"
+                    className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white hover:bg-black"
+                  >
+                    Browse jobs
+                  </Link>
                 </div>
               )}
             </section>

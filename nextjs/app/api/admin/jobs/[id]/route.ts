@@ -56,14 +56,13 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   if (body.status) {
     if (body.status === "published") {
-      const isPaid = existing.stripe_payment_status === "paid";
+      const paymentStatus = String((existing as { stripe_payment_status?: string | null }).stripe_payment_status || "");
+      const isPaid = paymentStatus === "paid" || paymentStatus === "founding";
       const planPrice = typeof (existing as { plan_price?: unknown }).plan_price === "number" ? (existing as { plan_price: number }).plan_price : null;
       const isFree = planPrice === 0;
       const createdBy = (existing as { created_by?: string | null }).created_by || null;
       const isAdminCreated = Boolean(createdBy && auth.profile.id && createdBy === auth.profile.id);
 
-      // Admin restore/publish should work for free/admin-created/imported roles.
-      // Paid employer listings still require Stripe payment confirmation.
       if (!isPaid && !isFree && !isAdminCreated) {
         return NextResponse.json({ error: "Payment not confirmed." }, { status: 400 });
       }

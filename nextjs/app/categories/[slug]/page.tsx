@@ -10,7 +10,7 @@ import { isOnNicheJob } from "../../../lib/nicheScope";
 import { formatSalaryDisplay } from "../../../lib/formatSalary";
 
 type PageProps = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 const getBaseUrl = () => {
@@ -50,7 +50,8 @@ async function fetchPublishedJobsForHub(hubSlug: string): Promise<{ hubLabel: st
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const hub = getCategoryHub(params.slug);
+  const { slug } = await params;
+  const hub = getCategoryHub(slug);
   if (!hub) return {};
 
   const baseUrl = getBaseUrl();
@@ -74,11 +75,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export const dynamic = "force-dynamic";
 
 export default async function CategoryPage({ params }: PageProps) {
-  const result = await fetchPublishedJobsForHub(params.slug);
+  const { slug } = await params;
+  const result = await fetchPublishedJobsForHub(slug);
   if (!result) notFound();
 
   const { hubLabel, intro, jobs, preference } = result;
-  const hub = getCategoryHub(params.slug)!;
+  const hub = getCategoryHub(slug)!;
 
   return (
     <div className="bg-[#F8F9FD] pb-8">

@@ -30,13 +30,14 @@ const PostJobPageInner = () => {
     return getStoredPlan() || { type: "Standard", price: 79 };
   });
   const [showTestPlan, setShowTestPlan] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   // Ensure the admin-only $1 plan never leaks to non-admins via sessionStorage.
   useEffect(() => {
     const isAdmin = profile?.role === "admin";
     const isInternalPrice = selectedPlan.type === "Standard" && selectedPlan.price <= 5;
     if (!isInternalPrice) return;
-    if (foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price === 1) return;
+    if (foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price < 79) return;
 
     // Only allow internal cheap pricing when the backend explicitly allowlists the admin.
     if (!(isAdmin && showTestPlan)) {
@@ -111,20 +112,23 @@ const PostJobPageInner = () => {
   useEffect(() => {
     if (!foundingEligible) return;
     if (selectedPlan.type !== "Standard") return;
-    setSelectedPlan({ type: "Standard", price: 1 });
-  }, [foundingEligible, selectedPlan.type]);
+    if (selectedPlan.price === 0) return;
+    setSelectedPlan({ type: "Standard", price: 0 });
+  }, [foundingEligible, selectedPlan.type, selectedPlan.price]);
 
   const handleJobSubmission = async (data: Job) => {
-    const storagePlanPrice = Number.isFinite(selectedPlan.price)
-      ? selectedPlan.price < 1
-        ? 1
-        : Math.round(selectedPlan.price)
-      : 79;
+    const storagePlanPrice =
+      foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price < 79
+        ? 0
+        : Number.isFinite(selectedPlan.price)
+          ? Math.max(0, Math.round(selectedPlan.price))
+          : 79;
     const finalJobData = { ...data, plan: selectedPlan, planType: selectedPlan.type, status: "draft" };
     sessionStorage.setItem("cp_pending_job", JSON.stringify(finalJobData));
 
+    setSubmitError("");
     if (authLoading || !accessToken) {
-      router.push(`/auth?role=employer&from=${encodeURIComponent("/checkout")}`);
+      router.push(`/auth?role=employer&from=${encodeURIComponent("/post-a-job")}`);
       return;
     }
 
@@ -142,12 +146,12 @@ const PostJobPageInner = () => {
           accessToken,
         );
         if (!roleResp.ok) {
-          router.push(`/auth?role=employer&from=${encodeURIComponent("/checkout")}`);
+          router.push(`/auth?role=employer&from=${encodeURIComponent("/post-a-job")}`);
           return;
         }
         await refreshProfile();
       } catch {
-        router.push(`/auth?role=employer&from=${encodeURIComponent("/checkout")}`);
+        router.push(`/auth?role=employer&from=${encodeURIComponent("/post-a-job")}`);
         return;
       }
     }
@@ -200,14 +204,32 @@ const PostJobPageInner = () => {
       }
         if (payload.job?.id) {
         sessionStorage.setItem("cp_pending_job_id", payload.job.id);
+        const useStartPack = foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price < 79;
+        if (useStartPack) {
+          const submit = await authFetch(`/api/employer/jobs/${payload.job.id}/submit`, { method: "POST" }, accessToken);
+          if (submit.ok) {
+            router.push("/dashboard/employer");
+            return;
+          }
+          const submitPayload = (await submit.json()) as { error?: string; checkoutRequired?: boolean };
+          if (!submitPayload.checkoutRequired) {
+            setSubmitError(submitPayload.error || "Could not submit the Start pack listing.");
+            return;
+          }
+        }
+        if (storagePlanPrice === 0) {
+          setSubmitError("Start pack could not be applied. Choose a paid plan or try again.");
+          return;
+        }
         router.push(`/checkout?jobId=${payload.job.id}`);
         return;
       }
+      setSubmitError(payload.error || "Could not create the listing.");
+      return;
     } catch {
-      // fallback to checkout without server id
+      setSubmitError("Could not create the listing. Try again.");
+      return;
     }
-
-    router.push("/checkout");
   };
 
   return (
@@ -220,6 +242,11 @@ const PostJobPageInner = () => {
           <span>← Back</span>
         </button>
       </div>
+      {submitError && (
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-3">
+          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{submitError}</p>
+        </div>
+      )}
       <PostJob
         key={initialJob?.id || "new"}
         onComplete={handleJobSubmission}

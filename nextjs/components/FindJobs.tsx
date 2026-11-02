@@ -568,6 +568,15 @@ const FindJobs: React.FC<FindJobsProps> = ({
       );
       const payload = (await response.json()) as { existing?: boolean };
       if (response.ok) {
+        await authFetch(
+          "/api/subscribers",
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ preference: query.trim() || "All" }),
+          },
+          accessToken,
+        );
         setSavedNotice(payload.existing ? 'Alert already saved' : 'Alert saved');
       } else {
         setSavedNotice('Sign in to save alerts');
@@ -985,7 +994,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               setOpenWwrDropdown(null);
               if (variant === "sheet") setIsFilterOpen(false);
             }}
-            className="mt-2 w-full h-11 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-black"
+            className="mt-2 w-full h-9 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-black"
           >
             Apply filters
           </button>
@@ -996,9 +1005,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   return (
     <div className="bg-[#F8F9FD]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3">
         <div>
-          <div className="cp-search rounded-2xl px-3 sm:px-4 py-3">
+          <div className="cp-search rounded-xl px-3 sm:px-4 py-2">
             <div className="flex flex-col lg:flex-row lg:items-end gap-2 lg:gap-3">
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 <div ref={titleRef} className="relative">
@@ -1011,7 +1020,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                       onChange={setQuery}
                       placeholder="Role, company, tool…"
                       ariaLabel="Role, company, tool…"
-                      inputClassName="cp-field w-full h-11 rounded-lg px-3 pr-9 text-[16px] sm:text-sm text-slate-900 outline-none bg-white"
+                      inputClassName="cp-field w-full h-10 rounded-lg px-3 pr-9 text-[16px] sm:text-sm text-slate-900 outline-none bg-white"
                     />
                     {query && (
                       <button
@@ -1039,7 +1048,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                       onChange={setLocationQuery}
                       placeholder="City, country, or remote"
                       ariaLabel="City, country, or remote"
-                      inputClassName="cp-field w-full h-11 rounded-lg px-3 pr-9 text-[16px] sm:text-sm text-slate-900 outline-none bg-white"
+                      inputClassName="cp-field w-full h-10 rounded-lg px-3 pr-9 text-[16px] sm:text-sm text-slate-900 outline-none bg-white"
                     />
                     {locationQuery && (
                       <button
@@ -1063,7 +1072,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                    className="cp-field mt-1 w-full h-11 rounded-lg bg-white px-3 text-sm text-slate-800 outline-none"
+                    className="cp-field mt-1 w-full h-10 rounded-lg bg-white px-3 text-sm text-slate-800 outline-none"
                   >
                     <option value="newest">Newest</option>
                     <option value="salary">Highest salary</option>
@@ -1079,7 +1088,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                       onClick={() => setShowSavedOnly((prev) => !prev)}
                       disabled={savedCount === 0}
                       aria-pressed={showSavedOnly}
-                      className={`hidden lg:inline-flex h-11 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                      className={`hidden lg:inline-flex h-10 px-3 rounded-lg border text-sm font-medium transition-colors ${
                         showSavedOnly
                           ? "bg-indigo-600 text-white border-indigo-600"
                           : "bg-white text-slate-600 border-slate-300 hover:border-indigo-200 hover:text-indigo-700"
@@ -1090,13 +1099,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   )}
                   <button
                     onClick={clearAllFilters}
-                    className="hidden lg:inline-flex h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
+                    className="hidden lg:inline-flex h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
                   >
                     Reset
                   </button>
                   <button
                     onClick={() => setIsFilterOpen(true)}
-                    className="lg:hidden h-11 flex-1 px-4 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-black"
+                    className="lg:hidden h-10 flex-1 px-4 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-black"
                   >
                     Filters
                   </button>

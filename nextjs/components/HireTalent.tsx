@@ -89,7 +89,7 @@ const HireTalent: React.FC<HireTalentProps> = ({ onPostJob }) => {
             </Link>
           </div>
           <p className="mt-4 text-sm text-indigo-100">
-            First 10 Standard listings: $1, then Standard $79 / Pro $149 / Elite $249.
+            Start pack: first 10 Standard listings free, then $79 / $149 / $249.
           </p>
         </div>
       </section>

@@ -77,7 +77,10 @@ export async function POST(request: Request) {
   if (isLaunchDollar) {
     const founding = await getFoundingStatus(auth.profile.id);
     if (!founding.eligible) {
-      return NextResponse.json({ error: "The $1 launch price is no longer available for this account." }, { status: 403 });
+      return NextResponse.json({ error: "The Start pack is no longer available for this account." }, { status: 403 });
+    }
+    if (Number(price) === 0) {
+      return NextResponse.json({ error: "Start pack listings skip checkout." }, { status: 400 });
     }
   } else {
     const needsAdminApproval = Boolean(body.adminInternalPlan) || price < 1 || price <= 5;

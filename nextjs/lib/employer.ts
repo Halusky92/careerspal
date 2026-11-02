@@ -41,7 +41,7 @@ export async function loadEmployerOwnedJob(jobId: string, profileId: string) {
   if (!supabaseAdmin) return { job: null as Record<string, unknown> | null, error: "not_configured" };
   const full = await supabaseAdmin
     .from("jobs")
-    .select("id,title,description,salary,apply_url,status,origin,created_by,company_id,stripe_payment_status,views,matches")
+    .select("id,title,description,salary,apply_url,status,origin,created_by,company_id,stripe_payment_status,plan_type,plan_price,views,matches")
     .eq("id", jobId)
     .maybeSingle();
   const data = full.error
@@ -139,12 +139,13 @@ export async function getFoundingStatus(profileId: string) {
   if (myCompany?.id) {
     const { data: jobs } = await supabaseAdmin
       .from("jobs")
-      .select("id,status,origin")
+      .select("id,status,origin,plan_price,stripe_payment_status")
       .eq("company_id", myCompany.id)
       .eq("created_by", profileId);
     usedJobs = (jobs || []).filter((job) => {
       if ((job.origin || "employer") === "greenhouse") return false;
-      return COUNTED_FOUNDING_STATUSES.has(job.status || "");
+      if (!COUNTED_FOUNDING_STATUSES.has(job.status || "")) return false;
+      return job.plan_price === 0 || job.stripe_payment_status === "founding";
     }).length;
   }
   const remainingJobs = Math.max(0, FOUNDING_JOBS_PER_COMPANY - usedJobs);

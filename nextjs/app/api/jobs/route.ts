@@ -99,7 +99,7 @@ export const POST = async (request: Request) => {
   if (body.status && !allowedStatuses.has(body.status)) {
     return NextResponse.json({ error: "Invalid status." }, { status: 400 });
   }
-  const status = body.status || "draft";
+  const status = auth.profile.role === "admin" ? body.status || "draft" : "draft";
   const timestamp = body.timestamp || (status === "published" ? Date.now() : null);
   const postedAt = body.postedAt || (status === "published" ? "Just now" : "Draft");
 
@@ -147,7 +147,7 @@ export const POST = async (request: Request) => {
       is_featured: Boolean(body.isFeatured),
       status,
       plan_type: body.planType || null,
-      plan_price: body.plan?.price || body.planPrice || null,
+      plan_price: body.plan?.price ?? body.planPrice ?? null,
       plan_currency: "USD",
       views: body.views || 0,
       matches: body.matches || 0,
