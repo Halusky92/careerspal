@@ -16,11 +16,7 @@ const EmployerDashboardPage = () => {
         router.replace("/auth");
         return;
       }
-      if (profile.role === "admin") {
-        router.replace("/dashboard/admin");
-        return;
-      }
-      if (profile.role !== "employer") {
+      if (profile.role !== "employer" && profile.role !== "admin") {
         router.replace("/dashboard/candidate");
       }
     } catch {

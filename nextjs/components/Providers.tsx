@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { authFetch } from "@/lib/authFetch";
+import { bindPostingSessionOwner, clearUnscopedPostingSession, hasPendingPosting, postingOwnerKey } from "@/lib/postingSession";
 
 type Profile = {
   name?: string | null;
@@ -49,7 +50,7 @@ const Providers = ({ children }: ProvidersProps) => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const maybeContinuePendingAuthFlow = useCallback(() => {
+  const maybeContinuePendingAuthFlow = useCallback((userId?: string | null) => {
     if (typeof window === "undefined") return;
     try {
       const path = window.location.pathname || "/";
@@ -58,9 +59,8 @@ const Providers = ({ children }: ProvidersProps) => {
 
       const stored =
         window.sessionStorage.getItem("cp_auth_from") || window.localStorage.getItem("cp_auth_from");
-      const hasPending = Boolean(
-        window.sessionStorage.getItem("cp_pending_job") || window.sessionStorage.getItem("cp_pending_job_id"),
-      );
+      const owner = postingOwnerKey(userId);
+      const hasPending = hasPendingPosting(owner);
       const safeFrom = stored && stored.startsWith("/") ? stored : null;
       const target = safeFrom || (hasPending ? "/checkout" : null);
       if (!target) return;
@@ -110,7 +110,7 @@ const Providers = ({ children }: ProvidersProps) => {
       await fetchProfile(session?.access_token ?? null);
       // If OAuth/magic-link redirect landed on home, continue flow.
       if (session?.access_token) {
-        maybeContinuePendingAuthFlow();
+        maybeContinuePendingAuthFlow(session.user?.id);
       }
       if (!isActive) return;
       setLoading(false);
@@ -125,7 +125,7 @@ const Providers = ({ children }: ProvidersProps) => {
       setAccessToken(session?.access_token ?? null);
       await fetchProfile(session?.access_token ?? null);
       if (_event === "SIGNED_IN" && session?.access_token) {
-        maybeContinuePendingAuthFlow();
+        maybeContinuePendingAuthFlow(session.user?.id);
       }
       if (!isActive) return;
       setLoading(false);
@@ -186,7 +186,13 @@ const Providers = ({ children }: ProvidersProps) => {
     [buildRedirect],
   );
 
+  useEffect(() => {
+    bindPostingSessionOwner(postingOwnerKey(user?.id, profile?.email));
+  }, [user?.id, profile?.email]);
+
   const signOut = useCallback(async () => {
+    clearUnscopedPostingSession();
+    bindPostingSessionOwner("guest");
     await supabase.auth.signOut();
   }, []);
 

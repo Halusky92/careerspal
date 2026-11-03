@@ -3,12 +3,15 @@
 import { useRouter } from "next/navigation";
 import Pricing from "../../components/Pricing";
 import { PlanType } from "../../types";
+import { useSupabaseAuth } from "../../components/Providers";
+import { postingOwnerKey, writePostingItem } from "../../lib/postingSession";
 
 const PricingPage = () => {
   const router = useRouter();
+  const { user, profile } = useSupabaseAuth();
 
   const handleSelectPlan = (type: PlanType, price: number) => {
-    sessionStorage.setItem("cp_selected_plan", JSON.stringify({ type, price }));
+    writePostingItem("cp_selected_plan", postingOwnerKey(user?.id, profile?.email), JSON.stringify({ type, price }));
     router.push("/post-a-job");
   };
 

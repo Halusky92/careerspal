@@ -3,6 +3,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { generateJobDescription } from '../services/geminiService';
+import { useSupabaseAuth } from "./Providers";
+import { postingOwnerKey, readPostingItem, writePostingItem } from "../lib/postingSession";
 import { Job, PlanType } from '../types';
 import { CATEGORIES, CATEGORY_FILTER_LABELS } from '../constants';
 import { PLAN_PRICES } from '../lib/plans';
@@ -56,24 +58,37 @@ const AccordionRow = ({
   );
 };
 
-const readDraftPost = (): DraftPost | null => {
-  if (typeof window === "undefined") return null;
+const readDraftPost = (owner: string): DraftPost | null => {
   try {
-    const raw = sessionStorage.getItem("cp_draft_post");
+    const raw = readPostingItem("cp_draft_post", owner);
     return raw ? (JSON.parse(raw) as DraftPost) : null;
   } catch {
     return null;
   }
 };
 
+const formFromJob = (job?: Partial<Job> | null, draft?: DraftPost | null): JobFormData => ({
+  title: job?.title || draft?.formData?.title || "",
+  keywords: job?.keywords || draft?.formData?.keywords || "",
+  description: job?.description || draft?.formData?.description || "",
+  company: job?.company || draft?.formData?.company || "",
+  companyWebsite: job?.companyWebsite || draft?.formData?.companyWebsite || "",
+  logo: job?.logo || draft?.formData?.logo || "",
+  salary: job?.salary || draft?.formData?.salary || "",
+  location: job?.location || draft?.formData?.location || "",
+  type: (job?.type as JobFormData["type"]) || (draft?.formData?.type as JobFormData["type"]) || "Full-time",
+  remotePolicy: job?.remotePolicy || draft?.formData?.remotePolicy || "Remote (Global)",
+  category: job?.category || draft?.formData?.category || "Operations",
+  applyUrl: job?.applyUrl || draft?.formData?.applyUrl || "",
+  tags: job?.tags?.length ? job.tags : draft?.formData?.tags?.length ? draft.formData.tags : [],
+});
+
 const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan, foundingEligible, foundingStatus, initialJob, submitting, submitError }) => {
-  const draft = initialJob?.id ? null : readDraftPost();
-  const [step, setStep] = useState(() => {
-    const n = Number(draft?.step);
-    return n === 2 || n === 3 ? n : 1;
-  });
+  const { user, profile, loading: authLoading } = useSupabaseAuth();
+  const owner = postingOwnerKey(user?.id, profile?.email);
+  const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [logoFileName, setLogoFileName] = useState(draft?.logoFileName || "");
+  const [logoFileName, setLogoFileName] = useState("");
   const [openInfoId, setOpenInfoId] = useState<("get" | "requirements" | "review") | null>("get");
   const [titleMenuOpen, setTitleMenuOpen] = useState(false);
   const [liveTitles, setLiveTitles] = useState<string[]>([]);
@@ -89,21 +104,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   ] as const;
 
   
-  const [formData, setFormData] = useState<JobFormData>({
-    title: initialJob?.title || draft?.formData?.title || '',
-    keywords: initialJob?.keywords || draft?.formData?.keywords || '',
-    description: initialJob?.description || draft?.formData?.description || '',
-    company: initialJob?.company || draft?.formData?.company || '',
-    companyWebsite: initialJob?.companyWebsite || draft?.formData?.companyWebsite || '',
-    logo: initialJob?.logo || draft?.formData?.logo || '',
-    salary: initialJob?.salary || draft?.formData?.salary || '',
-    location: initialJob?.location || draft?.formData?.location || '',
-    type: (initialJob?.type as JobFormData['type']) || (draft?.formData?.type as JobFormData['type']) || 'Full-time',
-    remotePolicy: initialJob?.remotePolicy || draft?.formData?.remotePolicy || 'Remote (Global)',
-    category: initialJob?.category || draft?.formData?.category || 'Operations',
-    applyUrl: initialJob?.applyUrl || draft?.formData?.applyUrl || '',
-    tags: initialJob?.tags?.length ? initialJob.tags : (draft?.formData?.tags?.length ? draft.formData.tags : [])
-  });
+  const [formData, setFormData] = useState<JobFormData>(() => formFromJob(initialJob));
+  const [draftOwner, setDraftOwner] = useState<string | null>(null);
 
   const resizeDescriptionField = () => {
     const el = descriptionRef.current;
@@ -117,19 +119,30 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   }, [formData.description]);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (initialJob?.id) {
+      setFormData(formFromJob(initialJob));
+      setLogoFileName("");
+      setStep(1);
+      setDraftOwner(owner);
+      return;
+    }
+    const draft = readDraftPost(owner);
+    const n = Number(draft?.step);
+    setFormData(formFromJob(null, draft));
+    setLogoFileName(draft?.logoFileName || "");
+    setStep(n === 2 || n === 3 ? n : 1);
+    setDraftOwner(owner);
+  }, [authLoading, owner, initialJob?.id, initialJob?.title, initialJob?.company]);
+
+  useEffect(() => {
     if (initialJob?.id) return;
+    if (authLoading || draftOwner !== owner) return;
     const timer = window.setTimeout(() => {
-      try {
-        sessionStorage.setItem(
-          "cp_draft_post",
-          JSON.stringify({ step, formData, logoFileName }),
-        );
-      } catch {
-        // ignore
-      }
+      writePostingItem("cp_draft_post", owner, JSON.stringify({ step, formData, logoFileName }));
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [step, formData, logoFileName, initialJob?.id]);
+  }, [step, formData, logoFileName, initialJob?.id, owner, authLoading, draftOwner]);
 
   useEffect(() => {
     let cancelled = false;

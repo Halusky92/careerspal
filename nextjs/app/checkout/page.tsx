@@ -6,6 +6,7 @@ import Checkout from "../../components/Checkout";
 import { Job } from "../../types";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
+import { postingOwnerKey, readPostingItem } from "../../lib/postingSession";
 
 const CheckoutPage = () => {
   const router = useRouter();
@@ -14,14 +15,15 @@ const CheckoutPage = () => {
   const [resolvedJobId, setResolvedJobId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const jobId = searchParams.get("jobId");
-  const { accessToken } = useSupabaseAuth();
+  const { user, profile, accessToken } = useSupabaseAuth();
+  const owner = postingOwnerKey(user?.id, profile?.email);
 
   useEffect(() => {
     const loadJob = async () => {
       let effectiveJobId = jobId;
       if (!effectiveJobId) {
         try {
-          const storedId = sessionStorage.getItem("cp_pending_job_id");
+          const storedId = readPostingItem("cp_pending_job_id", owner);
           if (storedId) effectiveJobId = storedId;
         } catch {
           // ignore
@@ -44,7 +46,7 @@ const CheckoutPage = () => {
             if (data.job) {
               let merged = data.job;
               try {
-                const raw = sessionStorage.getItem("cp_pending_job");
+                const raw = readPostingItem("cp_pending_job", owner);
                 if (raw) {
                   const stored = JSON.parse(raw) as Job;
                   merged = {
@@ -67,7 +69,7 @@ const CheckoutPage = () => {
       }
 
       try {
-        const raw = sessionStorage.getItem("cp_pending_job");
+        const raw = readPostingItem("cp_pending_job", owner);
         if (raw) {
           setPendingJob(JSON.parse(raw));
         }
@@ -78,7 +80,7 @@ const CheckoutPage = () => {
       }
     };
     loadJob();
-  }, [jobId, accessToken]);
+  }, [jobId, accessToken, owner]);
 
   if (isLoading) {
     return (

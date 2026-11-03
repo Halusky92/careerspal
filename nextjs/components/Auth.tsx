@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSupabaseAuth } from "./Providers";
+import { hasPendingPosting, postingOwnerKey } from "../lib/postingSession";
 
 const Auth: React.FC = () => {
   const { signInWithGoogle, signInWithEmail } = useSupabaseAuth();
@@ -27,9 +28,7 @@ const Auth: React.FC = () => {
         localStorage.setItem("cp_auth_from", desiredFrom);
         return;
       }
-      const hasPending = Boolean(
-        sessionStorage.getItem("cp_pending_job") || sessionStorage.getItem("cp_pending_job_id"),
-      );
+      const hasPending = hasPendingPosting(postingOwnerKey());
       if (hasPending) {
         sessionStorage.setItem("cp_auth_from", "/checkout");
         localStorage.setItem("cp_auth_from", "/checkout");

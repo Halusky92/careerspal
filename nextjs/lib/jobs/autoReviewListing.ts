@@ -13,6 +13,7 @@ export type ListingReviewInput = {
   plan_price?: number | null;
   created_by?: string | null;
   plan_type?: string | null;
+  status?: string | null;
 };
 
 export type ListingReviewResult = {

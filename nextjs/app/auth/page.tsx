@@ -5,11 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Auth from "../../components/Auth";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
+import { hasPendingPosting, postingOwnerKey } from "../../lib/postingSession";
 
 const AuthPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { profile, accessToken, loading, refreshProfile } = useSupabaseAuth();
+  const { user, profile, accessToken, loading, refreshProfile } = useSupabaseAuth();
   const roleParam = searchParams.get("role");
   const fromParam = searchParams.get("from");
   const desiredRole = roleParam === "employer" || roleParam === "candidate" ? roleParam : null;
@@ -58,9 +59,7 @@ const AuthPage = () => {
           if (stored && stored.startsWith("/")) finalFrom = stored;
           if (!finalFrom && storedPersistent && storedPersistent.startsWith("/")) finalFrom = storedPersistent;
           if (!finalFrom) {
-            const hasPending = Boolean(
-              sessionStorage.getItem("cp_pending_job") || sessionStorage.getItem("cp_pending_job_id"),
-            );
+            const hasPending = hasPendingPosting(postingOwnerKey(user?.id, profile?.email));
             if (hasPending) finalFrom = "/post-a-job";
           }
         } catch {
@@ -85,7 +84,7 @@ const AuthPage = () => {
     return () => {
       isActive = false;
     };
-  }, [router, accessToken, loading, profile, refreshProfile, desiredRole, desiredFrom]);
+  }, [router, accessToken, loading, profile, refreshProfile, desiredRole, desiredFrom, user?.id]);
 
   if (loading) {
     return (

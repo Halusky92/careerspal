@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Subscriber } from "../services/notificationService";
 import { Job } from "../types";
 import { useSupabaseAuth } from "./Providers";
@@ -9,6 +10,7 @@ import { formatSalaryDisplay } from "../lib/formatSalary";
 import { formatShortPostedDate } from "../lib/formatPosted";
 import SourcingRegistrySection from "./admin/SourcingRegistrySection";
 import AdminPeopleTab from "./AdminPeopleTab";
+import AdminDeskBar from "./AdminDeskBar";
 
 type AnalyticsPeriod = {
   totalViews: number;
@@ -92,6 +94,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [jobSort, setJobSort] = useState<"newest" | "oldest">("newest");
   const [jobFilter, setJobFilter] = useState<"all" | "live" | "review" | "draft" | "archived">("live");
   const [tab, setTab] = useState<AdminTab>("review");
+  const searchParams = useSearchParams();
   const jobSearchRef = useRef<HTMLDivElement>(null);
   const [analytics, setAnalytics] = useState<AnalyticsPayload | null>(null);
   const [autoReviewBusy, setAutoReviewBusy] = useState(false);
@@ -250,6 +253,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     };
     loadAdminStats();
   }, [accessToken]);
+
+  useEffect(() => {
+    const next = searchParams.get("tab");
+    if (next === "review" || next === "jobs" || next === "people" || next === "sourcing" || next === "more") {
+      setTab(next);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const loadSubscribers = async () => {
@@ -616,6 +626,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           Log out
         </button>
       </div>
+
+      <AdminDeskBar pendingCount={pendingJobs.length} onAutoCheck={runAutoReview} autoCheckBusy={autoReviewBusy} />
 
       <div className="flex gap-1 mb-6 border-b border-slate-200">
         {tabs.map((item) => (

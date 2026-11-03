@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AdminDashboard from "../../../components/AdminDashboard";
 import { useSupabaseAuth } from "../../../components/Providers";
@@ -36,12 +36,18 @@ const AdminDashboardPage = () => {
   }
 
   return (
-    <AdminDashboard
-      onLogout={() => {
-        signOut();
-        router.push("/");
-      }}
-    />
+    <Suspense
+      fallback={
+        <div className="max-w-3xl mx-auto px-4 py-24 text-center text-slate-500">Loading admin console...</div>
+      }
+    >
+      <AdminDashboard
+        onLogout={() => {
+          signOut();
+          router.push("/");
+        }}
+      />
+    </Suspense>
   );
 };
 

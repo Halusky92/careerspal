@@ -13,6 +13,7 @@ import type { StartPackStatus } from "../lib/founding";
 import type { PublicPerson } from "../lib/publicPerson";
 import Link from "next/link";
 import { PLAN_PRICES } from "../lib/plans";
+import AdminDeskBar from "./AdminDeskBar";
 
 type TrafficSource = { source: string; label?: string; views: number; applyClicks: number };
 
@@ -72,7 +73,8 @@ const postedDate = (job: Job) => {
 };
 
 const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPostJob }) => {
-  const { accessToken } = useSupabaseAuth();
+  const { accessToken, profile } = useSupabaseAuth();
+  const isAdmin = profile?.role === "admin";
   const [myJobs, setMyJobs] = useState<Job[]>([]);
   const [summary, setSummary] = useState<Record<string, number>>({});
   const [stats, setStats] = useState({ jobs: 0, views: 0, matches: 0, applyClicks: 0, sources: [] as TrafficSource[] });
@@ -231,6 +233,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      {isAdmin ? <AdminDeskBar /> : null}
       <div className="flex items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Jobs</h1>

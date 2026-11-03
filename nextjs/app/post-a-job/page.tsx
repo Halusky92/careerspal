@@ -8,13 +8,19 @@ import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 import { PLAN_PRICES } from "../../lib/plans";
 import type { StartPackStatus } from "../../lib/founding";
+import {
+  postingOwnerKey,
+  readPostingItem,
+  removePostingItem,
+  writePostingItem,
+} from "../../lib/postingSession";
 
 const PLAN_KEY = "cp_selected_plan";
 
-const getStoredPlan = () => {
+const getStoredPlan = (owner: string) => {
   if (typeof window === "undefined") return null;
   try {
-    const raw = sessionStorage.getItem(PLAN_KEY);
+    const raw = readPostingItem(PLAN_KEY, owner);
     return raw ? (JSON.parse(raw) as { type: PlanType; price: number }) : null;
   } catch {
     return null;
@@ -25,13 +31,15 @@ const PostJobPageInner = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editJobId = searchParams.get("jobId");
-  const { profile, accessToken, loading: authLoading, refreshProfile } = useSupabaseAuth();
+  const { user, profile, accessToken, loading: authLoading, refreshProfile } = useSupabaseAuth();
+  const owner = postingOwnerKey(user?.id, profile?.email);
   const [foundingEligible, setFoundingEligible] = useState(false);
   const [foundingLoaded, setFoundingLoaded] = useState(false);
   const [foundingStatus, setFoundingStatus] = useState<StartPackStatus | null>(null);
   const [initialJob, setInitialJob] = useState<Partial<Job> | undefined>(undefined);
-  const [selectedPlan, setSelectedPlan] = useState<{ type: PlanType; price: number }>(() => {
-    return getStoredPlan() || { type: "Standard", price: PLAN_PRICES.standard };
+  const [selectedPlan, setSelectedPlan] = useState<{ type: PlanType; price: number }>({
+    type: "Standard",
+    price: PLAN_PRICES.standard,
   });
   const [showTestPlan, setShowTestPlan] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -49,27 +57,26 @@ const PostJobPageInner = () => {
           ? { type: "Standard", price: 0 }
           : { type: "Standard", price: PLAN_PRICES.standard },
       );
-      try {
-        sessionStorage.removeItem("cp_admin_internal_plan");
-      } catch {
-        // ignore
-      }
+      removePostingItem("cp_admin_internal_plan", owner);
     }
-  }, [profile?.role, selectedPlan.price, selectedPlan.type, showTestPlan, foundingEligible]);
+  }, [profile?.role, selectedPlan.price, selectedPlan.type, showTestPlan, foundingEligible, owner]);
 
   useEffect(() => {
-    sessionStorage.setItem(PLAN_KEY, JSON.stringify(selectedPlan));
-    try {
-      sessionStorage.removeItem("cp_test_plan_price");
-      if (profile?.role === "admin" && showTestPlan && selectedPlan.type === "Standard" && selectedPlan.price === 1) {
-        sessionStorage.setItem("cp_admin_internal_plan", "1");
-      } else {
-        sessionStorage.removeItem("cp_admin_internal_plan");
-      }
-    } catch {
-      // ignore
+    if (authLoading) return;
+    const stored = getStoredPlan(owner);
+    if (stored?.type) setSelectedPlan(stored);
+  }, [authLoading, owner]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    writePostingItem(PLAN_KEY, owner, JSON.stringify(selectedPlan));
+    removePostingItem("cp_test_plan_price", owner);
+    if (profile?.role === "admin" && showTestPlan && selectedPlan.type === "Standard" && selectedPlan.price === 1) {
+      writePostingItem("cp_admin_internal_plan", owner, "1");
+    } else {
+      removePostingItem("cp_admin_internal_plan", owner);
     }
-  }, [selectedPlan, profile?.role, showTestPlan]);
+  }, [selectedPlan, profile?.role, showTestPlan, owner, authLoading]);
 
   useEffect(() => {
     const checkTestPlanAccess = async () => {
@@ -150,7 +157,7 @@ const PostJobPageInner = () => {
         ? Math.max(0, Math.round(selectedPlan.price))
         : 79;
     const finalJobData = { ...data, plan: selectedPlan, planType: selectedPlan.type, status: "draft" };
-    sessionStorage.setItem("cp_pending_job", JSON.stringify(finalJobData));
+    writePostingItem("cp_pending_job", owner, JSON.stringify(finalJobData));
 
     setSubmitError("");
     if (authLoading || !accessToken) {
@@ -232,7 +239,7 @@ const PostJobPageInner = () => {
         return;
       }
         if (payload.job?.id) {
-        sessionStorage.setItem("cp_pending_job_id", payload.job.id);
+        writePostingItem("cp_pending_job_id", owner, payload.job.id);
         if (useStartPack) {
           const submit = await authFetch(`/api/employer/jobs/${payload.job.id}/submit`, { method: "POST" }, accessToken);
           if (submit.ok) {

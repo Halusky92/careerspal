@@ -7,6 +7,7 @@ import { Job } from '../types';
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
 import { PLAN_PRICES } from "../lib/plans";
+import { postingOwnerKey, readPostingItem, writePostingItem } from "../lib/postingSession";
 
 interface CheckoutProps {
   jobData: Job | null;
@@ -19,7 +20,8 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
   const router = useRouter();
   const [step, setStep] = useState<'form' | 'processing' | 'success'>('form');
   const [error, setError] = useState<string | null>(null);
-  const { accessToken, profile, loading: authLoading, refreshProfile } = useSupabaseAuth();
+  const { user, accessToken, profile, loading: authLoading, refreshProfile } = useSupabaseAuth();
+  const owner = postingOwnerKey(user?.id, profile?.email);
   const [ownershipRecoveryAttempted, setOwnershipRecoveryAttempted] = useState(false);
   const [overridePrice, setOverridePrice] = useState<number | null>(null);
   const price = overridePrice ?? jobData?.plan?.price ?? PLAN_PRICES.standard;
@@ -35,7 +37,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem("cp_test_plan_price");
+      const raw = readPostingItem("cp_test_plan_price", owner);
       if (!raw) return;
       const parsed = Number(raw);
       if (Number.isFinite(parsed) && parsed > 0 && parsed < 1) {
@@ -44,7 +46,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
     } catch {
       // ignore
     }
-  }, []);
+  }, [owner]);
 
   if (!jobData) {
     return (
@@ -112,7 +114,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
       };
       let adminInternalPlan = false;
       try {
-        adminInternalPlan = sessionStorage.getItem("cp_admin_internal_plan") === "1";
+        adminInternalPlan = readPostingItem("cp_admin_internal_plan", owner) === "1";
       } catch {
         adminInternalPlan = false;
       }
@@ -148,7 +150,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
         }
         effectiveJobId = created.job.id;
         try {
-          sessionStorage.setItem("cp_pending_job_id", effectiveJobId);
+          writePostingItem("cp_pending_job_id", owner, effectiveJobId);
         } catch {
           // ignore
         }
@@ -213,7 +215,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
             }
             const recoveredJobId = created.job.id;
             try {
-              sessionStorage.setItem("cp_pending_job_id", recoveredJobId);
+              writePostingItem("cp_pending_job_id", owner, recoveredJobId);
             } catch {
               // ignore
             }

@@ -61,7 +61,7 @@ const Navbar: React.FC = () => {
           { label: "Dashboard", href: profile.role === "admin" ? "/dashboard/employer" : dashboardHref || "/account" },
         ]
       : []),
-    ...(profile?.role === "admin" ? [{ label: "Admin", href: "/dashboard/admin" }] : []),
+    ...(profile?.role === "admin" ? [{ label: "Admin desk", href: "/dashboard/admin?tab=review" }] : []),
   ];
 
   return (
@@ -123,6 +123,14 @@ const Navbar: React.FC = () => {
               >
                 {hireLabel}
               </Link>
+              {profile?.role === "admin" && (
+                <Link
+                  href="/dashboard/admin?tab=review"
+                  className="inline-flex h-10 items-center justify-center px-3 rounded-lg bg-slate-800 text-white text-sm font-medium leading-none hover:bg-slate-700 shrink-0"
+                >
+                  Admin desk
+                </Link>
+              )}
 
               {!profile?.email ? (
                 <Link href={`/auth?from=${encodeURIComponent(pathname || "/")}`} className="inline-flex h-9 items-center justify-center px-3 rounded-lg border border-slate-200 text-sm font-medium leading-none text-slate-800 hover:bg-slate-50 shrink-0">
@@ -265,8 +273,8 @@ const Navbar: React.FC = () => {
                 </Link>
               )}
               {profile.role === "admin" && (
-                <Link href="/dashboard/admin" onClick={closeMobile} className="block py-3 border-b border-slate-100">
-                  Admin
+                <Link href="/dashboard/admin?tab=review" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                  Admin desk
                 </Link>
               )}
             </>
