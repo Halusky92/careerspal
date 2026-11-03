@@ -108,7 +108,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [showTitleSuggestions, setShowTitleSuggestions] = useState(false);
-  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedNotice, setSavedNotice] = useState('');
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -120,7 +119,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const suppressUrlUpdateRef = useRef(false);
   const pendingUrlUpdateRef = useRef(false);
   const titleRef = useRef<HTMLDivElement>(null);
-  const locationRef = useRef<HTMLDivElement>(null);
   const filterScrollRef = useRef<HTMLDivElement>(null);
   const [showFilterTopShadow, setShowFilterTopShadow] = useState(false);
   const [showFilterBottomShadow, setShowFilterBottomShadow] = useState(false);
@@ -295,9 +293,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
     const handleClickOutside = (event: MouseEvent) => {
       if (titleRef.current && !titleRef.current.contains(event.target as Node)) {
         setShowTitleSuggestions(false);
-      }
-      if (locationRef.current && !locationRef.current.contains(event.target as Node)) {
-        setShowLocationSuggestions(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -606,7 +601,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
     setVerifiedOnly(false);
     setShowSavedOnly(false);
     setShowTitleSuggestions(false);
-    setShowLocationSuggestions(false);
   };
 
   const activeFilterChips = useMemo(
@@ -1018,7 +1012,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 sm:py-3">
         <div>
           <div className="cp-search rounded-xl px-3 sm:px-4 py-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,11rem)_auto] gap-2 lg:gap-3 lg:items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_minmax(0,11rem)_auto] gap-2 lg:gap-3 lg:items-end">
               <div ref={titleRef} className="relative">
                   <label className="text-[10px] font-medium text-slate-500">
                     Search
@@ -1046,34 +1040,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   </div>
                 </div>
 
-                <div ref={locationRef} className="relative">
-                  <label className="text-[10px] font-medium text-slate-500">
-                    Location
-                  </label>
-                  <div className="relative mt-1">
-                    <PredictiveField
-                      kind="location"
-                      value={locationQuery}
-                      onChange={setLocationQuery}
-                      placeholder="City, country, or remote"
-                      ariaLabel="City, country, or remote"
-                      inputClassName="cp-field w-full h-10 rounded-lg px-3 pr-9 text-[16px] sm:text-sm text-slate-900 outline-none bg-white"
-                    />
-                    {locationQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setLocationQuery("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900"
-                        aria-label="Clear location"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
                 <div className="hidden lg:block">
                   <label className="text-[10px] font-medium text-slate-500">
                     Sort
@@ -1089,7 +1055,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   </select>
                 </div>
 
-              <div className="sm:col-span-2 lg:col-span-1">
+              <div>
                 <label className="hidden lg:block text-[10px] font-medium text-slate-500">&nbsp;</label>
                 <div className="mt-1 flex items-center gap-2">
                   {canUseSaved && (

@@ -23,7 +23,6 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
   const router = useRouter();
   const { profile } = useSupabaseAuth();
   const [query, setQuery] = useState("");
-  const [location, setLocation] = useState("");
 
   const firstName = useMemo(() => {
     const name = (profile?.name || "").trim();
@@ -37,7 +36,6 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
     event?.preventDefault();
     const params = new URLSearchParams();
     if (query.trim()) params.set("query", query.trim());
-    if (location.trim()) params.set("location", location.trim());
     const qs = params.toString();
     router.push(qs ? `/jobs?${qs}` : "/jobs");
   };
@@ -80,17 +78,6 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
               ariaLabel="Search jobs"
               inputClassName="h-11 w-full rounded-xl sm:rounded-none border-0 bg-transparent px-3 sm:px-2 text-[16px] sm:text-sm text-slate-900 outline-none"
             />
-            <div className="hidden sm:block h-6 w-px bg-slate-800/40 flex-shrink-0" aria-hidden />
-            <div className="sm:w-40 sm:flex-none">
-              <PredictiveField
-                kind="location"
-                value={location}
-                onChange={setLocation}
-                placeholder="Remote or city"
-                ariaLabel="Location"
-                inputClassName="h-11 w-full rounded-xl sm:rounded-none border-0 bg-transparent px-3 text-[16px] sm:text-sm text-slate-900 outline-none"
-              />
-            </div>
             <button
               type="submit"
               onClick={() => submit()}
@@ -101,26 +88,32 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
           </div>
         </form>
 
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
-          {CATEGORY_CHIPS.map((chip) => (
+        <div className="mt-4 -mx-4 sm:mx-0">
+          <div className="flex flex-nowrap items-center justify-start sm:justify-center gap-1.5 overflow-x-auto no-scrollbar px-4 sm:px-0">
+            {CATEGORY_CHIPS.map((chip) => (
+              <button
+                key={chip.label}
+                type="button"
+                onClick={() => router.push(`/jobs?category=${encodeURIComponent(chip.value)}`)}
+                className="h-8 shrink-0 px-3 rounded-full bg-white border border-slate-300 text-xs font-medium text-slate-800 hover:border-slate-900"
+              >
+                {chip.label}
+              </button>
+            ))}
             <button
-              key={chip.label}
               type="button"
-              onClick={() => router.push(`/jobs?category=${encodeURIComponent(chip.value)}`)}
-              className="h-8 px-3 rounded-full bg-white border border-slate-300 text-xs font-medium text-slate-800 hover:border-slate-900"
+              onClick={onBrowse}
+              className="h-8 shrink-0 px-3 rounded-full bg-white border border-slate-300 text-xs font-medium text-slate-800 hover:border-slate-900"
             >
-              {chip.label}
+              All jobs
             </button>
-          ))}
-          <button type="button" onClick={onBrowse} className="h-8 px-3 text-xs font-medium text-indigo-600">
-            All jobs
-          </button>
+          </div>
         </div>
 
         <button
           type="button"
           onClick={onGetAlerts}
-          className="mt-3 text-sm font-medium text-slate-700 hover:text-indigo-700"
+          className="mt-4 inline-flex h-10 items-center justify-center rounded-full bg-indigo-600 px-5 text-sm font-medium text-white hover:bg-indigo-700"
         >
           Email me new roles
         </button>
