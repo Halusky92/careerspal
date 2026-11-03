@@ -68,10 +68,10 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
       setStatus("ok");
       setSaveMsg(
         payload.pendingConfirm
-          ? "Check your email. Click the confirm link to turn alerts on. We won’t send roles until then."
+          ? "Check your inbox — then you’ll stay in the loop on new roles."
           : payload.existing
-            ? "Preferences updated. Two emails a week, Tuesday and Friday."
-            : "You’re on the list. Two emails a week, Tuesday and Friday.",
+            ? "Preferences saved. Fresh roles will keep landing in your inbox."
+            : "You’re in. Fresh roles will land in your inbox.",
       );
     } catch {
       setStatus("error");
@@ -85,9 +85,9 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
       <div className="p-4 sm:p-5 border-b border-slate-100">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Job alerts</p>
-        <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Get new jobs by email</h1>
+        <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Stay in the loop</h1>
         <p className="mt-2 text-sm text-slate-600 max-w-2xl">
-          Email only. No password. Confirm the email we send, then two messages a week with matching published roles. Each role opens on CareersPal first.
+          Send your email and get fresh openings as they hit the market. Stay in the picture — no noise, just new roles.
         </p>
       </div>
 
@@ -164,7 +164,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
           <div className={`text-sm ${status === "error" ? "text-rose-700" : "text-emerald-800"}`}>{saveMsg}</div>
         )}
 
-        <p className="text-xs text-slate-500">Tuesday and Friday after you confirm. Stop anytime from the link in the email.</p>
+        <p className="text-xs text-slate-500">Unsubscribe anytime from the email.</p>
       </div>
     </div>
   );

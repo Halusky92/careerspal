@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const canonicalUrl = `${baseUrl}/alerts`;
   const title = "Job alerts — CareersPal";
   const description =
-    "Email-only alerts for Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Confirm your email. Tuesday and Friday. No password.";
+    "Get fresh Ops, Systems, Automation, RevOps, Product Ops, and Chief of Staff openings by email. Stay in the loop.";
 
   return {
     title,

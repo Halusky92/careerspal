@@ -28,7 +28,7 @@ export default async function ConfirmAlertsPage({
             {error
               ? "The link is missing or expired. Subscribe again and use the new email."
               : done
-                ? "You’ll get matching published roles on Tuesday and Friday. Each role opens on CareersPal first."
+                ? "You’re in. Fresh roles will land in your inbox."
                 : "Open the confirm link from your email to start alerts."}
           </p>
           <div className="mt-4 flex gap-2">

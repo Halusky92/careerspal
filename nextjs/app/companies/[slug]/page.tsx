@@ -191,8 +191,8 @@ export default async function CompanyPage({ params }: PageProps) {
   return (
     <div className="bg-[#F8F9FD] pb-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
-        <Link href="/jobs" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-indigo-700">
-          <span aria-hidden="true">←</span> Back to jobs
+        <Link href="/companies" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-indigo-700">
+          <span aria-hidden="true">←</span> All companies
         </Link>
 
         <div className="mt-3 grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -236,7 +236,7 @@ export default async function CompanyPage({ params }: PageProps) {
                       <span className="text-slate-900">{employeeCount}</span>
                     </div>
                   )}
-                  {companyWebsite && (
+                  {companyWebsite && safeHost(companyWebsite) && !/greenhouse\.io|lever\.co|ashbyhq\.com/i.test(safeHost(companyWebsite)) && (
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-slate-500">Website</span>
                       <a
@@ -258,7 +258,7 @@ export default async function CompanyPage({ params }: PageProps) {
                   >
                     View roles
                   </a>
-                  {companyWebsite ? (
+                  {companyWebsite && !/greenhouse\.io|lever\.co|ashbyhq\.com/i.test(safeHost(companyWebsite)) ? (
                     <a
                       href={companyWebsite}
                       target="_blank"
@@ -272,9 +272,11 @@ export default async function CompanyPage({ params }: PageProps) {
               </div>
 
               <div className="px-4 py-3 flex flex-wrap gap-1.5">
+                {companyDescription && !companyDescription.toLowerCase().includes("coming soon") ? (
                 <a href="#about" className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
                   About
                 </a>
+                ) : null}
                 {stack.length > 0 && (
                   <a href="#stack" className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
                     Stack
@@ -293,15 +295,15 @@ export default async function CompanyPage({ params }: PageProps) {
           </aside>
 
           <div className="lg:col-span-8 space-y-3">
+            {companyDescription && !companyDescription.toLowerCase().includes("coming soon") ? (
             <section id="about" className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">About</div>
               <h2 className="mt-1 text-base font-semibold text-slate-900">What they do</h2>
               <p className="mt-2 text-sm text-slate-700 leading-relaxed">
-                {companyDescription && !companyDescription.toLowerCase().includes("coming soon")
-                  ? companyDescription
-                  : "No company description yet. Always verify details on the official company site."}
+                {companyDescription}
               </p>
             </section>
+            ) : null}
 
             {stack.length > 0 && (
               <section id="stack" className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">

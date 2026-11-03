@@ -40,9 +40,11 @@ export async function POST(request: Request) {
   if (!auth?.profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const limiter = checkRateLimit(`checkout:${auth.profile.id}`, { windowMs: 60_000, max: 5 });
-  if (!limiter.allowed) {
-    return NextResponse.json({ error: "Too many checkout attempts." }, { status: 429 });
+  if (auth.profile.role !== "admin") {
+    const limiter = checkRateLimit(`checkout:${auth.profile.id}`, { windowMs: 60_000, max: 5 });
+    if (!limiter.allowed) {
+      return NextResponse.json({ error: "Too many checkout attempts." }, { status: 429 });
+    }
   }
 
   const body = (await request.json()) as {

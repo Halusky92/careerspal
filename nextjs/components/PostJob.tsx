@@ -26,6 +26,36 @@ type JobFormData = Omit<Job, 'id' | 'postedAt' | 'isFeatured' | 'planType' | 'pl
 
 type DraftPost = { step?: number; formData?: Partial<JobFormData>; logoFileName?: string };
 
+const AccordionRow = ({
+  id,
+  title,
+  openId,
+  onToggle,
+  children,
+}: {
+  id: "get" | "requirements" | "review";
+  title: string;
+  openId: "get" | "requirements" | "review" | null;
+  onToggle: (id: "get" | "requirements" | "review") => void;
+  children: React.ReactNode;
+}) => {
+  const isOpen = openId === id;
+  return (
+    <div className="rounded-2xl border border-slate-200/60 bg-white overflow-hidden">
+      <button
+        type="button"
+        onClick={() => onToggle(id)}
+        className="w-full px-3 py-2.5 flex items-center justify-between gap-3 text-left"
+        aria-expanded={isOpen}
+      >
+        <span className="text-sm font-black text-slate-900">{title}</span>
+        <span className="text-slate-400 font-black">{isOpen ? "−" : "+"}</span>
+      </button>
+      {isOpen && <div className="px-3 pb-3">{children}</div>}
+    </div>
+  );
+};
+
 const readDraftPost = (): DraftPost | null => {
   if (typeof window === "undefined") return null;
   try {
@@ -88,14 +118,17 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
   useEffect(() => {
     if (initialJob?.id) return;
-    try {
-      sessionStorage.setItem(
-        "cp_draft_post",
-        JSON.stringify({ step, formData, logoFileName }),
-      );
-    } catch {
-      // ignore
-    }
+    const timer = window.setTimeout(() => {
+      try {
+        sessionStorage.setItem(
+          "cp_draft_post",
+          JSON.stringify({ step, formData, logoFileName }),
+        );
+      } catch {
+        // ignore
+      }
+    }, 250);
+    return () => window.clearTimeout(timer);
   }, [step, formData, logoFileName, initialJob?.id]);
 
   useEffect(() => {
@@ -151,30 +184,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     return base;
   }, [selectedPlan.type]);
 
-  const AccordionRow = ({
-    id,
-    title,
-    children,
-  }: {
-    id: "get" | "requirements" | "review";
-    title: string;
-    children: React.ReactNode;
-  }) => {
-    const isOpen = openInfoId === id;
-    return (
-      <div className="rounded-2xl border border-slate-200/60 bg-white overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setOpenInfoId((prev) => (prev === id ? null : id))}
-          className="w-full px-3 py-2.5 flex items-center justify-between gap-3 text-left"
-          aria-expanded={isOpen}
-        >
-          <span className="text-sm font-black text-slate-900">{title}</span>
-          <span className="text-slate-400 font-black">{isOpen ? "−" : "+"}</span>
-        </button>
-        {isOpen && <div className="px-3 pb-3">{children}</div>}
-      </div>
-    );
+  const toggleInfo = (id: "get" | "requirements" | "review") => {
+    setOpenInfoId((prev) => (prev === id ? null : id));
   };
 
   const handleAI = async () => {
@@ -663,7 +674,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
           </div>
         </div>
 
-        <div className="lg:col-span-4 space-y-3">
+        <div className="lg:col-span-4 space-y-3 lg:sticky lg:top-20 self-start">
            <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -676,7 +687,12 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               </div>
 
               <div className="mt-4 space-y-3">
-                <AccordionRow id="get" title={`What you get (${selectedPlan.type})`}>
+                <AccordionRow
+                  id="get"
+                  openId={openInfoId}
+                  onToggle={toggleInfo}
+                  title={`What you get (${usingStartPack ? "Start pack" : selectedPlan.type})`}
+                >
                   <ul className="space-y-2 text-sm font-medium text-slate-700">
                     {planHighlights.map((x) => (
                       <li key={x} className="flex items-start gap-2">
@@ -687,7 +703,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                   </ul>
                 </AccordionRow>
 
-                <AccordionRow id="requirements" title="Requirements (for approval)">
+                <AccordionRow id="requirements" openId={openInfoId} onToggle={toggleInfo} title="Requirements (for approval)">
                   <ul className="space-y-2 text-sm font-medium text-slate-700">
                     <li className="flex items-start gap-2"><span className="text-slate-900 font-semibold mt-0.5">•</span> Salary range included</li>
                     <li className="flex items-start gap-2"><span className="text-slate-900 font-semibold mt-0.5">•</span> Clear scope + responsibilities</li>
@@ -696,7 +712,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                   </ul>
                 </AccordionRow>
 
-                <AccordionRow id="review" title="Review & publish timeline">
+                <AccordionRow id="review" openId={openInfoId} onToggle={toggleInfo} title="Review & publish timeline">
                   <div className="space-y-2 text-sm font-medium text-slate-700">
                     <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span> Post{foundingEligible ? " (Start pack: submit, then review)" : " (submit + pay)"}</div>
                     <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">2</span> Review — salary, scope, apply link, niche. Not a timed SLA.</div>
@@ -724,7 +740,11 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 {usingStartPack ? "Free" : formatPrice(selectedPlan.price)}
                 <span className="text-base text-indigo-800/70 font-medium"> {usingStartPack ? "Start pack" : "/ 30 days"}</span>
               </div>
-              <div className="text-xs font-semibold text-indigo-800 uppercase tracking-wide mb-3">{selectedPlan.type}</div>
+              <div className="text-xs font-semibold text-indigo-800 uppercase tracking-wide mb-3">
+                {usingStartPack
+                  ? `${foundingStatus?.remainingJobs ?? 10} of ${foundingStatus?.quota ?? 10} free listings left`
+                  : selectedPlan.type}
+              </div>
               
               {/* Plan Upgrade Options */}
               {selectedPlan.type === 'Standard' && (

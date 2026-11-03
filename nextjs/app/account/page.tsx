@@ -667,7 +667,7 @@ const AccountPageInner = () => {
                 <div className="space-y-4">
                   <div className="rounded-xl border border-slate-200 p-4 space-y-3">
                     <p className="text-sm font-medium text-slate-900">Get new jobs by email</p>
-                    <p className="text-sm text-slate-600">Same as the public Alerts page. Confirm the email we send. Tuesday and Friday.</p>
+                    <p className="text-sm text-slate-600">Fresh openings in your inbox. Stay in the picture.</p>
                     <AlertCategoryPicker
                       selected={parseAlertQuery(alertQuery)}
                       onChange={(next) => setAlertQuery(serializeAlertQuery(next))}

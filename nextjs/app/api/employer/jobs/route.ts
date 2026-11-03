@@ -142,26 +142,31 @@ export const POST = async (request: Request) => {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
-  if (typeof rawPlanPrice === "number" && rawPlanPrice === 0) {
+  const requestedType = body.planType || body.plan?.type || "Standard";
+  let storedPlanType = requestedType;
+  let storedPlanPrice =
+    typeof rawPlanPrice === "number" ? Math.max(0, Math.round(rawPlanPrice)) : null;
+  if (requestedType === "Standard" && !isAdminTestPrice) {
     const founding = await getFoundingStatus(auth.profileId);
-    if (!founding.eligible) {
+    if (founding.eligible) {
+      storedPlanType = "Standard";
+      storedPlanPrice = 0;
+    } else if (storedPlanPrice === 0) {
       return NextResponse.json({ error: "Start pack is not available for this account." }, { status: 403 });
     }
   }
-  const storedPlanPrice =
-    typeof rawPlanPrice === "number" ? Math.max(0, Math.round(rawPlanPrice)) : null;
-  const storedPlanType =
-    storedPlanPrice === 0 ? "Standard" : body.planType || body.plan?.type || "Standard";
 
-  const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const { count: recentCount } = await supabaseAdmin
-    .from("audit_logs")
-    .select("id", { count: "exact", head: true })
-    .eq("actor_id", auth.profileId)
-    .eq("action", "job_created")
-    .gte("created_at", cutoff);
-  if (typeof recentCount === "number" && recentCount >= MAX_JOBS_PER_HOUR) {
-    return NextResponse.json({ error: "Rate limit exceeded. Please try again later." }, { status: 429 });
+  if (auth.role !== "admin") {
+    const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: recentCount } = await supabaseAdmin
+      .from("audit_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("actor_id", auth.profileId)
+      .eq("action", "job_created")
+      .gte("created_at", cutoff);
+    if (typeof recentCount === "number" && recentCount >= MAX_JOBS_PER_HOUR) {
+      return NextResponse.json({ error: "Rate limit exceeded. Please try again later." }, { status: 429 });
+    }
   }
 
   const companyResult = await resolveEmployerCompany({

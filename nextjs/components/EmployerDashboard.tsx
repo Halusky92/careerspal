@@ -272,7 +272,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           <div>
             <p className="text-sm font-medium text-slate-900">Suggested seekers</p>
             <p className="mt-0.5 text-xs text-slate-500">
-              CareersPal attaches these after reviewing a listing. Open opted-in profiles anytime in People.
+              People we attach to a listing after review. Browse everyone current in People.
             </p>
           </div>
           <Link href="/people" className="shrink-0 text-sm font-medium text-indigo-600">
@@ -280,7 +280,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           </Link>
         </div>
         {shortlist.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">None attached yet for your jobs.</p>
+          <p className="mt-3 text-sm text-slate-500">Waiting for suggestions on your jobs.</p>
         ) : (
           <ul className="mt-3 divide-y divide-slate-100">
             {shortlist.map((item) => (

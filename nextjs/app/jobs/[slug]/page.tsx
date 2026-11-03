@@ -572,10 +572,10 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Alerts</p>
               <h2 className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Get similar roles by email.
+                Stay in the loop
               </h2>
               <p className="mt-2 text-slate-600 font-medium max-w-2xl">
-                Email only. Confirm the link we send. Tuesday and Friday, matching published roles.
+                Fresh openings in your inbox as they hit the market.
               </p>
             </div>
             <div className="w-full sm:w-auto">

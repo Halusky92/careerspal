@@ -16,6 +16,7 @@ import PredictiveField from "./PredictiveField";
 import { trackJobApply } from "../lib/trackJobEvent";
 import FeaturedBoardZone from "./FeaturedBoardZone";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
+import { jobMatchesLocationQuery, locationLabelsForJobs } from "../lib/locationFilter";
 
 interface FindJobsProps {
   jobs: Job[];
@@ -108,6 +109,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [openWwrDropdown, setOpenWwrDropdown] = useState<null | "category" | "salary" | "skills" | "country">(null);
+  const [wwrSkillQuery, setWwrSkillQuery] = useState("");
+  const [wwrLocationQuery, setWwrLocationQuery] = useState("");
   const [showTitleSuggestions, setShowTitleSuggestions] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedNotice, setSavedNotice] = useState('');
@@ -291,12 +295,22 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (titleRef.current && !titleRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (titleRef.current && !titleRef.current.contains(target)) {
         setShowTitleSuggestions(false);
       }
+      const el = target instanceof Element ? target.closest("[data-wwr-filter]") : null;
+      if (!el) setOpenWwrDropdown(null);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenWwrDropdown(null);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKey);
+    };
   }, []);
 
   useEffect(() => {
@@ -404,8 +418,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
       const matchesQuery = j.title.toLowerCase().includes(query.toLowerCase()) || 
                           j.company.toLowerCase().includes(query.toLowerCase()) ||
                           j.tags.some(t => t.toLowerCase().includes(query.toLowerCase()));
-      const matchesLocation =
-        !locationQuery.trim() || j.location.toLowerCase().includes(locationQuery.toLowerCase());
+      const matchesLocation = jobMatchesLocationQuery(j, locationQuery);
       const hub = category === "All Roles" ? null : getCategoryHub(category);
       const matchesCat = !hub || jobMatchesHub(j, hub);
       const matchesWorkMode = workMode === 'All' || getWorkMode(j) === workMode;
@@ -520,10 +533,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const locationSuggestions = useMemo(() => {
     if (!locationQuery.trim() || locationQuery.length < 1) return [];
     const lowQuery = locationQuery.toLowerCase();
-    const locations = jobs
-      .map((j) => j.location)
-      .filter((loc) => loc.toLowerCase().includes(lowQuery));
-    return Array.from(new Set(locations)).slice(0, 5);
+    return locationLabelsForJobs(jobs)
+      .filter((label) => label.toLowerCase().includes(lowQuery))
+      .slice(0, 6);
   }, [locationQuery, jobs]);
 
   const handleLoadMore = () => {
@@ -726,26 +738,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
     });
   };
 
-  type OpenWwrDropdown = null | "category" | "salary" | "skills" | "country";
-  const [openWwrDropdown, setOpenWwrDropdown] = useState<OpenWwrDropdown>(null);
-  const [wwrCategoryQuery, setWwrCategoryQuery] = useState("");
-  const [wwrSkillQuery, setWwrSkillQuery] = useState("");
-
   const categoryOptions = CATEGORY_HUBS.map((hub) => hub.slug);
 
-  const countryOptions = useMemo(() => {
-    const seen = new Set<string>();
-    const out: string[] = [];
-    for (const job of jobs) {
-      const loc = (job.location || "").trim();
-      if (!loc) continue;
-      const key = loc.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(loc);
-    }
-    return out.sort((a, b) => a.localeCompare(b)).slice(0, 40);
-  }, [jobs]);
+  const countryOptions = useMemo(() => locationLabelsForJobs(jobs), [jobs]);
 
   const skillOptions = useMemo(() => {
     const seen = new Set<string>(TOOL_OPTIONS.map((t) => t.toLowerCase()));
@@ -833,7 +828,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </div>
 
           {/* Job Categories */}
-          <div className="relative">
+          <div className="relative" data-wwr-filter>
             <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
               <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h10" />
@@ -846,39 +841,30 @@ const FindJobs: React.FC<FindJobsProps> = ({
               className="cp-field mt-2 w-full h-10 rounded-xl bg-white px-3 text-left text-sm font-medium text-slate-900"
             >
               <span className={category !== "All Roles" ? "" : "text-slate-400"}>
-                {category !== "All Roles" ? getCategoryHub(category)?.label || category : "Search job category..."}
+                {category !== "All Roles" ? getCategoryHub(category)?.label || category : "Any category"}
               </span>
             </button>
             {openWwrDropdown === "category" && (
               <div className="mt-2 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
-                <div className="p-2 border-b border-slate-100">
-                  <input
-                    value={wwrCategoryQuery}
-                    onChange={(e) => setWwrCategoryQuery(e.target.value)}
-                    placeholder="Search job category..."
-                    className="w-full h-9 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
-                    autoFocus
-                  />
-                </div>
-                <div className="max-h-56 overflow-y-auto">
+                <div className="py-1">
                   <button
                     type="button"
                     onClick={() =>
                       preserveFilterPosition(() => {
                         setCategory("All Roles");
                         setOpenWwrDropdown(null);
-                        setWwrCategoryQuery("");
                       })
                     }
-                    className="w-full text-left px-3 py-2 text-sm font-medium hover:bg-slate-50"
+                    className={[
+                      "w-full flex items-center justify-between px-3 py-2 text-sm font-medium hover:bg-slate-50",
+                      category === "All Roles" ? "bg-indigo-50 text-indigo-700" : "text-slate-900",
+                    ].join(" ")}
                   >
-                    All categories
+                    <span>All categories</span>
+                    <span className="text-xs text-slate-400">{categoryCounts["All Roles"] || 0}</span>
                   </button>
                   {categoryOptions
-                    .filter((c) => {
-                      const label = (getCategoryHub(c)?.label || c).toLowerCase();
-                      return label.includes(wwrCategoryQuery.trim().toLowerCase());
-                    })
+                    .filter((c) => (categoryCounts[c] || 0) > 0)
                     .map((c) => (
                       <button
                         key={c}
@@ -887,16 +873,16 @@ const FindJobs: React.FC<FindJobsProps> = ({
                           preserveFilterPosition(() => {
                             setCategory(c);
                             setOpenWwrDropdown(null);
-                            setWwrCategoryQuery("");
                             if (window.innerWidth < 1024) setIsFilterOpen(false);
                           })
                         }
                         className={[
-                          "w-full text-left px-3 py-2 text-sm font-medium hover:bg-slate-50",
+                          "w-full flex items-center justify-between px-3 py-2 text-sm font-medium hover:bg-slate-50",
                           category === c ? "bg-indigo-50 text-indigo-700" : "text-slate-900",
                         ].join(" ")}
                       >
-                        {getCategoryHub(c)?.label || c}
+                        <span>{getCategoryHub(c)?.label || c}</span>
+                        <span className="text-xs text-slate-400">{categoryCounts[c] || 0}</span>
                       </button>
                     ))}
                 </div>
@@ -904,33 +890,68 @@ const FindJobs: React.FC<FindJobsProps> = ({
             )}
           </div>
 
-          {/* Countries */}
-          <div className="relative">
+          {/* Location */}
+          <div className="relative" data-wwr-filter>
             <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
               <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21s7-4.35 7-11a7 7 0 10-14 0c0 6.65 7 11 7 11z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10a2 2 0 110-4 2 2 0 010 4z" />
               </svg>
-              Countries
+              Location
             </div>
-            <input
-              value={locationQuery}
-              onChange={(e) => {
-                preserveFilterPosition(() => setLocationQuery(e.target.value));
-                setOpenWwrDropdown("country");
-              }}
-              onFocus={() => setOpenWwrDropdown("country")}
-              placeholder="Search or pick a location..."
-              className="cp-field mt-2 w-full h-10 rounded-xl px-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400"
-            />
+            <div className="relative mt-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenWwrDropdown((prev) => {
+                    const next = prev === "country" ? null : "country";
+                    if (next === "country") setWwrLocationQuery("");
+                    return next;
+                  })
+                }
+                className="cp-field w-full h-10 rounded-xl bg-white pl-3 pr-9 text-left text-sm font-medium text-slate-900"
+              >
+                <span className={locationQuery.trim() ? "" : "text-slate-400"}>
+                  {locationQuery.trim() || "Any location"}
+                </span>
+              </button>
+              {locationQuery.trim() ? (
+                <button
+                  type="button"
+                  aria-label="Clear location"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    preserveFilterPosition(() => {
+                      setLocationQuery("");
+                      setWwrLocationQuery("");
+                      setOpenWwrDropdown(null);
+                    });
+                  }}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
             {openWwrDropdown === "country" && (
               <div className="absolute z-30 mt-2 w-full rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                <div className="p-2 border-b border-slate-100">
+                  <input
+                    value={wwrLocationQuery}
+                    onChange={(e) => setWwrLocationQuery(e.target.value)}
+                    placeholder="City, country, or Remote"
+                    className="w-full h-9 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
+                    autoFocus
+                  />
+                </div>
                 <div className="max-h-56 overflow-y-auto py-1">
                   <button
                     type="button"
                     onClick={() =>
                       preserveFilterPosition(() => {
                         setLocationQuery("");
+                        setWwrLocationQuery("");
                         setOpenWwrDropdown(null);
                       })
                     }
@@ -939,7 +960,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     Any location
                   </button>
                   {countryOptions
-                    .filter((c) => c.toLowerCase().includes(locationQuery.trim().toLowerCase()))
+                    .filter((c) => c.toLowerCase().includes(wwrLocationQuery.trim().toLowerCase()))
                     .map((c) => (
                       <button
                         key={c}
@@ -947,6 +968,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                         onClick={() =>
                           preserveFilterPosition(() => {
                             setLocationQuery(c);
+                            setWwrLocationQuery("");
                             setOpenWwrDropdown(null);
                             if (window.innerWidth < 1024) setIsFilterOpen(false);
                           })
@@ -959,8 +981,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
                         {c}
                       </button>
                     ))}
-                  {countryOptions.filter((c) => c.toLowerCase().includes(locationQuery.trim().toLowerCase())).length === 0 && (
-                    <div className="px-3 py-2 text-sm text-slate-500">No matching locations on the board. You can still type your own.</div>
+                  {countryOptions.filter((c) => c.toLowerCase().includes(wwrLocationQuery.trim().toLowerCase())).length === 0 && (
+                    <div className="px-3 py-2 text-sm text-slate-500">No matching locations on the board.</div>
                   )}
                 </div>
               </div>
@@ -968,7 +990,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </div>
 
           {/* Salary range */}
-          <div className="relative">
+          <div className="relative" data-wwr-filter>
             <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
               <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-3 0-5 1.343-5 3s2 3 5 3 5 1.343 5 3-2 3-5 3m0-15v2m0 12v2" />
@@ -1010,7 +1032,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </div>
 
           {/* Skills */}
-          <div className="relative">
+          <div className="relative" data-wwr-filter>
             <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
               <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-7 4h8m2 5H6a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v14a2 2 0 01-2 2z" />

@@ -27,6 +27,7 @@ const PostJobPageInner = () => {
   const editJobId = searchParams.get("jobId");
   const { profile, accessToken, loading: authLoading, refreshProfile } = useSupabaseAuth();
   const [foundingEligible, setFoundingEligible] = useState(false);
+  const [foundingLoaded, setFoundingLoaded] = useState(false);
   const [foundingStatus, setFoundingStatus] = useState<StartPackStatus | null>(null);
   const [initialJob, setInitialJob] = useState<Partial<Job> | undefined>(undefined);
   const [selectedPlan, setSelectedPlan] = useState<{ type: PlanType; price: number }>(() => {
@@ -37,17 +38,18 @@ const PostJobPageInner = () => {
   const [submitting, setSubmitting] = useState(false);
 
   // Ensure the admin-only $1 plan never leaks to non-admins via sessionStorage.
+  // Price 0 is Start pack, not the $1 test plan.
   useEffect(() => {
     const isAdmin = profile?.role === "admin";
-    const isInternalPrice = selectedPlan.type === "Standard" && selectedPlan.price <= 5;
+    const isInternalPrice = selectedPlan.type === "Standard" && selectedPlan.price === 1;
     if (!isInternalPrice) return;
-    if (foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price < PLAN_PRICES.standard) return;
-
-    // Only allow internal cheap pricing when the backend explicitly allowlists the admin.
     if (!(isAdmin && showTestPlan)) {
-      setSelectedPlan({ type: "Standard", price: PLAN_PRICES.standard });
+      setSelectedPlan(
+        foundingEligible
+          ? { type: "Standard", price: 0 }
+          : { type: "Standard", price: PLAN_PRICES.standard },
+      );
       try {
-        sessionStorage.setItem(PLAN_KEY, JSON.stringify({ type: "Standard", price: PLAN_PRICES.standard }));
         sessionStorage.removeItem("cp_admin_internal_plan");
       } catch {
         // ignore
@@ -92,13 +94,22 @@ const PostJobPageInner = () => {
 
   useEffect(() => {
     const load = async () => {
-      if (!accessToken) return;
+      if (!accessToken) {
+        setFoundingEligible(false);
+        setFoundingStatus(null);
+        setFoundingLoaded(true);
+        return;
+      }
+      setFoundingLoaded(false);
       try {
         const foundingRes = await authFetch("/api/employer/founding", {}, accessToken);
         if (foundingRes.ok) {
           const data = (await foundingRes.json()) as StartPackStatus;
           setFoundingStatus(data);
           setFoundingEligible(Boolean(data.eligible));
+        } else {
+          setFoundingEligible(false);
+          setFoundingStatus(null);
         }
         if (editJobId) {
           const jobRes = await authFetch(`/api/employer/jobs/${editJobId}`, {}, accessToken);
@@ -108,28 +119,36 @@ const PostJobPageInner = () => {
           }
         }
       } catch {
-        // ignore
+        setFoundingEligible(false);
+      } finally {
+        setFoundingLoaded(true);
       }
     };
     load();
-  }, [accessToken, editJobId]);
+  }, [accessToken, editJobId, profile?.email]);
 
   useEffect(() => {
-    if (!foundingEligible) return;
+    if (!foundingLoaded) return;
     if (selectedPlan.type !== "Standard") return;
-    if (selectedPlan.price === 0) return;
-    setSelectedPlan({ type: "Standard", price: 0 });
-  }, [foundingEligible, selectedPlan.type, selectedPlan.price]);
+    if (selectedPlan.price === 1) return;
+    if (foundingEligible && selectedPlan.price !== 0) {
+      setSelectedPlan({ type: "Standard", price: 0 });
+      return;
+    }
+    if (!foundingEligible && selectedPlan.price === 0) {
+      setSelectedPlan({ type: "Standard", price: PLAN_PRICES.standard });
+    }
+  }, [foundingLoaded, foundingEligible, selectedPlan.type, selectedPlan.price]);
 
   const handleJobSubmission = async (data: Job) => {
     if (submitting) return;
     setSubmitting(true);
-    const storagePlanPrice =
-      foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price < PLAN_PRICES.standard
-        ? 0
-        : Number.isFinite(selectedPlan.price)
-          ? Math.max(0, Math.round(selectedPlan.price))
-          : 79;
+    const useStartPack = Boolean(foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price !== 1);
+    const storagePlanPrice = useStartPack
+      ? 0
+      : Number.isFinite(selectedPlan.price)
+        ? Math.max(0, Math.round(selectedPlan.price))
+        : 79;
     const finalJobData = { ...data, plan: selectedPlan, planType: selectedPlan.type, status: "draft" };
     sessionStorage.setItem("cp_pending_job", JSON.stringify(finalJobData));
 
@@ -214,7 +233,6 @@ const PostJobPageInner = () => {
       }
         if (payload.job?.id) {
         sessionStorage.setItem("cp_pending_job_id", payload.job.id);
-        const useStartPack = foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price < PLAN_PRICES.standard;
         if (useStartPack) {
           const submit = await authFetch(`/api/employer/jobs/${payload.job.id}/submit`, { method: "POST" }, accessToken);
           if (submit.ok) {
