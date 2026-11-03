@@ -49,6 +49,10 @@ const TermsOfService: React.FC = () => {
           <p className="mt-2">
             If we cannot publish after review, contact info@careerspal.com. Refunds are handled case-by-case.
           </p>
+          <p className="mt-2">
+            Paused, closed, or archived listings can be renewed at the Standard price within 90 days. After that they
+            are removed. Renewal goes to review, then 30 days live if published.
+          </p>
         </section>
         <section>
           <h2 className="text-base font-semibold text-slate-900">5. Liability</h2>

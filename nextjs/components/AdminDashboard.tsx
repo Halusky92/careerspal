@@ -94,6 +94,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [tab, setTab] = useState<AdminTab>("review");
   const jobSearchRef = useRef<HTMLDivElement>(null);
   const [analytics, setAnalytics] = useState<AnalyticsPayload | null>(null);
+  const [autoReviewBusy, setAutoReviewBusy] = useState(false);
   const { accessToken } = useSupabaseAuth();
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<{
@@ -103,6 +104,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     remotePolicy: string;
     type: string;
     salary: string;
+    applyUrl: string;
   } | null>(null);
   const [showAdminCreate, setShowAdminCreate] = useState(false);
   const [adminCreateStatus, setAdminCreateStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
@@ -142,6 +144,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       remotePolicy: job.remotePolicy || "",
       type: job.type || "",
       salary: job.salary || "",
+      applyUrl: job.applyUrl || "",
     });
   };
   const cancelEditJob = () => {
@@ -312,10 +315,38 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       }
       if (data.job) setJobs((prev) => prev.map((j) => (j.id === id ? data.job! : j)));
       setJobActionTone("success");
-      setJobActionMsg(status === "published" ? "Published." : status === "private" ? "Archived." : "Updated.");
+      setJobActionMsg(status === "published" ? "On the board." : status === "private" ? "Declined." : "Updated.");
     } catch {
       setJobActionTone("error");
       setJobActionMsg("Action failed.");
+    }
+  };
+
+  const runAutoReview = async () => {
+    if (!accessToken) return;
+    setAutoReviewBusy(true);
+    try {
+      const response = await authFetch("/api/admin/jobs/auto-review", { method: "POST" }, accessToken);
+      const data = (await response.json()) as { published?: number; held?: number; scanned?: number; error?: string };
+      if (!response.ok) {
+        setJobActionTone("error");
+        setJobActionMsg(data.error || "Auto-check failed.");
+        return;
+      }
+      const jobsResp = await authFetch("/api/admin/jobs", {}, accessToken);
+      if (jobsResp.ok) {
+        const payload = (await jobsResp.json()) as { jobs?: Job[] };
+        if (payload.jobs) setJobs(payload.jobs);
+      }
+      setJobActionTone("success");
+      setJobActionMsg(
+        `Auto-check: ${data.published ?? 0} published, ${data.held ?? 0} still need you (${data.scanned ?? 0} scanned).`,
+      );
+    } catch {
+      setJobActionTone("error");
+      setJobActionMsg("Auto-check failed.");
+    } finally {
+      setAutoReviewBusy(false);
     }
   };
 
@@ -424,13 +455,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           )}
           <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap hidden md:table-cell">{formatDate(job.timestamp)}</td>
           <td className="px-3 py-2.5 whitespace-nowrap text-right sticky right-0 bg-white shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]">
-            {mode === "review" ? (
-              <div className="flex justify-end gap-2">
-                <button onClick={() => updateJobStatus(job.id, "published")} className="h-8 px-3 rounded-lg bg-emerald-600 text-white text-xs font-medium">
-                  Publish
+            {mode === "review" || job.status === "pending_review" ? (
+              <div className="flex justify-end items-center gap-1">
+                <button
+                  type="button"
+                  title="Publish to the board"
+                  aria-label="Publish"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateJobStatus(job.id, "published");
+                  }}
+                  className="h-9 w-9 rounded-lg bg-emerald-600 text-white text-lg font-semibold leading-none hover:bg-emerald-700"
+                >
+                  ✓
                 </button>
-                <button onClick={() => updateJobStatus(job.id, "private")} className="h-8 px-3 rounded-lg border border-slate-200 text-xs font-medium text-slate-600">
-                  Decline
+                <button
+                  type="button"
+                  title="Decline"
+                  aria-label="Decline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateJobStatus(job.id, "private");
+                  }}
+                  className="h-9 w-9 rounded-lg bg-rose-600 text-white text-lg font-semibold leading-none hover:bg-rose-700"
+                >
+                  ✕
                 </button>
               </div>
             ) : (
@@ -449,13 +498,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 {job.status !== "published" ? (
                   <button
                     type="button"
+                    title="Publish to the board"
+                    aria-label="Publish"
                     onClick={(e) => {
                       e.stopPropagation();
                       updateJobStatus(job.id, "published");
                     }}
-                    className="h-8 px-2.5 rounded-lg bg-emerald-600 text-white text-xs font-medium"
+                    className="h-9 w-9 rounded-lg bg-emerald-600 text-white text-lg font-semibold leading-none"
                   >
-                    Publish
+                    ✓
                   </button>
                 ) : (
                   <button
@@ -556,8 +607,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Admin</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Confirm listings in <span className="font-medium text-slate-700">To confirm</span>. Run Greenhouse in{" "}
-            <span className="font-medium text-slate-700">Pipeline</span>
+            Confirm listings in <span className="font-medium text-slate-700">To confirm</span> with ✓ / ✕. Auto-check
+            can publish clear Ops listings. Pipeline is ATS ingest.
             {pendingJobs.length > 0 ? ` · ${pendingJobs.length} waiting.` : "."}
           </p>
         </div>
@@ -588,28 +639,96 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       )}
 
       {tab === "review" && (
-        <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto">
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="text-sm text-slate-500">
+              Preview, then ✓ to put it on the board or ✕ to decline. Auto-check uses salary, apply link, niche, and AI
+              when the key is set. Off-niche stays here.
+            </p>
+            <button
+              type="button"
+              onClick={runAutoReview}
+              disabled={autoReviewBusy || pendingJobs.length === 0}
+              className="h-9 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 disabled:opacity-50"
+            >
+              {autoReviewBusy ? "Checking…" : "Auto-check queue"}
+            </button>
+          </div>
           {pendingJobs.length === 0 ? (
-            <div className="px-4 py-12 text-center">
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-12 text-center">
               <p className="font-medium text-slate-900">Nothing to review</p>
-              <p className="text-sm text-slate-500 mt-1">Employer submissions show up here. Switch to Jobs to manage the board.</p>
+              <p className="text-sm text-slate-500 mt-1">Employer submissions show up here after they submit.</p>
               <button onClick={() => setTab("jobs")} className="mt-4 h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium">
                 Open jobs
               </button>
             </div>
           ) : (
-            <table className="cp-table w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs font-medium text-slate-400 border-b border-slate-100">
-                  <th className="px-4 py-2.5 font-medium">Title</th>
-                  <th className="px-3 py-2.5 font-medium hidden sm:table-cell">Company</th>
-                  <th className="px-3 py-2.5 font-medium">Salary</th>
-                  <th className="px-3 py-2.5 font-medium hidden md:table-cell">Date</th>
-                  <th className="px-3 py-2.5 font-medium text-right min-w-[10rem] sticky right-0 bg-slate-100">Action</th>
-                </tr>
-              </thead>
-              <tbody>{pendingJobs.map((job) => renderJobRow(job, "review"))}</tbody>
-            </table>
+            <div className="space-y-3">
+              {pendingJobs.map((job) => (
+                <article key={job.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="text-base font-semibold text-slate-900">{job.title}</h2>
+                      <p className="text-sm text-slate-500 mt-0.5">
+                        {job.company} · {formatSalaryDisplay(job.salary)} · {job.location || "—"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        title="Publish to the board"
+                        aria-label="Publish"
+                        onClick={() => updateJobStatus(job.id, "published")}
+                        className="h-10 w-10 rounded-lg bg-emerald-600 text-white text-xl font-semibold leading-none hover:bg-emerald-700"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        type="button"
+                        title="Decline"
+                        aria-label="Decline"
+                        onClick={() => updateJobStatus(job.id, "private")}
+                        className="h-10 w-10 rounded-lg bg-rose-600 text-white text-xl font-semibold leading-none hover:bg-rose-700"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm text-slate-600 whitespace-pre-wrap line-clamp-6">{job.description || "No description."}</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                    {job.applyUrl ? (
+                      <a href={job.applyUrl} target="_blank" rel="noreferrer" className="text-indigo-600 break-all">
+                        {job.applyUrl}
+                      </a>
+                    ) : (
+                      <span className="text-rose-600">No apply link</span>
+                    )}
+                    <button type="button" onClick={() => startEditJob(job)} className="text-slate-500 hover:text-slate-800">
+                      Edit first
+                    </button>
+                  </div>
+                  {editingJobId === job.id && editDraft ? (
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input className={fieldClass} value={editDraft.title} onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })} />
+                      <input className={fieldClass} value={editDraft.salary} onChange={(e) => setEditDraft({ ...editDraft, salary: e.target.value })} />
+                      <input className={fieldClass} value={editDraft.location} onChange={(e) => setEditDraft({ ...editDraft, location: e.target.value })} />
+                      <input className={fieldClass} value={editDraft.applyUrl || job.applyUrl || ""} onChange={(e) => setEditDraft({ ...editDraft, applyUrl: e.target.value })} />
+                      <textarea
+                        className={`${fieldClass} sm:col-span-2 min-h-[100px]`}
+                        value={editDraft.description}
+                        onChange={(e) => setEditDraft({ ...editDraft, description: e.target.value })}
+                      />
+                      <button onClick={() => saveJobEdits(job.id)} className="h-9 rounded-lg bg-indigo-600 text-white text-sm font-medium">
+                        Save
+                      </button>
+                      <button onClick={cancelEditJob} className="h-9 rounded-lg border border-slate-200 text-sm font-medium">
+                        Cancel
+                      </button>
+                    </div>
+                  ) : null}
+                </article>
+              ))}
+            </div>
           )}
         </div>
       )}

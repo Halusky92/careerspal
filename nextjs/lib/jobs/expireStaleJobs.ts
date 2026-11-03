@@ -79,13 +79,17 @@ export async function expireStaleJobs(
   if (!dryRun) {
     for (let i = 0; i < toArchive.length; i += 100) {
       const chunk = toArchive.slice(i, i + 100);
-      const { error } = await sb
-        .from("jobs")
-        .update({
-          status: "archived",
-          posted_at_text: "Archived",
-        })
-        .in("id", chunk);
+      const payload: Record<string, unknown> = {
+        status: "archived",
+        posted_at_text: "Archived",
+        unpublished_at: new Date().toISOString(),
+      };
+      let { error } = await sb.from("jobs").update(payload).in("id", chunk);
+      if (error) {
+        const { unpublished_at: _unpublished, ...without } = payload;
+        const retry = await sb.from("jobs").update(without).in("id", chunk);
+        error = retry.error;
+      }
       if (error) throw new Error(error.message);
     }
     for (let i = 0; i < toDelete.length; i += 100) {

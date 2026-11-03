@@ -4,6 +4,7 @@ import { getFoundingStatus, loadEmployerOwnedJob, requireEmployer } from "../../
 import { foundingExpiresAt } from "../../../../../../lib/founding";
 import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../../../lib/nicheScope";
 import { maybeNotifyStartPackTwoLeft, sendListingReviewEmails } from "../../../../../../lib/listingNotify";
+import { maybeAutoPublishListing } from "../../../../../../lib/jobs/autoReviewListing";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await requireEmployer(request);
@@ -134,9 +135,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     jobId: data.id,
   });
 
+  const auto = await maybeAutoPublishListing(supabaseAdmin!, data.id, auth.profileId);
+
   return NextResponse.json({
     ok: true,
-    status: "pending_review",
+    status: auto.status,
     jobId: data.id,
     plan: "Start pack",
     remainingJobs: remainingAfter,

@@ -186,17 +186,20 @@ export async function POST(request: Request) {
           .maybeSingle();
         const paidPlan = (paidJob as { plan_type?: string | null } | null)?.plan_type;
         const featuredPlan = paidPlan === "Featured Pro" || paidPlan === "Elite Managed";
-        await supabaseAdmin
-          .from("jobs")
-          .update({
-            status: isPaid ? "pending_review" : "draft",
-            stripe_payment_status: session.payment_status || (isPaid ? "paid" : "unpaid"),
-            stripe_session_id: session.id,
-            posted_at_text: isPaid ? "Just now" : undefined,
-            timestamp: isPaid ? Date.now() : undefined,
-            is_featured: isPaid ? featuredPlan : false,
-          })
-          .eq("id", jobId);
+        const paidUpdate: Record<string, unknown> = {
+          status: isPaid ? "pending_review" : "draft",
+          stripe_payment_status: session.payment_status || (isPaid ? "paid" : "unpaid"),
+          stripe_session_id: session.id,
+          posted_at_text: isPaid ? "Pending review" : undefined,
+          timestamp: isPaid ? Date.now() : undefined,
+          is_featured: isPaid ? featuredPlan : false,
+          unpublished_at: isPaid ? null : undefined,
+        };
+        const paidWrite = await supabaseAdmin.from("jobs").update(paidUpdate).eq("id", jobId);
+        if (paidWrite.error) {
+          const { unpublished_at: _unpublished, ...withoutUnpublished } = paidUpdate;
+          await supabaseAdmin.from("jobs").update(withoutUnpublished).eq("id", jobId);
+        }
         await supabaseAdmin.from("audit_logs").insert({
           action: isPaid ? "payment_received" : "payment_incomplete",
           job_id: jobId,
@@ -209,6 +212,8 @@ export async function POST(request: Request) {
         });
 
         if (isPaid) {
+          const { maybeAutoPublishListing } = await import("../../../../lib/jobs/autoReviewListing");
+          await maybeAutoPublishListing(supabaseAdmin, jobId, null, { skipAi: true });
           const baseUrl = getBaseUrl();
           const resend = getResendClient();
           if (resend) {

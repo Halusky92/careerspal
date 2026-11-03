@@ -203,6 +203,7 @@ create table if not exists public.jobs (
   stripe_payment_status text,
   created_by uuid references public.profiles(id) on delete set null,
   published_at timestamptz,
+  unpublished_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -211,6 +212,7 @@ create index if not exists jobs_company_id_idx on public.jobs (company_id);
 create index if not exists jobs_status_idx on public.jobs (status);
 create index if not exists jobs_created_by_idx on public.jobs (created_by);
 create index if not exists jobs_published_at_idx on public.jobs (published_at);
+create index if not exists jobs_unpublished_at_idx on public.jobs (unpublished_at);
 create index if not exists jobs_category_idx on public.jobs (category);
 create index if not exists jobs_plan_type_idx on public.jobs (plan_type);
 create index if not exists jobs_type_idx on public.jobs (type);

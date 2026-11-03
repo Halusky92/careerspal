@@ -6,14 +6,24 @@ import { checkRateLimit } from "../../../../lib/rateLimit";
 import { getFoundingStatus } from "../../../../lib/employer";
 import { FOUNDING_LAUNCH_PRICE } from "../../../../lib/founding";
 import { PLAN_PRICES } from "../../../../lib/plans";
+import {
+  canRenewUnpublished,
+  RENEW_PLAN_NAME,
+  RENEW_PRICE,
+} from "../../../../lib/jobs/unpublishedRetention";
 import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
 
 type StripeJobRow = {
   id: string;
   title: string;
+  status?: string | null;
   plan_price: number | null;
   plan_type: string | null;
   created_by?: string | null;
+  created_at?: string | null;
+  published_at?: string | null;
+  unpublished_at?: string | null;
+  timestamp?: number | null;
   companies?: { name?: string | null } | Array<{ name?: string | null }> | null;
 };
 
@@ -52,16 +62,25 @@ export async function POST(request: Request) {
     price?: number;
     planName?: string;
     adminInternalPlan?: boolean;
+    purpose?: string;
   };
   if (!body?.jobId) {
     return NextResponse.json({ error: "Missing jobId." }, { status: 400 });
   }
 
-  const { data: job } = await supabaseAdmin
+  let jobQuery = await supabaseAdmin
     .from("jobs")
-    .select("id,title,plan_price,plan_type,created_by,companies(name)")
+    .select("id,title,status,plan_price,plan_type,created_by,created_at,published_at,unpublished_at,timestamp,companies(name)")
     .eq("id", body.jobId)
     .single();
+  if (jobQuery.error) {
+    jobQuery = await supabaseAdmin
+      .from("jobs")
+      .select("id,title,status,plan_price,plan_type,created_by,created_at,published_at,timestamp,companies(name)")
+      .eq("id", body.jobId)
+      .single();
+  }
+  const job = jobQuery.data;
   if (!job) {
     return NextResponse.json({ error: "Job not found." }, { status: 404 });
   }
@@ -75,7 +94,14 @@ export async function POST(request: Request) {
     );
   }
   const companyName = Array.isArray(jobRow.companies) ? jobRow.companies[0]?.name : jobRow.companies?.name;
-  const price = (body.price ?? jobRow.plan_price ?? PLAN_PRICES.standard);
+  const isRenew = body.purpose === "republish" || body.purpose === "renew";
+  if (isRenew && !canRenewUnpublished(jobRow)) {
+    return NextResponse.json(
+      { error: "This listing can no longer be renewed. Unpublished listings are removed after 90 days." },
+      { status: 400 },
+    );
+  }
+  const price = isRenew ? RENEW_PRICE : (body.price ?? jobRow.plan_price ?? PLAN_PRICES.standard);
   const isLaunchDollar =
     Number(price) === FOUNDING_LAUNCH_PRICE && (body.planName || jobRow.plan_type || "Standard") === "Standard";
   if (isLaunchDollar) {
@@ -97,7 +123,7 @@ export async function POST(request: Request) {
       }
     }
   }
-  const planName = body.planName || jobRow.plan_type || "Standard";
+  const planName = isRenew ? RENEW_PLAN_NAME : body.planName || jobRow.plan_type || "Standard";
   const origin =
     (request.headers.get("origin") || "").replace(/\/+$/, "") || getPublicSiteUrl();
 
@@ -111,7 +137,7 @@ export async function POST(request: Request) {
           price_data: {
             currency: "usd",
             product_data: {
-              name: `${planName} Job Listing`,
+              name: isRenew ? `${planName} listing renewal` : `${planName} Job Listing`,
               description: `${jobRow.title} at ${companyName || "Company"}`,
             },
             unit_amount: Math.round(price * 100),
@@ -123,6 +149,7 @@ export async function POST(request: Request) {
       cancel_url: `${origin}/checkout?jobId=${jobRow.id}`,
       metadata: {
         jobId: jobRow.id,
+        purpose: isRenew ? "republish" : "new",
       },
     });
 

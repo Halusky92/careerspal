@@ -12,6 +12,7 @@ import StartPackMeter from "./StartPackMeter";
 import type { StartPackStatus } from "../lib/founding";
 import type { PublicPerson } from "../lib/publicPerson";
 import Link from "next/link";
+import { PLAN_PRICES } from "../lib/plans";
 
 type TrafficSource = { source: string; label?: string; views: number; applyClicks: number };
 
@@ -168,7 +169,36 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           },
           accessToken,
         );
-        const data = (await res.json()) as { error?: string };
+        const data = (await res.json()) as {
+          error?: string;
+          checkoutRequired?: boolean;
+          price?: number;
+          planName?: string;
+          purpose?: string;
+        };
+        if (res.status === 402 && data.checkoutRequired) {
+          const pay = await authFetch(
+            "/api/stripe/checkout",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                jobId: job.id,
+                price: data.price ?? PLAN_PRICES.standard,
+                planName: data.planName || "Standard",
+                purpose: data.purpose || "republish",
+              }),
+            },
+            accessToken,
+          );
+          const payJson = (await pay.json()) as { url?: string; error?: string };
+          if (!pay.ok || !payJson.url) {
+            setMessage(payJson.error || data.error || "Could not start renewal checkout.");
+            return;
+          }
+          window.location.href = payJson.url;
+          return;
+        }
         if (!res.ok) {
           setMessage(data.error || "Could not update listing.");
           return;
@@ -206,6 +236,9 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Jobs</h1>
           <p className="text-sm text-slate-500 mt-1">
             {activeCount} active · {summary.total ?? myJobs.length} total
+          </p>
+          <p className="text-xs text-slate-400 mt-1">
+            Paused, closed, or archived listings can be renewed for ${PLAN_PRICES.standard} within 90 days, then they are removed.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -405,9 +438,9 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
                               Pause
                             </button>
                           )}
-                          {(job.status === "paused" || job.status === "closed") && (
+                          {(job.status === "paused" || job.status === "closed" || job.status === "archived") && (
                             <button disabled={busy} onClick={() => runAction(job, "republish")} className="h-8 px-2.5 rounded-lg bg-emerald-600 text-white text-xs font-medium disabled:opacity-50">
-                              Republish
+                              Renew ${PLAN_PRICES.standard}
                             </button>
                           )}
                           {(job.status === "published" || job.status === "paused") && (

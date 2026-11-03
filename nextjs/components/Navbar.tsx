@@ -58,9 +58,10 @@ const Navbar: React.FC = () => {
     ...(profile?.role === "employer" || profile?.role === "admin"
       ? [
           { label: "People", href: "/people" },
-          { label: "Dashboard", href: dashboardHref || "/account" },
+          { label: "Dashboard", href: profile.role === "admin" ? "/dashboard/employer" : dashboardHref || "/account" },
         ]
       : []),
+    ...(profile?.role === "admin" ? [{ label: "Admin", href: "/dashboard/admin" }] : []),
   ];
 
   return (
@@ -259,8 +260,13 @@ const Navbar: React.FC = () => {
                 Settings
               </Link>
               {(profile.role === "employer" || profile.role === "admin") && (
-                <Link href={dashboardHref || "/account"} onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                <Link href={profile.role === "admin" ? "/dashboard/employer" : dashboardHref || "/account"} onClick={closeMobile} className="block py-3 border-b border-slate-100">
                   Dashboard
+                </Link>
+              )}
+              {profile.role === "admin" && (
+                <Link href="/dashboard/admin" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                  Admin
                 </Link>
               )}
             </>

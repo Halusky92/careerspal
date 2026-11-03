@@ -9,6 +9,7 @@ import {
   requireEmployer,
 } from "../../../../../lib/employer";
 import { formatSalaryForStorage } from "../../../../../lib/formatSalary";
+import { canRenewUnpublished, RENEW_PLAN_NAME, RENEW_PRICE } from "../../../../../lib/jobs/unpublishedRetention";
 
 const postedLabel = (status: string) => {
   if (status === "published") return "Just now";
@@ -49,7 +50,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   const body = (await request.json()) as {
-    action?: "pause" | "close" | "republish" | "archive";
+    action?: "pause" | "close" | "republish" | "archive" | "renew";
     status?: string;
     title?: string;
     description?: string;
@@ -70,22 +71,36 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return NextResponse.json({ error: "Only active listings can be paused." }, { status: 400 });
     }
     updateData.status = "paused";
+    updateData.unpublished_at = new Date().toISOString();
   } else if (body.action === "close") {
     if (current !== "published" && current !== "paused") {
       return NextResponse.json({ error: "Only live listings can be closed." }, { status: 400 });
     }
     updateData.status = "closed";
-  } else if (body.action === "republish") {
-    if (current !== "paused" && current !== "closed") {
-      return NextResponse.json({ error: "Only paused or closed listings can be republished." }, { status: 400 });
+    updateData.unpublished_at = new Date().toISOString();
+  } else if (body.action === "republish" || body.action === "renew") {
+    if (!canRenewUnpublished(owned.job)) {
+      return NextResponse.json(
+        { error: "This listing can no longer be renewed. Unpublished listings are removed after 90 days." },
+        { status: 400 },
+      );
     }
-    updateData.status = "pending_review";
-    updateData.posted_at_text = "Pending review";
+    return NextResponse.json(
+      {
+        error: "Renewal is Standard checkout, then review.",
+        checkoutRequired: true,
+        price: RENEW_PRICE,
+        planName: RENEW_PLAN_NAME,
+        purpose: "republish",
+      },
+      { status: 402 },
+    );
   } else if (body.action === "archive") {
     if (current !== "closed" && current !== "draft") {
       return NextResponse.json({ error: "Archive is for closed or draft listings." }, { status: 400 });
     }
     updateData.status = "archived";
+    updateData.unpublished_at = new Date().toISOString();
   }
 
   if (typeof body.status === "string") {
@@ -127,9 +142,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     .single();
   let { data, error } = await query;
   if (error) {
+    const { unpublished_at: _unpublished, ...withoutUnpublished } = updateData;
     const retry = await supabaseAdmin!
       .from("jobs")
-      .update(updateData)
+      .update(withoutUnpublished)
       .eq("id", id)
       .select(EMPLOYER_JOB_SELECT_FALLBACK)
       .single();

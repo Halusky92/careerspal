@@ -59,7 +59,7 @@ const PrivacyPolicy: React.FC = () => {
           <h2 className="text-base font-semibold text-slate-900">5. Retention</h2>
           <ul className="mt-2 list-disc pl-5 space-y-1">
             <li>Account profile: while active; deleted on request or after long inactivity.</li>
-            <li>Listings: while live, then archived as needed for operations.</li>
+            <li>Listings: while live, then kept unpublished up to 90 days for paid renewal, then removed.</li>
             <li>Payment records: as required by accounting rules (typically up to 7 years).</li>
           </ul>
         </section>
