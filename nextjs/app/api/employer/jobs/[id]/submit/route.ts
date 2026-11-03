@@ -5,10 +5,18 @@ import { foundingExpiresAt } from "../../../../../../lib/founding";
 import { maybeNotifyStartPackTwoLeft, sendListingOutcomeEmails } from "../../../../../../lib/listingNotify";
 import { maybeAutoPublishListing, screenListingForBoard } from "../../../../../../lib/jobs/autoReviewListing";
 import { createJobSlug } from "../../../../../../lib/jobs";
+import { verifyScreenPass } from "../../../../../../lib/jobs/screenPass";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await requireEmployer(request);
   if ("error" in auth) return auth.error;
+  const rawBody = await request.text();
+  let screenToken: string | undefined;
+  try {
+    screenToken = rawBody ? (JSON.parse(rawBody) as { screenToken?: string }).screenToken : undefined;
+  } catch {
+    screenToken = undefined;
+  }
   const { id } = await context.params;
   const owned = await loadEmployerOwnedJob(id, auth.profileId);
   if (!owned.job) {
@@ -46,14 +54,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     companyName = named?.name || null;
   }
 
-  const screen = await screenListingForBoard({
+  const listingFields = {
     title: owned.job.title,
     description: owned.job.description,
     salary: owned.job.salary,
     apply_url: owned.job.apply_url,
     company: companyName,
     category: null,
-  });
+  };
+  const skipAi = verifyScreenPass(screenToken, listingFields);
+  const screen = await screenListingForBoard(listingFields, { skipAi });
   if (screen.decision !== "publish") {
     return NextResponse.json(
       {
@@ -111,7 +121,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
   }
 
-  const auto = await maybeAutoPublishListing(supabaseAdmin!, data.id, auth.profileId);
+  const auto = await maybeAutoPublishListing(supabaseAdmin!, data.id, auth.profileId, { skipAi });
   if (auto.status !== "published") {
     await supabaseAdmin!.from("jobs").update({ status: "draft", posted_at_text: "Draft", stripe_payment_status: null }).eq("id", id);
     return NextResponse.json(

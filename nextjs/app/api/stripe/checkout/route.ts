@@ -13,6 +13,7 @@ import {
 } from "../../../../lib/jobs/unpublishedRetention";
 import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
 import { screenListingForBoard } from "../../../../lib/jobs/autoReviewListing";
+import { verifyScreenPass } from "../../../../lib/jobs/screenPass";
 
 type StripeJobRow = {
   id: string;
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (auth.profile.role !== "admin") {
-    const limiter = checkRateLimit(`checkout:${auth.profile.id}`, { windowMs: 60_000, max: 5 });
+    const limiter = checkRateLimit(`checkout:${auth.profile.id}`, { windowMs: 60_000, max: 20 });
     if (!limiter.allowed) {
       return NextResponse.json({ error: "Too many checkout attempts." }, { status: 429 });
     }
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
     planName?: string;
     adminInternalPlan?: boolean;
     purpose?: string;
+    screenToken?: string;
   };
   if (!body?.jobId) {
     return NextResponse.json({ error: "Missing jobId." }, { status: 400 });
@@ -100,7 +102,7 @@ export async function POST(request: Request) {
     );
   }
   const companyName = Array.isArray(jobRow.companies) ? jobRow.companies[0]?.name : jobRow.companies?.name;
-  const screen = await screenListingForBoard({
+  const listingFields = {
     title: jobRow.title,
     description: jobRow.description,
     salary: jobRow.salary,
@@ -108,7 +110,9 @@ export async function POST(request: Request) {
     company: companyName,
     location: jobRow.location,
     remote_policy: jobRow.remote_policy,
-  });
+  };
+  const skipAi = verifyScreenPass(body.screenToken, listingFields);
+  const screen = await screenListingForBoard(listingFields, { skipAi });
   if (screen.decision !== "publish") {
     return NextResponse.json(
       {

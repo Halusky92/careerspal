@@ -13,7 +13,7 @@ import {
 import { formatSalaryForStorage } from "../../../../lib/formatSalary";
 import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../lib/nicheScope";
 
-const MAX_JOBS_PER_HOUR = 5;
+const MAX_LIVE_JOBS_PER_HOUR = 12;
 
 const normalizeApplyUrl = (value: string) => {
   const trimmed = value.trim();
@@ -158,14 +158,17 @@ export const POST = async (request: Request) => {
 
   if (auth.role !== "admin") {
     const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { count: recentCount } = await supabaseAdmin
-      .from("audit_logs")
+    const { count: liveCount } = await supabaseAdmin
+      .from("jobs")
       .select("id", { count: "exact", head: true })
-      .eq("actor_id", auth.profileId)
-      .eq("action", "job_created")
-      .gte("created_at", cutoff);
-    if (typeof recentCount === "number" && recentCount >= MAX_JOBS_PER_HOUR) {
-      return NextResponse.json({ error: "Rate limit exceeded. Please try again later." }, { status: 429 });
+      .eq("created_by", auth.profileId)
+      .in("status", ["published", "paused"])
+      .gte("published_at", cutoff);
+    if (typeof liveCount === "number" && liveCount >= MAX_LIVE_JOBS_PER_HOUR) {
+      return NextResponse.json(
+        { error: "You already published several listings this hour. Fix this draft and try again, or wait about an hour for a new live slot." },
+        { status: 429 },
+      );
     }
   }
 

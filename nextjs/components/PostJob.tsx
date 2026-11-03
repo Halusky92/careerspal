@@ -11,11 +11,13 @@ import { PLAN_PRICES } from '../lib/plans';
 import { filterJobTitleSuggestions } from "../lib/jobTitleSuggestions";
 import StartPackMeter from "./StartPackMeter";
 import type { StartPackStatus } from "../lib/founding";
+import { isOnNicheJob } from "../lib/nicheScope";
+import { localListingIssues } from "../lib/jobs/listingFieldChecks";
 
 export type ListingScreenIssue = { field: string; message: string };
 
 interface PostJobProps {
-  onComplete: (data: Job) => void | Promise<void>;
+  onComplete: (data: Job, meta?: { screenToken?: string | null }) => void | Promise<void>;
   selectedPlan: { type: PlanType; price: number };
   onUpgradePlan: (type: PlanType, price: number) => void;
   showTestPlan?: boolean;
@@ -106,6 +108,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const [liveTitles, setLiveTitles] = useState<string[]>([]);
   const [screenIssues, setScreenIssues] = useState<ListingScreenIssue[]>([]);
   const [screening, setScreening] = useState(false);
+  const [screenToken, setScreenToken] = useState<string | null>(null);
+  const [aiChecking, setAiChecking] = useState(false);
+  const [aiOk, setAiOk] = useState<boolean | null>(null);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const titleBoxRef = useRef<HTMLDivElement>(null);
   const formatPrice = (value: number) =>
@@ -223,27 +228,6 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     setOpenInfoId((prev) => (prev === id ? null : id));
   };
 
-  const handleAI = async () => {
-    if (!formData.title) return alert("Please enter a job title first.");
-    setIsGenerating(true);
-    try {
-      const desc = await generateJobDescription(formData.title, formData.keywords ?? '');
-      setFormData(prev => ({ ...prev, description: desc || '' }));
-    } catch (e) {
-      alert("AI generation is currently unavailable.");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleStep1 = () => {
-    if (!formData.title || !formData.description || !formData.salary) {
-      return alert("Please fill in the Job Title, Description, and Salary.");
-    }
-    setStep(2);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const normalizeHttpUrl = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) return trimmed;
@@ -263,8 +247,154 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     return trimmed;
   };
 
+  const handleAI = async () => {
+    if (!formData.title) return alert("Please enter a job title first.");
+    setIsGenerating(true);
+    try {
+      const desc = await generateJobDescription(formData.title, formData.keywords ?? '');
+      setFormData(prev => ({ ...prev, description: desc || '' }));
+    } catch (e) {
+      alert("AI generation is currently unavailable.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const localIssues = useMemo(
+    () =>
+      localListingIssues({
+        title: formData.title,
+        description: formData.description,
+        salary: formData.salary,
+        applyUrl: formData.applyUrl ? normalizeApplyUrl(formData.applyUrl) : formData.applyUrl,
+        company: formData.company,
+        location: formData.location,
+        remotePolicy: formData.remotePolicy,
+        category: formData.category,
+      }),
+    [
+      formData.title,
+      formData.description,
+      formData.salary,
+      formData.applyUrl,
+      formData.company,
+      formData.location,
+      formData.remotePolicy,
+      formData.category,
+    ],
+  );
+
+  const fieldValue = (field: string) => {
+    if (field === "title") return formData.title;
+    if (field === "salary") return formData.salary;
+    if (field === "description") return formData.description;
+    if (field === "company") return formData.company;
+    if (field === "applyUrl") return formData.applyUrl;
+    return "";
+  };
+
+  const issueFor = (field: string) =>
+    screenIssues.find((issue) => issue.field === field)?.message ||
+    localIssues.find((issue) => issue.field === field)?.message;
+
+  const showIssue = (field: string) =>
+    Boolean(issueFor(field) && (fieldValue(field).trim() || screenIssues.some((issue) => issue.field === field)));
+
+  const fieldReady = (field: string) => {
+    if (field === "title" && formData.title.trim().length < 4) return false;
+    if (field === "salary") return !localIssues.some((issue) => issue.field === "salary") && Boolean(formData.salary.trim());
+    if (field === "description") return !localIssues.some((issue) => issue.field === "description") && formData.description.trim().length >= 40;
+    if (field === "company") return Boolean(formData.company.trim()) && !localIssues.some((issue) => issue.field === "company");
+    if (field === "applyUrl") return Boolean(formData.applyUrl.trim()) && !localIssues.some((issue) => issue.field === "applyUrl");
+    return !localIssues.some((issue) => issue.field === field);
+  };
+
+  const titleLocalOk = isOnNicheJob({ title: formData.title, category: formData.category, description: null }) && formData.title.trim().length >= 4;
+  const step1Ready = fieldReady("title") && fieldReady("salary") && fieldReady("description") && aiOk !== false;
+  const allReady = step1Ready && fieldReady("company") && fieldReady("applyUrl");
+
+  const fieldMark = (field: "title" | "salary" | "description" | "company" | "applyUrl") => {
+    const checking = (field === "title" || field === "description") && aiChecking && titleLocalOk;
+    if (checking) return { label: "Checking", className: "text-slate-400" };
+    if (field === "title" && aiOk === false) return { label: "Fix", className: "text-rose-600" };
+    if (issueFor(field) && fieldValue(field).trim()) return { label: "Fix", className: "text-rose-600" };
+    if (fieldReady(field)) return { label: "✓", className: "text-emerald-600" };
+    return { label: "", className: "" };
+  };
+
+  useEffect(() => {
+    const title = formData.title.trim();
+    const description = formData.description.trim();
+    if (title.length < 4 || !isOnNicheJob({ title, category: formData.category, description: null }) || description.length < 80) {
+      setAiChecking(false);
+      if (aiOk === true) setScreenToken(null);
+      if (!isOnNicheJob({ title, category: formData.category, description: null }) || title.length < 4) setAiOk(null);
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      setAiChecking(true);
+      try {
+        const response = await fetch("/api/employer/jobs/screen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "niche",
+            title: formData.title,
+            description: formData.description,
+            salary: formData.salary,
+            applyUrl: normalizeApplyUrl(formData.applyUrl),
+            company: formData.company,
+            location: formData.location,
+            remotePolicy: formData.remotePolicy,
+            category: formData.category,
+          }),
+        });
+        const payload = (await response.json()) as {
+          ok?: boolean;
+          issues?: ListingScreenIssue[];
+          token?: string | null;
+          error?: string;
+        };
+        if (payload.ok) {
+          setAiOk(true);
+          setScreenToken(payload.token || null);
+          setScreenIssues((prev) => prev.filter((issue) => issue.field !== "title" && issue.field !== "description"));
+        } else {
+          setAiOk(false);
+          setScreenToken(null);
+          setScreenIssues(payload.issues?.length ? payload.issues : [{ field: "title", message: payload.error || "Change the title so this is clearly an Ops / Systems role." }]);
+        }
+      } catch {
+        setAiOk(null);
+      } finally {
+        setAiChecking(false);
+      }
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [formData.title, formData.description, formData.category]);
+
+  const handleStep1 = () => {
+    const blocked = localIssues.filter((issue) => issue.field === "title" || issue.field === "salary" || issue.field === "description");
+    if (blocked.length || aiOk === false) {
+      setScreenIssues(blocked.length ? blocked : screenIssues);
+      return;
+    }
+    setStep(2);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleStep2 = async () => {
-    if (!formData.company || !formData.applyUrl) return alert("Please fill in the Company Name and Apply URL.");
+    const blocked = localIssues.filter((issue) => issue.field === "company" || issue.field === "applyUrl");
+    if (blocked.length) {
+      setScreenIssues(blocked);
+      return;
+    }
+    if (allReady && (screenToken || aiOk === true || aiOk === null)) {
+      setScreenIssues([]);
+      setStep(3);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     setScreening(true);
     try {
       const response = await fetch("/api/employer/jobs/screen", {
@@ -331,7 +461,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
       id: `local-${Date.now()}`,
       isFeatured: selectedPlan.type !== 'Standard'
     };
-    await onComplete(finalJob);
+    await onComplete(finalJob, { screenToken });
   };
 
   // Filter out 'All Roles' for the dropdown
@@ -389,20 +519,36 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     ),
   );
 
-  const issueFor = (field: string) => screenIssues.find((issue) => issue.field === field)?.message;
-  const fieldTone = (field: string) =>
-    issueFor(field) ? " border-rose-300 ring-1 ring-rose-200" : "";
-  const IssuesBanner = () =>
-    screenIssues.length ? (
+  const fieldTone = (field: string) => {
+    const mark = fieldMark(field as "title" | "salary" | "description" | "company" | "applyUrl");
+    if (mark.label === "✓") return " border-emerald-300";
+    if (issueFor(field)) return " border-rose-300 ring-1 ring-rose-200";
+    return "";
+  };
+  const IssuesBanner = () => {
+    const shown = [...screenIssues, ...localIssues.filter((issue) => !screenIssues.some((item) => item.field === issue.field))].filter(
+      (issue) => {
+        const value = fieldValue(issue.field);
+        return Boolean(value?.trim()) || screenIssues.some((item) => item.field === issue.field);
+      },
+    );
+    if (!shown.length) return null;
+    return (
       <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 text-left space-y-1">
-        <p className="font-semibold">Fix these before preview. A Start pack listing is not used until this passes.</p>
+        <p className="font-semibold">Change these lines, then submit again. No wait. A Start pack slot is used only when the listing is live.</p>
         <ul className="list-disc pl-4 space-y-0.5">
-          {screenIssues.map((issue) => (
+          {shown.map((issue) => (
             <li key={`${issue.field}-${issue.message}`}>{issue.message}</li>
           ))}
         </ul>
       </div>
-    ) : null;
+    );
+  };
+  const Mark = ({ field }: { field: "title" | "salary" | "description" | "company" | "applyUrl" }) => {
+    const mark = fieldMark(field);
+    if (!mark.label) return null;
+    return <span className={`text-[11px] font-black ${mark.className}`}>{mark.label}</span>;
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3">
@@ -473,10 +619,20 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
             {step === 1 && (
               <div className="p-4 space-y-3">
                 <h2 className="text-sm font-semibold tracking-tight">1. Job details</h2>
+                <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
+                  {(["title", "salary", "description"] as const).map((field) => {
+                    const mark = fieldMark(field);
+                    return (
+                      <span key={field} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${mark.label === "✓" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}>
+                        {mark.label === "✓" ? "✓" : "○"} {field[0].toUpperCase() + field.slice(1)}
+                      </span>
+                    );
+                  })}
+                </div>
                 <IssuesBanner />
                 <div className="space-y-3">
                   <div className="space-y-2" ref={titleBoxRef}>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Job Title *</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">Job Title * <Mark field="title" /></label>
                     <div className="relative">
                       <input
                         type="text"
@@ -513,7 +669,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                         </ul>
                       )}
                     </div>
-                    {issueFor("title") ? (
+                    {showIssue("title") ? (
                       <p className="text-[11px] font-semibold text-rose-700">{issueFor("title")}</p>
                     ) : (
                       <p className="text-[9px] text-slate-400 font-bold">Suggestions from live listings and common Ops/Systems titles.</p>
@@ -549,13 +705,13 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Salary Range *</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">Salary Range * <Mark field="salary" /></label>
                     <input type="text" placeholder="e.g. $80k - $120k" className={`cp-field w-full h-10 rounded-lg px-3 text-sm outline-none${fieldTone("salary")}`} value={formData.salary} onChange={e => { setFormData({...formData, salary: e.target.value}); setScreenIssues((prev) => prev.filter((issue) => issue.field !== "salary")); }} />
-                    {issueFor("salary") && <p className="text-[11px] font-semibold text-rose-700">{issueFor("salary")}</p>}
+                    {showIssue("salary") && <p className="text-[11px] font-semibold text-rose-700">{issueFor("salary")}</p>}
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Job Description *</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">Job Description * <Mark field="description" /></label>
                       <button onClick={handleAI} disabled={isGenerating} className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg">
                         {isGenerating ? 'AI Writing...' : 'Draft with AI'}
                       </button>
@@ -571,22 +727,34 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                       }}
                       onInput={resizeDescriptionField}
                     />
-                    {issueFor("description") && <p className="text-[11px] font-semibold text-rose-700">{issueFor("description")}</p>}
+                    {showIssue("description") && <p className="text-[11px] font-semibold text-rose-700">{issueFor("description")}</p>}
                   </div>
                 </div>
-                <button onClick={handleStep1} className="w-full h-10 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Next</button>
+                <button onClick={handleStep1} disabled={!step1Ready || aiChecking} className="w-full h-10 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
+                  {aiChecking ? "Checking title…" : "Next"}
+                </button>
               </div>
             )}
 
             {step === 2 && (
               <div className="p-4 space-y-3">
                 <h2 className="text-sm font-semibold tracking-tight">2. Company & apply</h2>
+                <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
+                  {(["company", "applyUrl"] as const).map((field) => {
+                    const mark = fieldMark(field);
+                    return (
+                      <span key={field} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${mark.label === "✓" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}>
+                        {mark.label === "✓" ? "✓" : "○"} {field === "applyUrl" ? "Apply" : "Company"}
+                      </span>
+                    );
+                  })}
+                </div>
                 <IssuesBanner />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-2 md:col-span-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company Name *</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">Company Name * <Mark field="company" /></label>
                     <input type="text" placeholder="Your Company Name" className={`cp-field w-full h-10 rounded-lg px-3 text-sm outline-none${fieldTone("company")}`} value={formData.company} onChange={e => { setFormData({...formData, company: e.target.value}); setScreenIssues((prev) => prev.filter((issue) => issue.field !== "company")); }} />
-                    {issueFor("company") && <p className="text-[11px] font-semibold text-rose-700">{issueFor("company")}</p>}
+                    {showIssue("company") && <p className="text-[11px] font-semibold text-rose-700">{issueFor("company")}</p>}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -700,7 +868,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 </div>
 
                 <div className="space-y-4">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">How to Apply? (URL or Email) *</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">How to Apply? (URL or Email) * <Mark field="applyUrl" /></label>
                   <input
                     type="text"
                     inputMode="url"
@@ -718,7 +886,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                       }))
                     }
                   />
-                  {issueFor("applyUrl") ? (
+                  {showIssue("applyUrl") ? (
                     <p className="text-[11px] font-semibold text-rose-700">{issueFor("applyUrl")}</p>
                   ) : (
                     <p className="text-[9px] text-slate-400 font-bold">Auto-formats after you leave the field.</p>
@@ -727,7 +895,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 <div className="flex gap-2 pt-2">
                   <button onClick={() => setStep(1)} className="h-10 px-4 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">Back</button>
                   <button onClick={handleStep2} disabled={screening} className="flex-1 h-10 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
-                    {screening ? "Checking listing…" : "Review listing"}
+                    {screening ? "Checking listing…" : allReady ? "Review listing" : "Fix the marked fields"}
                   </button>
                 </div>
               </div>
@@ -824,8 +992,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
                 <AccordionRow id="review" openId={openInfoId} onToggle={toggleInfo} title="Review & publish timeline">
                   <div className="space-y-2 text-sm font-medium text-slate-700">
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span> Fill the form. Preview is locked until the listing passes the board check.</div>
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">2</span> Start pack ($0): goes live. Paid: Stripe, then live after payment. Email to you; CareersPal gets a FYI.</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span> Green ticks appear as each field meets the bar. Fix the red note and send again — no cooldown.</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">2</span> When every required field is ticked, preview and post. Start pack goes live; paid goes to Stripe.</div>
                     <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">3</span> Apply stays on your link. No timed SLA.</div>
                     <p className="mt-3 text-xs text-slate-600">
                       A Start pack slot is used only after the listing is live. Failed checks stay as a draft so you can fix them.

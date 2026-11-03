@@ -150,7 +150,7 @@ const PostJobPageInner = () => {
     }
   }, [foundingLoaded, foundingEligible, selectedPlan.type, selectedPlan.price]);
 
-  const handleJobSubmission = async (data: Job) => {
+  const handleJobSubmission = async (data: Job, meta?: { screenToken?: string | null }) => {
     if (submitting) return;
     setSubmitting(true);
     const useStartPack = Boolean(foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price !== 1);
@@ -161,6 +161,7 @@ const PostJobPageInner = () => {
         : 79;
     const finalJobData = { ...data, plan: selectedPlan, planType: selectedPlan.type, status: "draft" };
     writePostingItem("cp_pending_job", owner, JSON.stringify(finalJobData));
+    if (meta?.screenToken) writePostingItem("cp_screen_token", owner, meta.screenToken);
 
     setSubmitError("");
     setSubmitIssues([]);
@@ -198,23 +199,25 @@ const PostJobPageInner = () => {
 
     try {
       if (!accessToken) throw new Error("Missing auth");
+      const draftId = editJobId || readPostingItem("cp_pending_job_id", owner);
+      const patchBody = {
+        title: finalJobData.title,
+        description: finalJobData.description,
+        location: finalJobData.location,
+        remotePolicy: finalJobData.remotePolicy,
+        type: finalJobData.type,
+        salary: finalJobData.salary,
+        applyUrl: finalJobData.applyUrl,
+        companyWebsite: finalJobData.companyWebsite,
+        keywords: finalJobData.keywords,
+      };
       if (editJobId) {
         const update = await authFetch(
           `/api/employer/jobs/${editJobId}`,
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: finalJobData.title,
-              description: finalJobData.description,
-              location: finalJobData.location,
-              remotePolicy: finalJobData.remotePolicy,
-              type: finalJobData.type,
-              salary: finalJobData.salary,
-              applyUrl: finalJobData.applyUrl,
-              companyWebsite: finalJobData.companyWebsite,
-              keywords: finalJobData.keywords,
-            }),
+            body: JSON.stringify(patchBody),
           },
           accessToken,
         );
@@ -223,21 +226,43 @@ const PostJobPageInner = () => {
           return;
         }
       }
-      const response = await authFetch(
-        "/api/employer/jobs",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...finalJobData,
-            plan: { ...selectedPlan, price: storagePlanPrice },
-            planPrice: storagePlanPrice,
-            adminInternalPlan: profile?.role === "admin" && showTestPlan && selectedPlan.type === "Standard" && selectedPlan.price === 1,
-          }),
-        },
-        accessToken,
-      );
-      const payload = (await response.json()) as { job?: Job; claimRequired?: boolean; error?: string };
+      let payload: { job?: Job; claimRequired?: boolean; error?: string } = {};
+      if (draftId && !editJobId) {
+        const update = await authFetch(
+          `/api/employer/jobs/${draftId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(patchBody),
+          },
+          accessToken,
+        );
+        if (update.ok) {
+          payload = { job: { ...(finalJobData as Job), id: draftId } };
+        }
+      }
+      if (!payload.job?.id) {
+        const response = await authFetch(
+          "/api/employer/jobs",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...finalJobData,
+              plan: { ...selectedPlan, price: storagePlanPrice },
+              planPrice: storagePlanPrice,
+              adminInternalPlan: profile?.role === "admin" && showTestPlan && selectedPlan.type === "Standard" && selectedPlan.price === 1,
+            }),
+          },
+          accessToken,
+        );
+        payload = (await response.json()) as { job?: Job; claimRequired?: boolean; error?: string };
+        if (!response.ok && !payload.job?.id) {
+          setSubmitError(payload.error || "Could not create the listing.");
+          setSubmitting(false);
+          return;
+        }
+      }
       if (payload.claimRequired) {
         router.push("/dashboard/employer");
         return;
@@ -245,7 +270,15 @@ const PostJobPageInner = () => {
         if (payload.job?.id) {
         writePostingItem("cp_pending_job_id", owner, payload.job.id);
         if (useStartPack) {
-          const submit = await authFetch(`/api/employer/jobs/${payload.job.id}/submit`, { method: "POST" }, accessToken);
+          const submit = await authFetch(
+            `/api/employer/jobs/${payload.job.id}/submit`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ screenToken: meta?.screenToken || null }),
+            },
+            accessToken,
+          );
           const submitPayload = (await submit.json().catch(() => ({}))) as {
             error?: string;
             checkoutRequired?: boolean;

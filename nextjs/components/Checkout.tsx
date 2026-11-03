@@ -162,7 +162,15 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
       }
 
       if (storagePlanPrice === 0 && planName === "Standard") {
-        const submit = await authFetch(`/api/employer/jobs/${effectiveJobId}/submit`, { method: "POST" }, accessToken);
+        const submit = await authFetch(
+          `/api/employer/jobs/${effectiveJobId}/submit`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ screenToken: readPostingItem("cp_screen_token", owner) || null }),
+          },
+          accessToken,
+        );
         const submitPayload = (await readJson<{
           error?: string;
           issues?: ListingScreenIssue[];
@@ -188,7 +196,13 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jobId: effectiveJobId, price, planName, adminInternalPlan }),
+          body: JSON.stringify({
+            jobId: effectiveJobId,
+            price,
+            planName,
+            adminInternalPlan,
+            screenToken: readPostingItem("cp_screen_token", owner) || undefined,
+          }),
         },
         accessToken,
       );
@@ -245,7 +259,13 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ jobId: recoveredJobId, price, planName, adminInternalPlan }),
+                body: JSON.stringify({
+                  jobId: recoveredJobId,
+                  price,
+                  planName,
+                  adminInternalPlan,
+                  screenToken: readPostingItem("cp_screen_token", owner) || undefined,
+                }),
               },
               accessToken,
             );
