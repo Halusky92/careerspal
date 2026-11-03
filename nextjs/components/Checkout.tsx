@@ -8,6 +8,8 @@ import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
 import { PLAN_PRICES } from "../lib/plans";
 import { postingOwnerKey, readPostingItem, writePostingItem } from "../lib/postingSession";
+import { createJobSlug } from "../lib/jobs";
+import type { ListingScreenIssue } from "./PostJob";
 
 interface CheckoutProps {
   jobData: Job | null;
@@ -20,6 +22,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
   const router = useRouter();
   const [step, setStep] = useState<'form' | 'processing' | 'success'>('form');
   const [error, setError] = useState<string | null>(null);
+  const [issues, setIssues] = useState<ListingScreenIssue[]>([]);
   const { user, accessToken, profile, loading: authLoading, refreshProfile } = useSupabaseAuth();
   const owner = postingOwnerKey(user?.id, profile?.email);
   const [ownershipRecoveryAttempted, setOwnershipRecoveryAttempted] = useState(false);
@@ -100,6 +103,8 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
       }
     }
 
+    setError(null);
+    setIssues([]);
     setStep('processing');
 
     try {
@@ -158,8 +163,22 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
 
       if (storagePlanPrice === 0 && planName === "Standard") {
         const submit = await authFetch(`/api/employer/jobs/${effectiveJobId}/submit`, { method: "POST" }, accessToken);
+        const submitPayload = (await readJson<{
+          error?: string;
+          issues?: ListingScreenIssue[];
+          slug?: string;
+          jobId?: string;
+        }>(submit)) || {};
         if (submit.ok) {
-          router.push("/dashboard/employer");
+          router.push(
+            `/jobs/${submitPayload.slug || createJobSlug({ id: submitPayload.jobId || effectiveJobId, title: jobData.title })}`,
+          );
+          return;
+        }
+        if (submitPayload.issues?.length) {
+          setIssues(submitPayload.issues);
+          setError(submitPayload.error || "This listing does not meet the board bar yet.");
+          setStep("form");
           return;
         }
       }
@@ -173,7 +192,8 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
         },
         accessToken,
       );
-      const data = (await readJson<{ url?: string; error?: string }>(response)) || {};
+      const data = (await readJson<{ url?: string; error?: string; issues?: ListingScreenIssue[] }>(response)) || {};
+      if (data.issues?.length) setIssues(data.issues);
       if (data?.url) {
         window.location.href = data.url;
         return;
@@ -229,7 +249,8 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
               },
               accessToken,
             );
-            const retryData = (await readJson<{ url?: string; error?: string }>(retryResponse)) || {};
+            const retryData = (await readJson<{ url?: string; error?: string; issues?: ListingScreenIssue[] }>(retryResponse)) || {};
+            if (retryData.issues?.length) setIssues(retryData.issues);
             if (retryData?.url) {
               window.location.href = retryData.url;
               return;
@@ -309,8 +330,26 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
               >
                 Continue to Stripe ({formatPrice(price)})
               </button>
-              {error && (
-                <p className="text-center text-red-500 text-sm font-bold mt-4">{error}</p>
+              {(error || issues.length > 0) && (
+                <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-left text-sm text-rose-800">
+                  {error && <p className="font-semibold">{error}</p>}
+                  {issues.length > 0 && (
+                    <ul className="mt-2 list-disc pl-4 space-y-1">
+                      {issues.map((issue) => (
+                        <li key={`${issue.field}-${issue.message}`}>{issue.message}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {jobId && (
+                    <button
+                      type="button"
+                      className="mt-3 text-sm font-semibold text-indigo-700 hover:text-indigo-900"
+                      onClick={() => router.push(`/post-a-job?jobId=${encodeURIComponent(jobId)}`)}
+                    >
+                      Fix listing
+                    </button>
+                  )}
+                </div>
               )}
               <button
                 type="button"
@@ -346,7 +385,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
            <div className="bg-white p-8 rounded-[2.5rem] flex items-start gap-4 border border-indigo-100 shadow-sm">
               <span className="text-2xl">🛡️</span>
               <p className="text-xs font-bold text-slate-500 leading-relaxed">
-                 Card payments go through Stripe. Listings go live after review.
+                 Card payments go through Stripe. After payment, the listing goes live if it still meets the board bar. You get email confirmation.
               </p>
            </div>
         </div>

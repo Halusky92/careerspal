@@ -8,6 +8,8 @@ import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 import { PLAN_PRICES } from "../../lib/plans";
 import type { StartPackStatus } from "../../lib/founding";
+import { createJobSlug } from "../../lib/jobs";
+import type { ListingScreenIssue } from "../../components/PostJob";
 import {
   postingOwnerKey,
   readPostingItem,
@@ -43,6 +45,7 @@ const PostJobPageInner = () => {
   });
   const [showTestPlan, setShowTestPlan] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [submitIssues, setSubmitIssues] = useState<ListingScreenIssue[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   // Ensure the admin-only $1 plan never leaks to non-admins via sessionStorage.
@@ -160,6 +163,7 @@ const PostJobPageInner = () => {
     writePostingItem("cp_pending_job", owner, JSON.stringify(finalJobData));
 
     setSubmitError("");
+    setSubmitIssues([]);
     if (authLoading || !accessToken) {
       setSubmitting(false);
       router.push(`/auth?role=employer&from=${encodeURIComponent("/post-a-job")}`);
@@ -242,13 +246,25 @@ const PostJobPageInner = () => {
         writePostingItem("cp_pending_job_id", owner, payload.job.id);
         if (useStartPack) {
           const submit = await authFetch(`/api/employer/jobs/${payload.job.id}/submit`, { method: "POST" }, accessToken);
+          const submitPayload = (await submit.json().catch(() => ({}))) as {
+            error?: string;
+            checkoutRequired?: boolean;
+            issues?: ListingScreenIssue[];
+            slug?: string;
+            status?: string;
+            jobId?: string;
+          };
           if (submit.ok) {
-            router.push("/dashboard/employer");
+            removePostingItem("cp_draft_post", owner);
+            const slug =
+              submitPayload.slug ||
+              createJobSlug({ id: submitPayload.jobId || payload.job.id, title: finalJobData.title });
+            router.push(`/jobs/${slug}`);
             return;
           }
-          const submitPayload = (await submit.json()) as { error?: string; checkoutRequired?: boolean };
           if (!submitPayload.checkoutRequired) {
-            setSubmitError(submitPayload.error || "Could not submit the Start pack listing.");
+            setSubmitIssues(submitPayload.issues || []);
+            setSubmitError(submitPayload.error || "This listing does not meet the board bar yet.");
             setSubmitting(false);
             return;
           }
@@ -284,6 +300,7 @@ const PostJobPageInner = () => {
         initialJob={initialJob}
         submitting={submitting}
         submitError={submitError}
+        submitIssues={submitIssues}
       />
     </div>
   );

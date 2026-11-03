@@ -12,6 +12,8 @@ import { filterJobTitleSuggestions } from "../lib/jobTitleSuggestions";
 import StartPackMeter from "./StartPackMeter";
 import type { StartPackStatus } from "../lib/founding";
 
+export type ListingScreenIssue = { field: string; message: string };
+
 interface PostJobProps {
   onComplete: (data: Job) => void | Promise<void>;
   selectedPlan: { type: PlanType; price: number };
@@ -22,7 +24,17 @@ interface PostJobProps {
   initialJob?: Partial<Job>;
   submitting?: boolean;
   submitError?: string;
+  submitIssues?: ListingScreenIssue[];
 }
+
+const FIELD_STEP: Record<string, 1 | 2> = {
+  title: 1,
+  description: 1,
+  salary: 1,
+  category: 1,
+  applyUrl: 2,
+  company: 2,
+};
 
 type JobFormData = Omit<Job, 'id' | 'postedAt' | 'isFeatured' | 'planType' | 'plan' | 'timestamp' | 'status' | 'views' | 'matches'>;
 
@@ -83,7 +95,7 @@ const formFromJob = (job?: Partial<Job> | null, draft?: DraftPost | null): JobFo
   tags: job?.tags?.length ? job.tags : draft?.formData?.tags?.length ? draft.formData.tags : [],
 });
 
-const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan, foundingEligible, foundingStatus, initialJob, submitting, submitError }) => {
+const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan, foundingEligible, foundingStatus, initialJob, submitting, submitError, submitIssues }) => {
   const { user, profile, loading: authLoading } = useSupabaseAuth();
   const owner = postingOwnerKey(user?.id, profile?.email);
   const [step, setStep] = useState(1);
@@ -92,6 +104,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const [openInfoId, setOpenInfoId] = useState<("get" | "requirements" | "review") | null>("get");
   const [titleMenuOpen, setTitleMenuOpen] = useState(false);
   const [liveTitles, setLiveTitles] = useState<string[]>([]);
+  const [screenIssues, setScreenIssues] = useState<ListingScreenIssue[]>([]);
+  const [screening, setScreening] = useState(false);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const titleBoxRef = useRef<HTMLDivElement>(null);
   const formatPrice = (value: number) =>
@@ -100,7 +114,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const steps = [
     { id: 1, title: "Role details", desc: "Title, scope, salary" },
     { id: 2, title: "Company & apply", desc: "Brand + link" },
-    { id: 3, title: "Preview & pay", desc: foundingEligible ? "Start pack — submit for review" : "Confirm & checkout" },
+    { id: 3, title: "Preview & pay", desc: foundingEligible ? "Start pack — goes live" : "Confirm & checkout" },
   ] as const;
 
   
@@ -117,6 +131,14 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   useEffect(() => {
     resizeDescriptionField();
   }, [formData.description]);
+
+  useEffect(() => {
+    if (!submitIssues?.length) return;
+    setScreenIssues(submitIssues);
+    const needsCompany = submitIssues.some((issue) => FIELD_STEP[issue.field] === 2);
+    const needsRole = submitIssues.some((issue) => FIELD_STEP[issue.field] === 1);
+    setStep(needsRole || !needsCompany ? 1 : 2);
+  }, [submitIssues]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -241,10 +263,46 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     return trimmed;
   };
 
-  const handleStep2 = () => {
+  const handleStep2 = async () => {
     if (!formData.company || !formData.applyUrl) return alert("Please fill in the Company Name and Apply URL.");
-    setStep(3);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setScreening(true);
+    try {
+      const response = await fetch("/api/employer/jobs/screen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          salary: formData.salary,
+          applyUrl: normalizeApplyUrl(formData.applyUrl),
+          company: formData.company,
+          location: formData.location,
+          remotePolicy: formData.remotePolicy,
+          category: formData.category,
+        }),
+      });
+      const payload = (await response.json()) as {
+        ok?: boolean;
+        issues?: ListingScreenIssue[];
+        error?: string;
+      };
+      const issues = payload.issues || [];
+      if (!payload.ok) {
+        setScreenIssues(issues.length ? issues : [{ field: "title", message: payload.error || "This listing does not meet the board bar yet." }]);
+        const needsRole = issues.some((issue) => FIELD_STEP[issue.field] === 1);
+        setStep(needsRole || issues.length === 0 ? 1 : 2);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      setScreenIssues([]);
+      setStep(3);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      setScreenIssues([{ field: "title", message: "Could not check the listing. Try again." }]);
+      setStep(1);
+    } finally {
+      setScreening(false);
+    }
   };
 
   const handleFinalSubmit = async () => {
@@ -331,6 +389,21 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     ),
   );
 
+  const issueFor = (field: string) => screenIssues.find((issue) => issue.field === field)?.message;
+  const fieldTone = (field: string) =>
+    issueFor(field) ? " border-rose-300 ring-1 ring-rose-200" : "";
+  const IssuesBanner = () =>
+    screenIssues.length ? (
+      <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 text-left space-y-1">
+        <p className="font-semibold">Fix these before preview. A Start pack listing is not used until this passes.</p>
+        <ul className="list-disc pl-4 space-y-0.5">
+          {screenIssues.map((issue) => (
+            <li key={`${issue.field}-${issue.message}`}>{issue.message}</li>
+          ))}
+        </ul>
+      </div>
+    ) : null;
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3">
       {foundingStatus?.enabled && (
@@ -400,6 +473,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
             {step === 1 && (
               <div className="p-4 space-y-3">
                 <h2 className="text-sm font-semibold tracking-tight">1. Job details</h2>
+                <IssuesBanner />
                 <div className="space-y-3">
                   <div className="space-y-2" ref={titleBoxRef}>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Job Title *</label>
@@ -408,11 +482,12 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                         type="text"
                         autoComplete="off"
                         placeholder="e.g. Operations Manager"
-                        className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none"
+                        className={`cp-field w-full h-10 rounded-lg px-3 text-sm outline-none${fieldTone("title")}`}
                         value={formData.title}
                         onChange={(e) => {
                           setFormData({ ...formData, title: e.target.value });
                           setTitleMenuOpen(true);
+                          setScreenIssues((prev) => prev.filter((issue) => issue.field !== "title"));
                         }}
                         onFocus={() => setTitleMenuOpen(true)}
                         aria-autocomplete="list"
@@ -438,7 +513,11 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                         </ul>
                       )}
                     </div>
-                    <p className="text-[9px] text-slate-400 font-bold">Suggestions from live listings and common Ops/Systems titles.</p>
+                    {issueFor("title") ? (
+                      <p className="text-[11px] font-semibold text-rose-700">{issueFor("title")}</p>
+                    ) : (
+                      <p className="text-[9px] text-slate-400 font-bold">Suggestions from live listings and common Ops/Systems titles.</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Keywords</label>
@@ -471,7 +550,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Salary Range *</label>
-                    <input type="text" placeholder="e.g. $80k - $120k" className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none" value={formData.salary} onChange={e => setFormData({...formData, salary: e.target.value})} />
+                    <input type="text" placeholder="e.g. $80k - $120k" className={`cp-field w-full h-10 rounded-lg px-3 text-sm outline-none${fieldTone("salary")}`} value={formData.salary} onChange={e => { setFormData({...formData, salary: e.target.value}); setScreenIssues((prev) => prev.filter((issue) => issue.field !== "salary")); }} />
+                    {issueFor("salary") && <p className="text-[11px] font-semibold text-rose-700">{issueFor("salary")}</p>}
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between">
@@ -483,11 +563,15 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     <textarea
                       ref={descriptionRef}
                       rows={5}
-                      className="cp-field w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-none overflow-hidden min-h-[8rem]"
+                      className={`cp-field w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-none overflow-hidden min-h-[8rem]${fieldTone("description")}`}
                       value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, description: e.target.value });
+                        setScreenIssues((prev) => prev.filter((issue) => issue.field !== "description"));
+                      }}
                       onInput={resizeDescriptionField}
                     />
+                    {issueFor("description") && <p className="text-[11px] font-semibold text-rose-700">{issueFor("description")}</p>}
                   </div>
                 </div>
                 <button onClick={handleStep1} className="w-full h-10 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Next</button>
@@ -497,10 +581,12 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
             {step === 2 && (
               <div className="p-4 space-y-3">
                 <h2 className="text-sm font-semibold tracking-tight">2. Company & apply</h2>
+                <IssuesBanner />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company Name *</label>
-                    <input type="text" placeholder="Your Company Name" className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
+                    <input type="text" placeholder="Your Company Name" className={`cp-field w-full h-10 rounded-lg px-3 text-sm outline-none${fieldTone("company")}`} value={formData.company} onChange={e => { setFormData({...formData, company: e.target.value}); setScreenIssues((prev) => prev.filter((issue) => issue.field !== "company")); }} />
+                    {issueFor("company") && <p className="text-[11px] font-semibold text-rose-700">{issueFor("company")}</p>}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -619,9 +705,12 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     type="text"
                     inputMode="url"
                     placeholder="company.com/careers or jobs@company.com"
-                    className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none"
+                    className={`cp-field w-full h-10 rounded-lg px-3 text-sm outline-none${fieldTone("applyUrl")}`}
                     value={formData.applyUrl}
-                    onChange={e => setFormData({...formData, applyUrl: e.target.value})}
+                    onChange={e => {
+                      setFormData({...formData, applyUrl: e.target.value});
+                      setScreenIssues((prev) => prev.filter((issue) => issue.field !== "applyUrl"));
+                    }}
                     onBlur={() =>
                       setFormData((prev) => ({
                         ...prev,
@@ -629,18 +718,26 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                       }))
                     }
                   />
-                  <p className="text-[9px] text-slate-400 font-bold">Auto-formats after you leave the field.</p>
+                  {issueFor("applyUrl") ? (
+                    <p className="text-[11px] font-semibold text-rose-700">{issueFor("applyUrl")}</p>
+                  ) : (
+                    <p className="text-[9px] text-slate-400 font-bold">Auto-formats after you leave the field.</p>
+                  )}
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button onClick={() => setStep(1)} className="h-10 px-4 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">Back</button>
-                  <button onClick={handleStep2} className="flex-1 h-10 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Review listing</button>
+                  <button onClick={handleStep2} disabled={screening} className="flex-1 h-10 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
+                    {screening ? "Checking listing…" : "Review listing"}
+                  </button>
                 </div>
               </div>
             )}
 
             {step === 3 && (
               <div className="p-4 sm:p-5 text-center space-y-3">
-                <div className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-100 inline-block text-[11px] font-semibold uppercase tracking-wide">Ready to submit</div>
+                <div className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-100 inline-block text-[11px] font-semibold uppercase tracking-wide">
+                  {foundingEligible && selectedPlan.type === "Standard" ? "Ready to go live" : "Ready for checkout"}
+                </div>
                 <h2 className="text-lg font-semibold text-slate-900 tracking-tight">Preview</h2>
                 <div className="bg-slate-50 p-4 sm:p-5 rounded-xl text-left border border-slate-200">
                    <div className="flex items-center gap-3 mb-3">
@@ -692,9 +789,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-indigo-600">For employers</div>
-                  <h3 className="text-base font-semibold text-slate-900 mt-1">Post → review → live.</h3>
+                  <h3 className="text-base font-semibold text-slate-900 mt-1">Check → live.</h3>
                   <p className="mt-2 text-sm font-medium text-slate-600">
-                    Listing on the board. Candidates apply on your link.
+                    Same board bar as pipeline listings. Candidates apply on your link.
                   </p>
                 </div>
               </div>
@@ -727,11 +824,11 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
                 <AccordionRow id="review" openId={openInfoId} onToggle={toggleInfo} title="Review & publish timeline">
                   <div className="space-y-2 text-sm font-medium text-slate-700">
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span> Post{foundingEligible ? " (Start pack: submit, then review)" : " (submit + pay)"}</div>
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">2</span> Review — salary, scope, apply link, niche. Not a timed SLA.</div>
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">3</span> Live on the board. Apply stays on your link.</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span> Fill the form. Preview is locked until the listing passes the board check.</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">2</span> Start pack ($0): goes live. Paid: Stripe, then live after payment. Email to you; CareersPal gets a FYI.</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">3</span> Apply stays on your link. No timed SLA.</div>
                     <p className="mt-3 text-xs text-slate-600">
-                      Listings are reviewed before publish. Timing can vary based on completeness and review queue.
+                      A Start pack slot is used only after the listing is live. Failed checks stay as a draft so you can fix them.
                     </p>
                   </div>
                 </AccordionRow>

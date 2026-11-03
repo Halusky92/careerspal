@@ -24,7 +24,11 @@ const AuthPage = () => {
 
       const email = profile.email.toLowerCase();
       if (email === "admin@careerspal.com" || profile.role === "admin") {
-        router.replace("/dashboard/admin");
+        if (desiredFrom && desiredFrom.startsWith("/dashboard/admin")) {
+          router.replace(desiredFrom);
+          return;
+        }
+        router.replace("/dashboard/admin?tab=review");
         return;
       }
 

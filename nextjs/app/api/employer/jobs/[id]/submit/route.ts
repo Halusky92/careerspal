@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../../../lib/supabaseAdmin";
 import { getFoundingStatus, loadEmployerOwnedJob, requireEmployer } from "../../../../../../lib/employer";
 import { foundingExpiresAt } from "../../../../../../lib/founding";
-import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../../../lib/nicheScope";
-import { maybeNotifyStartPackTwoLeft, sendListingReviewEmails } from "../../../../../../lib/listingNotify";
-import { maybeAutoPublishListing } from "../../../../../../lib/jobs/autoReviewListing";
+import { maybeNotifyStartPackTwoLeft, sendListingOutcomeEmails } from "../../../../../../lib/listingNotify";
+import { maybeAutoPublishListing, screenListingForBoard } from "../../../../../../lib/jobs/autoReviewListing";
+import { createJobSlug } from "../../../../../../lib/jobs";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await requireEmployer(request);
@@ -13,22 +13,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const owned = await loadEmployerOwnedJob(id, auth.profileId);
   if (!owned.job) {
     return NextResponse.json({ error: "Job not found." }, { status: 404 });
-  }
-
-  const title = String(owned.job.title || "").trim();
-  const salary = String(owned.job.salary || "").trim();
-  const applyUrl = String(owned.job.apply_url || "").trim();
-  if (!title || !salary || !applyUrl || applyUrl === "#") {
-    return NextResponse.json(
-      { error: "Title, salary, and a working apply link are required before review." },
-      { status: 400 },
-    );
-  }
-  if (!isOnNicheJob({ title, category: null, description: owned.job.description })) {
-    return NextResponse.json(
-      { error: NICHE_REJECT_MESSAGE },
-      { status: 400 },
-    );
   }
 
   const planType = String(owned.job.plan_type || "Standard");
@@ -49,6 +33,35 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         reason: founding.reason,
       },
       { status: 402 },
+    );
+  }
+
+  let companyName: string | null = null;
+  if (owned.job.company_id) {
+    const { data: named } = await supabaseAdmin!
+      .from("companies")
+      .select("name")
+      .eq("id", owned.job.company_id)
+      .maybeSingle();
+    companyName = named?.name || null;
+  }
+
+  const screen = await screenListingForBoard({
+    title: owned.job.title,
+    description: owned.job.description,
+    salary: owned.job.salary,
+    apply_url: owned.job.apply_url,
+    company: companyName,
+    category: null,
+  });
+  if (screen.decision !== "publish") {
+    return NextResponse.json(
+      {
+        error: screen.reasons[0] || "This listing does not meet the board bar yet.",
+        issues: screen.issues,
+        reasons: screen.reasons,
+      },
+      { status: 400 },
     );
   }
 
@@ -98,30 +111,36 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
   }
 
+  const auto = await maybeAutoPublishListing(supabaseAdmin!, data.id, auth.profileId);
+  if (auto.status !== "published") {
+    await supabaseAdmin!.from("jobs").update({ status: "draft", posted_at_text: "Draft", stripe_payment_status: null }).eq("id", id);
+    return NextResponse.json(
+      {
+        error: auto.reasons[0] || "This listing does not meet the board bar yet.",
+        issues: auto.issues,
+        reasons: auto.reasons,
+      },
+      { status: 400 },
+    );
+  }
+
   await supabaseAdmin!.from("audit_logs").insert({
     action: "employer_job_submitted_founding",
     job_id: id,
     actor_id: auth.profileId,
-    metadata: { status: "pending_review", plan: "Start pack", planPrice: 0 },
+    metadata: { status: "published", plan: "Start pack", planPrice: 0 },
   });
 
-  let companyName: string | null = null;
-  if (data.company_id) {
-    const { data: named } = await supabaseAdmin!
-      .from("companies")
-      .select("name")
-      .eq("id", data.company_id)
-      .maybeSingle();
-    companyName = named?.name || null;
-  }
-  await sendListingReviewEmails({
+  await sendListingOutcomeEmails({
     jobId: data.id,
-    title: title,
+    title: owned.job.title,
     companyName,
     planType: "Standard",
     planPrice: 0,
     buyerEmail: auth.email || null,
     startPack: true,
+    live: true,
+    paid: false,
   });
 
   const remainingAfter = Math.max(0, (founding.remainingJobs || 1) - 1);
@@ -135,12 +154,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     jobId: data.id,
   });
 
-  const auto = await maybeAutoPublishListing(supabaseAdmin!, data.id, auth.profileId);
-
   return NextResponse.json({
     ok: true,
-    status: auto.status,
+    status: "published",
     jobId: data.id,
+    slug: createJobSlug({ id: data.id, title: owned.job.title || "role" }),
     plan: "Start pack",
     remainingJobs: remainingAfter,
     usedJobs: (founding.usedJobs || 0) + 1,

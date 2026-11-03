@@ -1164,7 +1164,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                       onClick={() => setShowSavedOnly((prev) => !prev)}
                       disabled={savedCount === 0}
                       aria-pressed={showSavedOnly}
-                      className={`hidden lg:inline-flex h-10 px-3 rounded-lg border text-sm font-medium leading-none transition-colors ${
+                      className={`hidden lg:inline-flex h-10 px-3 items-center justify-center whitespace-nowrap rounded-lg border text-sm font-medium leading-none transition-colors ${
                         showSavedOnly
                           ? "bg-indigo-600 text-white border-indigo-600"
                           : "bg-white text-slate-600 border-slate-300 hover:border-indigo-200 hover:text-indigo-700"

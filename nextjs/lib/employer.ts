@@ -83,13 +83,7 @@ export const EMPLOYER_STATUSES = new Set([
   "archived",
 ]);
 
-const COUNTED_FOUNDING_STATUSES = new Set([
-  "pending_review",
-  "published",
-  "paused",
-  "closed",
-  "archived",
-]);
+const COUNTED_FOUNDING_STATUSES = new Set(["published", "paused", "closed", "archived"]);
 
 export async function requireEmployer(request: Request) {
   const auth = await getSupabaseProfile(request);

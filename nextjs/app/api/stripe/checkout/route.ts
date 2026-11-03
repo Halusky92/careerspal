@@ -12,6 +12,7 @@ import {
   RENEW_PRICE,
 } from "../../../../lib/jobs/unpublishedRetention";
 import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
+import { screenListingForBoard } from "../../../../lib/jobs/autoReviewListing";
 
 type StripeJobRow = {
   id: string;
@@ -23,6 +24,11 @@ type StripeJobRow = {
   created_at?: string | null;
   published_at?: string | null;
   unpublished_at?: string | null;
+  description?: string | null;
+  salary?: string | null;
+  apply_url?: string | null;
+  location?: string | null;
+  remote_policy?: string | null;
   timestamp?: number | null;
   companies?: { name?: string | null } | Array<{ name?: string | null }> | null;
 };
@@ -70,13 +76,13 @@ export async function POST(request: Request) {
 
   let jobQuery = await supabaseAdmin
     .from("jobs")
-    .select("id,title,status,plan_price,plan_type,created_by,created_at,published_at,unpublished_at,timestamp,companies(name)")
+    .select("id,title,description,salary,apply_url,location,remote_policy,status,plan_price,plan_type,created_by,created_at,published_at,unpublished_at,timestamp,companies(name)")
     .eq("id", body.jobId)
     .single();
   if (jobQuery.error) {
     jobQuery = await supabaseAdmin
       .from("jobs")
-      .select("id,title,status,plan_price,plan_type,created_by,created_at,published_at,timestamp,companies(name)")
+      .select("id,title,description,salary,apply_url,location,remote_policy,status,plan_price,plan_type,created_by,created_at,published_at,timestamp,companies(name)")
       .eq("id", body.jobId)
       .single();
   }
@@ -94,6 +100,25 @@ export async function POST(request: Request) {
     );
   }
   const companyName = Array.isArray(jobRow.companies) ? jobRow.companies[0]?.name : jobRow.companies?.name;
+  const screen = await screenListingForBoard({
+    title: jobRow.title,
+    description: jobRow.description,
+    salary: jobRow.salary,
+    apply_url: jobRow.apply_url,
+    company: companyName,
+    location: jobRow.location,
+    remote_policy: jobRow.remote_policy,
+  });
+  if (screen.decision !== "publish") {
+    return NextResponse.json(
+      {
+        error: screen.reasons[0] || "This listing does not meet the board bar yet.",
+        issues: screen.issues,
+        reasons: screen.reasons,
+      },
+      { status: 400 },
+    );
+  }
   const isRenew = body.purpose === "republish" || body.purpose === "renew";
   if (isRenew && !canRenewUnpublished(jobRow)) {
     return NextResponse.json(
