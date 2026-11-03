@@ -76,7 +76,7 @@ export function renderAlertEmail(args: {
               }
               <tr>
                 <td style="padding:16px 28px 24px;border-top:1px solid #eef0f5;font-size:12px;color:#6b7280;">
-                  ${escapeHtml(args.footerNote || "Two emails a week with new matching roles.")}
+                  ${escapeHtml(args.footerNote || "Two emails a week, Tuesday and Friday.")}
                   <div style="margin-top:8px;"><a href="${escapeHtml(args.unsubscribeUrl)}" style="color:#4f46e5;">Unsubscribe</a></div>
                 </td>
               </tr>

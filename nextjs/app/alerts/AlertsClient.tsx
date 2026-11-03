@@ -59,7 +59,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
           region,
         }),
       });
-      const payload = (await response.json()) as { error?: string; existing?: boolean };
+      const payload = (await response.json()) as { error?: string; existing?: boolean; pendingConfirm?: boolean };
       if (!response.ok) {
         setStatus("error");
         setSaveMsg(payload.error || "Unable to subscribe right now.");
@@ -67,9 +67,11 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
       }
       setStatus("ok");
       setSaveMsg(
-        payload.existing
-          ? "Preferences updated. Two emails a week, no password."
-          : "You’re on the list. Two emails a week. No account needed.",
+        payload.pendingConfirm
+          ? "Check your email. Click the confirm link to turn alerts on. We won’t send roles until then."
+          : payload.existing
+            ? "Preferences updated. Two emails a week, Tuesday and Friday."
+            : "You’re on the list. Two emails a week, Tuesday and Friday.",
       );
     } catch {
       setStatus("error");
@@ -85,7 +87,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Job alerts</p>
         <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Get new jobs by email</h1>
         <p className="mt-2 text-sm text-slate-600 max-w-2xl">
-          Email only. No password. Two messages a week with matching published roles. Each role opens on CareersPal first.
+          Email only. No password. Confirm the email we send, then two messages a week with matching published roles. Each role opens on CareersPal first.
         </p>
       </div>
 
@@ -162,7 +164,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
           <div className={`text-sm ${status === "error" ? "text-rose-700" : "text-emerald-800"}`}>{saveMsg}</div>
         )}
 
-        <p className="text-xs text-slate-500">Monday and Thursday. Stop anytime from the link in the email.</p>
+        <p className="text-xs text-slate-500">Tuesday and Friday after you confirm. Stop anytime from the link in the email.</p>
       </div>
     </div>
   );

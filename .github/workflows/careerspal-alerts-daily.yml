@@ -2,7 +2,10 @@ name: CareersPal - Daily alerts
 
 on:
   schedule:
-    # Hits the alerts endpoint daily; the handler sends only Monday and Thursday.
+    # Hits the alerts endpoint daily at 08:00 UTC. The handler sends only Tuesday and Friday.
+    # Required GitHub Action secrets:
+    #   CAREERSPAL_ALERTS_URL = https://www.careerspal.com/api/alerts/daily
+    #   CAREERSPAL_ALERTS_CRON_SECRET = same value as Vercel env ALERTS_CRON_SECRET
     - cron: "0 8 * * *"
   workflow_dispatch: {}
 

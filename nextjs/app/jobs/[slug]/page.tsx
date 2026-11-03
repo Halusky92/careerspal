@@ -436,46 +436,32 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                   {isPaidFeaturedListing(job) ? <FeaturedBadge job={job} size="md" /> : null}
                 </div>
 
-                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="mt-6 flex flex-col sm:flex-row gap-3">
                   {hasApplyUrl ? (
                     <ApplyClickLink
                       jobId={job.id}
                       href={job.applyUrl}
                       external={applyExternal}
-                      className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 text-white px-7 py-4 text-[11px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
+                      className="hidden lg:inline-flex flex-1 items-center justify-center rounded-xl bg-indigo-600 text-white px-6 py-3.5 text-sm font-medium hover:bg-indigo-700"
                     >
-                      Apply now →
+                      Apply now
                     </ApplyClickLink>
                   ) : (
-                    <span className="inline-flex items-center justify-center rounded-2xl bg-slate-200 text-slate-500 px-7 py-4 text-[11px] font-black uppercase tracking-widest">
-                      Apply link coming soon
+                    <span className="inline-flex flex-1 items-center justify-center rounded-xl bg-slate-200 text-slate-500 px-6 py-3.5 text-sm font-medium">
+                      Apply link not listed
                     </span>
                   )}
                   <a
                     href={canonicalUrl}
-                    className="inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-7 py-4 text-[11px] font-black uppercase tracking-widest text-slate-700 hover:border-indigo-200 hover:text-indigo-700 transition-colors"
+                    className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-medium text-slate-800 hover:border-indigo-200"
                   >
                     Copy / share link
                   </a>
-                  {hasApplyUrl ? (
-                    <ApplyClickLink
-                      jobId={job.id}
-                      href={job.applyUrl}
-                      external={applyExternal}
-                      className="inline-flex items-center justify-center rounded-2xl bg-slate-900 text-white px-7 py-4 text-[11px] font-black uppercase tracking-widest hover:bg-black transition-colors"
-                    >
-                      Apply (backup) →
-                    </ApplyClickLink>
-                  ) : (
-                    <span className="inline-flex items-center justify-center rounded-2xl bg-white border border-slate-200 px-7 py-4 text-[11px] font-black uppercase tracking-widest text-slate-500">
-                      No apply URL yet
-                    </span>
-                  )}
                   <Link
                     href={alertsHref}
-                    className="inline-flex items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-700 px-7 py-4 text-[11px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors"
+                    className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-medium text-slate-800 hover:border-indigo-200"
                   >
-                    Get alerts →
+                    Email similar roles
                   </Link>
                 </div>
 
@@ -589,7 +575,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                 Get similar roles by email.
               </h2>
               <p className="mt-2 text-slate-600 font-medium max-w-2xl">
-                Set up an alert for this category. Alerts are tied to your account email.
+                Email only. Confirm the link we send. Tuesday and Friday, matching published roles.
               </p>
             </div>
             <div className="w-full sm:w-auto">
@@ -618,7 +604,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
               external={applyExternal}
               className="h-11 px-5 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors flex items-center justify-center whitespace-nowrap"
             >
-              Apply →
+              Apply now
             </ApplyClickLink>
           </div>
         </div>

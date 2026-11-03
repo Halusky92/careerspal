@@ -2,6 +2,7 @@
 
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Job, UserSession } from '../types';
 import { createCompanySlug } from '../lib/jobs';
@@ -1100,18 +1101,18 @@ const FindJobs: React.FC<FindJobsProps> = ({
                 )}
               </div>
               <div className="hidden sm:flex items-center gap-3">
-                {savedNotice && (
-                  <span className="text-indigo-600 font-bold text-xs" aria-live="polite">
-                    {savedNotice}
-                  </span>
-                )}
-                <button
-                  onClick={handleSaveSearch}
-                  disabled={(!query.trim() && !locationQuery.trim()) || isSaving}
-                  className="text-indigo-600 font-black uppercase tracking-widest text-[10px] hover:text-indigo-800 disabled:text-slate-300"
+                <Link
+                  href={
+                    category && category !== "All Roles"
+                      ? `/alerts?category=${encodeURIComponent(category)}`
+                      : query.trim()
+                        ? `/alerts?query=${encodeURIComponent(query.trim())}`
+                        : "/alerts"
+                  }
+                  className="text-sm font-medium text-indigo-700 hover:text-indigo-800"
                 >
-                  {isSaving ? "Saving..." : accessToken ? "Save alert" : "Sign in to save"}
-                </button>
+                  Get email alerts
+                </Link>
               </div>
             </div>
 
@@ -1247,32 +1248,32 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   {showSavedOnly ? "No saved roles yet." : "No roles match your current filters."}
                 </p>
                 <p className="mt-2 text-slate-500 font-medium">
-                  Try fewer keywords, broaden location, or reset filters. You can also save this search as an alert.
+                  Try fewer keywords or reset filters. Or get an email when a matching role is published.
                 </p>
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                  {["Notion", "RevOps", "Automation", "Remote", "Airtable"].map((tag) => (
+                  {CATEGORY_HUBS.map((hub) => (
                     <button
-                      key={tag}
-                      onClick={() => setQuery(tag)}
-                      className="px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest text-slate-600 border border-slate-200 bg-slate-50 hover:border-indigo-200 hover:text-indigo-700"
+                      key={hub.slug}
+                      onClick={() => setCategory(hub.slug)}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium text-slate-700 border border-slate-200 bg-white hover:border-indigo-200"
                     >
-                      {tag}
+                      {hub.label}
                     </button>
                   ))}
                 </div>
                 <div className="mt-6 flex items-center justify-center gap-3">
                   <button
                     onClick={clearAllFilters}
-                    className="h-11 px-5 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black"
+                    className="h-10 px-4 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-black"
                   >
                     Reset filters
                   </button>
-                  <button
-                    onClick={() => (accessToken ? handleSaveSearch() : router.push("/auth"))}
-                    className="h-11 px-5 rounded-2xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100"
+                  <Link
+                    href="/alerts"
+                    className="inline-flex h-10 items-center px-4 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-800 text-sm font-medium hover:bg-indigo-100"
                   >
-                    {accessToken ? "Save alert" : "Sign in for alerts"}
-                  </button>
+                    Get email alerts
+                  </Link>
                 </div>
               </div>
             )}

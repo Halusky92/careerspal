@@ -360,7 +360,7 @@ using (
   )
 );
 
--- Guest email alerts (no account). `preference` stores JSON: categories, minSalary, region, token, lastSentAt.
+-- Guest email alerts (no account). `preference` stores JSON: categories, minSalary, region, token, lastSentAt, confirmed.
 create table if not exists public.subscribers (
   email text primary key,
   preference text,

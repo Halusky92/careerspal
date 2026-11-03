@@ -5,9 +5,10 @@ import { createJobSlug } from "../../../../lib/jobs";
 import { formatSalaryDisplay } from "../../../../lib/formatSalary";
 import { isOnNicheJob } from "../../../../lib/nicheScope";
 import { jobMatchesAlertQuery } from "../../../../lib/categories";
-import { alertPrefsLabel, isTwiceWeeklySendDay, jobMatchesAlertPrefs, parseAlertPrefs, serializeAlertPrefs } from "../../../../lib/alertPrefs";
+import { alertPrefsLabel, isGuestAlertConfirmed, isTwiceWeeklySendDay, jobMatchesAlertPrefs, parseAlertPrefs, serializeAlertPrefs } from "../../../../lib/alertPrefs";
 import { renderAlertEmail, type DigestJob } from "../../../../lib/alerts/emailTemplate";
 import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
+import { getResendFrom } from "../../../../lib/resendFrom";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -40,7 +41,7 @@ const getResendClient = () => {
   return new Resend(apiKey);
 };
 
-const getFromEmail = () => process.env.RESEND_FROM || "CareersPal <onboarding@resend.dev>";
+const getFromEmail = () => getResendFrom();
 
 const getCompanyName = (job: JobRow) => {
   if (Array.isArray(job.companies)) return job.companies[0]?.name || "Company";
@@ -160,10 +161,15 @@ export async function GET(request: Request) {
 
   const { data: subscribers } = await supabaseAdmin.from("subscribers").select("email,preference");
   let subscriberSent = 0;
+  let skippedUnconfirmed = 0;
   for (const sub of subscribers || []) {
     const toEmail = String(sub.email || "").trim().toLowerCase();
     if (!toEmail || emailed.has(toEmail)) continue;
     const prefs = parseAlertPrefs(sub.preference);
+    if (!isGuestAlertConfirmed(prefs)) {
+      skippedUnconfirmed += 1;
+      continue;
+    }
     const since = prefs.lastSentAt ? new Date(prefs.lastSentAt).getTime() : sinceDefault.getTime();
     const matches = published.filter((job) => (job.timestamp || 0) >= since && jobMatchesAlertPrefs(job, prefs));
     matchedTotal += matches.length;
@@ -208,8 +214,8 @@ export async function GET(request: Request) {
 
   await supabaseAdmin.from("audit_logs").insert({
     action: dryRun ? "alerts_twice_weekly_dry_run" : "alerts_twice_weekly_sent",
-    metadata: { sent, subscriberSent, matchedTotal, dryRun, force },
+    metadata: { sent, subscriberSent, matchedTotal, skippedUnconfirmed, dryRun, force },
   });
 
-  return NextResponse.json({ ok: true, sent, subscriberSent, dryRun, matchedTotal, force });
+  return NextResponse.json({ ok: true, sent, subscriberSent, dryRun, matchedTotal, skippedUnconfirmed, force });
 }

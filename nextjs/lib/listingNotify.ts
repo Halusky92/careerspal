@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { supabaseAdmin } from "./supabaseAdmin";
+import { getResendFrom } from "./resendFrom";
 
 const getBaseUrl = () => {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
@@ -29,7 +30,7 @@ export async function sendListingReviewEmails(input: {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
   const resend = new Resend(apiKey);
-  const from = process.env.RESEND_FROM || "CareersPal <onboarding@resend.dev>";
+  const from = getResendFrom();
   const supportEmail = "info@careerspal.com";
   const adminTo = (process.env.ADMIN_NOTIFICATION_EMAIL || supportEmail)
     .split(",")
@@ -111,7 +112,7 @@ export async function maybeNotifyStartPackTwoLeft(input: {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
   const resend = new Resend(apiKey);
-  const from = process.env.RESEND_FROM || "CareersPal <onboarding@resend.dev>";
+  const from = getResendFrom();
   const baseUrl = getBaseUrl();
 
   try {

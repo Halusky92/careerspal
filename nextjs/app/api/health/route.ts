@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { resendFromHost } from "../../../lib/resendFrom";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const hasStripe = Boolean(process.env.STRIPE_SECRET_KEY);
+  const stripeKey = process.env.STRIPE_SECRET_KEY || "";
+  const hasStripe = Boolean(stripeKey);
   const hasWebhook = Boolean(process.env.STRIPE_WEBHOOK_SECRET);
+  const stripeTestMode = stripeKey.startsWith("sk_test_");
+  const hasResend = Boolean(process.env.RESEND_API_KEY);
+  const resendHost = resendFromHost();
   const gitSha =
     process.env.VERCEL_GIT_COMMIT_SHA ||
     process.env.VERCEL_GIT_COMMIT_REF ||
@@ -19,6 +24,9 @@ export async function GET() {
         supabase: false,
         stripe: hasStripe,
         stripeWebhook: hasWebhook,
+        stripeTestMode,
+        resend: hasResend,
+        resendHost,
         gitSha,
       },
       { status: 500 },
@@ -32,6 +40,9 @@ export async function GET() {
       supabase: true,
       stripe: hasStripe,
       stripeWebhook: hasWebhook,
+      stripeTestMode,
+      resend: hasResend,
+      resendHost,
       gitSha,
     });
   } catch {
@@ -41,6 +52,9 @@ export async function GET() {
         supabase: false,
         stripe: hasStripe,
         stripeWebhook: hasWebhook,
+        stripeTestMode,
+        resend: hasResend,
+        resendHost,
         gitSha,
       },
       { status: 500 },

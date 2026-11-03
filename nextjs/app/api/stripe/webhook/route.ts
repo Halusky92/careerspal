@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { Resend } from "resend";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
+import { getResendFrom } from "../../../../lib/resendFrom";
 
 type StripeEmailJobRow = {
   id: string;
@@ -27,9 +28,7 @@ const getResendClient = () => {
   return new Resend(apiKey);
 };
 
-const getFromEmail = () => {
-  return process.env.RESEND_FROM || "CareersPal <onboarding@resend.dev>";
-};
+const getFromEmail = () => getResendFrom();
 
 const getAdminEmails = () => {
   const raw = process.env.ADMIN_NOTIFICATION_EMAIL || "info@careerspal.com";
@@ -129,6 +128,15 @@ const logEmailIssue = async (jobId: string, context: Record<string, unknown>) =>
     // avoid failing webhook on audit log issues
   }
 };
+
+export async function GET() {
+  return NextResponse.json({
+    ok: true,
+    endpoint: "/api/stripe/webhook",
+    method: "POST",
+    events: ["checkout.session.completed", "checkout.session.expired"],
+  });
+}
 
 export async function POST(request: Request) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;

@@ -21,19 +21,6 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
   const [error, setError] = useState<string | null>(null);
   const { accessToken, profile, loading: authLoading, refreshProfile } = useSupabaseAuth();
   const [ownershipRecoveryAttempted, setOwnershipRecoveryAttempted] = useState(false);
-
-  if (!jobData) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-24 text-center">
-        <h2 className="text-2xl font-bold text-slate-900 mb-4">Missing job details</h2>
-        <p className="text-slate-500 font-medium mb-8">Please return and complete the job submission first.</p>
-        <button onClick={onCancel} className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-semibold">
-          Back to Form
-        </button>
-      </div>
-    );
-  }
-
   const [overridePrice, setOverridePrice] = useState<number | null>(null);
   const price = overridePrice ?? jobData?.plan?.price ?? PLAN_PRICES.standard;
   const planName = jobData?.plan?.type || 'Standard';
@@ -58,6 +45,18 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
       // ignore
     }
   }, []);
+
+  if (!jobData) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-24 text-center">
+        <h2 className="text-2xl font-bold text-slate-900 mb-4">Missing job details</h2>
+        <p className="text-slate-500 font-medium mb-8">Please return and complete the job submission first.</p>
+        <button onClick={onCancel} className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-semibold">
+          Back to Form
+        </button>
+      </div>
+    );
+  }
 
   const handlePay = async () => {
     if (authLoading) {

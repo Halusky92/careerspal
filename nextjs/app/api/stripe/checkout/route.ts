@@ -6,6 +6,7 @@ import { checkRateLimit } from "../../../../lib/rateLimit";
 import { getFoundingStatus } from "../../../../lib/employer";
 import { FOUNDING_LAUNCH_PRICE } from "../../../../lib/founding";
 import { PLAN_PRICES } from "../../../../lib/plans";
+import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
 
 type StripeJobRow = {
   id: string;
@@ -95,7 +96,8 @@ export async function POST(request: Request) {
     }
   }
   const planName = body.planName || jobRow.plan_type || "Standard";
-  const origin = request.headers.get("origin") || process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const origin =
+    (request.headers.get("origin") || "").replace(/\/+$/, "") || getPublicSiteUrl();
 
   try {
     const stripe = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });

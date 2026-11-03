@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Checkout from "../../components/Checkout";
 import { Job } from "../../types";
+import { useSupabaseAuth } from "../../components/Providers";
+import { authFetch } from "../../lib/authFetch";
 
 const CheckoutPage = () => {
   const router = useRouter();
@@ -12,6 +14,7 @@ const CheckoutPage = () => {
   const [resolvedJobId, setResolvedJobId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const jobId = searchParams.get("jobId");
+  const { accessToken } = useSupabaseAuth();
 
   useEffect(() => {
     const loadJob = async () => {
@@ -29,11 +32,31 @@ const CheckoutPage = () => {
       }
       try {
         if (effectiveJobId) {
-          const response = await fetch(`/api/jobs/${effectiveJobId}`);
+          let response: Response | null = null;
+          if (accessToken) {
+            response = await authFetch(`/api/employer/jobs/${effectiveJobId}`, {}, accessToken);
+          }
+          if (!response || !response.ok) {
+            response = await fetch(`/api/jobs/${effectiveJobId}`);
+          }
           if (response.ok) {
             const data = (await response.json()) as { job?: Job };
             if (data.job) {
-              setPendingJob(data.job);
+              let merged = data.job;
+              try {
+                const raw = sessionStorage.getItem("cp_pending_job");
+                if (raw) {
+                  const stored = JSON.parse(raw) as Job;
+                  merged = {
+                    ...stored,
+                    ...data.job,
+                    plan: data.job.plan || stored.plan,
+                  };
+                }
+              } catch {
+                // ignore
+              }
+              setPendingJob(merged);
               setIsLoading(false);
               return;
             }
@@ -55,7 +78,7 @@ const CheckoutPage = () => {
       }
     };
     loadJob();
-  }, [jobId]);
+  }, [jobId, accessToken]);
 
   if (isLoading) {
     return (

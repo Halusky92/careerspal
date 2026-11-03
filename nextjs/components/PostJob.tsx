@@ -1,11 +1,12 @@
 "use client";
 
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { generateJobDescription } from '../services/geminiService';
 import { Job, PlanType } from '../types';
 import { CATEGORIES, CATEGORY_FILTER_LABELS } from '../constants';
 import { PLAN_PRICES } from '../lib/plans';
+import { filterJobTitleSuggestions } from "../lib/jobTitleSuggestions";
 import StartPackMeter from "./StartPackMeter";
 import type { StartPackStatus } from "../lib/founding";
 
@@ -21,11 +22,31 @@ interface PostJobProps {
 
 type JobFormData = Omit<Job, 'id' | 'postedAt' | 'isFeatured' | 'planType' | 'plan' | 'timestamp' | 'status' | 'views' | 'matches'>;
 
+type DraftPost = { step?: number; formData?: Partial<JobFormData>; logoFileName?: string };
+
+const readDraftPost = (): DraftPost | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem("cp_draft_post");
+    return raw ? (JSON.parse(raw) as DraftPost) : null;
+  } catch {
+    return null;
+  }
+};
+
 const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan, foundingEligible, foundingStatus, initialJob }) => {
-  const [step, setStep] = useState(1);
+  const draft = initialJob?.id ? null : readDraftPost();
+  const [step, setStep] = useState(() => {
+    const n = Number(draft?.step);
+    return n === 2 || n === 3 ? n : 1;
+  });
   const [isGenerating, setIsGenerating] = useState(false);
-  const [logoFileName, setLogoFileName] = useState<string>("");
+  const [logoFileName, setLogoFileName] = useState(draft?.logoFileName || "");
   const [openInfoId, setOpenInfoId] = useState<("get" | "requirements" | "review") | null>("get");
+  const [titleMenuOpen, setTitleMenuOpen] = useState(false);
+  const [liveTitles, setLiveTitles] = useState<string[]>([]);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const titleBoxRef = useRef<HTMLDivElement>(null);
   const formatPrice = (value: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 
@@ -37,20 +58,72 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
   
   const [formData, setFormData] = useState<JobFormData>({
-    title: initialJob?.title || '',
-    keywords: initialJob?.keywords || '',
-    description: initialJob?.description || '',
-    company: initialJob?.company || '',
-    companyWebsite: initialJob?.companyWebsite || '',
-    logo: initialJob?.logo || '',
-    salary: initialJob?.salary || '',
-    location: initialJob?.location || 'Remote (Global)',
-    type: (initialJob?.type as JobFormData['type']) || 'Full-time',
-    remotePolicy: initialJob?.remotePolicy || 'Global Remote',
-    category: initialJob?.category || 'Operations',
-    applyUrl: initialJob?.applyUrl || '',
-    tags: initialJob?.tags?.length ? initialJob.tags : []
+    title: initialJob?.title || draft?.formData?.title || '',
+    keywords: initialJob?.keywords || draft?.formData?.keywords || '',
+    description: initialJob?.description || draft?.formData?.description || '',
+    company: initialJob?.company || draft?.formData?.company || '',
+    companyWebsite: initialJob?.companyWebsite || draft?.formData?.companyWebsite || '',
+    logo: initialJob?.logo || draft?.formData?.logo || '',
+    salary: initialJob?.salary || draft?.formData?.salary || '',
+    location: initialJob?.location || draft?.formData?.location || 'Remote (Global)',
+    type: (initialJob?.type as JobFormData['type']) || (draft?.formData?.type as JobFormData['type']) || 'Full-time',
+    remotePolicy: initialJob?.remotePolicy || draft?.formData?.remotePolicy || 'Remote (Global)',
+    category: initialJob?.category || draft?.formData?.category || 'Operations',
+    applyUrl: initialJob?.applyUrl || draft?.formData?.applyUrl || '',
+    tags: initialJob?.tags?.length ? initialJob.tags : (draft?.formData?.tags?.length ? draft.formData.tags : [])
   });
+
+  const resizeDescriptionField = () => {
+    const el = descriptionRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.max(el.scrollHeight, 128)}px`;
+  };
+
+  useEffect(() => {
+    resizeDescriptionField();
+  }, [formData.description]);
+
+  useEffect(() => {
+    if (initialJob?.id) return;
+    try {
+      sessionStorage.setItem(
+        "cp_draft_post",
+        JSON.stringify({ step, formData, logoFileName }),
+      );
+    } catch {
+      // ignore
+    }
+  }, [step, formData, logoFileName, initialJob?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/jobs?limit=50")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { jobs?: Array<{ title?: string }> } | null) => {
+        if (cancelled || !data?.jobs) return;
+        setLiveTitles(data.jobs.map((job) => job.title || "").filter(Boolean));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (!titleBoxRef.current?.contains(event.target as Node)) {
+        setTitleMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, []);
+
+  const titleSuggestions = useMemo(
+    () => filterJobTitleSuggestions(formData.title, liveTitles),
+    [formData.title, liveTitles],
+  );
 
   const planHighlights = useMemo(() => {
     const base = [
@@ -240,17 +313,26 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               {steps.map((s) => {
                 const isActive = step === s.id;
                 const isDone = step > s.id;
+                const canJump = s.id < step;
                 return (
                   <div key={s.id} className="flex items-center gap-2 min-w-0">
-                    <span
+                    <button
+                      type="button"
+                      disabled={!canJump}
+                      onClick={() => {
+                        if (!canJump) return;
+                        setStep(s.id);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
                       className={[
                         "h-6 w-6 rounded-md flex items-center justify-center text-[11px] font-semibold",
                         isActive ? "bg-indigo-600 text-white" : isDone ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-400",
+                        canJump ? "hover:bg-indigo-200 cursor-pointer" : "cursor-default",
                       ].join(" ")}
                       aria-current={isActive ? "step" : undefined}
                     >
                       {isDone ? "✓" : s.id}
-                    </span>
+                    </button>
                     <span className={["text-xs font-medium truncate", isActive ? "text-slate-900" : "text-slate-500"].join(" ")}>
                       {s.title}
                     </span>
@@ -266,9 +348,44 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               <div className="p-4 space-y-3">
                 <h2 className="text-sm font-semibold tracking-tight">1. Job details</h2>
                 <div className="space-y-3">
-                  <div className="space-y-2">
+                  <div className="space-y-2" ref={titleBoxRef}>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Job Title *</label>
-                    <input type="text" placeholder="e.g. Senior Notion Architect" className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        autoComplete="off"
+                        placeholder="e.g. Operations Manager"
+                        className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none"
+                        value={formData.title}
+                        onChange={(e) => {
+                          setFormData({ ...formData, title: e.target.value });
+                          setTitleMenuOpen(true);
+                        }}
+                        onFocus={() => setTitleMenuOpen(true)}
+                        aria-autocomplete="list"
+                        aria-expanded={titleMenuOpen && titleSuggestions.length > 0}
+                      />
+                      {titleMenuOpen && titleSuggestions.length > 0 && (
+                        <ul className="absolute z-30 mt-1 w-full max-h-56 overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                          {titleSuggestions.map((title) => (
+                            <li key={title}>
+                              <button
+                                type="button"
+                                className="w-full px-3 py-2 text-left text-sm text-slate-800 hover:bg-indigo-50 hover:text-indigo-800"
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  setFormData({ ...formData, title });
+                                  setTitleMenuOpen(false);
+                                }}
+                              >
+                                {title}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    <p className="text-[9px] text-slate-400 font-bold">Suggestions from live listings and common Ops/Systems titles.</p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Keywords</label>
@@ -300,13 +417,24 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     </div>
                   </div>
                   <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Salary Range *</label>
+                    <input type="text" placeholder="e.g. $80k - $120k" className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none" value={formData.salary} onChange={e => setFormData({...formData, salary: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
                     <div className="flex justify-between">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Job Description *</label>
                       <button onClick={handleAI} disabled={isGenerating} className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg">
                         {isGenerating ? 'AI Writing...' : 'Draft with AI'}
                       </button>
                     </div>
-                    <textarea rows={5} className="cp-field w-full rounded-lg px-3 py-2.5 text-sm outline-none" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                    <textarea
+                      ref={descriptionRef}
+                      rows={5}
+                      className="cp-field w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-none overflow-hidden min-h-[8rem]"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onInput={resizeDescriptionField}
+                    />
                   </div>
                 </div>
                 <button onClick={handleStep1} className="w-full h-10 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Next</button>
@@ -317,13 +445,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               <div className="p-4 space-y-3">
                 <h2 className="text-sm font-semibold tracking-tight">2. Company & apply</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-2">
+                  <div className="space-y-2 md:col-span-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company Name *</label>
                     <input type="text" placeholder="Your Company Name" className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Salary Range</label>
-                    <input type="text" placeholder="e.g. $80k - $120k" className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none" value={formData.salary} onChange={e => setFormData({...formData, salary: e.target.value})} />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -610,7 +734,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
               {selectedPlan.type !== 'Standard' && (
                 <button
-                  onClick={() => onUpgradePlan('Standard', PLAN_PRICES.standard)}
+                  onClick={() => onUpgradePlan('Standard', foundingEligible ? PLAN_PRICES.startPack : PLAN_PRICES.standard)}
                   className="mt-6 w-full px-4 py-3 rounded-xl border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-indigo-200 hover:text-indigo-600 transition-colors"
                 >
                   Switch to Standard (${PLAN_PRICES.standard})

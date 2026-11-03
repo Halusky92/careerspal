@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { parseAlertQuery, serializeAlertQuery } from "../../../../lib/categories";
-import { newUnsubToken, parseAlertPrefs, serializeAlertPrefs, type AlertRegion } from "../../../../lib/alertPrefs";
+import { isGuestAlertConfirmed, newUnsubToken, parseAlertPrefs, serializeAlertPrefs, type AlertRegion } from "../../../../lib/alertPrefs";
 import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
 import { renderAlertEmail } from "../../../../lib/alerts/emailTemplate";
+import { getResendFrom } from "../../../../lib/resendFrom";
 
 export const runtime = "nodejs";
 
@@ -37,12 +38,14 @@ export async function POST(request: Request) {
 
   const { data: existing } = await supabaseAdmin.from("subscribers").select("email,preference").eq("email", email).maybeSingle();
   const current = parseAlertPrefs(existing?.preference || null);
+  const alreadyConfirmed = Boolean(existing) && isGuestAlertConfirmed(current);
   const prefs = {
     categories,
     minSalary,
     region,
     token: current.token || newUnsubToken(),
     lastSentAt: current.lastSentAt || null,
+    confirmed: alreadyConfirmed,
   };
 
   const { error } = await supabaseAdmin.from("subscribers").upsert({ email, preference: serializeAlertPrefs(prefs) }, { onConflict: "email" });
@@ -50,33 +53,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unable to subscribe." }, { status: 500 });
   }
 
+  const pendingConfirm = !prefs.confirmed;
   const apiKey = process.env.RESEND_API_KEY;
-  if (apiKey) {
+  if (apiKey && pendingConfirm) {
     try {
       const baseUrl = getPublicSiteUrl();
+      const confirm = `${baseUrl}/alerts/confirm?token=${encodeURIComponent(prefs.token)}`;
       const unsub = `${baseUrl}/api/alerts/unsubscribe?token=${encodeURIComponent(prefs.token)}`;
       const resend = new Resend(apiKey);
       await resend.emails.send({
-        from: process.env.RESEND_FROM || "CareersPal <onboarding@resend.dev>",
+        from: getResendFrom(),
         to: email,
-        subject: "You’re subscribed to CareersPal alerts",
+        subject: "Confirm your CareersPal alerts",
         html: renderAlertEmail({
-          title: "Alerts are on",
-          preheader: "Two emails a week with matching Ops and Systems roles.",
-          introHtml: `<p style="margin:0 0 12px;">We’ll email matching published roles twice a week. Each role opens on CareersPal first.</p>
-          <p style="margin:0;">No password. Stop anytime with the unsubscribe link.</p>`,
-          cta: { label: "Browse jobs", href: `${baseUrl}/jobs` },
+          title: "Confirm your alerts",
+          preheader: "Click the link to start Tuesday and Friday job emails.",
+          introHtml: `<p style="margin:0 0 12px;">We got your request. Alerts stay off until you confirm this email.</p>
+            <p style="margin:0;">Two messages a week. Each role opens on CareersPal first. No password.</p>`,
+          cta: { label: "Confirm alerts", href: confirm },
           unsubscribeUrl: unsub,
+          footerNote: "If you did not request this, ignore the email or unsubscribe.",
         }),
-        headers: {
-          "List-Unsubscribe": `<${unsub}>`,
-          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-        },
       });
     } catch {
-      // Subscription is saved even if the confirmation email fails.
+      // Preference is saved even if the confirm email fails.
     }
   }
 
-  return NextResponse.json({ ok: true, existing: Boolean(existing) });
+  return NextResponse.json({ ok: true, existing: Boolean(existing), pendingConfirm });
 }

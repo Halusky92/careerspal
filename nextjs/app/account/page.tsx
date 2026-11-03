@@ -8,8 +8,9 @@ import { authFetch } from "../../lib/authFetch";
 import { createJobSlug } from "../../lib/jobs";
 import { Job } from "../../types";
 import { formatSalaryDisplay } from "../../lib/formatSalary";
-import { parseAlertQuery, serializeAlertQuery, formatAlertQueryLabel } from "../../lib/categories";
+import { parseAlertQuery, serializeAlertQuery } from "../../lib/categories";
 import AlertCategoryPicker from "../../components/AlertCategoryPicker";
+import { ALERT_MIN_SALARIES, ALERT_REGIONS, alertPrefsLabel, parseAlertPrefs, type AlertRegion } from "../../lib/alertPrefs";
 
 type AccountUser = {
   name?: string;
@@ -59,6 +60,8 @@ const AccountPageInner = () => {
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [subscriber, setSubscriber] = useState<SubscriberRow | null>(null);
   const [alertQuery, setAlertQuery] = useState<string>("all");
+  const [alertMinSalary, setAlertMinSalary] = useState(0);
+  const [alertRegion, setAlertRegion] = useState<AlertRegion>("anywhere");
   const [alertBusy, setAlertBusy] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
 
@@ -106,7 +109,10 @@ const AccountPageInner = () => {
         const subData = (await subRes.json()) as { subscriber?: SubscriberRow | null };
         setSubscriber(subData.subscriber || null);
         if (subData.subscriber?.preference) {
-          setAlertQuery(serializeAlertQuery(parseAlertQuery(subData.subscriber.preference)));
+          const prefs = parseAlertPrefs(subData.subscriber.preference);
+          setAlertQuery(prefs.categories);
+          setAlertMinSalary(prefs.minSalary || 0);
+          setAlertRegion(prefs.region);
         }
       } catch {
         // keep empty
@@ -208,35 +214,45 @@ const AccountPageInner = () => {
     setAlertBusy(true);
     setAlertMsg("");
     try {
-      const response = await authFetch(
-        "/api/alerts",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: alertQuery }),
-        },
-        accessToken,
-      );
-      const payload = (await response.json()) as { alert?: AlertRow; error?: string };
-      if (!response.ok) {
-        setAlertMsg(payload.error || "Unable to save alert.");
+      const email = (user?.email || "").trim();
+      if (!email) {
+        setAlertMsg("Add an email on your profile first.");
         return;
       }
-      if (payload.alert) {
-        setAlerts((prev) => (prev.some((row) => row.id === payload.alert!.id) ? prev : [payload.alert!, ...prev]));
+      if (accessToken) {
+        await authFetch(
+          "/api/alerts",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: alertQuery }),
+          },
+          accessToken,
+        );
       }
-      const subRes = await authFetch(
-        "/api/subscribers",
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ preference: alertQuery }),
-        },
-        accessToken,
+      const subRes = await fetch("/api/alerts/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          categories: parseAlertQuery(alertQuery),
+          minSalary: alertMinSalary,
+          region: alertRegion,
+        }),
+      });
+      const subData = (await subRes.json()) as { subscriber?: SubscriberRow; error?: string; pendingConfirm?: boolean };
+      if (!subRes.ok) {
+        setAlertMsg(subData.error || "Unable to save alert.");
+        return;
+      }
+      const refresh = await authFetch("/api/subscribers", {}, accessToken);
+      const refreshed = (await refresh.json()) as { subscriber?: SubscriberRow | null };
+      if (refreshed.subscriber) setSubscriber(refreshed.subscriber);
+      setAlertMsg(
+        subData.pendingConfirm
+          ? "Check your email. Click the confirm link before we send roles."
+          : "Alert saved. Tuesday and Friday, matching published roles.",
       );
-      const subData = (await subRes.json()) as { subscriber?: SubscriberRow };
-      if (subData.subscriber) setSubscriber(subData.subscriber);
-      setAlertMsg("Alert saved. We’ll email new matching jobs.");
     } finally {
       setAlertBusy(false);
     }
@@ -423,11 +439,41 @@ const AccountPageInner = () => {
                 <div className="space-y-4">
                   <div className="rounded-xl border border-slate-200 p-4 space-y-3">
                     <p className="text-sm font-medium text-slate-900">Get new jobs by email</p>
-                    <p className="text-sm text-slate-600">Pick one, several, or all. Same list as the Alerts page.</p>
+                    <p className="text-sm text-slate-600">Same as the public Alerts page. Confirm the email we send. Tuesday and Friday.</p>
                     <AlertCategoryPicker
                       selected={parseAlertQuery(alertQuery)}
                       onChange={(next) => setAlertQuery(serializeAlertQuery(next))}
                     />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label className="block">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Minimum salary</span>
+                        <select
+                          value={alertMinSalary}
+                          onChange={(event) => setAlertMinSalary(Number(event.target.value))}
+                          className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800"
+                        >
+                          {ALERT_MIN_SALARIES.map((amount) => (
+                            <option key={amount} value={amount}>
+                              {amount === 0 ? "Any listed salary" : `$${Math.round(amount / 1000)}k+ a year`}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Region</span>
+                        <select
+                          value={alertRegion}
+                          onChange={(event) => setAlertRegion(event.target.value as AlertRegion)}
+                          className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800"
+                        >
+                          {ALERT_REGIONS.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -451,7 +497,7 @@ const AccountPageInner = () => {
                     {alertMsg && <p className="text-sm text-slate-600">{alertMsg}</p>}
                     {subscriber && (
                       <p className="text-xs text-slate-500">
-                        Sending to {subscriber.email} · {formatAlertQueryLabel(subscriber.preference)}
+                        Sending to {subscriber.email} · {alertPrefsLabel(parseAlertPrefs(subscriber.preference))}
                       </p>
                     )}
                   </div>

@@ -20,6 +20,8 @@ export type AlertPrefs = {
   region: AlertRegion;
   token: string;
   lastSentAt?: string | null;
+  /** Explicit false = pending double opt-in. Missing on older rows is treated as confirmed. */
+  confirmed?: boolean;
 };
 
 export type AlertJob = {
@@ -52,6 +54,7 @@ export function parseAlertPrefs(raw?: string | null, existingToken?: string): Al
         region,
         token: (parsed.token || existingToken || "").trim() || newUnsubToken(),
         lastSentAt: parsed.lastSentAt || null,
+        confirmed: typeof parsed.confirmed === "boolean" ? parsed.confirmed : true,
       };
     } catch {
       // fall through
@@ -63,7 +66,12 @@ export function parseAlertPrefs(raw?: string | null, existingToken?: string): Al
     region: "anywhere",
     token: existingToken || newUnsubToken(),
     lastSentAt: null,
+    confirmed: true,
   };
+}
+
+export function isGuestAlertConfirmed(prefs: AlertPrefs): boolean {
+  return prefs.confirmed !== false;
 }
 
 export function serializeAlertPrefs(prefs: AlertPrefs): string {
@@ -73,6 +81,7 @@ export function serializeAlertPrefs(prefs: AlertPrefs): string {
     region: isRegion(prefs.region) ? prefs.region : "anywhere",
     token: prefs.token || newUnsubToken(),
     lastSentAt: prefs.lastSentAt || null,
+    confirmed: prefs.confirmed !== false,
   });
 }
 
@@ -115,7 +124,7 @@ export function jobMatchesAlertPrefs(job: AlertJob, prefs: AlertPrefs): boolean 
 
 export function isTwiceWeeklySendDay(now = new Date()): boolean {
   const day = now.getUTCDay();
-  return day === 1 || day === 4;
+  return day === 2 || day === 5;
 }
 
 export function alertPrefsLabel(prefs: AlertPrefs): string {

@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const canonicalUrl = `${baseUrl}/alerts`;
   const title = "Job alerts — CareersPal";
   const description =
-    "Email-only alerts for Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Two messages a week. No password.";
+    "Email-only alerts for Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff. Confirm your email. Tuesday and Friday. No password.";
 
   return {
     title,
@@ -33,7 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function AlertsPage({ searchParams }: PageProps) {
   const resolved = (await searchParams) || {};
-  const initialCategory = getParam(resolved.category) || null;
+  const initialCategory = getParam(resolved.category) || getParam(resolved.query) || null;
 
   return (
     <div className="bg-[#F8F9FD] pb-4">

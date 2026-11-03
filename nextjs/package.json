@@ -16,7 +16,8 @@
     "apply:employer-dashboard": "tsx scripts/apply-employer-dashboard.ts",
     "sourcing:ensure-boards": "tsx scripts/ensure-sourcing-boards.ts",
     "sourcing:backfill-logos": "tsx scripts/backfill-company-logos.ts",
-    "sourcing:run-pipeline": "tsx scripts/run-greenhouse-pipeline.ts"
+    "sourcing:run-pipeline": "tsx scripts/run-greenhouse-pipeline.ts",
+    "verify:go-live": "tsx scripts/verify-go-live.ts"
   },
   "dependencies": {
     "@google/genai": "^1.39.0",
