@@ -46,7 +46,7 @@ export async function purgeUnpublishedJobs(
       continue;
     }
     if (error) throw new Error(error.message);
-    const rows = (data || []) as PurgeRow[];
+    const rows = (Array.isArray(data) ? data : []) as unknown as PurgeRow[];
     if (rows.length === 0) break;
     scanned += rows.length;
     for (const row of rows) {
