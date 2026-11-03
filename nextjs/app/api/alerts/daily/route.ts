@@ -5,8 +5,12 @@ import { createJobSlug } from "../../../../lib/jobs";
 import { formatSalaryDisplay } from "../../../../lib/formatSalary";
 import { isOnNicheJob } from "../../../../lib/nicheScope";
 import { jobMatchesAlertQuery } from "../../../../lib/categories";
+import { alertPrefsLabel, isTwiceWeeklySendDay, jobMatchesAlertPrefs, parseAlertPrefs, serializeAlertPrefs } from "../../../../lib/alertPrefs";
+import { renderAlertEmail, type DigestJob } from "../../../../lib/alerts/emailTemplate";
+import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 type AlertRow = {
   id: string;
@@ -21,6 +25,7 @@ type JobRow = {
   title: string | null;
   location: string | null;
   salary: string | null;
+  remote_policy?: string | null;
   apply_url: string | null;
   keywords: string | null;
   tags: unknown;
@@ -35,101 +40,10 @@ const getResendClient = () => {
   return new Resend(apiKey);
 };
 
-const getFromEmail = () => {
-  return process.env.RESEND_FROM || "CareersPal <onboarding@resend.dev>";
-};
-
-const escapeHtml = (value?: string | null) =>
-  (value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-
-type EmailCta = {
-  label: string;
-  href: string;
-};
-
-type EmailLayoutProps = {
-  title: string;
-  preheader: string;
-  body: string;
-  cta?: EmailCta;
-  footerNote?: string;
-};
-
-const renderEmail = ({ title, preheader, body, cta, footerNote }: EmailLayoutProps) => `
-  <!doctype html>
-  <html>
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>${escapeHtml(title)}</title>
-    </head>
-    <body style="margin:0;padding:0;background:#f6f7fb;font-family:Inter,Segoe UI,Arial,sans-serif;">
-      <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
-        ${escapeHtml(preheader)}
-      </div>
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f7fb;">
-        <tr>
-          <td align="center" style="padding:32px 16px;">
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border-radius:16px;box-shadow:0 12px 30px rgba(15,23,42,0.08);overflow:hidden;">
-              <tr>
-                <td style="padding:32px 32px 12px;">
-                  <div style="font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:#7b7f8c;">
-                    CareersPal
-                  </div>
-                  <h1 style="margin:12px 0 0;font-size:24px;line-height:1.3;color:#111827;">
-                    ${escapeHtml(title)}
-                  </h1>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding:8px 32px 0;font-size:15px;line-height:1.6;color:#111827;">
-                  ${body}
-                </td>
-              </tr>
-              <tr>
-                <td style="padding:24px 32px 32px;">
-                  ${
-                    cta
-                      ? `<a href="${cta.href}" style="display:inline-block;background:#6d28d9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:600;">${escapeHtml(
-                          cta.label,
-                        )}</a>`
-                      : ""
-                  }
-                </td>
-              </tr>
-              <tr>
-                <td style="padding:16px 32px 28px;border-top:1px solid #eef0f5;font-size:12px;color:#6b7280;">
-                  ${escapeHtml(footerNote || "You are receiving this email from CareersPal.")}
-                </td>
-              </tr>
-            </table>
-            <div style="max-width:640px;margin-top:12px;font-size:12px;color:#9ca3af;">
-              CareersPal · Daily alerts for your saved searches
-            </div>
-          </td>
-        </tr>
-      </table>
-    </body>
-  </html>
-`;
-
-const getBaseUrl = () => {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  if (siteUrl) return siteUrl.replace(/\/+$/, "");
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) return `https://${vercelUrl}`;
-  return "http://localhost:3000";
-};
+const getFromEmail = () => process.env.RESEND_FROM || "CareersPal <onboarding@resend.dev>";
 
 const getCompanyName = (job: JobRow) => {
-  if (Array.isArray(job.companies)) {
-    return job.companies[0]?.name || "Company";
-  }
+  if (Array.isArray(job.companies)) return job.companies[0]?.name || "Company";
   return job.companies?.name || "Company";
 };
 
@@ -147,6 +61,16 @@ function isAuthorized(request: Request): boolean {
   return false;
 }
 
+function toDigestJobs(matches: JobRow[], baseUrl: string): DigestJob[] {
+  return matches.slice(0, 10).map((job) => ({
+    title: job.title || "Role",
+    company: getCompanyName(job),
+    location: job.location || "Remote",
+    salary: formatSalaryDisplay(job.salary),
+    href: `${baseUrl}/jobs/${createJobSlug({ title: job.title || "role", id: job.id })}?utm_source=alerts`,
+  }));
+}
+
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -157,11 +81,11 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const dryRun = url.searchParams.get("dryRun") === "1";
-  const includeAttempted = url.searchParams.get("includeAttempted") === "1";
-  const backfillDaysParam = url.searchParams.get("backfillDays");
-  const backfillDaysRaw = backfillDaysParam ? Number(backfillDaysParam) : NaN;
-  const backfillDays =
-    Number.isFinite(backfillDaysRaw) && backfillDaysRaw > 0 ? Math.min(Math.floor(backfillDaysRaw), 30) : null;
+  const force = url.searchParams.get("force") === "1";
+  const now = new Date();
+  if (!force && !isTwiceWeeklySendDay(now)) {
+    return NextResponse.json({ ok: true, skipped: "not_send_day", dayUtc: now.getUTCDay() });
+  }
 
   const resend = getResendClient();
   if (!resend) {
@@ -176,137 +100,61 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Failed to load alerts." }, { status: 500 });
   }
 
-  const now = new Date();
-  // Default: daily window.
-  // First run (no last_run_at): allow a slightly wider backfill so users actually get their first email.
-  const sinceDaily = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const sinceFirstRun = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-  const { data: profiles } = await supabaseAdmin
-    .from("profiles")
-    .select("id,email")
-    .in(
-      "id",
-      (alerts || [])
-        .map((alert) => alert.user_id)
-        .filter((id): id is string => Boolean(id)),
-    );
+  const sinceDefault = new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000);
+  const userIds = (alerts || []).map((alert) => alert.user_id).filter((id): id is string => Boolean(id));
+  const { data: profiles } = userIds.length
+    ? await supabaseAdmin.from("profiles").select("id,email").in("id", userIds)
+    : { data: [] };
 
   const emailByUser = new Map((profiles || []).map((row) => [row.id, row.email]));
-  const baseUrl = getBaseUrl();
+  const baseUrl = getPublicSiteUrl();
   const from = getFromEmail();
+
+  const { data: recentJobs } = await supabaseAdmin
+    .from("jobs")
+    .select("id,title,location,salary,remote_policy,apply_url,keywords,tags,category,timestamp,companies(name)")
+    .eq("status", "published")
+    .gte("timestamp", sinceDefault.getTime());
+  const published = ((recentJobs || []) as JobRow[]).filter((job) => isOnNicheJob(job));
 
   let sent = 0;
   const emailed = new Set<string>();
   let matchedTotal = 0;
-  const attempted: Array<{ alertId: string; email: string; matches: number; since: string }> = [];
-  const summary = {
-    totalAlerts: (alerts || []).length,
-    considered: 0,
-    skipped: {
-      missing_user_or_query: 0,
-      missing_email: 0,
-    },
-  };
+
   for (const alert of (alerts || []) as AlertRow[]) {
-    if (!alert.user_id || !alert.query) {
-      summary.skipped.missing_user_or_query += 1;
-      continue;
-    }
+    if (!alert.user_id || !alert.query) continue;
     const toEmail = emailByUser.get(alert.user_id);
-    if (!toEmail) {
-      summary.skipped.missing_email += 1;
+    if (!toEmail) continue;
+    const since = alert.last_run_at ? new Date(alert.last_run_at).getTime() : sinceDefault.getTime();
+    const matches = published.filter(
+      (job) => (job.timestamp || 0) >= since && jobMatchesAlertQuery(job, alert.query || ""),
+    );
+    matchedTotal += matches.length;
+    if (matches.length === 0) {
+      if (!dryRun) await supabaseAdmin.from("alerts").update({ last_run_at: now.toISOString() }).eq("id", alert.id);
       continue;
     }
-
-    summary.considered += 1;
-
-    const since = (() => {
-      if (backfillDays) return new Date(now.getTime() - backfillDays * 24 * 60 * 60 * 1000);
-      if (alert.last_run_at) return new Date(alert.last_run_at);
-      return sinceFirstRun;
-    })();
-    const sinceMs = since.getTime();
-
-    const { data: jobs } = await supabaseAdmin
-      .from("jobs")
-      .select("id,title,location,salary,apply_url,keywords,tags,category,timestamp,companies(name)")
-      .eq("status", "published")
-      .gte("timestamp", sinceMs);
-
-    const jobRows = (jobs || []) as JobRow[];
-    const matches = jobRows.filter((job) => isOnNicheJob(job) && jobMatchesAlertQuery(job, alert.query || ""));
-    matchedTotal += matches.length;
-
-    if (matches.length > 0 && !dryRun) {
-      const rows = matches
-        .slice(0, 10)
-        .map((job) => {
-          const companyName = getCompanyName(job);
-          const jobUrl = `${baseUrl}/jobs/${createJobSlug({ title: job.title || "role", id: job.id })}?utm_source=alerts`;
-          const safeTitle = escapeHtml(job.title || "Role");
-          const safeCompany = escapeHtml(companyName);
-          const safeLocation = escapeHtml(job.location || "Remote");
-          const safeSalary = escapeHtml(formatSalaryDisplay(job.salary));
-          return `
-            <tr>
-              <td style="padding:16px;border:1px solid #eef0f5;border-radius:12px;background:#fbfbff;">
-                <div style="font-weight:600;color:#111827;margin-bottom:4px;">${safeTitle}</div>
-                <div style="color:#6b7280;font-size:13px;margin-bottom:6px;">
-                  ${safeCompany} · ${safeLocation}
-                </div>
-                <div style="color:#6b7280;font-size:13px;margin-bottom:10px;">${safeSalary}</div>
-                <a href="${jobUrl}" style="display:inline-block;background:#6d28d9;color:#ffffff;text-decoration:none;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;">
-                  View role
-                </a>
-              </td>
-            </tr>
-            <tr><td style="height:12px;"></td></tr>
-          `;
-        })
-        .join("");
-
+    if (!dryRun) {
+      const digest = toDigestJobs(matches, baseUrl);
       const sendResult = await resend.emails.send({
         from,
         to: toEmail,
-        subject: `Daily job alert: ${alert.query}`,
-        html: renderEmail({
-          title: "Your daily job alert",
-          preheader: "New roles matching your saved search.",
-          body: `
-            <p style="margin:0 0 12px;">Here are new roles matching your alert:</p>
-            <div style="background:#f8f9ff;border:1px solid #eef0ff;border-radius:12px;padding:12px 16px;margin:0 0 18px;font-size:14px;color:#374151;">
-              <strong>Alert:</strong> ${escapeHtml(alert.query)}
-            </div>
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;">
-              ${rows}
-            </table>
-            <p style="margin:12px 0 0;">Change or stop this in your account.</p>
-          `,
-          cta: { label: "Manage alerts", href: `${baseUrl}/account?tab=alerts` },
-          footerNote: "You are receiving this email because you enabled job alerts.",
+        subject: "New roles on CareersPal",
+        html: renderAlertEmail({
+          title: "New matching roles",
+          preheader: "Published roles that match your alert.",
+          introHtml: `<p style="margin:0 0 12px;">New published roles matching your saved categories. Each one opens on CareersPal.</p>`,
+          jobs: digest,
+          cta: { label: "Browse all jobs", href: `${baseUrl}/jobs` },
+          unsubscribeUrl: `${baseUrl}/account?tab=alerts`,
+          footerNote: "Two emails a week. Change or stop this in your account.",
         }),
       });
-      if (sendResult.error) {
-        attempted.push({
-          alertId: alert.id,
-          email: toEmail,
-          matches: matches.length,
-          since: since.toISOString(),
-        });
-        continue;
+      if (!sendResult.error) {
+        sent += 1;
+        emailed.add(toEmail.toLowerCase());
       }
-      sent += 1;
-      emailed.add(toEmail.toLowerCase());
-    }
-
-    attempted.push({ alertId: alert.id, email: toEmail, matches: matches.length, since: since.toISOString() });
-
-    if (!dryRun) {
-      await supabaseAdmin
-        .from("alerts")
-        .update({ last_run_at: now.toISOString() })
-        .eq("id", alert.id);
+      await supabaseAdmin.from("alerts").update({ last_run_at: now.toISOString() }).eq("id", alert.id);
     }
   }
 
@@ -315,82 +163,53 @@ export async function GET(request: Request) {
   for (const sub of subscribers || []) {
     const toEmail = String(sub.email || "").trim().toLowerCase();
     if (!toEmail || emailed.has(toEmail)) continue;
-    const query = String(sub.preference || "").trim();
-    const { data: jobs } = await supabaseAdmin
-      .from("jobs")
-      .select("id,title,location,salary,apply_url,keywords,tags,category,timestamp,companies(name)")
-      .eq("status", "published")
-      .gte("timestamp", sinceDaily.getTime());
-    const jobRows = (jobs || []) as JobRow[];
-    const matches = jobRows.filter((job) => {
-      if (!isOnNicheJob(job)) return false;
-      if (!query || query.toLowerCase() === "all") return true;
-      return jobMatchesAlertQuery(job, query);
-    });
-    if (matches.length === 0) continue;
+    const prefs = parseAlertPrefs(sub.preference);
+    const since = prefs.lastSentAt ? new Date(prefs.lastSentAt).getTime() : sinceDefault.getTime();
+    const matches = published.filter((job) => (job.timestamp || 0) >= since && jobMatchesAlertPrefs(job, prefs));
     matchedTotal += matches.length;
+    if (matches.length === 0) {
+      if (!dryRun) {
+        await supabaseAdmin
+          .from("subscribers")
+          .update({ preference: serializeAlertPrefs({ ...prefs, lastSentAt: now.toISOString() }) })
+          .eq("email", toEmail);
+      }
+      continue;
+    }
     if (dryRun) continue;
-    const rows = matches
-      .slice(0, 10)
-      .map((job) => {
-        const companyName = getCompanyName(job);
-        const jobUrl = `${baseUrl}/jobs/${createJobSlug({ title: job.title || "role", id: job.id })}?utm_source=alerts`;
-        return `
-            <tr>
-              <td style="padding:16px;border:1px solid #eef0f5;background:#fbfbff;">
-                <div style="font-weight:600;color:#111827;">${escapeHtml(job.title || "Role")}</div>
-                <div style="color:#374151;font-size:13px;">${escapeHtml(companyName)} · ${escapeHtml(job.location || "Remote")}</div>
-                <div style="color:#374151;font-size:13px;margin-bottom:10px;">${escapeHtml(formatSalaryDisplay(job.salary))}</div>
-                <a href="${jobUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:8px 12px;border-radius:8px;font-size:13px;">View role</a>
-              </td>
-            </tr>
-            <tr><td style="height:12px;"></td></tr>
-          `;
-      })
-      .join("");
+    const digest = toDigestJobs(matches, baseUrl);
+    const unsub = `${baseUrl}/api/alerts/unsubscribe?token=${encodeURIComponent(prefs.token)}`;
     const sendResult = await resend.emails.send({
       from,
       to: toEmail,
-      subject: query && query.toLowerCase() !== "all" ? `New ${query} roles on CareersPal` : "New roles on CareersPal",
-      html: renderEmail({
-        title: "New published roles",
-        preheader: "Roles that went live on CareersPal.",
-        body: `<p style="margin:0 0 12px;">New published roles matching your category.</p><table role="presentation" width="100%">${rows}</table>`,
-        cta: { label: "Browse jobs", href: `${baseUrl}/jobs` },
-        footerNote: `Stop these emails: ${baseUrl}/api/alerts/unsubscribe?email=${encodeURIComponent(toEmail)}`,
+      subject: "New roles on CareersPal",
+      headers: {
+        "List-Unsubscribe": `<${unsub}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+      html: renderAlertEmail({
+        title: "New matching roles",
+        preheader: "Published roles that match your alert.",
+        introHtml: `<p style="margin:0 0 12px;">Matching your alert: ${alertPrefsLabel(prefs)}. Each role opens on CareersPal first.</p>`,
+        jobs: digest,
+        cta: { label: "Browse all jobs", href: `${baseUrl}/jobs` },
+        unsubscribeUrl: unsub,
       }),
     });
     if (!sendResult.error) {
       subscriberSent += 1;
       emailed.add(toEmail);
     }
+    await supabaseAdmin
+      .from("subscribers")
+      .update({ preference: serializeAlertPrefs({ ...prefs, lastSentAt: now.toISOString() }) })
+      .eq("email", toEmail);
   }
 
   await supabaseAdmin.from("audit_logs").insert({
-    action: dryRun ? "alerts_daily_dry_run" : "alerts_daily_sent",
-    metadata: {
-      totalAlerts: (alerts || []).length,
-      sent,
-      subscriberSent,
-      attempted,
-      dryRun,
-      matchedTotal,
-      backfillDays,
-    },
+    action: dryRun ? "alerts_twice_weekly_dry_run" : "alerts_twice_weekly_sent",
+    metadata: { sent, subscriberSent, matchedTotal, dryRun, force },
   });
 
-  return NextResponse.json({
-    ok: true,
-    sent,
-    subscriberSent,
-    dryRun,
-    matchedTotal,
-    backfillDays,
-    window: {
-      defaultDailySince: sinceDaily.toISOString(),
-      firstRunSince: sinceFirstRun.toISOString(),
-    },
-    summary,
-    attempted: includeAttempted ? attempted : undefined,
-  });
+  return NextResponse.json({ ok: true, sent, subscriberSent, dryRun, matchedTotal, force });
 }

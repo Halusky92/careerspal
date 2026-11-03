@@ -110,10 +110,21 @@ type NormalizedCandidateRow = {
 
 type NormalizedCandidateDetail = Record<string, unknown> & { id: string; title?: string | null };
 
+type CronHealth = {
+  lastStatus: string;
+  lastAt: string | null;
+  lastOkAt: string | null;
+  lastError: string | null;
+  secretConfigured: boolean;
+  overdue: boolean;
+};
+
 type AutomationRun = {
   id: string;
   createdAt: string;
   actorId: string | null;
+  trigger?: string;
+  timedOut?: boolean;
   sourcesProcessed: number;
   ingestion: { rawFetched: number; rawInserted: number; rawSkipped: number; runsCreated: number };
   normalization: { processed: number; inserted: number; updated: number; skipped: number; errors: number };
@@ -161,6 +172,7 @@ export default function SourcingRegistrySection() {
   const [reviews, setReviews] = useState<SourcingReview[]>([]);
   const [runs, setRuns] = useState<SourcingRun[]>([]);
   const [automationRuns, setAutomationRuns] = useState<AutomationRun[]>([]);
+  const [cronHealth, setCronHealth] = useState<CronHealth | null>(null);
   const [automationLoading, setAutomationLoading] = useState(false);
   const [automationError, setAutomationError] = useState<string>("");
   const [rawJobs, setRawJobs] = useState<RawSourcedJobRow[]>([]);
@@ -263,9 +275,10 @@ export default function SourcingRegistrySection() {
     try {
       if (!accessToken) throw new Error("Missing session token. Please sign in again.");
       const resp = await authFetch("/api/admin/sourcing/automation/runs?limit=14", { cache: "no-store" }, accessToken);
-      const json = (await safeJson(resp)) as { runs?: AutomationRun[]; error?: string };
+      const json = (await safeJson(resp)) as { runs?: AutomationRun[]; cronHealth?: CronHealth; error?: string };
       if (!resp.ok) throw new Error(json.error || `Unable to load automation runs (HTTP ${resp.status}).`);
       setAutomationRuns(json.runs || []);
+      setCronHealth(json.cronHealth || null);
     } catch (e) {
       setAutomationError(e instanceof Error ? e.message : "Unable to load automation runs.");
     } finally {
@@ -1113,7 +1126,7 @@ export default function SourcingRegistrySection() {
                   <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Automation</div>
                   <div className="mt-1 text-sm font-black text-white">Daily pipeline summary</div>
                   <div className="mt-1 text-xs text-slate-500">
-                    Runs every morning at 05:00 UTC on Vercel. Salary, apply link, niche, and a real job description are required to publish.
+                    Vercel Hobby slices at 06:00–07:00 UTC (one board each). GitHub runs the full sweep at 06:15 UTC.
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1132,6 +1145,37 @@ export default function SourcingRegistrySection() {
                   </button>
                 </div>
               </div>
+
+              {cronHealth && (
+                <div
+                  className={`mt-3 rounded-2xl border px-4 py-3 text-xs ${
+                    cronHealth.lastStatus === "error" || cronHealth.overdue
+                      ? "border-red-600/30 bg-red-600/10 text-red-200"
+                      : cronHealth.lastStatus === "partial" || !cronHealth.secretConfigured
+                        ? "border-amber-600/30 bg-amber-600/10 text-amber-100"
+                        : "border-emerald-600/30 bg-emerald-600/10 text-emerald-100"
+                  }`}
+                >
+                  <div className="font-semibold">
+                    Morning cron:{" "}
+                    {cronHealth.overdue
+                      ? "did not finish in the last 26 hours"
+                      : cronHealth.lastStatus === "error"
+                        ? "failed"
+                        : cronHealth.lastStatus === "partial"
+                          ? "ran, stopped early"
+                          : cronHealth.lastStatus === "ok"
+                            ? "ok"
+                            : cronHealth.lastStatus}
+                  </div>
+                  <div className="mt-1 opacity-80">
+                    Last event {formatTs(cronHealth.lastAt)}
+                    {cronHealth.lastOkAt ? ` · last success ${formatTs(cronHealth.lastOkAt)}` : ""}
+                    {` · secret ${cronHealth.secretConfigured ? "configured" : "missing on this host"}`}
+                    {cronHealth.lastError ? ` · ${cronHealth.lastError}` : ""}
+                  </div>
+                </div>
+              )}
 
               {automationError && (
                 <div className="mt-3 rounded-2xl border border-red-600/30 bg-red-600/10 px-4 py-3 text-xs text-red-200">
@@ -1157,7 +1201,10 @@ export default function SourcingRegistrySection() {
                       <tr key={r.id} className="border-b border-slate-900/60 text-slate-300 align-top">
                         <td className="py-3 pr-3 whitespace-nowrap">
                           <div className="font-bold text-white">{formatTs(r.createdAt)}</div>
-                          <div className="text-[11px] text-slate-500">{r.actorId ? "manual" : "cron"}</div>
+                          <div className="text-[11px] text-slate-500">
+                            {r.trigger || (r.actorId ? "manual" : "cron")}
+                            {r.timedOut ? " · timed out" : ""}
+                          </div>
                         </td>
                         <td className="py-3 pr-3">
                           <Badge tone="indigo">{String(r.sourcesProcessed || 0)}</Badge>

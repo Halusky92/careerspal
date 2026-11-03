@@ -45,6 +45,10 @@ function normalizeSectionHeadings(out: string): string {
     "What you bring",
     "What you'll bring",
     "Responsibilities",
+    "Summary",
+    "Full description",
+    "About this job",
+    "The role",
     "What you'll need",
     "What you’ll need",
     "Requirements",
@@ -121,6 +125,37 @@ function explodeInlineBullets(out: string): string {
   return s;
 }
 
+function fingerprint(text: string): string {
+  return (text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isNearDuplicate(a: string, b: string): boolean {
+  const x = fingerprint(a);
+  const y = fingerprint(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  if (x.length > 80 && y.includes(x)) return true;
+  if (y.length > 80 && x.includes(y)) return true;
+  return false;
+}
+
+function dedupeRepeatedChunks(out: string): string {
+  const parts = (out || "")
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const kept: string[] = [];
+  for (const part of parts) {
+    if (kept.some((prev) => isNearDuplicate(prev, part))) continue;
+    kept.push(part);
+  }
+  return kept.join("\n\n");
+}
+
 export function formatSourcedDescription(input: string, opts: FormatOpts = {}): string {
   const maxLen = typeof opts.maxLen === "number" ? opts.maxLen : 18_000;
   const raw = (input || "").toString();
@@ -136,6 +171,7 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
     normalized = normalizeSectionHeadings(normalized);
     normalized = explodeInlineBullets(normalized).replace(/\n{3,}/g, "\n\n").trim();
     normalized = splitDenseParagraphs(normalized).replace(/\n{3,}/g, "\n\n").trim();
+    normalized = dedupeRepeatedChunks(normalized);
     return normalized.length > maxLen ? `${normalized.slice(0, maxLen).trim()}…` : normalized;
   }
 
@@ -182,6 +218,7 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
   out = normalizeSectionHeadings(out);
   out = explodeInlineBullets(out).replace(/\n{3,}/g, "\n\n").trim();
   out = splitDenseParagraphs(out).replace(/\n{3,}/g, "\n\n").trim();
+  out = dedupeRepeatedChunks(out);
 
   // If we somehow lost structure and got very dense text, fall back to the plain stripper.
   // (Still conservative: just readable text.)
@@ -190,6 +227,7 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
     const flat = stripHtmlToText(raw);
     out = explodeInlineBullets(normalizeSectionHeadings(flat)).replace(/\n{3,}/g, "\n\n").trim();
     out = splitDenseParagraphs(out).replace(/\n{3,}/g, "\n\n").trim();
+    out = dedupeRepeatedChunks(out);
   }
 
   return out.length > maxLen ? `${out.slice(0, maxLen).trim()}…` : out;

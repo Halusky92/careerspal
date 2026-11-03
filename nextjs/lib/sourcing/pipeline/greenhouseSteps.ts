@@ -20,6 +20,7 @@ import { detectEmploymentType } from "../normalization/employmentType";
 import { detectNotionSignal } from "../signals/notion";
 import { createCompanySlug } from "../../jobs";
 import { enrichCompanyFromWebsite } from "../../companyEnrichment";
+import { publicLogoUrlForWebsite } from "../../companyLogoUrl";
 import { isOnNicheJob } from "../../nicheScope";
 import { formatSalaryForStorage } from "../../formatSalary";
 import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
@@ -645,32 +646,40 @@ export async function autoPublishEligibleCandidates(
       const raw = (value || "").trim();
       if (!raw || raw === "#" || raw.startsWith("mailto:") || raw.startsWith("/")) return null;
       try {
-        const u = new URL(raw);
+        const u = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
         if (isAtsHost(u.hostname)) return null;
         return `${u.protocol}//${u.hostname}`;
       } catch {
         return null;
       }
     };
+    const fromDescription = () => {
+      const text = (candidate.description_clean || "").toString();
+      const matches = text.match(/https?:\/\/[^\s)"']+/gi) || [];
+      for (const m of matches) {
+        const hit = tryUrl(m.replace(/[.,;]+$/, ""));
+        if (hit) return hit;
+      }
+      return null;
+    };
+    const knownByToken: Record<string, string> = {
+      checkr: "https://www.checkr.com",
+      pendo: "https://www.pendo.io",
+    };
+    const token = (src?.ats_identifier || "").toString().trim().toLowerCase();
     return (
+      tryUrl(src?.companies?.website || null) ||
+      fromDescription() ||
       tryUrl(candidate.job_url) ||
       tryUrl(candidate.apply_url) ||
+      tryUrl(knownByToken[token] || null) ||
       tryUrl(src?.normalized_url || null) ||
       tryUrl(src?.base_url || null) ||
       null
     );
   };
 
-  const deriveFaviconUrl = (website: string | null) => {
-    const raw = (website || "").trim();
-    if (!raw) return null;
-    try {
-      const u = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
-      return `${u.protocol}//${u.hostname}/favicon.ico`;
-    } catch {
-      return null;
-    }
-  };
+  const deriveFaviconUrl = (website: string | null) => publicLogoUrlForWebsite(website);
 
   const inferCategory = (candidate: AutoPublishCandidateRow) => {
     const blob = [candidate.title, candidate.description_clean, candidate.location_text, candidate.remote_policy]
@@ -889,30 +898,6 @@ export async function autoPublishEligibleCandidates(
         }
       }
 
-      // Enrich company profile from official website if we have a website and the company fields are still empty.
-      // Conservative: only fill missing fields (never overwrite non-null).
-      if (companyId && derivedCompanyWebsite) {
-        try {
-          const { data: after } = await sb.from("companies").select("id,description,logo_url,website").eq("id", companyId).single();
-          const needsDesc = !((after as any)?.description || "").toString().trim();
-          const needsLogo = !((after as any)?.logo_url || "").toString().trim();
-          const needsWebsite = !((after as any)?.website || "").toString().trim();
-
-          if (needsDesc || needsLogo || needsWebsite) {
-            const enr = await enrichCompanyFromWebsite({ websiteUrl: derivedCompanyWebsite });
-            const patch: Record<string, unknown> = {};
-            if (needsWebsite && enr.website) patch.website = enr.website;
-            if (needsDesc && enr.description) patch.description = enr.description;
-            if (needsLogo && enr.logo_url) patch.logo_url = enr.logo_url;
-            if (Object.keys(patch).length > 0) {
-              await sb.from("companies").update(patch).eq("id", companyId);
-            }
-          }
-        } catch {
-          // ignore enrichment failures (don't block publish)
-        }
-      }
-
       if (!companyId) {
         failed += 1;
         await sb
@@ -921,6 +906,32 @@ export async function autoPublishEligibleCandidates(
           .eq("id", candidate.id);
         results.push({ candidateId: candidate.id, status: "failed", error: "company_upsert_failed" });
         continue;
+      }
+    }
+
+    if (companyId && (derivedCompanyWebsite || derivedLogoUrl)) {
+      try {
+        const { data: after } = await sb.from("companies").select("id,description,logo_url,website").eq("id", companyId).single();
+        const needsDesc = !((after as any)?.description || "").toString().trim();
+        const needsLogo = !((after as any)?.logo_url || "").toString().trim();
+        const needsWebsite = !((after as any)?.website || "").toString().trim();
+        const patch: Record<string, unknown> = {};
+        if (needsWebsite && derivedCompanyWebsite) patch.website = derivedCompanyWebsite;
+        if (needsLogo && derivedLogoUrl) patch.logo_url = derivedLogoUrl;
+        if ((needsDesc || needsLogo || needsWebsite) && derivedCompanyWebsite) {
+          const enr = await enrichCompanyFromWebsite({ websiteUrl: derivedCompanyWebsite });
+          if (needsWebsite && enr.website) patch.website = enr.website;
+          if (needsDesc && enr.description) patch.description = enr.description;
+          if (needsLogo && enr.logo_url) patch.logo_url = enr.logo_url;
+        }
+        if (needsLogo && !patch.logo_url && (patch.website || derivedCompanyWebsite)) {
+          patch.logo_url = publicLogoUrlForWebsite(String(patch.website || derivedCompanyWebsite));
+        }
+        if (Object.keys(patch).length > 0) {
+          await sb.from("companies").update(patch).eq("id", companyId);
+        }
+      } catch {
+        // don't block publish
       }
     }
 

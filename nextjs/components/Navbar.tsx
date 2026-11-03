@@ -5,12 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSupabaseAuth } from "./Providers";
 
-const initialsFrom = (name?: string | null, email?: string | null) => {
-  const source = (name || email || "C").trim();
-  const parts = source.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  return source.slice(0, 2).toUpperCase();
-};
+const AccountIcon = () => (
+  <svg viewBox="0 0 24 24" className="h-5 w-5 text-slate-700" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+    <circle cx="12" cy="8" r="3.2" />
+    <path d="M5.5 19c1.4-3 3.6-4.5 6.5-4.5s5.1 1.5 6.5 4.5" strokeLinecap="round" />
+  </svg>
+);
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -107,7 +107,7 @@ const Navbar: React.FC = () => {
 
               <Link
                 href={hireHref}
-                className="inline-flex h-9 items-center justify-center px-3 rounded-lg bg-indigo-600 text-white text-sm font-medium leading-none hover:bg-indigo-700 shrink-0"
+                className="inline-flex h-10 items-center justify-center px-3.5 rounded-lg bg-indigo-600 text-white text-sm font-medium leading-none hover:bg-indigo-700 shrink-0"
               >
                 {hireLabel}
               </Link>
@@ -121,17 +121,20 @@ const Navbar: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsAccountOpen((open) => !open)}
-                    className="h-9 w-9 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold border border-indigo-100 overflow-hidden"
+                    className="inline-flex h-10 min-w-10 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white pl-1 pr-3 text-sm font-medium text-slate-800 hover:bg-slate-50"
                     aria-haspopup="menu"
                     aria-expanded={isAccountOpen}
                     aria-label="Account menu"
                   >
-                    {profile.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={profile.image} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      initialsFrom(profile.name, profile.email)
-                    )}
+                    <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-slate-100">
+                      {profile.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={profile.image} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <AccountIcon />
+                      )}
+                    </span>
+                    Account
                   </button>
                   {isAccountOpen && (
                     <div className="absolute right-0 mt-2 w-64 rounded-xl border border-slate-200 bg-white shadow-lg py-2 text-sm z-50">
@@ -165,20 +168,20 @@ const Navbar: React.FC = () => {
               {profile?.email && (
                 <Link
                   href="/account"
-                  className="h-8 w-8 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-semibold border border-indigo-100 overflow-hidden inline-flex items-center justify-center"
-                  aria-label="Profile"
+                  className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100"
+                  aria-label="Account"
                 >
                   {profile.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={profile.image} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    initialsFrom(profile.name, profile.email)
+                    <AccountIcon />
                   )}
                 </Link>
               )}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 text-slate-800"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-800"
                 aria-label="Toggle menu"
                 aria-expanded={isMenuOpen}
                 aria-controls="mobile-menu"
@@ -239,6 +242,11 @@ const Navbar: React.FC = () => {
               <Link href="/account?tab=settings" onClick={closeMobile} className="block py-3 border-b border-slate-100">
                 Settings
               </Link>
+              {(profile.role === "employer" || profile.role === "admin") && (
+                <Link href={dashboardHref || "/account"} onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                  Dashboard
+                </Link>
+              )}
             </>
           )}
           <Link href={hireHref} onClick={closeMobile} className="block py-3 border-b border-slate-100">

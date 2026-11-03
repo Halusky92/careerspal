@@ -14,7 +14,9 @@
     "cleanup:off-niche": "tsx scripts/cleanup-off-niche-jobs.ts",
     "cleanup:salary": "tsx scripts/cleanup-implausible-salary.ts",
     "apply:employer-dashboard": "tsx scripts/apply-employer-dashboard.ts",
-    "sourcing:ensure-boards": "tsx scripts/ensure-sourcing-boards.ts"
+    "sourcing:ensure-boards": "tsx scripts/ensure-sourcing-boards.ts",
+    "sourcing:backfill-logos": "tsx scripts/backfill-company-logos.ts",
+    "sourcing:run-pipeline": "tsx scripts/run-greenhouse-pipeline.ts"
   },
   "dependencies": {
     "@google/genai": "^1.39.0",

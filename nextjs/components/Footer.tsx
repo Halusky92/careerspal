@@ -1,26 +1,18 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 const Footer = () => {
-  const pathname = usePathname();
-  if (pathname?.startsWith("/account") || pathname?.startsWith("/auth") || pathname?.startsWith("/dashboard")) {
-    return null;
-  }
-
   return (
-    <footer className="bg-white border-t border-slate-200 mt-6">
+    <footer data-site-footer className="bg-white border-t border-slate-200 mt-6">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-sm text-slate-700">
             Ops and Systems roles. Search, save, apply on the company site.
           </p>
-          <div className="flex gap-2">
-            <Link href="/jobs" className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium inline-flex items-center">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Link href="/jobs" className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white sm:h-9 sm:w-auto">
               Browse jobs
             </Link>
-            <Link href="/hire-talent" className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-slate-800 text-sm font-medium inline-flex items-center">
+            <Link href="/hire-talent" className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-800 sm:h-9 sm:w-auto">
               For employers
             </Link>
           </div>

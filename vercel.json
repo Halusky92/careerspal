@@ -1,16 +1,28 @@
 {
   "crons": [
     {
-      "path": "/api/admin/sourcing/pipeline/greenhouse",
-      "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/cron/stale-jobs",
+      "path": "/api/cron/sourcing/pipeline/greenhouse",
       "schedule": "0 6 * * *"
     },
     {
-      "path": "/api/alerts/daily",
+      "path": "/api/cron/sourcing/pipeline/greenhouse",
+      "schedule": "20 6 * * *"
+    },
+    {
+      "path": "/api/cron/sourcing/pipeline/greenhouse",
+      "schedule": "40 6 * * *"
+    },
+    {
+      "path": "/api/cron/sourcing/pipeline/greenhouse",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/stale-jobs",
+      "schedule": "30 7 * * *"
+    },
+    {
+      "path": "/api/alerts/daily",
+      "schedule": "0 8 * * *"
     }
   ]
 }

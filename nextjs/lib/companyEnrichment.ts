@@ -1,5 +1,6 @@
 import { matchDenylistHost } from "./sourcing/denylist";
 import { normalizeHost, normalizeUrlForRegistry } from "./sourcing/domain";
+import { publicLogoUrlForWebsite } from "./companyLogoUrl";
 
 export type CompanyWebsiteEnrichment = {
   website: string | null;
@@ -8,6 +9,16 @@ export type CompanyWebsiteEnrichment = {
   location?: string | null;
   notes: string[];
 };
+
+function extractLinkHref(html: string, relPart: string): string | null {
+  const raw = (html || "").toString();
+  if (!raw) return null;
+  const escaped = relPart.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`<link[^>]+rel=["'][^"']*${escaped}[^"']*["'][^>]*>`, "i");
+  const tag = raw.match(re)?.[0] || "";
+  const href = tag.match(/href=["']([^"']+)["']/i)?.[1];
+  return (href || "").trim() || null;
+}
 
 function extractMeta(html: string, nameOrProp: string): string | null {
   const raw = (html || "").toString();
@@ -168,16 +179,21 @@ export async function enrichCompanyFromWebsite(args: {
   const jsonld = extractJsonLdOrganization(html);
   const description =
     extractMeta(html, "og:description") || extractMeta(html, "twitter:description") || extractMeta(html, "description");
-  const image =
-    extractMeta(html, "og:logo") || extractMeta(html, "og:image") || extractMeta(html, "twitter:image");
+  const icon =
+    extractLinkHref(html, "apple-touch-icon") ||
+    extractLinkHref(html, "icon") ||
+    extractMeta(html, "og:logo") ||
+    jsonld.logo ||
+    null;
+  const website = jsonld.website ? jsonld.website : base;
   const logoUrl =
-    absolutizeUrl(base, image) || absolutizeUrl(base, jsonld.logo || null) || absolutizeUrl(base, "/favicon.ico");
+    absolutizeUrl(base, icon) || publicLogoUrlForWebsite(website);
 
   if (!description) notes.push("no_description_meta");
   if (!logoUrl) notes.push("no_logo_meta");
 
   return {
-    website: jsonld.website ? jsonld.website : base,
+    website,
     description: (description || jsonld.description) ? String(description || jsonld.description).slice(0, 280) : null,
     logo_url: logoUrl,
     location: jsonld.location || null,

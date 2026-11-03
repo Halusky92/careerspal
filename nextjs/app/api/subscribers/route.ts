@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { getSupabaseProfile } from "../../../lib/supabaseServerAuth";
+import { parseAlertPrefs, serializeAlertPrefs } from "../../../lib/alertPrefs";
 
 export const runtime = "nodejs";
 
@@ -11,21 +12,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }
 
-  const body = (await request.json()) as { email?: string; preference?: string };
+  const body = (await request.json()) as {
+    email?: string;
+    preference?: string;
+    categories?: string[] | string;
+    minSalary?: number;
+    region?: string;
+  };
   const email = (body.email || "").trim().toLowerCase();
-  const preference = (body.preference || "All").trim();
-
   if (!email || !isValidEmail(email)) {
     return NextResponse.json({ error: "Invalid email." }, { status: 400 });
   }
 
+  const forwarded = await fetch(new URL("/api/alerts/subscribe", request.url), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email,
+      query: body.preference,
+      categories: body.categories,
+      minSalary: body.minSalary,
+      region: body.region,
+    }),
+  });
+  const payload = await forwarded.json();
+  if (!forwarded.ok) {
+    return NextResponse.json({ error: payload.error || "Unable to subscribe." }, { status: forwarded.status });
+  }
   const { data, error } = await supabaseAdmin
     .from("subscribers")
-    .upsert(
-      { email, preference },
-      { onConflict: "email" },
-    )
     .select("email,preference,created_at")
+    .eq("email", email)
     .single();
 
   if (error) {
@@ -66,9 +83,11 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Missing preference." }, { status: 400 });
   }
   const email = auth.profile.email.trim().toLowerCase();
+  const { data: existing } = await supabaseAdmin.from("subscribers").select("preference").eq("email", email).maybeSingle();
+  const merged = serializeAlertPrefs(parseAlertPrefs(preference, parseAlertPrefs(existing?.preference || null).token));
   const { data, error } = await supabaseAdmin
     .from("subscribers")
-    .upsert({ email, preference }, { onConflict: "email" })
+    .upsert({ email, preference: merged }, { onConflict: "email" })
     .select("email,preference,created_at")
     .single();
   if (error) {

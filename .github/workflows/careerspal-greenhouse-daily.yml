@@ -2,14 +2,15 @@ name: CareersPal - Greenhouse daily pipeline
 
 on:
   schedule:
-    # Daily at 06:00 UTC (adjust if you want; Vercel free cron alternative)
-    - cron: "0 6 * * *"
+    # Full sweep after the first Vercel Hobby slice (06:00 UTC).
+    - cron: "15 6 * * *"
+    - cron: "15 16 * * *"
   workflow_dispatch: {}
 
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Run Greenhouse pipeline (cron-safe)
         env:
@@ -24,16 +25,13 @@ jobs:
             echo "Missing secret CAREERSPAL_CRON_SECRET (must match Vercel env SOURCING_CRON_SECRET)"
             exit 1
           fi
-          # This endpoint can take a couple minutes depending on number of sources/jobs.
-          # -L: follow redirects, --retry: tolerate transient network issues
           echo "Calling pipeline endpoint..."
           curl -sS -L \
             --connect-timeout 15 \
-            --max-time 600 \
+            --max-time 900 \
             --retry 2 \
             --retry-delay 2 \
             --retry-all-errors \
             --fail \
             -w "\nHTTP_STATUS=%{http_code}\n" \
             -G "$PIPELINE_URL" --data-urlencode "secret=$CRON_SECRET"
-

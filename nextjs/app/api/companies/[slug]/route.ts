@@ -3,6 +3,7 @@ import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../../lib/supabaseJobs";
 import type { Company } from "../../../../types";
 import { enrichCompanyFromWebsite } from "../../../../lib/companyEnrichment";
+import { isAtsHostname, publicLogoUrlForWebsite } from "../../../../lib/companyLogoUrl";
 import { isOnNicheJob } from "../../../../lib/nicheScope";
 import { applyLiveBoardFilter, isLiveBoardJob } from "../../../../lib/liveBoard";
 
@@ -73,9 +74,16 @@ export const GET = async (_request: Request, context: { params: Promise<{ slug: 
     return NextResponse.json({ error: "Company not found" }, { status: 404 });
   }
 
-  // Self-heal: derive website from latest published job if missing.
+  // Self-heal: derive website from latest published job if missing (never persist ATS hosts).
   try {
-    const needsWebsite = !((company as any).website || "").toString().trim();
+    const existingHost = (() => {
+      try {
+        return new URL((((company as any).website || "") as string).toString()).hostname;
+      } catch {
+        return "";
+      }
+    })();
+    const needsWebsite = !((company as any).website || "").toString().trim() || (existingHost && isAtsHostname(existingHost));
     if (needsWebsite) {
       const { data: jobRow } = await supabaseAdmin
         .from("jobs")
@@ -92,7 +100,8 @@ export const GET = async (_request: Request, context: { params: Promise<{ slug: 
         const v = (value || "").trim();
         if (!v || v === "#" || v.startsWith("mailto:") || v.startsWith("/")) return null;
         try {
-          const u = new URL(v);
+          const u = new URL(v.startsWith("http") ? v : `https://${v}`);
+          if (isAtsHostname(u.hostname)) return null;
           return `${u.protocol}//${u.hostname}`;
         } catch {
           return null;
@@ -118,6 +127,10 @@ export const GET = async (_request: Request, context: { params: Promise<{ slug: 
       const patch: Record<string, unknown> = {};
       if (needsDesc && enr.description) patch.description = enr.description;
       if (needsLogo && enr.logo_url) patch.logo_url = enr.logo_url;
+      if (needsLogo && !patch.logo_url) {
+        const fallback = publicLogoUrlForWebsite(website);
+        if (fallback) patch.logo_url = fallback;
+      }
       if (Object.keys(patch).length > 0) {
         await supabaseAdmin.from("companies").update(patch).eq("id", company.id);
         Object.assign(company as any, patch);

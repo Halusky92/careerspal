@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 import { parseAlertQuery, serializeAlertQuery } from "../../lib/categories";
-import { subscribeUser } from "../../services/notificationService";
+import { ALERT_MIN_SALARIES, ALERT_REGIONS, type AlertRegion } from "../../lib/alertPrefs";
 import AlertCategoryPicker from "../../components/AlertCategoryPicker";
 
 type AlertsClientProps = {
@@ -16,6 +16,8 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
   const { profile, accessToken, loading } = useSupabaseAuth();
   const [email, setEmail] = useState("");
   const [selected, setSelected] = useState<string[]>(() => parseAlertQuery(initialCategory));
+  const [minSalary, setMinSalary] = useState(0);
+  const [region, setRegion] = useState<AlertRegion>("anywhere");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
@@ -28,8 +30,15 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
     setSaveMsg("");
     setStatus("idle");
     try {
-      if (hasSession && profile?.email) {
-        const response = await authFetch(
+      const targetEmail = hasSession ? profile?.email || "" : email.trim();
+      if (!targetEmail) {
+        setStatus("error");
+        setSaveMsg("Enter an email address.");
+        return;
+      }
+
+      if (hasSession && accessToken) {
+        await authFetch(
           "/api/alerts",
           {
             method: "POST",
@@ -38,38 +47,33 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
           },
           accessToken,
         );
-        const payload = (await response.json()) as { error?: string; existing?: boolean };
-        if (!response.ok) {
-          setStatus("error");
-          setSaveMsg(payload.error || "Unable to enable alerts right now.");
-          return;
-        }
-        await fetch("/api/subscribers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: profile.email, preference: query }),
-        });
-        setStatus("ok");
-        setSaveMsg(payload.existing ? "Alert already on. Manage it in your account." : "Alert on. Manage it in your account.");
-        return;
       }
 
-      const trimmed = email.trim();
-      if (!trimmed) {
+      const response = await fetch("/api/alerts/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: targetEmail,
+          categories: selected,
+          minSalary,
+          region,
+        }),
+      });
+      const payload = (await response.json()) as { error?: string; existing?: boolean };
+      if (!response.ok) {
         setStatus("error");
-        setSaveMsg("Enter an email address.");
+        setSaveMsg(payload.error || "Unable to subscribe right now.");
         return;
       }
-      const result = await subscribeUser(trimmed, query);
-      setStatus(result.success ? "ok" : "error");
+      setStatus("ok");
       setSaveMsg(
-        result.success
-          ? "You’re on the list. Sign in later if you want to change or stop this in your account."
-          : result.message,
+        payload.existing
+          ? "Preferences updated. Two emails a week, no password."
+          : "You’re on the list. Two emails a week. No account needed.",
       );
     } catch {
       setStatus("error");
-      setSaveMsg("Unable to enable alerts right now.");
+      setSaveMsg("Unable to subscribe right now.");
     } finally {
       setSaving(false);
     }
@@ -81,51 +85,76 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Job alerts</p>
         <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Get new jobs by email</h1>
         <p className="mt-2 text-sm text-slate-600 max-w-2xl">
-          Pick one category, several, or all. We’ll email new matching roles. Sign in to change or stop it later.
+          Email only. No password. Two messages a week with matching published roles. Each role opens on CareersPal first.
         </p>
       </div>
 
       <div className="p-4 sm:p-5 space-y-4">
         <AlertCategoryPicker selected={selected} onChange={setSelected} />
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Minimum salary</span>
+            <select
+              value={minSalary}
+              onChange={(event) => setMinSalary(Number(event.target.value))}
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800"
+            >
+              {ALERT_MIN_SALARIES.map((amount) => (
+                <option key={amount} value={amount}>
+                  {amount === 0 ? "Any listed salary" : `$${Math.round(amount / 1000)}k+ a year`}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Region</span>
+            <select
+              value={region}
+              onChange={(event) => setRegion(event.target.value as AlertRegion)}
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800"
+            >
+              {ALERT_REGIONS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
         {loading ? (
           <div className="text-sm text-slate-600">Loading…</div>
-        ) : hasSession ? (
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSubscribe}
-              disabled={saving}
-              className="w-full sm:w-auto inline-flex h-9 items-center justify-center rounded-lg bg-indigo-600 text-white px-4 text-sm font-medium hover:bg-indigo-700 disabled:opacity-60"
-            >
-              {saving ? "Saving…" : "Enable alerts"}
-            </button>
-            <Link
-              href="/account?tab=alerts"
-              className="w-full sm:w-auto inline-flex h-9 items-center justify-center rounded-lg bg-white border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
-            >
-              Manage in account
-            </Link>
-          </div>
         ) : (
           <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              id="alert-email"
-              type="email"
-              inputMode="email"
-              placeholder="Email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="cp-field flex-1 h-10 px-3 rounded-lg bg-white text-slate-900 placeholder:text-slate-400 text-sm outline-none"
-            />
+            {!hasSession && (
+              <input
+                id="alert-email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="flex-1 h-10 px-3 rounded-lg border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 text-sm outline-none"
+              />
+            )}
             <button
               type="button"
               onClick={handleSubscribe}
-              disabled={!email.trim() || saving}
+              disabled={saving || (!hasSession && !email.trim())}
               className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 text-white px-4 text-sm font-medium hover:bg-black disabled:opacity-60"
             >
-              {saving ? "Saving…" : "Subscribe"}
+              {saving ? "Saving…" : hasSession ? "Save alert" : "Subscribe"}
             </button>
+            {hasSession && (
+              <Link
+                href="/account?tab=alerts"
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-700"
+              >
+                Account
+              </Link>
+            )}
           </div>
         )}
 
@@ -133,7 +162,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
           <div className={`text-sm ${status === "error" ? "text-rose-700" : "text-emerald-800"}`}>{saveMsg}</div>
         )}
 
-        <p className="text-xs text-slate-500">We’ll only email new published roles that match your selection.</p>
+        <p className="text-xs text-slate-500">Monday and Thursday. Stop anytime from the link in the email.</p>
       </div>
     </div>
   );

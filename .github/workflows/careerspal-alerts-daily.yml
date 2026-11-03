@@ -2,7 +2,7 @@ name: CareersPal - Daily alerts
 
 on:
   schedule:
-    # Daily at 08:00 UTC (matches previous Vercel cron)
+    # Hits the alerts endpoint daily; the handler sends only Monday and Thursday.
     - cron: "0 8 * * *"
   workflow_dispatch: {}
 

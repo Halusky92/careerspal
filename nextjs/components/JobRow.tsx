@@ -86,15 +86,9 @@ export default function JobRow({
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const companyPath = `/companies/${createCompanySlug({ name: job.company })}`;
   const rawSlug = (job.companySlug || "").toString().trim();
   const safeSlug = rawSlug && rawSlug !== "undefined" && rawSlug !== "null" ? rawSlug : "";
-  const companyPathResolved = `/companies/${(safeSlug || createCompanySlug({ name: job.company || "Company" })).trim()}`;
-  const companyHref =
-    typeof window !== "undefined" &&
-    (window.location.hostname === "careerspal.com" || window.location.hostname === "www.careerspal.com")
-      ? `https://www.careerspal.com${companyPathResolved}`
-      : companyPathResolved;
+  const companyHref = `/companies/${(safeSlug || createCompanySlug({ name: job.company || "Company" })).trim()}`;
 
   const isElite = job.planType === "Elite Managed";
   const isBoosted = isPaidFeaturedListing(job);
@@ -109,12 +103,7 @@ export default function JobRow({
 
   // Keep board panel UX (query param) intact, but canonicalize share/open links.
   const boardHref = `/jobs?jobId=${encodeURIComponent(job.id)}`;
-  const detailPath = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
-  // If user is on the apex domain, force hard-nav to canonical www to avoid RSC/cross-origin issues.
-  const detailHref =
-    typeof window !== "undefined" && window.location.hostname === "careerspal.com"
-      ? `https://www.careerspal.com${detailPath}`
-      : detailPath;
+  const detailHref = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
 
   const isHome = variant === "home";
   const maxTags = 2;

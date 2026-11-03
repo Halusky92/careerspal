@@ -7,12 +7,14 @@ export const SOURCING_SEED_BOARDS = [
     sourceType: "greenhouse" as const,
     atsIdentifier: "checkr",
     baseUrl: "https://boards.greenhouse.io/checkr",
+    website: "https://www.checkr.com",
   },
   {
     displayName: "Pendo",
     sourceType: "greenhouse" as const,
     atsIdentifier: "pendo",
     baseUrl: "https://boards.greenhouse.io/pendo",
+    website: "https://www.pendo.io",
   },
 ];
 
@@ -20,10 +22,42 @@ export async function ensureSeedSourcingBoards(sb: SupabaseClient) {
   const results: Array<{ name: string; action: "inserted" | "updated" | "unchanged"; id: string }> = [];
 
   for (const board of SOURCING_SEED_BOARDS) {
+    const { data: companyRow } = await sb
+      .from("companies")
+      .select("id,website,logo_url")
+      .eq("name", board.displayName)
+      .maybeSingle();
+
+    let companyId = companyRow?.id || null;
+    if (!companyId) {
+      const { data: created } = await sb
+        .from("companies")
+        .upsert(
+          {
+            name: board.displayName,
+            website: board.website,
+            logo_url: `https://www.google.com/s2/favicons?domain=${new URL(board.website).hostname}&sz=128`,
+          },
+          { onConflict: "name" },
+        )
+        .select("id")
+        .single();
+      companyId = created?.id || null;
+    } else {
+      const patch: Record<string, unknown> = {};
+      if (!companyRow?.website) patch.website = board.website;
+      if (!companyRow?.logo_url) {
+        patch.logo_url = `https://www.google.com/s2/favicons?domain=${new URL(board.website).hostname}&sz=128`;
+      }
+      if (Object.keys(patch).length > 0) {
+        await sb.from("companies").update(patch).eq("id", companyId);
+      }
+    }
+
     const normalizedUrl = board.baseUrl.replace(/\/+$/, "");
     const { data: existing } = await sb
       .from("sourcing_sources")
-      .select("id,enabled,validation_state,source_type,ats_identifier")
+      .select("id,enabled,validation_state,source_type,ats_identifier,company_id")
       .or(`ats_identifier.eq.${board.atsIdentifier},normalized_url.eq.${normalizedUrl}`)
       .limit(1)
       .maybeSingle();
@@ -34,6 +68,7 @@ export async function ensureSeedSourcingBoards(sb: SupabaseClient) {
       normalized_url: normalizedUrl,
       source_type: board.sourceType,
       ats_identifier: board.atsIdentifier,
+      company_id: companyId,
       validation_state: "allowed",
       validation_confidence: "high",
       enabled: true,
@@ -58,7 +93,8 @@ export async function ensureSeedSourcingBoards(sb: SupabaseClient) {
       existing.enabled !== true ||
       existing.validation_state !== "allowed" ||
       existing.source_type !== board.sourceType ||
-      existing.ats_identifier !== board.atsIdentifier;
+      existing.ats_identifier !== board.atsIdentifier ||
+      (!existing.company_id && Boolean(companyId));
 
     if (needsUpdate) {
       const { error } = await sb.from("sourcing_sources").update(payload).eq("id", existing.id);

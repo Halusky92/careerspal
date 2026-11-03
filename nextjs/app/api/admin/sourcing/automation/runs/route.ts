@@ -40,6 +40,29 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unable to load automation runs." }, { status: 500 });
   }
 
+  const { data: healthRows } = await supabaseAdmin
+    .from("audit_logs")
+    .select("id,metadata,created_at")
+    .eq("action", "sourcing_cron_health")
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  const healthList = (healthRows || []) as { metadata: any; created_at: string }[];
+  const lastHealth = healthList[0] || null;
+  const lastOk = healthList.find((row) => {
+    const status = String(row.metadata?.status || "");
+    return status === "ok" || status === "partial";
+  });
+  const ageMs = lastOk ? Date.now() - new Date(lastOk.created_at).getTime() : null;
+  const cronHealth = {
+    lastStatus: lastHealth?.metadata?.status || "missing",
+    lastAt: lastHealth?.created_at || null,
+    lastOkAt: lastOk?.created_at || null,
+    lastError: lastHealth?.metadata?.error || null,
+    secretConfigured: Boolean((process.env.SOURCING_CRON_SECRET || "").trim()),
+    overdue: !ageMs || ageMs > 26 * 60 * 60 * 1000,
+  };
+
   // Normalize a small, UI-friendly shape (avoid coupling UI to raw metadata).
   const runs = ((logs as AutomationRunRow[] | null) || []).map((row) => {
     const m = (row.metadata || {}) as any;
@@ -50,6 +73,8 @@ export async function GET(request: Request) {
       id: row.id,
       createdAt: row.created_at,
       actorId: row.actor_id,
+      trigger: (m.trigger || (row.actor_id ? "manual" : "cron")).toString(),
+      timedOut: Boolean(m.timed_out),
       sourcesProcessed: Number(m.sources_processed || 0) || 0,
       ingestion: {
         rawFetched: Number(m.raw_fetched || 0) || 0,
@@ -83,6 +108,6 @@ export async function GET(request: Request) {
     };
   });
 
-  return NextResponse.json({ runs });
+  return NextResponse.json({ runs, cronHealth });
 }
 

@@ -78,8 +78,8 @@ async function fetchCompaniesWithLiveRoles(): Promise<CompanyCard[]> {
     const name = (c?.name || "").toString().trim();
     if (!id || !name) return;
 
-    const slug = (c?.slug || "").toString().trim();
-    if (!slug) return; // keep index canonical + avoid linking to missing pages
+    const slug = ((c?.slug || "").toString().trim() || createCompanySlug({ name })).trim();
+    if (!slug) return;
 
     const prev = map.get(id);
     if (prev) {

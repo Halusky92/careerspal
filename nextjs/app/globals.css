@@ -106,3 +106,7 @@ textarea::placeholder {
   width: max-content;
   animation: nav-loop 18s linear infinite;
 }
+
+body:has([data-hide-site-footer]) footer[data-site-footer] {
+  display: none;
+}

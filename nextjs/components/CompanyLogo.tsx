@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { publicLogoFallbacks } from "../lib/companyLogoUrl";
 
 type CompanyLogoProps = {
   name: string;
@@ -46,18 +47,6 @@ const hashString = (value: string) => {
   return Math.abs(hash);
 };
 
-const getDomainLogo = (value?: string | null) => {
-  const raw = (value || "").trim();
-  if (!raw || raw.startsWith("mailto:") || raw === "#") return "";
-  try {
-    const url = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
-    const hostname = url.hostname.replace(/^www\./, "");
-    return hostname ? `https://logo.clearbit.com/${hostname}` : "";
-  } catch {
-    return "";
-  }
-};
-
 const CompanyLogo: React.FC<CompanyLogoProps> = ({
   name,
   logoUrl,
@@ -66,12 +55,17 @@ const CompanyLogo: React.FC<CompanyLogoProps> = ({
   imageClassName,
   fallbackClassName,
 }) => {
-  const [failed, setFailed] = useState(false);
+  const [index, setIndex] = useState(0);
   const fallback = useMemo(() => getInitials(name || "Company"), [name]);
   const fallbackColor = useMemo(() => COLORS[hashString(name || "Company") % COLORS.length], [name]);
-  const nameLogo = useMemo(() => KNOWN_LOGOS[(name || "").trim().toLowerCase()] || "", [name]);
-  const domainLogo = useMemo(() => getDomainLogo(website || logoUrl), [website, logoUrl]);
-  const src = !failed ? (logoUrl || nameLogo || domainLogo) : "";
+  const candidates = useMemo(() => {
+    const nameLogo = KNOWN_LOGOS[(name || "").trim().toLowerCase()] || "";
+    const list = [logoUrl, nameLogo, ...publicLogoFallbacks(website || logoUrl)].filter(
+      (value): value is string => Boolean(value && value.trim()),
+    );
+    return Array.from(new Set(list));
+  }, [logoUrl, name, website]);
+  const src = candidates[index] || "";
   const shouldShowImage = Boolean(src);
 
   return (
@@ -81,7 +75,7 @@ const CompanyLogo: React.FC<CompanyLogoProps> = ({
           src={src}
           alt={name}
           className={imageClassName}
-          onError={() => setFailed(true)}
+          onError={() => setIndex((current) => current + 1)}
           loading="lazy"
         />
       ) : (

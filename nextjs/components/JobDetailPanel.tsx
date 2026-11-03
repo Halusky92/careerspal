@@ -43,17 +43,8 @@ export default function JobDetailPanel({
     ? `/companies/${(safeSlug || createCompanySlug({ name: job.company || "Company" })).trim()}`
     : "/companies";
   const detailPath = job ? `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}` : "/jobs";
-  const roleHref =
-    typeof window !== "undefined" &&
-    (window.location.hostname === "careerspal.com" || window.location.hostname === "www.careerspal.com")
-      ? `https://www.careerspal.com${detailPath}`
-      : detailPath;
-
-  const companyHref =
-    typeof window !== "undefined" &&
-    (window.location.hostname === "careerspal.com" || window.location.hostname === "www.careerspal.com")
-      ? `https://www.careerspal.com${companyPath}`
-      : companyPath;
+  const roleHref = detailPath;
+  const companyHref = companyPath;
 
   const stack = useMemo(() => {
     if (!job) return [];

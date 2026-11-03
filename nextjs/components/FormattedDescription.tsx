@@ -11,6 +11,10 @@ type Block =
 const KNOWN_HEADINGS = new Set(
   [
     "who we are",
+    "summary",
+    "full description",
+    "about this job",
+    "the role",
     "about the role",
     "about the team",
     "what you’ll do",

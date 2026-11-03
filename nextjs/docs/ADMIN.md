@@ -19,21 +19,23 @@
 Pipeline endpoints:
 
 - `POST /api/admin/sourcing/pipeline/greenhouse` (admin session required)
-- `GET /api/admin/sourcing/pipeline/greenhouse?secret=...` (cron-friendly)
+- `GET /api/admin/sourcing/pipeline/greenhouse?secret=...` (full run, GitHub Actions)
+- `GET /api/cron/sourcing/pipeline/greenhouse` (Vercel Hobby: one board per slot)
 
-### Cron without Vercel Pro (recommended)
+### Production cron
 
-If Vercel asks you to upgrade for Cron Jobs, use **GitHub Actions scheduled workflow** instead.
+Vercel Hobby cannot finish every board in one function. Morning slots in `vercel.json` hit `/api/cron/sourcing/pipeline/greenhouse` at 06:00 / 06:20 / 06:40 / 07:00 UTC (one stale board each, 60s budget). GitHub Actions still runs the full pipeline at 06:15 UTC.
 
-1) In Vercel project env, set:
+1) In Vercel project env (Production), set:
 - `SOURCING_CRON_SECRET` to a random string
 
-2) In GitHub repo → Settings → Secrets and variables → Actions, add:
+2) Same value in `nextjs/.env.local` for local tests.
+
+3) In GitHub repo → Settings → Secrets and variables → Actions, add:
 - `CAREERSPAL_PIPELINE_URL` = `https://www.careerspal.com/api/admin/sourcing/pipeline/greenhouse`
 - `CAREERSPAL_CRON_SECRET` = same value as `SOURCING_CRON_SECRET`
 
-3) Workflow file:
-- `.github/workflows/careerspal-greenhouse-daily.yml` runs daily at `06:00 UTC` and also supports manual run (`workflow_dispatch`).
+Admin dashboard → Sourcing shows last cron health (ok / failed / overdue) without opening Vercel logs.
 
 ## Alerts automation (daily emails)
 
