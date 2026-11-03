@@ -867,7 +867,18 @@ export default function SourcingRegistrySection() {
               Official hiring sources only (ATS + employer careers)
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={runFullPipelineNow}
+              disabled={pipelineStatus === "running"}
+              className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest ${
+                pipelineStatus === "running"
+                  ? "border-slate-800 text-slate-600 cursor-not-allowed"
+                  : "border-indigo-500/40 bg-indigo-900/40 text-indigo-100 hover:bg-indigo-900/60"
+              }`}
+            >
+              {pipelineStatus === "running" ? "Running…" : "Run full pipeline now"}
+            </button>
             <button
               onClick={load}
               disabled={loading}
@@ -879,6 +890,11 @@ export default function SourcingRegistrySection() {
             </button>
           </div>
         </div>
+        {pipelineMsg ? (
+          <p className={`mb-3 text-xs ${pipelineStatus === "error" ? "text-rose-300" : "text-emerald-300"}`}>{pipelineMsg}</p>
+        ) : (
+          <p className="mb-3 text-xs text-slate-500">Manual run is at the top. Cron is 06:00 UTC.</p>
+        )}
 
         {error && (
           <div className="mb-4 rounded-2xl border border-red-600/30 bg-red-600/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-300">

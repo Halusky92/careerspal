@@ -17,12 +17,19 @@ type AnalyticsPeriod = {
   returningVisitors: number;
 };
 
+type AnalyticsPageRow = { path: string; label: string; views: number };
+
 type AnalyticsPayload = {
   periods: {
     today: AnalyticsPeriod;
     week: AnalyticsPeriod;
     month: AnalyticsPeriod;
     all: AnalyticsPeriod;
+  };
+  pages?: {
+    today: AnalyticsPageRow[];
+    week: AnalyticsPageRow[];
+    month: AnalyticsPageRow[];
   };
 };
 
@@ -416,7 +423,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </td>
           )}
           <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap hidden md:table-cell">{formatDate(job.timestamp)}</td>
-          <td className="px-3 py-2.5 whitespace-nowrap text-right">
+          <td className="px-3 py-2.5 whitespace-nowrap text-right sticky right-0 bg-white shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]">
             {mode === "review" ? (
               <div className="flex justify-end gap-2">
                 <button onClick={() => updateJobStatus(job.id, "published")} className="h-8 px-3 rounded-lg bg-emerald-600 text-white text-xs font-medium">
@@ -427,9 +434,42 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 </button>
               </div>
             ) : (
-              <button type="button" className="h-8 w-8 rounded-md text-slate-400 hover:bg-slate-50" onClick={() => setExpandedJobId(open ? null : job.id)} aria-label="Open">
-                {open ? "–" : "⋯"}
-              </button>
+              <div className="flex justify-end items-center gap-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startEditJob(job);
+                    setExpandedJobId(job.id);
+                  }}
+                  className="h-8 px-2.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700"
+                >
+                  Edit
+                </button>
+                {job.status !== "published" ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateJobStatus(job.id, "published");
+                    }}
+                    className="h-8 px-2.5 rounded-lg bg-emerald-600 text-white text-xs font-medium"
+                  >
+                    Publish
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateJobStatus(job.id, "private");
+                    }}
+                    className="h-8 px-2.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600"
+                  >
+                    Archive
+                  </button>
+                )}
+              </div>
             )}
           </td>
         </tr>
@@ -507,11 +547,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     { id: "jobs", label: "Jobs", count: jobs.filter((j) => j.status === "published").length },
     { id: "people", label: "People" },
     { id: "sourcing", label: "Pipeline" },
-    { id: "more", label: "Stats & alerts" },
+    { id: "more", label: "Traffic" },
   ];
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Admin</h1>
@@ -548,7 +588,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       )}
 
       {tab === "review" && (
-        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+        <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto">
           {pendingJobs.length === 0 ? (
             <div className="px-4 py-12 text-center">
               <p className="font-medium text-slate-900">Nothing to review</p>
@@ -565,7 +605,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   <th className="px-3 py-2.5 font-medium hidden sm:table-cell">Company</th>
                   <th className="px-3 py-2.5 font-medium">Salary</th>
                   <th className="px-3 py-2.5 font-medium hidden md:table-cell">Date</th>
-                  <th className="px-3 py-2.5 font-medium text-right">Action</th>
+                  <th className="px-3 py-2.5 font-medium text-right min-w-[10rem] sticky right-0 bg-slate-100">Action</th>
                 </tr>
               </thead>
               <tbody>{pendingJobs.map((job) => renderJobRow(job, "review"))}</tbody>
@@ -672,11 +712,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </div>
           )}
 
-          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto">
             {listedJobs.length === 0 ? (
               <div className="px-4 py-12 text-center text-sm text-slate-500">No jobs in this filter.</div>
             ) : (
-              <table className="cp-table w-full text-left text-sm">
+              <table className="cp-table w-full min-w-[720px] text-left text-sm">
                 <thead>
                   <tr className="text-xs font-medium text-slate-400 border-b border-slate-100">
                     <th className="px-4 py-2.5 font-medium">Title</th>
@@ -684,7 +724,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <th className="px-3 py-2.5 font-medium">Salary</th>
                     <th className="px-3 py-2.5 font-medium">Status</th>
                     <th className="px-3 py-2.5 font-medium hidden md:table-cell">Date</th>
-                    <th className="px-3 py-2.5 font-medium w-10"></th>
+                    <th className="px-3 py-2.5 font-medium text-right min-w-[11rem] sticky right-0 bg-slate-100">Actions</th>
                   </tr>
                 </thead>
                 <tbody>{listedJobs.map((job) => renderJobRow(job, "jobs"))}</tbody>
@@ -701,7 +741,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           <div className="px-4 py-3 bg-white border-b border-slate-200">
             <p className="text-sm font-medium text-slate-900">Pipeline tests</p>
             <p className="text-xs text-slate-500 mt-0.5">
-              Scroll to <span className="font-medium text-slate-700">Run full pipeline now</span> for a manual Greenhouse/Ashby/Lever run. Cron is 06:00 UTC. Listings without salary or apply stay unpublished.
+              Use <span className="font-medium text-slate-700">Run full pipeline now</span> at the top for a manual Greenhouse/Ashby/Lever run. Cron is 06:00 UTC. Listings without salary or apply stay unpublished.
             </p>
           </div>
           <SourcingRegistrySection />
@@ -711,23 +751,70 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       {tab === "more" && (
         <div className="space-y-6">
           <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-sm font-medium text-slate-900 mb-3">Snapshot</p>
+            <p className="text-sm font-medium text-slate-900 mb-3">Site traffic</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-              <div>
-                <div className="text-slate-400">Users</div>
-                <div className="font-semibold text-slate-900">{adminStats.users}</div>
-              </div>
-              <div>
-                <div className="text-slate-400">Jobs</div>
-                <div className="font-semibold text-slate-900">{adminStats.jobs}</div>
-              </div>
               <div>
                 <div className="text-slate-400">Views today</div>
                 <div className="font-semibold text-slate-900">{analytics?.periods.today.totalViews ?? "—"}</div>
+                <div className="text-xs text-slate-400">{analytics?.periods.today.uniqueVisitors ?? "—"} unique</div>
               </div>
               <div>
                 <div className="text-slate-400">Views 7d</div>
                 <div className="font-semibold text-slate-900">{analytics?.periods.week.totalViews ?? "—"}</div>
+                <div className="text-xs text-slate-400">{analytics?.periods.week.uniqueVisitors ?? "—"} unique</div>
+              </div>
+              <div>
+                <div className="text-slate-400">Views 30d</div>
+                <div className="font-semibold text-slate-900">{analytics?.periods.month.totalViews ?? "—"}</div>
+                <div className="text-xs text-slate-400">{analytics?.periods.month.uniqueVisitors ?? "—"} unique</div>
+              </div>
+              <div>
+                <div className="text-slate-400">Users / jobs</div>
+                <div className="font-semibold text-slate-900">
+                  {adminStats.users} / {adminStats.jobs}
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-slate-400">Page views from the site tracker. Job listing, company, and people URLs are grouped. Not a marketing claim.</p>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-sm font-medium text-slate-900 mb-1">Where people go</p>
+            <p className="text-xs text-slate-500 mb-3">Last 7 days, then today. Counts are page views, not unique people.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
+              <div>
+                <p className="text-xs font-medium text-slate-500 mb-2">7 days</p>
+                {(analytics?.pages?.week || []).length === 0 ? (
+                  <p className="text-slate-400">No path data yet.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {(analytics?.pages?.week || []).map((row) => (
+                      <li key={row.path} className="flex items-baseline justify-between gap-3">
+                        <span className="text-slate-700 truncate">
+                          {row.label} <span className="text-slate-400 text-xs">{row.path}</span>
+                        </span>
+                        <span className="font-medium text-slate-900 tabular-nums">{row.views}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-500 mb-2">Today</p>
+                {(analytics?.pages?.today || []).length === 0 ? (
+                  <p className="text-slate-400">No views today.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {(analytics?.pages?.today || []).map((row) => (
+                      <li key={row.path} className="flex items-baseline justify-between gap-3">
+                        <span className="text-slate-700 truncate">
+                          {row.label} <span className="text-slate-400 text-xs">{row.path}</span>
+                        </span>
+                        <span className="font-medium text-slate-900 tabular-nums">{row.views}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
           </div>

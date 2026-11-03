@@ -6,7 +6,38 @@ export const runtime = "nodejs";
 
 type ViewLog = {
   created_at: string;
-  metadata?: { ipHash?: string | null } | null;
+  metadata?: { ipHash?: string | null; path?: string | null } | null;
+};
+
+const pageBucket = (raw?: string | null) => {
+  const path = (raw || "/").split("?")[0] || "/";
+  if (path === "/") return { key: "/", label: "Home" };
+  if (path === "/jobs") return { key: "/jobs", label: "Jobs board" };
+  if (path.startsWith("/jobs/")) return { key: "/jobs/*", label: "Job pages" };
+  if (path === "/companies") return { key: "/companies", label: "Companies" };
+  if (path.startsWith("/companies/")) return { key: "/companies/*", label: "Company pages" };
+  if (path === "/people") return { key: "/people", label: "People" };
+  if (path.startsWith("/p/")) return { key: "/p/*", label: "Seeker profiles" };
+  if (path.startsWith("/alerts")) return { key: "/alerts", label: "Alerts" };
+  if (path.startsWith("/account")) return { key: "/account", label: "Account" };
+  if (path.startsWith("/post-a-job") || path.startsWith("/checkout")) return { key: "/post-a-job", label: "Post a job" };
+  if (path.startsWith("/dashboard")) return { key: "/dashboard", label: "Dashboards" };
+  if (path.startsWith("/pricing") || path.startsWith("/hire")) return { key: "/hire", label: "Pricing / hire" };
+  return { key: path, label: path };
+};
+
+const countPages = (logs: ViewLog[]) => {
+  const map = new Map<string, { label: string; views: number }>();
+  logs.forEach((log) => {
+    const bucket = pageBucket(log.metadata?.path);
+    const prev = map.get(bucket.key) || { label: bucket.label, views: 0 };
+    prev.views += 1;
+    map.set(bucket.key, prev);
+  });
+  return [...map.entries()]
+    .map(([key, value]) => ({ path: key, label: value.label, views: value.views }))
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 12);
 };
 
 type DailyPoint = { date: string; count: number };
@@ -120,9 +151,17 @@ export async function GET(request: Request) {
     .gte("created_at", monthStart.toISOString());
   const dailyPosts = buildDailyCounts((jobs || []) as Array<{ created_at: string }>, 30);
 
+  const weekLogs = monthLogs.filter((log) => new Date(log.created_at) >= weekStart);
+  const todayLogs = monthLogs.filter((log) => new Date(log.created_at) >= todayStart);
+
   return NextResponse.json({
     periods,
     dailyViews,
     dailyPosts,
+    pages: {
+      today: countPages(todayLogs),
+      week: countPages(weekLogs),
+      month: countPages(monthLogs),
+    },
   });
 }

@@ -80,7 +80,6 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   const [message, setMessage] = useState<string | null>(null);
   const [claimQuery, setClaimQuery] = useState("");
   const [claimHits, setClaimHits] = useState<ClaimHit[]>([]);
-  const [menuId, setMenuId] = useState<string | null>(null);
   const [shortlist, setShortlist] = useState<{ id: string; jobId: string; jobTitle: string; person: PublicPerson | null }[]>([]);
 
   const reload = useCallback(async () => {
@@ -343,7 +342,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
         </div>
       </details>
 
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      <div className="rounded-xl border border-slate-200 bg-white">
         {myJobs.length === 0 ? (
           <div className="px-4 py-12 text-center">
             <p className="text-slate-900 font-medium">No listings yet</p>
@@ -354,7 +353,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="cp-table w-full text-left text-sm">
+            <table className="cp-table w-full min-w-[820px] text-left text-sm">
               <thead>
                 <tr className="text-xs font-medium text-slate-400 border-b border-slate-100">
                   <th className="px-4 py-2.5 font-medium">Title</th>
@@ -364,7 +363,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
                   <th className="px-3 py-2.5 font-medium text-right">Views</th>
                   <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Apply clicks</th>
                   <th className="px-3 py-2.5 font-medium hidden lg:table-cell">Date</th>
-                  <th className="px-3 py-2.5 font-medium w-10"></th>
+                  <th className="px-3 py-2.5 font-medium text-right min-w-[11rem] sticky right-0 bg-slate-100">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -386,52 +385,48 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
                       <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">{job.views ?? 0}</td>
                       <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">{job.matches ?? 0}</td>
                       <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap hidden lg:table-cell">{postedDate(job)}</td>
-                      <td className="px-3 py-2.5 relative">
-                        <button
-                          type="button"
-                          className="h-8 w-8 rounded-md text-slate-400 hover:bg-slate-50 hover:text-slate-700"
-                          aria-label="Actions"
-                          onClick={() => setMenuId((prev) => (prev === job.id ? null : job.id))}
-                        >
-                          ⋯
-                        </button>
-                        {menuId === job.id && (
-                          <div className="absolute right-3 top-10 z-20 w-36 rounded-lg border border-slate-200 bg-white shadow-lg py-1 text-sm">
-                            <a href={`/post-a-job?jobId=${job.id}`} className="block px-3 py-1.5 hover:bg-slate-50">
-                              Edit
+                      <td className="px-3 py-2.5 sticky right-0 bg-white shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]">
+                        <div className="flex justify-end items-center gap-1 flex-wrap">
+                          <a
+                            href={`/post-a-job?jobId=${job.id}`}
+                            className="h-8 px-2.5 inline-flex items-center rounded-lg border border-slate-200 text-xs font-medium text-slate-700"
+                          >
+                            Edit
+                          </a>
+                          {job.status === "published" && (
+                            <a
+                              href={`/jobs/${createJobSlug(job)}`}
+                              className="h-8 px-2.5 inline-flex items-center rounded-lg border border-slate-200 text-xs font-medium text-slate-700"
+                            >
+                              View
                             </a>
-                            {job.status === "published" && (
-                              <a href={`/jobs/${createJobSlug(job)}`} className="block px-3 py-1.5 hover:bg-slate-50">
-                                View
-                              </a>
-                            )}
-                            {job.status === "published" && (
-                              <button disabled={busy} onClick={() => runAction(job, "pause")} className="w-full text-left px-3 py-1.5 hover:bg-slate-50">
-                                Pause
-                              </button>
-                            )}
-                            {(job.status === "paused" || job.status === "closed") && (
-                              <button disabled={busy} onClick={() => runAction(job, "republish")} className="w-full text-left px-3 py-1.5 hover:bg-slate-50">
-                                Republish
-                              </button>
-                            )}
-                            {(job.status === "published" || job.status === "paused") && (
-                              <button disabled={busy} onClick={() => runAction(job, "close")} className="w-full text-left px-3 py-1.5 hover:bg-slate-50">
-                                Close
-                              </button>
-                            )}
-                            {job.status === "closed" && (
-                              <button disabled={busy} onClick={() => runAction(job, "archive")} className="w-full text-left px-3 py-1.5 hover:bg-slate-50">
-                                Archive
-                              </button>
-                            )}
-                            {job.status === "draft" && (
-                              <button disabled={busy} onClick={() => runAction(job, "delete")} className="w-full text-left px-3 py-1.5 text-rose-600 hover:bg-rose-50">
-                                Delete
-                              </button>
-                            )}
-                          </div>
-                        )}
+                          )}
+                          {job.status === "published" && (
+                            <button disabled={busy} onClick={() => runAction(job, "pause")} className="h-8 px-2.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 disabled:opacity-50">
+                              Pause
+                            </button>
+                          )}
+                          {(job.status === "paused" || job.status === "closed") && (
+                            <button disabled={busy} onClick={() => runAction(job, "republish")} className="h-8 px-2.5 rounded-lg bg-emerald-600 text-white text-xs font-medium disabled:opacity-50">
+                              Republish
+                            </button>
+                          )}
+                          {(job.status === "published" || job.status === "paused") && (
+                            <button disabled={busy} onClick={() => runAction(job, "close")} className="h-8 px-2.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 disabled:opacity-50">
+                              Close
+                            </button>
+                          )}
+                          {job.status === "closed" && (
+                            <button disabled={busy} onClick={() => runAction(job, "archive")} className="h-8 px-2.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 disabled:opacity-50">
+                              Archive
+                            </button>
+                          )}
+                          {job.status === "draft" && (
+                            <button disabled={busy} onClick={() => runAction(job, "delete")} className="h-8 px-2.5 rounded-lg text-xs font-medium text-rose-600 disabled:opacity-50">
+                              Delete
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
