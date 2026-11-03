@@ -11,13 +11,15 @@ import StartPackMeter from "./StartPackMeter";
 import type { StartPackStatus } from "../lib/founding";
 
 interface PostJobProps {
-  onComplete: (data: Job) => void;
+  onComplete: (data: Job) => void | Promise<void>;
   selectedPlan: { type: PlanType; price: number };
   onUpgradePlan: (type: PlanType, price: number) => void;
   showTestPlan?: boolean;
   foundingEligible?: boolean;
   foundingStatus?: StartPackStatus | null;
   initialJob?: Partial<Job>;
+  submitting?: boolean;
+  submitError?: string;
 }
 
 type JobFormData = Omit<Job, 'id' | 'postedAt' | 'isFeatured' | 'planType' | 'plan' | 'timestamp' | 'status' | 'views' | 'matches'>;
@@ -34,7 +36,7 @@ const readDraftPost = (): DraftPost | null => {
   }
 };
 
-const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan, foundingEligible, foundingStatus, initialJob }) => {
+const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan, foundingEligible, foundingStatus, initialJob, submitting, submitError }) => {
   const draft = initialJob?.id ? null : readDraftPost();
   const [step, setStep] = useState(() => {
     const n = Number(draft?.step);
@@ -65,7 +67,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     companyWebsite: initialJob?.companyWebsite || draft?.formData?.companyWebsite || '',
     logo: initialJob?.logo || draft?.formData?.logo || '',
     salary: initialJob?.salary || draft?.formData?.salary || '',
-    location: initialJob?.location || draft?.formData?.location || 'Remote (Global)',
+    location: initialJob?.location || draft?.formData?.location || '',
     type: (initialJob?.type as JobFormData['type']) || (draft?.formData?.type as JobFormData['type']) || 'Full-time',
     remotePolicy: initialJob?.remotePolicy || draft?.formData?.remotePolicy || 'Remote (Global)',
     category: initialJob?.category || draft?.formData?.category || 'Operations',
@@ -221,7 +223,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleFinalSubmit = () => {
+  const handleFinalSubmit = async () => {
+    if (submitting) return;
     // Logic: Use provided logo, otherwise fall back to a random seed or placeholder
     const finalLogo = formData.logo.trim()
       ? normalizeHttpUrl(formData.logo)
@@ -246,7 +249,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
       id: `local-${Date.now()}`,
       isFeatured: selectedPlan.type !== 'Standard'
     };
-    onComplete(finalJob);
+    await onComplete(finalJob);
   };
 
   // Filter out 'All Roles' for the dropdown
@@ -283,6 +286,27 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
   const usingStartPack = Boolean(foundingEligible && selectedPlan.type === "Standard");
 
+  const previewPlaceLabel = (() => {
+    const policy = (formData.remotePolicy || "").trim();
+    const loc = (formData.location || "").trim();
+    const shortPolicy = policy.replace(/\s*\(global\)\s*/i, "").replace(/\s*\(regional\)\s*/i, " (region)").trim() || "Remote";
+    const same =
+      !loc ||
+      loc.toLowerCase() === policy.toLowerCase() ||
+      loc.toLowerCase() === shortPolicy.toLowerCase() ||
+      loc.toLowerCase() === "remote (global)";
+    if (same) return shortPolicy;
+    return `${shortPolicy} · ${loc}`;
+  })();
+
+  const previewChips = Array.from(
+    new Set(
+      [formData.type, formData.salary, previewPlaceLabel]
+        .map((v) => (v || "").trim())
+        .filter(Boolean),
+    ),
+  );
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3">
       {foundingStatus?.enabled && (
@@ -295,8 +319,13 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
           <div className="mb-3">
             <div className="flex items-start justify-between gap-6">
               <div>
-                <div className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-2">
-                  Selected Package: {selectedPlan.type} ({formatPrice(selectedPlan.price)} / 30 days)
+                <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 mb-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-600" />
+                  <span className="text-[10px] font-black text-indigo-800 uppercase tracking-[0.16em]">
+                    {usingStartPack
+                      ? "Current plan: Start pack · Free"
+                      : `Current plan: ${selectedPlan.type} · ${formatPrice(selectedPlan.price)} / 30 days`}
+                  </span>
                 </div>
                 <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Post a role</h1>
               </div>
@@ -456,7 +485,19 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     <select
                       className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none"
                       value={formData.remotePolicy}
-                      onChange={e => setFormData({...formData, remotePolicy: e.target.value})}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setFormData((prev) => ({
+                          ...prev,
+                          remotePolicy: next,
+                          location:
+                            !prev.location.trim() ||
+                            prev.location === prev.remotePolicy ||
+                            prev.location === "Remote (Global)"
+                              ? ""
+                              : prev.location,
+                        }));
+                      }}
                     >
                       <option>Remote (Global)</option>
                       <option>Remote (Regional)</option>
@@ -465,12 +506,12 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[11px] font-bold text-slate-700">Region / time zone (optional)</label>
+                    <label className="text-[11px] font-bold text-slate-700">City / region (optional)</label>
                     <input
                       type="text"
-                      placeholder="e.g. Worldwide, Europe, US, CET±2"
+                      placeholder="Only if needed — e.g. Europe, US, Berlin"
                       className="cp-field w-full h-10 rounded-lg px-3 text-sm outline-none"
-                      value={formData.location}
+                      value={formData.location === formData.remotePolicy || formData.location === "Remote (Global)" ? "" : formData.location}
                       onChange={e => setFormData({...formData, location: e.target.value})}
                     />
                   </div>
@@ -591,20 +632,31 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                       </div>
                    </div>
                    <div className="text-slate-500 line-clamp-4 text-sm font-medium leading-relaxed">{formData.description}</div>
-                   <div className="mt-6 flex gap-3 flex-wrap">
-                      <span className="bg-white border border-slate-100 px-3 py-1 rounded-lg text-[10px] font-semibold text-slate-600 uppercase tracking-wide">{formData.type}</span>
-                      <span className="bg-white border border-slate-100 px-3 py-1 rounded-lg text-[10px] font-semibold text-slate-600 uppercase tracking-wide">{formData.salary}</span>
-                      <span className="bg-white border border-slate-100 px-3 py-1 rounded-lg text-[10px] font-semibold text-slate-600 uppercase tracking-wide">{formData.remotePolicy}</span>
-                      <span className="bg-white border border-slate-100 px-3 py-1 rounded-lg text-[10px] font-semibold text-slate-600 uppercase tracking-wide">{formData.location}</span>
+                   <div className="mt-6 flex gap-2 flex-wrap">
+                      {previewChips.map((chip) => (
+                        <span key={chip} className="bg-white border border-slate-100 px-3 py-1 rounded-lg text-[10px] font-semibold text-slate-600">
+                          {chip}
+                        </span>
+                      ))}
                    </div>
                 </div>
-                <div className="flex flex-col gap-4">
-                <button onClick={handleFinalSubmit} className="w-full h-10 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-black">
-                    {foundingEligible && selectedPlan.type === "Standard"
+                <div className="flex flex-col gap-3">
+                {submitError && (
+                  <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 text-left">{submitError}</p>
+                )}
+                <button
+                  type="button"
+                  disabled={Boolean(submitting)}
+                  onClick={handleFinalSubmit}
+                  className="w-full h-11 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                    {submitting
+                      ? "Submitting…"
+                      : foundingEligible && selectedPlan.type === "Standard"
                       ? "Submit with Start pack"
                       : `Proceed to Payment (${formatPrice(selectedPlan.price)})`}
                   </button>
-                  <button onClick={() => setStep(2)} className="text-slate-600 font-medium hover:text-indigo-600 transition-colors">Edit details</button>
+                  <button type="button" disabled={Boolean(submitting)} onClick={() => setStep(2)} className="text-slate-600 font-medium hover:text-indigo-600 transition-colors disabled:opacity-50">Edit details</button>
                 </div>
               </div>
             )}
@@ -661,13 +713,18 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               </div>
            </div>
            
-           <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 relative z-20">
-              <h3 className="text-sm font-semibold text-slate-900 mb-1">Selected plan</h3>
-              <div className="text-2xl font-semibold text-indigo-600 mb-2">
-                {usingStartPack ? "Free" : formatPrice(selectedPlan.price)}
-                <span className="text-lg text-slate-600 font-medium"> {usingStartPack ? "Start pack" : "/ 30 days"}</span>
+           <div className="relative z-20 rounded-xl border-2 border-indigo-500 bg-indigo-50 p-4 sm:p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <h3 className="text-sm font-semibold text-indigo-950">Selected plan</h3>
+                <span className="inline-flex h-6 items-center rounded-full bg-indigo-600 px-2.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                  Current
+                </span>
               </div>
-              <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">{selectedPlan.type}</div>
+              <div className="text-3xl font-semibold text-indigo-700 mb-1 leading-none">
+                {usingStartPack ? "Free" : formatPrice(selectedPlan.price)}
+                <span className="text-base text-indigo-800/70 font-medium"> {usingStartPack ? "Start pack" : "/ 30 days"}</span>
+              </div>
+              <div className="text-xs font-semibold text-indigo-800 uppercase tracking-wide mb-3">{selectedPlan.type}</div>
               
               {/* Plan Upgrade Options */}
               {selectedPlan.type === 'Standard' && (

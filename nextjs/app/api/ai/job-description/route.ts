@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import { toPlainJobDescription } from "../../../../lib/plainJobDescription";
 
 export const runtime = "nodejs";
 
@@ -17,11 +18,11 @@ export async function POST(request: Request) {
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `Write a compelling, professional remote job description in English for the role: "${body.title}".
-Incorporate these keywords: ${body.keywords || ""}.
-Include sections: About the Role, Key Responsibilities, Requirements, and Benefits.
-Maintain an elite brand voice.`,
+    contents: `Write a professional remote job description in English for the role: "${body.title}".
+Keywords to include if natural: ${body.keywords || "none"}.
+Use these section titles on their own lines, without markdown: About the role, Responsibilities, Requirements, Benefits.
+Rules: plain text only. No markdown. No asterisks. No # headings. No **bold**. No bullet symbols other than a simple hyphen. Short paragraphs. Do not invent salary, company name, or fake perks.`,
   });
 
-  return NextResponse.json({ text: response.text || "" });
+  return NextResponse.json({ text: toPlainJobDescription(response.text || "") });
 }

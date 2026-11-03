@@ -56,7 +56,10 @@ const Navbar: React.FC = () => {
     { label: "Alerts", href: "/account?tab=alerts" },
     { label: "Settings", href: "/account?tab=settings" },
     ...(profile?.role === "employer" || profile?.role === "admin"
-      ? [{ label: "Dashboard", href: dashboardHref || "/account" }]
+      ? [
+          { label: "People", href: "/people" },
+          { label: "Dashboard", href: dashboardHref || "/account" },
+        ]
       : []),
   ];
 
@@ -95,6 +98,14 @@ const Navbar: React.FC = () => {
               >
                 Companies
               </Link>
+              {isEmployer && (
+                <Link
+                  href="/people"
+                  className={`hidden lg:inline text-sm ${pathname.startsWith("/people") || pathname.startsWith("/p/") ? "text-indigo-600 font-medium" : "text-slate-600 hover:text-slate-900"}`}
+                >
+                  People
+                </Link>
+              )}
               <Link
                 href="/alerts"
                 className={`hidden lg:inline text-sm ${pathname === "/alerts" ? "text-indigo-600 font-medium" : "text-slate-600 hover:text-slate-900"}`}
@@ -222,6 +233,11 @@ const Navbar: React.FC = () => {
           <Link href="/companies" onClick={closeMobile} className="block py-3 border-b border-slate-100">
             Companies
           </Link>
+          {isEmployer && (
+            <Link href="/people" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+              People
+            </Link>
+          )}
           <Link href="/alerts" onClick={closeMobile} className="block py-3 border-b border-slate-100">
             Alerts
           </Link>

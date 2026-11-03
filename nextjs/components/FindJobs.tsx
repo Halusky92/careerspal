@@ -173,8 +173,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     if (urlSort && (urlSort === "newest" || urlSort === "salary" || urlSort === "relevant")) setSortBy(urlSort);
     setSalaryMin(Math.max(0, parseNumberParam(urlSalaryMin, 0)));
     setSalaryMax(Math.max(0, parseNumberParam(urlSalaryMax, 0)));
-    const tools = parseCsvParam(urlTools).filter((t) => TOOL_OPTIONS.includes(t as any));
-    setSelectedTools(tools);
+    setSelectedTools(parseCsvParam(urlTools).slice(0, 8));
     if (urlTz && (urlTz === "any" || urlTz === "eu" || urlTz === "us")) setTimezone(urlTz);
     if (urlSeniority && SENIORITY_OPTIONS.includes(urlSeniority as any)) setSeniority(urlSeniority as any);
     setVerifiedOnly(urlVerified === "1");
@@ -727,12 +726,42 @@ const FindJobs: React.FC<FindJobsProps> = ({
     });
   };
 
-  type OpenWwrDropdown = null | "category" | "salary" | "skills";
+  type OpenWwrDropdown = null | "category" | "salary" | "skills" | "country";
   const [openWwrDropdown, setOpenWwrDropdown] = useState<OpenWwrDropdown>(null);
   const [wwrCategoryQuery, setWwrCategoryQuery] = useState("");
   const [wwrSkillQuery, setWwrSkillQuery] = useState("");
 
   const categoryOptions = CATEGORY_HUBS.map((hub) => hub.slug);
+
+  const countryOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const job of jobs) {
+      const loc = (job.location || "").trim();
+      if (!loc) continue;
+      const key = loc.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(loc);
+    }
+    return out.sort((a, b) => a.localeCompare(b)).slice(0, 40);
+  }, [jobs]);
+
+  const skillOptions = useMemo(() => {
+    const seen = new Set<string>(TOOL_OPTIONS.map((t) => t.toLowerCase()));
+    const out: string[] = [...TOOL_OPTIONS];
+    for (const job of jobs) {
+      for (const raw of [...(job.tools || []), ...(job.tags || [])]) {
+        const label = (raw || "").trim();
+        if (!label || label.length > 28) continue;
+        const key = label.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(label);
+      }
+    }
+    return out.slice(0, 24);
+  }, [jobs]);
 
   const SALARY_RANGE_OPTIONS = useMemo(
     () =>
@@ -846,7 +875,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     All categories
                   </button>
                   {categoryOptions
-                    .filter((c) => c.toLowerCase().includes(wwrCategoryQuery.trim().toLowerCase()))
+                    .filter((c) => {
+                      const label = (getCategoryHub(c)?.label || c).toLowerCase();
+                      return label.includes(wwrCategoryQuery.trim().toLowerCase());
+                    })
                     .map((c) => (
                       <button
                         key={c}
@@ -873,7 +905,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </div>
 
           {/* Countries */}
-          <div>
+          <div className="relative">
             <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
               <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21s7-4.35 7-11a7 7 0 10-14 0c0 6.65 7 11 7 11z" />
@@ -883,10 +915,56 @@ const FindJobs: React.FC<FindJobsProps> = ({
             </div>
             <input
               value={locationQuery}
-              onChange={(e) => preserveFilterPosition(() => setLocationQuery(e.target.value))}
-              placeholder="Search country..."
+              onChange={(e) => {
+                preserveFilterPosition(() => setLocationQuery(e.target.value));
+                setOpenWwrDropdown("country");
+              }}
+              onFocus={() => setOpenWwrDropdown("country")}
+              placeholder="Search or pick a location..."
               className="cp-field mt-2 w-full h-10 rounded-xl px-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400"
             />
+            {openWwrDropdown === "country" && (
+              <div className="absolute z-30 mt-2 w-full rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                <div className="max-h-56 overflow-y-auto py-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      preserveFilterPosition(() => {
+                        setLocationQuery("");
+                        setOpenWwrDropdown(null);
+                      })
+                    }
+                    className="w-full text-left px-3 py-2 text-sm font-medium hover:bg-slate-50 text-slate-500"
+                  >
+                    Any location
+                  </button>
+                  {countryOptions
+                    .filter((c) => c.toLowerCase().includes(locationQuery.trim().toLowerCase()))
+                    .map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() =>
+                          preserveFilterPosition(() => {
+                            setLocationQuery(c);
+                            setOpenWwrDropdown(null);
+                            if (window.innerWidth < 1024) setIsFilterOpen(false);
+                          })
+                        }
+                        className={[
+                          "w-full text-left px-3 py-2 text-sm font-medium hover:bg-slate-50",
+                          locationQuery === c ? "bg-indigo-50 text-indigo-700" : "text-slate-900",
+                        ].join(" ")}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  {countryOptions.filter((c) => c.toLowerCase().includes(locationQuery.trim().toLowerCase())).length === 0 && (
+                    <div className="px-3 py-2 text-sm text-slate-500">No matching locations on the board. You can still type your own.</div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Salary range */}
@@ -960,7 +1038,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   />
                 </div>
                 <div className="max-h-56 overflow-y-auto py-1">
-                  {TOOL_OPTIONS.filter((t) => t.toLowerCase().includes(wwrSkillQuery.trim().toLowerCase())).map((tool) => {
+                  {skillOptions.filter((t) => t.toLowerCase().includes(wwrSkillQuery.trim().toLowerCase())).map((tool) => {
                     const active = selectedTools.includes(tool);
                     return (
                       <button

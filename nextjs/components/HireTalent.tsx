@@ -115,7 +115,10 @@ const HireTalent: React.FC<HireTalentProps> = ({ onPostJob }) => {
         </ol>
 
         <ul className="mt-6 space-y-2 text-sm text-slate-700">
-          <li>The listing is public after review. We do not run a talent pool or send candidates.</li>
+          <li>The listing is public after review. People apply on your link.</li>
+          <li>
+            Seekers who opt in can be opened in People. After we review a role, CareersPal may attach a few suggested seekers to that listing — not a volume or fit guarantee.
+          </li>
           <li>Pro and Elite sit in a labeled featured zone on the same board.</li>
         </ul>
 

@@ -34,6 +34,7 @@ const PostJobPageInner = () => {
   });
   const [showTestPlan, setShowTestPlan] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   // Ensure the admin-only $1 plan never leaks to non-admins via sessionStorage.
   useEffect(() => {
@@ -121,6 +122,8 @@ const PostJobPageInner = () => {
   }, [foundingEligible, selectedPlan.type, selectedPlan.price]);
 
   const handleJobSubmission = async (data: Job) => {
+    if (submitting) return;
+    setSubmitting(true);
     const storagePlanPrice =
       foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price < PLAN_PRICES.standard
         ? 0
@@ -132,6 +135,7 @@ const PostJobPageInner = () => {
 
     setSubmitError("");
     if (authLoading || !accessToken) {
+      setSubmitting(false);
       router.push(`/auth?role=employer&from=${encodeURIComponent("/post-a-job")}`);
       return;
     }
@@ -150,11 +154,13 @@ const PostJobPageInner = () => {
           accessToken,
         );
         if (!roleResp.ok) {
+          setSubmitting(false);
           router.push(`/auth?role=employer&from=${encodeURIComponent("/post-a-job")}`);
           return;
         }
         await refreshProfile();
       } catch {
+        setSubmitting(false);
         router.push(`/auth?role=employer&from=${encodeURIComponent("/post-a-job")}`);
         return;
       }
@@ -218,31 +224,30 @@ const PostJobPageInner = () => {
           const submitPayload = (await submit.json()) as { error?: string; checkoutRequired?: boolean };
           if (!submitPayload.checkoutRequired) {
             setSubmitError(submitPayload.error || "Could not submit the Start pack listing.");
+            setSubmitting(false);
             return;
           }
         }
         if (storagePlanPrice === 0) {
           setSubmitError("Start pack could not be applied. Choose a paid plan or try again.");
+          setSubmitting(false);
           return;
         }
         router.push(`/checkout?jobId=${payload.job.id}`);
         return;
       }
       setSubmitError(payload.error || "Could not create the listing.");
+      setSubmitting(false);
       return;
     } catch {
       setSubmitError("Could not create the listing. Try again.");
+      setSubmitting(false);
       return;
     }
   };
 
   return (
     <div className="pt-3 pb-8">
-      {submitError && (
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 mt-2">
-          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{submitError}</p>
-        </div>
-      )}
       <PostJob
         key={initialJob?.id || "new"}
         onComplete={handleJobSubmission}
@@ -252,6 +257,8 @@ const PostJobPageInner = () => {
         foundingEligible={foundingEligible}
         foundingStatus={foundingStatus}
         initialJob={initialJob}
+        submitting={submitting}
+        submitError={submitError}
       />
     </div>
   );

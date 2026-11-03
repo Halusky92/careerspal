@@ -8,7 +8,7 @@ import { authFetch } from "../../lib/authFetch";
 import { createJobSlug } from "../../lib/jobs";
 import { Job } from "../../types";
 import { formatSalaryDisplay } from "../../lib/formatSalary";
-import { parseAlertQuery, serializeAlertQuery } from "../../lib/categories";
+import { getCategoryHubForDbCategory, jobMatchesHub, parseAlertQuery, serializeAlertQuery } from "../../lib/categories";
 import AlertCategoryPicker from "../../components/AlertCategoryPicker";
 import { ALERT_MIN_SALARIES, ALERT_REGIONS, alertPrefsLabel, parseAlertPrefs, type AlertRegion } from "../../lib/alertPrefs";
 
@@ -18,6 +18,11 @@ type AccountUser = {
   image?: string;
   role?: string;
   isOnboarded?: boolean;
+  headline?: string;
+  bio?: string;
+  hobbies?: string;
+  visibility?: string;
+  shareToken?: string;
 };
 
 type UserFile = {
@@ -49,11 +54,15 @@ const AccountPageInner = () => {
   const [name, setName] = useState("");
   const [image, setImage] = useState("");
   const [editingName, setEditingName] = useState(false);
+  const [headline, setHeadline] = useState("");
+  const [bio, setBio] = useState("");
+  const [hobbies, setHobbies] = useState("");
+  const [visibility, setVisibility] = useState<"private" | "employers" | "link">("private");
+  const [shareToken, setShareToken] = useState("");
+  const [photoMsg, setPhotoMsg] = useState("");
   const [files, setFiles] = useState<UserFile[]>([]);
   const [savedJobs, setSavedJobs] = useState<string[]>([]);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
-  const [fileName, setFileName] = useState("");
-  const [fileUrl, setFileUrl] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,6 +101,13 @@ const AccountPageInner = () => {
           setUser(data.user);
           setName(data.user.name || "");
           setImage(data.user.image || "");
+          setHeadline(data.user.headline || "");
+          setBio(data.user.bio || "");
+          setHobbies(data.user.hobbies || "");
+          if (data.user.visibility === "employers" || data.user.visibility === "link" || data.user.visibility === "private") {
+            setVisibility(data.user.visibility);
+          }
+          setShareToken(data.user.shareToken || "");
         }
         const filesRes = await authFetch("/api/files", {}, accessToken);
         const filesData = (await filesRes.json()) as { files?: UserFile[] };
@@ -132,6 +148,80 @@ const AccountPageInner = () => {
     [savedJobs, allJobs],
   );
 
+  const suggestedJobs = useMemo(() => {
+    const saved = savedJobRows.map((row) => row.job).filter(Boolean) as Job[];
+    const hubs = saved
+      .map((job) => getCategoryHubForDbCategory(job.category || ""))
+      .filter(Boolean);
+    const pool = allJobs.filter((job) => !savedJobs.includes(job.id));
+    const ranked =
+      hubs.length > 0
+        ? pool.filter((job) => hubs.some((hub) => hub && jobMatchesHub(job, hub)))
+        : pool;
+    return ranked.slice(0, 3);
+  }, [savedJobRows, allJobs, savedJobs]);
+
+  const firstName = (name || "").trim().split(/\s+/)[0] || "";
+
+  const handlePhotoFile = async (file: File | undefined) => {
+    if (!file || !accessToken) return;
+    if (!file.type.startsWith("image/")) {
+      setPhotoMsg("Choose a photo file.");
+      return;
+    }
+    setPhotoMsg("");
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : "";
+      if (!dataUrl) return;
+      const response = await authFetch(
+        "/api/account/avatar",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataUrl }),
+        },
+        accessToken,
+      );
+      const data = (await response.json()) as { user?: AccountUser; error?: string };
+      if (data.user?.image) setImage(data.user.image);
+      else setPhotoMsg(data.error || "Could not save photo.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCvFile = async (file: File | undefined) => {
+    if (!file || !accessToken) return;
+    setIsUploading(true);
+    try {
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+        reader.onerror = () => reject(new Error("read_failed"));
+        reader.readAsDataURL(file);
+      });
+      if (!dataUrl) return;
+      const response = await authFetch(
+        "/api/files",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: file.name,
+            url: dataUrl,
+            mimeType: file.type || "application/pdf",
+            size: file.size || 1,
+          }),
+        },
+        accessToken,
+      );
+      const data = (await response.json()) as { file?: UserFile };
+      if (data.file) setFiles((prev) => [data.file!, ...prev]);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
@@ -140,7 +230,7 @@ const AccountPageInner = () => {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, image }),
+          body: JSON.stringify({ name, headline, bio, hobbies, visibility }),
         },
         accessToken,
       );
@@ -149,39 +239,17 @@ const AccountPageInner = () => {
         setUser(data.user);
         setName(data.user.name || "");
         setImage(data.user.image || "");
+        setHeadline(data.user.headline || headline);
+        setBio(data.user.bio || bio);
+        setHobbies(data.user.hobbies || hobbies);
+        if (data.user.visibility === "employers" || data.user.visibility === "link" || data.user.visibility === "private") {
+          setVisibility(data.user.visibility);
+        }
+        if (data.user.shareToken) setShareToken(data.user.shareToken);
       }
       setEditingName(false);
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!fileName || !fileUrl) return;
-    setIsUploading(true);
-    try {
-      const response = await authFetch(
-        "/api/files",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: fileName,
-            url: fileUrl,
-            mimeType: "application/pdf",
-            size: 1,
-          }),
-        },
-        accessToken,
-      );
-      const data = (await response.json()) as { file?: UserFile };
-      if (data.file) {
-        setFiles((prev) => [data.file!, ...prev]);
-        setFileName("");
-        setFileUrl("");
-      }
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -317,14 +385,35 @@ const AccountPageInner = () => {
         ) : (
           <>
             <div className="text-center">
-              <div className="mx-auto h-24 w-24 rounded-full bg-indigo-50 text-indigo-700 overflow-hidden border border-indigo-100 flex items-center justify-center text-2xl font-semibold">
-                {image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={image} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  initialsFrom(name, user?.email)
-                )}
+              <div className="relative mx-auto h-24 w-24">
+                <div className="h-24 w-24 rounded-full bg-indigo-50 text-indigo-700 overflow-hidden border border-indigo-100 flex items-center justify-center text-2xl font-semibold">
+                  {image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={image} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    initialsFrom(name, user?.email)
+                  )}
+                </div>
+                <label
+                  htmlFor="cp-avatar-upload"
+                  className="absolute -bottom-0.5 -right-0.5 h-8 w-8 rounded-full bg-indigo-600 text-white text-lg leading-8 text-center cursor-pointer shadow-sm hover:bg-indigo-700"
+                  title="Upload photo"
+                >
+                  +
+                </label>
+                <input
+                  id="cp-avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    void handlePhotoFile(file);
+                  }}
+                />
               </div>
+              {photoMsg && <p className="mt-2 text-xs text-rose-600">{photoMsg}</p>}
               <div className="mt-3 flex items-center justify-center gap-2">
                 {editingName ? (
                   <input
@@ -339,7 +428,9 @@ const AccountPageInner = () => {
                   />
                 ) : (
                   <>
-                    <h1 className="text-xl font-semibold text-slate-900">{name || "Your profile"}</h1>
+                    <h1 className="text-xl font-semibold text-slate-900">
+                      {firstName ? `Welcome back, ${firstName}` : name || "Your space"}
+                    </h1>
                     <button
                       type="button"
                       onClick={() => setEditingName(true)}
@@ -351,10 +442,8 @@ const AccountPageInner = () => {
                   </>
                 )}
               </div>
+              {headline && <p className="mt-1 text-sm font-medium text-slate-700">{headline}</p>}
               {user?.email && <p className="mt-1 text-sm text-slate-500">{user.email}</p>}
-              <p className="mt-3 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
-                You apply directly. Employers don’t browse candidate profiles here.
-              </p>
             </div>
 
             <div className="mt-6 flex justify-center flex-wrap gap-x-6 gap-y-1 border-b border-slate-200">
@@ -378,21 +467,160 @@ const AccountPageInner = () => {
             <div className="mt-5">
               {tab === "profile" && (
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-slate-200 p-4">
-                    <p className="text-sm font-medium text-slate-900">What this account does</p>
-                    <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
-                      <li>Save roles and come back to them.</li>
-                      <li>Get email alerts for new published jobs.</li>
-                      <li>Apply on the employer’s own link — we don’t run a talent pool.</li>
-                    </ul>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Link href="/jobs" className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium inline-flex items-center">
-                        Browse jobs
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "Saved", value: String(savedJobs.length), href: "/account?tab=saved" },
+                      { label: "Alerts", value: subscriber ? "On" : "Off", href: "/account?tab=alerts" },
+                      { label: "CV / files", value: String(files.length), href: "/account?tab=documents" },
+                    ].map((item) => (
+                      <Link
+                        key={item.label}
+                        href={item.href}
+                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-center hover:border-indigo-200"
+                      >
+                        <div className="text-lg font-semibold text-slate-900">{item.value}</div>
+                        <div className="text-[11px] font-medium text-slate-500">{item.label}</div>
                       </Link>
-                      <Link href="/account?tab=alerts" className="h-9 px-4 rounded-lg border border-slate-200 text-sm font-medium inline-flex items-center">
-                        Job alerts
+                    ))}
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+                    <p className="text-sm font-medium text-slate-900">Who can see this profile</p>
+                    <div className="space-y-2">
+                      {(
+                        [
+                          {
+                            id: "private" as const,
+                            title: "Only me",
+                            body: "Employers cannot view your profile.",
+                          },
+                          {
+                            id: "employers" as const,
+                            title: "Employers on CareersPal",
+                            body: "Signed-in employers can open your profile. CareersPal may later suggest you on a reviewed role. You still apply on their job link.",
+                          },
+                          {
+                            id: "link" as const,
+                            title: "Anyone with my link",
+                            body: "Not listed. Only people you send the link to can open it.",
+                          },
+                        ] as const
+                      ).map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            setVisibility(opt.id);
+                            void (async () => {
+                              const response = await authFetch(
+                                "/api/account",
+                                {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ visibility: opt.id, name, headline, bio, hobbies }),
+                                },
+                                accessToken,
+                              );
+                              const data = (await response.json()) as { user?: AccountUser };
+                              if (data.user?.shareToken) setShareToken(data.user.shareToken);
+                            })();
+                          }}
+                          className={`w-full rounded-xl border px-3 py-2.5 text-left ${
+                            visibility === opt.id
+                              ? "border-indigo-500 bg-indigo-50"
+                              : "border-slate-200 bg-white hover:border-slate-300"
+                          }`}
+                        >
+                          <div className="text-sm font-medium text-slate-900">{opt.title}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">{opt.body}</div>
+                        </button>
+                      ))}
+                    </div>
+                    {visibility !== "private" && shareToken && (
+                      <p className="text-xs text-slate-500">
+                        Preview:{" "}
+                        <Link href={`/p/${shareToken}`} className="text-indigo-600 font-medium">
+                          Open my public profile
+                        </Link>
+                      </p>
+                    )}
+
+                    <p className="text-sm font-medium text-slate-900 pt-2">About you</p>
+                    <p className="text-xs text-slate-500">
+                      {visibility === "private"
+                        ? "Saved on your account only until you change who can see this."
+                        : visibility === "employers"
+                          ? "Employers signed in on CareersPal can see the fields below. Email stays private."
+                          : "People with your link can see the fields below. Email stays private."}
+                    </p>
+                    <input
+                      value={headline}
+                      onChange={(e) => setHeadline(e.target.value)}
+                      placeholder="e.g. RevOps manager · Notion & Salesforce"
+                      className="cp-field w-full h-10 rounded-lg px-3 text-sm"
+                    />
+                    <textarea
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="What you work on. Tools you like. What you’re looking for next."
+                      rows={4}
+                      className="cp-field w-full rounded-lg px-3 py-2 text-sm min-h-[6rem]"
+                    />
+                    <input
+                      value={hobbies}
+                      onChange={(e) => setHobbies(e.target.value)}
+                      placeholder="Outside work: cycling, chess, cooking…"
+                      className="cp-field w-full h-10 rounded-lg px-3 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveProfile}
+                      disabled={isSaving}
+                      className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium disabled:opacity-50"
+                    >
+                      {isSaving ? "Saving…" : "Save profile"}
+                    </button>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-slate-900">
+                        {savedJobs.length > 0 ? "Because you saved similar roles" : "Latest on the board"}
+                      </p>
+                      <Link href="/jobs" className="text-xs font-medium text-indigo-600">
+                        See all
                       </Link>
                     </div>
+                    <div className="mt-3 space-y-2">
+                      {suggestedJobs.length === 0 ? (
+                        <p className="text-sm text-slate-500">No live roles to show yet.</p>
+                      ) : (
+                        suggestedJobs.map((job) => (
+                          <Link
+                            key={job.id}
+                            href={`/jobs/${createJobSlug(job)}`}
+                            className="block rounded-lg border border-slate-100 px-3 py-2 hover:border-indigo-200"
+                          >
+                            <div className="text-sm font-medium text-slate-900 truncate">{job.title}</div>
+                            <div className="text-xs text-slate-500 truncate">
+                              {[job.company, formatSalaryDisplay(job.salary)].filter(Boolean).join(" · ")}
+                            </div>
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Link href="/jobs" className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium inline-flex items-center">
+                      Browse jobs
+                    </Link>
+                    <Link href="/account?tab=alerts" className="h-9 px-4 rounded-lg border border-slate-200 text-sm font-medium inline-flex items-center">
+                      Email alerts
+                    </Link>
+                    <Link href="/account?tab=documents" className="h-9 px-4 rounded-lg border border-slate-200 text-sm font-medium inline-flex items-center">
+                      Upload CV
+                    </Link>
                   </div>
                 </div>
               )}
@@ -523,8 +751,21 @@ const AccountPageInner = () => {
               {tab === "documents" && (
                 <div className="space-y-3">
                   <p className="text-sm text-slate-500">
-                    Files stay in your account. We don’t send them to employers — you apply through their link.
+                    Keep a CV here for yourself. We don’t send files to employers — you apply on their link.
                   </p>
+                  <label className="inline-flex h-10 items-center rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white cursor-pointer">
+                    {isUploading ? "Uploading…" : "Upload CV"}
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,application/pdf"
+                      className="sr-only"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        void handleCvFile(file);
+                      }}
+                    />
+                  </label>
                   {files.map((file) => (
                     <div key={file.id} className="rounded-xl border border-slate-200 px-4 py-3 flex items-center justify-between gap-3">
                       <div className="min-w-0">
@@ -538,51 +779,15 @@ const AccountPageInner = () => {
                       </a>
                     </div>
                   ))}
-                  <div className="rounded-xl border border-dashed border-slate-300 p-4 space-y-2">
-                    <p className="text-sm font-medium text-slate-800">Add a document link</p>
-                    <input
-                      value={fileName}
-                      onChange={(e) => setFileName(e.target.value)}
-                      placeholder="File name"
-                      className="cp-field w-full h-10 rounded-lg px-3 text-sm"
-                    />
-                    <input
-                      value={fileUrl}
-                      onChange={(e) => setFileUrl(e.target.value)}
-                      placeholder="https://…"
-                      className="cp-field w-full h-10 rounded-lg px-3 text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleUpload}
-                      disabled={isUploading || !fileName || !fileUrl}
-                      className="h-10 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium disabled:opacity-50"
-                    >
-                      {isUploading ? "Saving…" : "Add"}
-                    </button>
-                  </div>
                 </div>
               )}
 
               {tab === "settings" && (
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-slate-200 p-4 space-y-3">
-                    <p className="text-sm font-medium text-slate-900">Photo URL</p>
-                    <input
-                      value={image}
-                      onChange={(e) => setImage(e.target.value)}
-                      placeholder="https://…"
-                      className="cp-field w-full h-10 rounded-lg px-3 text-sm"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleSaveProfile}
-                        disabled={isSaving}
-                        className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium"
-                      >
-                        {isSaving ? "Saving…" : "Save"}
-                      </button>
+                  <div className="rounded-xl border border-slate-200 p-4 space-y-2">
+                    <p className="text-sm font-medium text-slate-900">Photo</p>
+                    <p className="text-sm text-slate-500">Change it with the + on your avatar. No URL needed.</p>
+                    {image && (
                       <button
                         type="button"
                         onClick={async () => {
@@ -593,7 +798,7 @@ const AccountPageInner = () => {
                       >
                         Remove photo
                       </button>
-                    </div>
+                    )}
                   </div>
 
                   <div className="rounded-xl border border-slate-200 p-4">

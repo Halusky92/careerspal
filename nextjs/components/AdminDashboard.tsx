@@ -8,6 +8,7 @@ import { authFetch } from "../lib/authFetch";
 import { formatSalaryDisplay } from "../lib/formatSalary";
 import { formatShortPostedDate } from "../lib/formatPosted";
 import SourcingRegistrySection from "./admin/SourcingRegistrySection";
+import AdminPeopleTab from "./AdminPeopleTab";
 
 type AnalyticsPeriod = {
   totalViews: number;
@@ -29,7 +30,7 @@ interface AdminDashboardProps {
   onLogout: () => void;
 }
 
-type AdminTab = "review" | "jobs" | "sourcing" | "more";
+type AdminTab = "review" | "jobs" | "people" | "sourcing" | "more";
 
 const getLocalJson = <T,>(key: string, fallback: T): T => {
   if (typeof window === "undefined") return fallback;
@@ -82,9 +83,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [jobQuery, setJobQuery] = useState("");
   const [showJobSuggestions, setShowJobSuggestions] = useState(false);
   const [jobSort, setJobSort] = useState<"newest" | "oldest">("newest");
-  const [jobFilter, setJobFilter] = useState<"all" | "live" | "draft" | "archived">("live");
+  const [jobFilter, setJobFilter] = useState<"all" | "live" | "review" | "draft" | "archived">("live");
   const [tab, setTab] = useState<AdminTab>("review");
-  const [tabReady, setTabReady] = useState(false);
   const jobSearchRef = useRef<HTMLDivElement>(null);
   const [analytics, setAnalytics] = useState<AnalyticsPayload | null>(null);
   const { accessToken } = useSupabaseAuth();
@@ -387,17 +387,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const pendingJobs = sortedJobs.filter((job) => job.status === "pending_review");
   const listedJobs = useMemo(() => {
     if (jobFilter === "live") return sortedJobs.filter((job) => job.status === "published");
+    if (jobFilter === "review") return sortedJobs.filter((job) => job.status === "pending_review");
     if (jobFilter === "draft") return sortedJobs.filter((job) => job.status === "draft");
     if (jobFilter === "archived") return sortedJobs.filter((job) => job.status === "private" || job.status === "archived" || job.status === "closed");
     return sortedJobs;
   }, [sortedJobs, jobFilter]);
 
-  useEffect(() => {
-    if (tabReady) return;
-    if (jobs.length === 0 && !accessToken) return;
-    setTab(pendingJobs.length > 0 ? "review" : "jobs");
-    setTabReady(true);
-  }, [tabReady, pendingJobs.length, jobs.length, accessToken]);
 
   const fieldClass = "cp-field w-full rounded-lg px-3 py-2 text-sm";
   const labelClass = "text-xs font-medium text-slate-500";
@@ -508,10 +503,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   const tabs: { id: AdminTab; label: string; count?: number }[] = [
-    { id: "review", label: "Review", count: pendingJobs.length },
+    { id: "review", label: "To confirm", count: pendingJobs.length },
     { id: "jobs", label: "Jobs", count: jobs.filter((j) => j.status === "published").length },
-    { id: "sourcing", label: "Sourcing" },
-    { id: "more", label: "More" },
+    { id: "people", label: "People" },
+    { id: "sourcing", label: "Pipeline" },
+    { id: "more", label: "Stats & alerts" },
   ];
 
   return (
@@ -520,7 +516,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Admin</h1>
           <p className="text-sm text-slate-500 mt-1">
-            {pendingJobs.length > 0 ? `${pendingJobs.length} waiting for review.` : "Board is clear. Next: jobs or sourcing."}
+            Confirm listings in <span className="font-medium text-slate-700">To confirm</span>. Run Greenhouse in{" "}
+            <span className="font-medium text-slate-700">Pipeline</span>
+            {pendingJobs.length > 0 ? ` · ${pendingJobs.length} waiting.` : "."}
           </p>
         </div>
         <button onClick={onLogout} className="h-9 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-600">
@@ -616,7 +614,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </div>
 
           <div className="flex flex-wrap gap-2 mb-4">
-            {(["live", "draft", "archived", "all"] as const).map((id) => (
+            {(["live", "review", "draft", "archived", "all"] as const).map((id) => (
               <button
                 key={id}
                 onClick={() => setJobFilter(id)}
@@ -696,11 +694,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
       )}
 
+      {tab === "people" && <AdminPeopleTab jobs={jobs} />}
+
       {tab === "sourcing" && (
         <div className="rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 bg-white border-b border-slate-200">
-            <p className="text-sm font-medium text-slate-900">Greenhouse pipeline</p>
-            <p className="text-xs text-slate-500 mt-0.5">Greenhouse, Ashby, and Lever. Morning cron 06:00 UTC. No salary or apply link = no publish.</p>
+            <p className="text-sm font-medium text-slate-900">Pipeline tests</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Scroll to <span className="font-medium text-slate-700">Run full pipeline now</span> for a manual Greenhouse/Ashby/Lever run. Cron is 06:00 UTC. Listings without salary or apply stay unpublished.
+            </p>
           </div>
           <SourcingRegistrySection />
         </div>

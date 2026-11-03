@@ -1,5 +1,6 @@
 
 import { Job, ResumeAudit } from "../types";
+import { toPlainJobDescription } from "../lib/plainJobDescription";
 
 export const getCareerAdvice = async (query: string, jobs: Job[]) => {
   try {
@@ -22,7 +23,7 @@ export const generateJobDescription = async (title: string, keywords: string) =>
     body: JSON.stringify({ title, keywords }),
   });
   const data = (await response.json()) as { text?: string; error?: string };
-  return data.text || data.error || "";
+  return toPlainJobDescription(data.text || data.error || "");
 };
 
 export const auditCandidateProfile = async (text: string): Promise<ResumeAudit> => {

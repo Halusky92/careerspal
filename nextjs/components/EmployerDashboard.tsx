@@ -10,6 +10,8 @@ import { authFetch } from "../lib/authFetch";
 import { listingSourceLabel } from "../lib/listingTraffic";
 import StartPackMeter from "./StartPackMeter";
 import type { StartPackStatus } from "../lib/founding";
+import type { PublicPerson } from "../lib/publicPerson";
+import Link from "next/link";
 
 type TrafficSource = { source: string; label?: string; views: number; applyClicks: number };
 
@@ -79,13 +81,15 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   const [claimQuery, setClaimQuery] = useState("");
   const [claimHits, setClaimHits] = useState<ClaimHit[]>([]);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [shortlist, setShortlist] = useState<{ id: string; jobId: string; jobTitle: string; person: PublicPerson | null }[]>([]);
 
   const reload = useCallback(async () => {
     if (!accessToken) return;
-    const [jobsRes, statsRes, foundingRes] = await Promise.all([
+    const [jobsRes, statsRes, foundingRes, shortRes] = await Promise.all([
       authFetch("/api/employer/jobs", {}, accessToken),
       authFetch("/api/employer/stats", {}, accessToken),
       authFetch("/api/employer/founding", {}, accessToken),
+      authFetch("/api/people/shortlist", {}, accessToken),
     ]);
     if (jobsRes.ok) {
       const data = (await jobsRes.json()) as { jobs?: Job[]; summary?: Record<string, number> };
@@ -110,6 +114,12 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
     }
     if (foundingRes.ok) {
       setFounding((await foundingRes.json()) as FoundingStatus);
+    }
+    if (shortRes.ok) {
+      const data = (await shortRes.json()) as {
+        items?: { id: string; jobId: string; jobTitle: string; person: PublicPerson | null }[];
+      };
+      setShortlist(data.items || []);
     }
   }, [accessToken]);
 
@@ -256,6 +266,42 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           <StartPackMeter status={founding} />
         </div>
       )}
+
+      <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-slate-900">Suggested seekers</p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              CareersPal attaches these after reviewing a listing. Open opted-in profiles anytime in People.
+            </p>
+          </div>
+          <Link href="/people" className="shrink-0 text-sm font-medium text-indigo-600">
+            People
+          </Link>
+        </div>
+        {shortlist.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">None attached yet for your jobs.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-slate-100">
+            {shortlist.map((item) => (
+              <li key={item.id} className="py-2 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-slate-900">{item.person?.name || "Seeker"}</div>
+                  <div className="text-xs text-slate-500 truncate">
+                    {item.jobTitle}
+                    {item.person?.headline ? ` · ${item.person.headline}` : ""}
+                  </div>
+                </div>
+                {item.person?.token ? (
+                  <Link href={`/p/${item.person.token}`} className="text-xs font-medium text-indigo-600">
+                    Open
+                  </Link>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {message && (
         <div className="mb-4 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">{message}</div>
