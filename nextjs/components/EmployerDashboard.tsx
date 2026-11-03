@@ -149,7 +149,6 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   const runAction = async (job: Job, action: "pause" | "close" | "republish" | "archive" | "delete") => {
     if (!accessToken) return;
     setBusyId(job.id);
-    setMenuId(null);
     setMessage(null);
     try {
       if (action === "delete") {
