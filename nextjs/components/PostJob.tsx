@@ -567,6 +567,15 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   };
 
   const usingStartPack = Boolean(foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price !== 1);
+  const isEmployerAccount = profile?.role === "employer" || profile?.role === "admin";
+  const showPaidStandard = !usingStartPack && selectedPlan.price !== 1 && isEmployerAccount;
+  const planChip = selectedPlan.price === 1
+    ? "Current plan: Admin Stripe test · $1"
+    : usingStartPack
+      ? "Current plan: Start pack · Free"
+      : !isEmployerAccount
+        ? "Start pack: 10 free, then $79"
+        : `Current plan: ${selectedPlan.type} · ${formatPrice(selectedPlan.price)} / 30 days`;
 
   const previewPlaceLabel = (() => {
     const policy = (formData.remotePolicy || "").trim();
@@ -625,11 +634,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 mb-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-indigo-600" />
                   <span className="text-[10px] font-black text-indigo-800 uppercase tracking-[0.16em]">
-                    {selectedPlan.price === 1
-                      ? "Current plan: Admin Stripe test · $1"
-                      : usingStartPack
-                      ? "Current plan: Start pack · Free"
-                      : `Current plan: ${selectedPlan.type} · ${formatPrice(selectedPlan.price)} / 30 days`}
+                    {planChip}
                   </span>
                 </div>
                 <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Post a role</h1>
@@ -1247,20 +1252,48 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
            
            <div className="relative z-20 rounded-xl border-2 border-indigo-500 bg-indigo-50 p-4 sm:p-5 shadow-sm">
               <div className="flex items-center justify-between gap-2 mb-2">
-                <h3 className="text-sm font-semibold text-indigo-950">Selected plan</h3>
-                <span className="inline-flex h-6 items-center rounded-full bg-indigo-600 px-2.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                  Current
-                </span>
+                <h3 className="text-sm font-semibold text-indigo-950">
+                  {usingStartPack || !isEmployerAccount ? "Listing plan" : "Selected plan"}
+                </h3>
+                {showPaidStandard || usingStartPack || selectedPlan.price === 1 ? (
+                  <span className="inline-flex h-6 items-center rounded-full bg-indigo-600 px-2.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                    Current
+                  </span>
+                ) : null}
               </div>
-              <div className="text-3xl font-semibold text-indigo-700 mb-1 leading-none">
-                {usingStartPack ? "Free" : formatPrice(selectedPlan.price)}
-                <span className="text-base text-indigo-800/70 font-medium"> {usingStartPack ? "Start pack" : "/ 30 days"}</span>
-              </div>
-              <div className="text-xs font-semibold text-indigo-800 uppercase tracking-wide mb-3">
-                {usingStartPack
-                  ? `${foundingStatus?.remainingJobs ?? 10} of ${foundingStatus?.quota ?? 10} free listings left`
-                  : selectedPlan.type}
-              </div>
+              {usingStartPack ? (
+                <>
+                  <div className="text-3xl font-semibold text-indigo-700 mb-1 leading-none">
+                    Free
+                    <span className="text-base text-indigo-800/70 font-medium"> Start pack</span>
+                  </div>
+                  <div className="text-xs font-semibold text-indigo-800 uppercase tracking-wide mb-3">
+                    {foundingStatus?.remainingJobs ?? 10} of {foundingStatus?.quota ?? 10} free listings left
+                  </div>
+                </>
+              ) : !isEmployerAccount ? (
+                <>
+                  <div className="text-2xl font-semibold text-indigo-700 mb-1 leading-none">10 free, then $79</div>
+                  <p className="text-sm text-indigo-900/80 mb-3">
+                    Start pack is 10 Standard listings per company and account. Sign in as an employer to use it. After that, Standard is $79 / 30 days.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="text-3xl font-semibold text-indigo-700 mb-1 leading-none">
+                    {formatPrice(selectedPlan.price)}
+                    <span className="text-base text-indigo-800/70 font-medium"> / 30 days</span>
+                  </div>
+                  <div className="text-xs font-semibold text-indigo-800 uppercase tracking-wide mb-3">
+                    {selectedPlan.type}
+                  </div>
+                </>
+              )}
+
+              <details className="lg:hidden mb-3 rounded-lg border border-indigo-200 bg-white/70 px-3 py-2">
+                <summary className="cursor-pointer text-sm font-medium text-indigo-900">Featured and Elite (optional)</summary>
+                <p className="mt-2 text-xs text-indigo-800/80">Fill the role first. Upgrade is optional and only if you want extra placement.</p>
+              </details>
               
               {/* Plan Upgrade Options */}
               {selectedPlan.type === 'Standard' && (
