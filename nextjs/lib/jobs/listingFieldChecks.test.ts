@@ -29,6 +29,19 @@ test("step 1 does not nag about company before that field exists", () => {
   assert.ok(!issues.some((issue) => issue.message.startsWith("Add company, apply")));
 });
 
+test("company name is optional", () => {
+  const issues = localListingIssues({
+    title: "Business Systems Analyst",
+    description: "Own internal tools and process work.",
+    salary: "80 000",
+    applyUrl: "https://firm.com/jobs",
+    company: "",
+    remotePolicy: "Remote (Global)",
+    category: "Systems Design",
+  });
+  assert.ok(!issues.some((issue) => issue.field === "company"));
+});
+
 test("any non-empty company name is accepted", () => {
   const issues = localListingIssues({
     title: "Business Systems Analyst",

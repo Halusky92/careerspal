@@ -4,7 +4,7 @@ import { REASON_SEVERITY, type ReasonCode } from "../sourcing/evaluation/reasonC
 
 export type ScreenIssue = { field: string; message: string };
 
-export const REQUIRED_FIELDS = ["title", "salary", "description", "company", "applyUrl"] as const;
+export const REQUIRED_FIELDS = ["title", "salary", "description", "applyUrl"] as const;
 export type RequiredField = (typeof REQUIRED_FIELDS)[number];
 export const DESCRIPTION_MAX = 4000;
 
@@ -38,7 +38,7 @@ const REASON_COPY: Record<string, ScreenIssue> = {
     message: "Name the Ops/Systems work in the first lines (workflows, tools, process).",
   },
   SALARY_MISSING: { field: "salary", message: "Add numbers, e.g. $90k–$120k." },
-  APPLY_MISSING: { field: "applyUrl", message: "Add a careers URL or email, e.g. jobs@company.com." },
+  APPLY_MISSING: { field: "applyUrl", message: "Add an apply link (a careers page URL is enough)." },
   DESCRIPTION_THIN: {
     field: "description",
     message: "Add responsibilities and requirements (about 280+ characters).",
@@ -93,7 +93,6 @@ export function localListingIssues(job: ListingFields): ScreenIssue[] {
   }
   if (!hasSalary(job.salary)) issues.push(REASON_COPY.SALARY_MISSING);
   if (!isWorkingApply(applyFrom(job))) issues.push(REASON_COPY.APPLY_MISSING);
-  if (!String(job.company || "").trim()) issues.push({ field: "company", message: "Add the company name." });
   if (!description) {
     issues.push({ field: "description", message: "Add a description of the role." });
   } else if (description.length > DESCRIPTION_MAX) {

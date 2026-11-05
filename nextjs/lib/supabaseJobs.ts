@@ -56,10 +56,17 @@ function toStringArray(value: unknown): string[] {
   return [];
 }
 
+const companyLabel = (row: SupabaseJobRow) => {
+  const joined = String(row.companies?.name || "").trim();
+  if (joined) return joined;
+  const fallback = String(row.company_description || "").split("\n")[0].trim();
+  return fallback.length > 0 && fallback.length <= 80 ? fallback : "";
+};
+
 export const mapSupabaseJob = (row: SupabaseJobRow): Job => ({
   id: row.id,
   title: row.title || "",
-  company: row.companies?.name || "Unknown",
+  company: companyLabel(row),
   companySlug: row.companies?.slug || undefined,
   logo: row.logo_url || row.companies?.logo_url || "",
   location: row.location || "",

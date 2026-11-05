@@ -7,13 +7,11 @@ import { formatSalaryDisplay } from "../lib/formatSalary";
 import { formatShortPostedDate } from "../lib/formatPosted";
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
-import { listingSourceLabel } from "../lib/listingTraffic";
 import StartPackMeter from "./StartPackMeter";
 import type { StartPackStatus } from "../lib/founding";
 import type { PublicPerson } from "../lib/publicPerson";
 import Link from "next/link";
 import { PLAN_PRICES } from "../lib/plans";
-import AdminDeskBar from "./AdminDeskBar";
 
 type TrafficSource = { source: string; label?: string; views: number; applyClicks: number };
 
@@ -73,8 +71,7 @@ const postedDate = (job: Job) => {
 };
 
 const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPostJob }) => {
-  const { accessToken, profile } = useSupabaseAuth();
-  const isAdmin = profile?.role === "admin";
+  const { accessToken } = useSupabaseAuth();
   const [myJobs, setMyJobs] = useState<Job[]>([]);
   const [summary, setSummary] = useState<Record<string, number>>({});
   const [stats, setStats] = useState({ jobs: 0, views: 0, matches: 0, applyClicks: 0, sources: [] as TrafficSource[] });
@@ -168,6 +165,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
         }
         setMessageTone("ok");
         setMessage("Listing removed.");
+        setMyJobs((prev) => prev.filter((item) => item.id !== job.id));
       } else if (action === "publish" && job.status === "draft") {
         const submit = await authFetch(
           `/api/employer/jobs/${job.id}/submit`,
@@ -186,6 +184,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
         }
         setMessageTone("ok");
         setMessage("Sent for review.");
+        setMyJobs((prev) => prev.map((item) => (item.id === job.id ? { ...item, status: "pending_review" } : item)));
       } else {
         const res = await authFetch(
           `/api/employer/jobs/${job.id}`,
@@ -255,6 +254,17 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           return;
         }
         setMessageTone("ok");
+        const nextStatus =
+          action === "publish"
+            ? "published"
+            : action === "close"
+              ? "closed"
+              : action === "pause"
+                ? "paused"
+                : action === "archive"
+                  ? "archived"
+                  : job.status;
+        setMyJobs((prev) => prev.map((item) => (item.id === job.id ? { ...item, status: nextStatus } : item)));
         setMessage(
           action === "publish"
             ? "Listing is live."
@@ -271,89 +281,69 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
     }
   };
 
-  const renderJobRow = (job: Job) => {
+  const renderJobCard = (job: Job) => {
     const busy = busyId === job.id;
     const canPublish = job.status === "pending_review" || job.status === "draft";
     const canClose = job.status === "published" || job.status === "paused" || job.status === "pending_review";
-    const btn = "h-8 px-2.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 disabled:opacity-50";
+    const btn = "h-9 px-3 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 disabled:opacity-50";
     return (
-      <tr key={job.id} className="border-b border-slate-100 last:border-0">
-        <td className="px-4 py-2.5">
-          <div className="font-medium text-slate-900 line-clamp-2">{job.title}</div>
-          <div className="sm:hidden text-xs text-slate-500 mt-0.5">{job.company}</div>
-        </td>
-        <td className="px-3 py-2.5 text-slate-600 hidden sm:table-cell whitespace-nowrap">{job.company}</td>
-        <td className="px-3 py-2.5 text-slate-700 whitespace-nowrap">{formatSalaryDisplay(job.salary)}</td>
-        <td className="px-3 py-2.5">
-          <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded ${statusTone(job.status)}`}>
+      <article key={job.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-semibold text-slate-900 leading-snug">{job.title}</p>
+            <p className="mt-1 text-sm text-slate-500 truncate">
+              {[job.company, formatSalaryDisplay(job.salary), postedDate(job)].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          <span className={`shrink-0 inline-flex text-xs font-medium px-2 py-0.5 rounded ${statusTone(job.status)}`}>
             {statusLabel(job.status)}
           </span>
-        </td>
-        <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">{job.views ?? 0}</td>
-        <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">{job.matches ?? 0}</td>
-        <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap hidden lg:table-cell">{postedDate(job)}</td>
-        <td className="px-3 py-2.5 sticky right-0 bg-white shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]">
-          <div className="flex justify-end items-center gap-1 flex-wrap">
-            {canPublish ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => runAction(job, "publish")}
-                className="h-8 px-2.5 rounded-lg bg-emerald-600 text-white text-xs font-medium disabled:opacity-50"
-              >
-                Publish
-              </button>
-            ) : null}
-            <a
-              href={`/post-a-job?jobId=${job.id}`}
-              className="h-8 px-2.5 inline-flex items-center rounded-lg border border-slate-200 text-xs font-medium text-slate-700"
-            >
-              Edit
-            </a>
-            {job.status === "published" ? (
-              <a
-                href={`/jobs/${createJobSlug(job)}`}
-                className="h-8 px-2.5 inline-flex items-center rounded-lg border border-slate-200 text-xs font-medium text-slate-700"
-              >
-                View
-              </a>
-            ) : null}
-            {job.status === "published" ? (
-              <button type="button" disabled={busy} onClick={() => runAction(job, "pause")} className={btn}>
-                Pause
-              </button>
-            ) : null}
-            {(job.status === "paused" || job.status === "closed" || job.status === "archived") ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => runAction(job, "republish")}
-                className="h-8 px-2.5 rounded-lg bg-emerald-600 text-white text-xs font-medium disabled:opacity-50"
-              >
-                Renew ${PLAN_PRICES.standard}
-              </button>
-            ) : null}
-            {canClose ? (
-              <button type="button" disabled={busy} onClick={() => runAction(job, "close")} className={btn}>
-                Close
-              </button>
-            ) : null}
-            {job.status === "closed" ? (
-              <button type="button" disabled={busy} onClick={() => runAction(job, "archive")} className={btn}>
-                Archive
-              </button>
-            ) : null}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {canPublish ? (
             <button
               type="button"
               disabled={busy}
-              onClick={() => runAction(job, "delete")}
-              className="h-8 px-2.5 rounded-lg text-xs font-medium text-rose-600 disabled:opacity-50"
+              onClick={() => runAction(job, "publish")}
+              className="h-9 px-3 rounded-lg bg-emerald-600 text-white text-xs font-medium disabled:opacity-50"
             >
-              Remove
+              Publish
             </button>
-          </div>
-        </td>
-      </tr>
+          ) : null}
+          <a
+            href={`/post-a-job?jobId=${job.id}`}
+            className="h-9 px-3 inline-flex items-center rounded-lg border border-slate-200 text-xs font-medium text-slate-700"
+          >
+            Edit
+          </a>
+          {job.status === "published" ? (
+            <a
+              href={`/jobs/${createJobSlug(job)}`}
+              className="h-9 px-3 inline-flex items-center rounded-lg border border-slate-200 text-xs font-medium text-slate-700"
+            >
+              View
+            </a>
+          ) : null}
+          {job.status === "published" ? (
+            <button type="button" disabled={busy} onClick={() => runAction(job, "pause")} className={btn}>
+              Pause
+            </button>
+          ) : null}
+          {(job.status === "paused" || job.status === "closed" || job.status === "archived") ? (
+            <button type="button" disabled={busy} onClick={() => runAction(job, "republish")} className="h-9 px-3 rounded-lg bg-emerald-600 text-white text-xs font-medium disabled:opacity-50">
+              Renew
+            </button>
+          ) : null}
+          {canClose ? (
+            <button type="button" disabled={busy} onClick={() => runAction(job, "close")} className={btn}>
+              Close
+            </button>
+          ) : null}
+          <button type="button" disabled={busy} onClick={() => runAction(job, "delete")} className="h-9 px-3 rounded-lg text-xs font-medium text-rose-600 disabled:opacity-50">
+            Remove
+          </button>
+        </div>
+      </article>
     );
   };
 
@@ -377,67 +367,33 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-      {isAdmin ? <AdminDeskBar /> : null}
-      <div className="flex items-center justify-between gap-4 mb-6">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
+      <div className="flex items-center justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Jobs</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {activeCount} active · {summary.total ?? myJobs.length} total
-          </p>
-          <p className="text-xs text-slate-400 mt-1">
-            Paused, closed, or archived listings can be renewed for ${PLAN_PRICES.standard} within 90 days, then they are removed.
+          <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Your jobs</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {activeCount} live · {summary.total ?? myJobs.length} total
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onUpgrade}
-            className="hidden sm:inline-flex h-9 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:border-indigo-200"
-          >
-            Plans
-          </button>
-          <button
-            onClick={onPostJob}
-            className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
-          >
-            Post a job
-          </button>
-        </div>
+        <button
+          onClick={onPostJob}
+          className="h-10 px-4 rounded-xl bg-indigo-600 text-white text-sm font-medium"
+        >
+          Post a job
+        </button>
       </div>
 
-      <div className="mb-6">
-        <div className="flex flex-wrap gap-6 text-sm">
-          <div>
-            <span className="text-slate-400">Listings</span>{" "}
-            <span className="font-semibold text-slate-900">{stats.jobs || myJobs.length || "—"}</span>
+      <div className="grid grid-cols-3 gap-2 mb-5">
+        {[
+          { label: "Live", value: activeCount },
+          { label: "Views", value: stats.views || 0 },
+          { label: "Applies", value: stats.applyClicks || stats.matches || 0 },
+        ].map((item) => (
+          <div key={item.label} className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
+            <div className="text-[11px] uppercase tracking-wide text-slate-400">{item.label}</div>
+            <div className="text-lg font-semibold text-slate-900 mt-0.5">{item.value}</div>
           </div>
-          <div>
-            <span className="text-slate-400">Views</span>{" "}
-            <span className="font-semibold text-slate-900">{stats.views || "—"}</span>
-          </div>
-          <div>
-            <span className="text-slate-400">Apply clicks</span>{" "}
-            <span className="font-semibold text-slate-900">{stats.applyClicks || stats.matches || "—"}</span>
-          </div>
-        </div>
-        {stats.sources.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {stats.sources.slice(0, 6).map((row) => (
-              <span
-                key={row.source}
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600"
-              >
-                <span className="font-medium text-slate-800">{row.label || listingSourceLabel(row.source)}</span>
-                <span className="text-slate-400">
-                  {row.views} views · {row.applyClicks} apply
-                </span>
-              </span>
-            ))}
-          </div>
-        )}
-        <p className="mt-2 text-xs text-slate-400">
-          Apply clicks are outbound Apply clicks, not confirmed applications.
-        </p>
+        ))}
       </div>
 
       {founding?.enabled && (
@@ -446,30 +402,20 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
         </div>
       )}
 
-      <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
+      {shortlist.length > 0 ? (
+        <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-medium text-slate-900">Suggested seekers</p>
-            <p className="mt-0.5 text-xs text-slate-500">
-              People we attach to a listing after review. Browse everyone current in People.
-            </p>
+            <Link href="/people" className="text-sm font-medium text-indigo-600">
+              People
+            </Link>
           </div>
-          <Link href="/people" className="shrink-0 text-sm font-medium text-indigo-600">
-            People
-          </Link>
-        </div>
-        {shortlist.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">Waiting for suggestions on your jobs.</p>
-        ) : (
-          <ul className="mt-3 divide-y divide-slate-100">
-            {shortlist.map((item) => (
-              <li key={item.id} className="py-2 flex items-center justify-between gap-3">
+          <ul className="mt-3 space-y-2">
+            {shortlist.slice(0, 3).map((item) => (
+              <li key={item.id} className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-sm font-medium text-slate-900">{item.person?.name || "Seeker"}</div>
-                  <div className="text-xs text-slate-500 truncate">
-                    {item.jobTitle}
-                    {item.person?.headline ? ` · ${item.person.headline}` : ""}
-                  </div>
+                  <div className="text-sm font-medium text-slate-900 truncate">{item.person?.name || "Seeker"}</div>
+                  <div className="text-xs text-slate-500 truncate">{item.jobTitle}</div>
                 </div>
                 {item.person?.token ? (
                   <Link href={`/p/${item.person.token}`} className="text-xs font-medium text-indigo-600">
@@ -479,8 +425,8 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
               </li>
             ))}
           </ul>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       {message && (
         <div
@@ -528,50 +474,27 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
         </div>
       </details>
 
-      <div className="rounded-xl border border-slate-200 bg-white">
+      <div className="space-y-3">
         {myJobs.length === 0 ? (
-          <div className="px-4 py-12 text-center">
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center">
             <p className="text-slate-900 font-medium">No listings yet</p>
-            <p className="text-sm text-slate-500 mt-1 mb-4">Post a role to track it here.</p>
-            <button onClick={onPostJob} className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium">
-              Add first job
+            <button onClick={onPostJob} className="mt-4 h-10 px-4 rounded-xl bg-indigo-600 text-white text-sm font-medium">
+              Post a job
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="cp-table w-full min-w-[820px] text-left text-sm">
-              <thead>
-                <tr className="text-xs font-medium text-slate-400 border-b border-slate-100">
-                  <th className="px-4 py-2.5 font-medium">Title</th>
-                  <th className="px-3 py-2.5 font-medium hidden sm:table-cell">Company</th>
-                  <th className="px-3 py-2.5 font-medium">Salary</th>
-                  <th className="px-3 py-2.5 font-medium">Status</th>
-                  <th className="px-3 py-2.5 font-medium text-right">Views</th>
-                  <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Apply clicks</th>
-                  <th className="px-3 py-2.5 font-medium hidden lg:table-cell">Date</th>
-                  <th className="px-3 py-2.5 font-medium text-right min-w-[11rem] sticky right-0 bg-slate-100">Actions</th>
-                </tr>
-              </thead>
-              <tbody>{newestJobs.map((job) => renderJobRow(job))}</tbody>
-            </table>
-          </div>
+          newestJobs.map((job) => renderJobCard(job))
         )}
         {olderJobs.length > 0 ? (
-          <div className="border-t border-slate-100">
+          <div>
             <button
               type="button"
               onClick={() => setShowOlderJobs((prev) => !prev)}
-              className="w-full px-4 py-3 text-left text-sm font-medium text-slate-700"
+              className="w-full h-11 rounded-2xl border border-slate-200 bg-white text-sm font-medium text-slate-700"
             >
               {showOlderJobs ? "Hide older listings" : `Older listings (${olderJobs.length})`}
             </button>
-            {showOlderJobs ? (
-              <div className="overflow-x-auto border-t border-slate-100">
-                <table className="cp-table w-full min-w-[820px] text-left text-sm">
-                  <tbody>{olderJobs.map((job) => renderJobRow(job))}</tbody>
-                </table>
-              </div>
-            ) : null}
+            {showOlderJobs ? <div className="mt-3 space-y-3">{olderJobs.map((job) => renderJobCard(job))}</div> : null}
           </div>
         ) : null}
       </div>

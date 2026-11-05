@@ -7,6 +7,7 @@ import {
   EMPLOYER_STATUSES,
   loadEmployerOwnedJob,
   requireEmployer,
+  resolveEmployerCompany,
 } from "../../../../../lib/employer";
 import { formatSalaryForStorage } from "../../../../../lib/formatSalary";
 import { canRenewUnpublished, RENEW_PLAN_NAME, RENEW_PRICE } from "../../../../../lib/jobs/unpublishedRetention";
@@ -60,6 +61,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     type?: string;
     salary?: string;
     applyUrl?: string;
+    company?: string;
     companyWebsite?: string;
     keywords?: string;
     tools?: string[];
@@ -140,6 +142,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (typeof body.salary === "string") updateData.salary = formatSalaryForStorage(body.salary);
   if (typeof body.applyUrl === "string") updateData.apply_url = body.applyUrl;
   if (typeof body.companyWebsite === "string") updateData.company_website = body.companyWebsite;
+  if (typeof body.company === "string" && body.company.trim()) {
+    updateData.company_description = owned.job.company_description || body.company.trim();
+    const companyResult = await resolveEmployerCompany({
+      profileId: auth.profileId,
+      name: body.company.trim(),
+      website: typeof body.companyWebsite === "string" ? body.companyWebsite : null,
+    });
+    if (companyResult.companyId && companyResult.error !== "claim_required") {
+      updateData.company_id = companyResult.companyId;
+    }
+  }
   if (typeof body.keywords === "string") updateData.keywords = body.keywords;
   if (Array.isArray(body.tools)) updateData.tools = body.tools;
   if (Array.isArray(body.tags)) updateData.tags = body.tags;

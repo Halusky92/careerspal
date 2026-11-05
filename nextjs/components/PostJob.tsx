@@ -346,7 +346,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
   const titleLocalOk = isOnNicheJob({ title: formData.title, category: formData.category, description: null }) && formData.title.trim().length >= 4;
   const step1Ready = fieldReady("title") && fieldReady("salary") && fieldReady("description") && aiOk !== false;
-  const allReady = step1Ready && fieldReady("company") && fieldReady("applyUrl");
+  const allReady = step1Ready && fieldReady("applyUrl");
 
   const fieldMark = (field: "title" | "salary" | "description" | "company" | "applyUrl") => {
     const checking = (field === "title" || field === "description") && aiChecking && titleLocalOk;
@@ -436,7 +436,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   };
 
   const handleStep2 = async () => {
-    const blocked = localIssues.filter((issue) => issue.field === "company" || issue.field === "applyUrl");
+    const blocked = localIssues.filter((issue) => issue.field === "applyUrl");
     if (blocked.length) {
       setScreenIssues(blocked);
       return;
@@ -984,11 +984,11 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 </div>
 
                 <div className="space-y-4">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">How to Apply? (URL or Email) * <Mark field="applyUrl" /></label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">Apply link * <Mark field="applyUrl" /></label>
                   <input
                     type="text"
                     inputMode="url"
-                    placeholder="company.com/careers or jobs@company.com"
+                    placeholder="company.com/careers"
                     className={`cp-field w-full h-10 rounded-lg px-3 text-sm outline-none${fieldTone("applyUrl")}`}
                     value={formData.applyUrl}
                     onChange={e => {
@@ -1046,7 +1046,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                    </div>
                 </div>
                 <div className="flex flex-col gap-3">
-                {submitError && (
+                {submitError && !(/company name|company mail|jobs@/i.test(submitError) && formData.company.trim()) && (
                   <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 text-left">{submitError}</p>
                 )}
                 <button

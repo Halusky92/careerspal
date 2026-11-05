@@ -44,14 +44,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     );
   }
 
-  let companyName: string | null = null;
+  let companyName: string | null = owned.job.company_description || null;
   if (owned.job.company_id) {
     const { data: named } = await supabaseAdmin!
       .from("companies")
       .select("name")
       .eq("id", owned.job.company_id)
       .maybeSingle();
-    companyName = named?.name || null;
+    companyName = named?.name || companyName;
   }
 
   const listingFields = {

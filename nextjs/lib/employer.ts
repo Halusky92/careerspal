@@ -21,6 +21,7 @@ export type EmployerOwnedJob = {
   description: string | null;
   salary: string | null;
   apply_url: string | null;
+  company_description?: string | null;
   status: string | null;
   origin?: string | null;
   created_by: string | null;
@@ -33,10 +34,10 @@ export type EmployerOwnedJob = {
 };
 
 const EMPLOYER_OWNED_JOB_SELECT =
-  "id,title,description,salary,apply_url,status,origin,created_by,company_id,stripe_payment_status,plan_type,plan_price,views,matches";
+  "id,title,description,salary,apply_url,status,origin,created_by,company_id,company_description,stripe_payment_status,plan_type,plan_price,views,matches";
 
 const EMPLOYER_OWNED_JOB_SELECT_FALLBACK =
-  "id,title,description,salary,apply_url,status,created_by,company_id,stripe_payment_status,plan_type,plan_price,views,matches";
+  "id,title,description,salary,apply_url,status,created_by,company_id,company_description,stripe_payment_status,plan_type,plan_price,views,matches";
 
 function toEmployerOwnedJob(row: {
   id: string;
@@ -44,6 +45,7 @@ function toEmployerOwnedJob(row: {
   description?: string | null;
   salary?: string | null;
   apply_url?: string | null;
+  company_description?: string | null;
   status?: string | null;
   origin?: string | null;
   created_by?: string | null;
@@ -60,6 +62,7 @@ function toEmployerOwnedJob(row: {
     description: row.description ?? null,
     salary: row.salary ?? null,
     apply_url: row.apply_url ?? null,
+    company_description: row.company_description ?? null,
     status: row.status ?? null,
     origin: row.origin ?? null,
     created_by: row.created_by ?? null,

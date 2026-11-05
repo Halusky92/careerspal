@@ -207,6 +207,7 @@ const PostJobPageInner = () => {
         type: finalJobData.type,
         salary: finalJobData.salary,
         applyUrl: finalJobData.applyUrl,
+        company: finalJobData.company,
         companyWebsite: finalJobData.companyWebsite,
         keywords: finalJobData.keywords,
         tools: finalJobData.tools,

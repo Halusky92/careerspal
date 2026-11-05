@@ -10,7 +10,6 @@ import { formatSalaryDisplay } from "../lib/formatSalary";
 import { formatShortPostedDate } from "../lib/formatPosted";
 import SourcingRegistrySection from "./admin/SourcingRegistrySection";
 import AdminPeopleTab from "./AdminPeopleTab";
-import AdminDeskBar from "./AdminDeskBar";
 
 type AnalyticsPeriod = {
   totalViews: number;
@@ -333,7 +332,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         setJobActionMsg(data.error || "Action failed.");
         return;
       }
-      if (data.job) setJobs((prev) => prev.map((j) => (j.id === id ? data.job! : j)));
+      setJobs((prev) =>
+        prev.map((j) => (j.id === id ? { ...j, ...(data.job || {}), status: data.job?.status || status } : j)),
+      );
       setJobActionTone("success");
       setJobActionMsg(status === "published" ? "On the board." : status === "private" ? "Declined." : "Updated.");
     } catch {
@@ -655,69 +656,49 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Admin</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Confirm listings in <span className="font-medium text-slate-700">To confirm</span> with ✓ / ✕. Auto-check
-            can publish clear Ops listings. Pipeline is ATS ingest.
-            {pendingJobs.length > 0 ? ` · ${pendingJobs.length} waiting.` : "."}
-          </p>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5">
+      <div className="sticky top-14 z-30 mb-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-3 shadow-lg">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <p className="text-sm font-medium text-emerald-300">Admin desk</p>
+          <span className="text-[11px] font-mono text-amber-300">{pendingJobs.length} waiting</span>
         </div>
-        <button onClick={onLogout} className="h-9 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-600">
-          Log out
-        </button>
-      </div>
-
-      <div className="sticky top-14 z-30 mb-4 rounded-xl border border-slate-800 bg-zinc-950 px-3 py-2">
         <form
-          className="flex flex-col sm:flex-row sm:items-center gap-2"
+          className="flex items-center gap-2"
           onSubmit={(event) => {
             event.preventDefault();
             runCommand();
           }}
         >
-          <label className="flex items-center gap-2 flex-1 min-w-0">
-            <span className="text-emerald-400 font-mono text-sm shrink-0">$</span>
-            <input
-              value={cmd}
-              onChange={(e) => setCmd(e.target.value)}
-              placeholder="search, auto-check, review"
-              className="flex-1 min-w-0 bg-transparent text-sm text-emerald-100 font-mono outline-none placeholder:text-zinc-500 h-9"
-            />
-          </label>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[11px] font-mono text-amber-300">{pendingJobs.length} waiting</span>
-            <button type="submit" className="h-8 px-3 rounded-md bg-emerald-700 text-white text-xs font-medium">
-              Run
-            </button>
-            <button
-              type="button"
-              onClick={() => void runAutoReview()}
-              disabled={autoReviewBusy}
-              className="h-8 px-3 rounded-md border border-emerald-800 text-emerald-300 text-xs font-medium disabled:opacity-50"
-            >
-              {autoReviewBusy ? "…" : "auto-check"}
-            </button>
-          </div>
-        </form>
-      </div>
-      <AdminDeskBar pendingCount={pendingJobs.length} onAutoCheck={runAutoReview} autoCheckBusy={autoReviewBusy} />
-
-      <div className="flex gap-1 mb-6 border-b border-slate-200">
-        {tabs.map((item) => (
+          <span className="text-emerald-400 font-mono text-sm shrink-0">$</span>
+          <input
+            value={cmd}
+            onChange={(e) => setCmd(e.target.value)}
+            placeholder="search / auto-check / review"
+            className="flex-1 min-w-0 bg-transparent text-sm text-emerald-100 font-mono outline-none placeholder:text-zinc-500 h-9"
+          />
           <button
-            key={item.id}
-            onClick={() => setTab(item.id)}
-            className={`h-10 px-3 text-sm font-medium border-b-2 -mb-px ${
-              tab === item.id ? "border-indigo-600 text-indigo-700" : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
+            type="button"
+            onClick={() => void runAutoReview()}
+            disabled={autoReviewBusy}
+            className="h-9 px-3 rounded-lg bg-emerald-700 text-white text-xs font-medium disabled:opacity-50"
           >
-            {item.label}
-            {typeof item.count === "number" ? <span className="ml-1.5 text-slate-400">{item.count}</span> : null}
+            {autoReviewBusy ? "…" : "Check"}
           </button>
-        ))}
+        </form>
+        <div className="mt-2 flex gap-1 overflow-x-auto">
+          {tabs.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setTab(item.id)}
+              className={`h-8 px-3 rounded-lg text-xs font-medium whitespace-nowrap ${
+                tab === item.id ? "bg-white text-zinc-900" : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              {item.label}
+              {typeof item.count === "number" ? ` ${item.count}` : ""}
+            </button>
+          ))}
+        </div>
       </div>
 
       {jobActionMsg && (
@@ -809,35 +790,44 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-slate-900">Live on the board</h2>
-            <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto">
-              {liveNewest.length === 0 ? (
-                <div className="px-4 py-8 text-center text-sm text-slate-500">No live listings yet.</div>
-              ) : (
-                <table className="cp-table w-full min-w-[640px] text-left text-sm">
-                  <thead>
-                    <tr className="text-xs font-medium text-slate-400 border-b border-slate-100">
-                      <th className="pl-3 pr-1 py-2.5 w-24 font-medium" />
-                      <th className="px-4 py-2.5 font-medium">Title</th>
-                      <th className="px-3 py-2.5 font-medium hidden sm:table-cell">Company</th>
-                      <th className="px-3 py-2.5 font-medium">Salary</th>
-                      <th className="px-3 py-2.5 font-medium hidden md:table-cell">Date</th>
-                      <th className="px-3 py-2.5 font-medium text-right sticky right-0 bg-slate-100">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>{liveNewest.map((job) => renderJobRow(job, "review"))}</tbody>
-                </table>
-              )}
-            </div>
+            <h2 className="text-sm font-semibold text-slate-900">Live · 3 newest</h2>
+            {liveNewest.length === 0 ? (
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">No live listings yet.</div>
+            ) : (
+              liveNewest.map((job) => (
+                <article key={job.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900">{job.title}</p>
+                      <p className="text-sm text-slate-500 mt-0.5">
+                        {job.company} · {formatSalaryDisplay(job.salary)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteJob(job.id)}
+                      className="h-9 px-3 rounded-lg text-xs font-medium text-rose-600"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </article>
+              ))
+            )}
             {liveOlder.length > 0 ? (
-              <details className="rounded-xl border border-slate-200 bg-white">
+              <details className="rounded-2xl border border-slate-200 bg-white">
                 <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-700">
                   Older live listings ({liveOlder.length})
                 </summary>
-                <div className="overflow-x-auto border-t border-slate-100">
-                  <table className="cp-table w-full min-w-[640px] text-left text-sm">
-                    <tbody>{liveOlder.map((job) => renderJobRow(job, "review"))}</tbody>
-                  </table>
+                <div className="px-4 pb-4 space-y-2">
+                  {liveOlder.map((job) => (
+                    <div key={job.id} className="flex items-center justify-between gap-3 py-2 border-t border-slate-100">
+                      <p className="min-w-0 truncate text-sm text-slate-800">{job.title}</p>
+                      <button type="button" onClick={() => handleDeleteJob(job.id)} className="text-xs text-rose-600">
+                        Remove
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </details>
             ) : null}
@@ -943,28 +933,38 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </div>
           )}
 
-          <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto">
+          <div className="space-y-3">
             {listedJobs.length === 0 ? (
-              <div className="px-4 py-12 text-center text-sm text-slate-500">No jobs in this filter.</div>
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-500">No jobs in this filter.</div>
             ) : (
-              <table className="cp-table w-full min-w-[720px] text-left text-sm">
-                <thead>
-                  <tr className="text-xs font-medium text-slate-400 border-b border-slate-100">
-                    <th className="pl-3 pr-1 py-2.5 w-24 font-medium" />
-                    <th className="px-4 py-2.5 font-medium">Title</th>
-                    <th className="px-3 py-2.5 font-medium hidden sm:table-cell">Company</th>
-                    <th className="px-3 py-2.5 font-medium">Salary</th>
-                    <th className="px-3 py-2.5 font-medium">Status</th>
-                    <th className="px-3 py-2.5 font-medium hidden md:table-cell">Date</th>
-                    <th className="px-3 py-2.5 font-medium text-right min-w-[11rem] sticky right-0 bg-slate-100">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(jobFilter === "live" && !showOlderLive ? listedJobs.slice(0, 3) : listedJobs).map((job) =>
-                    renderJobRow(job, "jobs"),
-                  )}
-                </tbody>
-              </table>
+              (jobFilter === "live" && !showOlderLive ? listedJobs.slice(0, 3) : listedJobs).map((job) => (
+                <article key={job.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-start gap-3">
+                    {job.status === "pending_review" ? (
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <button type="button" onClick={() => updateJobStatus(job.id, "published")} className="h-9 w-9 rounded-lg bg-emerald-600 text-white">✓</button>
+                        <button type="button" onClick={() => handleDeleteJob(job.id)} className="h-9 w-9 rounded-lg bg-rose-600 text-white">✕</button>
+                      </div>
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-900">{job.title}</p>
+                      <p className="text-sm text-slate-500 mt-0.5">
+                        {job.company || "—"} · {formatSalaryDisplay(job.salary)} · {statusLabel(job.status)}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {job.status !== "published" && job.status !== "pending_review" ? (
+                          <button type="button" onClick={() => updateJobStatus(job.id, "published")} className="h-9 px-3 rounded-lg bg-emerald-600 text-white text-xs font-medium">
+                            Publish
+                          </button>
+                        ) : null}
+                        <button type="button" onClick={() => handleDeleteJob(job.id)} className="h-9 px-3 rounded-lg text-xs font-medium text-rose-600">
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              ))
             )}
           </div>
           {jobFilter === "live" && listedJobs.length > 3 ? (

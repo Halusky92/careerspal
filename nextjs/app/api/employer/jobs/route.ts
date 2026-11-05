@@ -115,7 +115,7 @@ export const POST = async (request: Request) => {
     adminInternalPlan?: boolean;
   };
 
-  if (!body.title || !body.company || !body.applyUrl || !body.applyUrl.trim()) {
+  if (!body.title || !body.applyUrl || !body.applyUrl.trim()) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
   }
 
@@ -172,24 +172,18 @@ export const POST = async (request: Request) => {
     }
   }
 
-  const companyResult = await resolveEmployerCompany({
-    profileId: auth.profileId,
-    name: body.company,
-    website: normalizeHttpUrl(body.companyWebsite),
-    logoUrl: normalizeHttpUrl(body.logo),
-    description: body.companyDescription || null,
-  });
-  if (companyResult.error === "claim_required") {
-    return NextResponse.json(
-      {
-        error: "This company profile already exists. Claim it from your dashboard first.",
-        companyId: companyResult.companyId,
-        claimRequired: true,
-      },
-      { status: 409 },
-    );
+  let companyId: string | null = null;
+  if (String(body.company || "").trim()) {
+    const companyResult = await resolveEmployerCompany({
+      profileId: auth.profileId,
+      name: body.company || "",
+      website: normalizeHttpUrl(body.companyWebsite),
+      logoUrl: normalizeHttpUrl(body.logo),
+      description: body.companyDescription || null,
+    });
+    companyId = companyResult.error === "claim_required" ? null : companyResult.companyId;
   }
-  const company = { id: companyResult.companyId };
+  const company = { id: companyId };
 
   const insertPayload: Record<string, unknown> = {
     title: body.title,
@@ -202,7 +196,7 @@ export const POST = async (request: Request) => {
     timestamp,
     category: body.category || "Operations",
     apply_url: normalizeApplyUrl(body.applyUrl),
-    company_description: body.companyDescription || null,
+    company_description: body.companyDescription || body.company || null,
     company_website: normalizeHttpUrl(body.companyWebsite),
     logo_url: normalizeHttpUrl(body.logo),
     tags: body.tags || [],
