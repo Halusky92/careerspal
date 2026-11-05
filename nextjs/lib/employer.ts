@@ -8,6 +8,8 @@ import {
   START_PACK_NEXT_PRICE,
   type StartPackStatus,
 } from "./founding";
+import { startPackUsage, type StartPackJobRow } from "./startPackQuota";
+import { hostnameDomain, normalizeCompanyKey, workEmailDomain } from "./workEmailDomain";
 
 export const EMPLOYER_JOB_SELECT =
   "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,origin,company_id,created_by,companies(name,slug,logo_url,website,description)";
@@ -86,7 +88,11 @@ export const EMPLOYER_STATUSES = new Set([
   "archived",
 ]);
 
-const COUNTED_FOUNDING_STATUSES = new Set(["published", "paused", "closed", "archived"]);
+export type StartPackHint = {
+  companyId?: string | null;
+  companyName?: string | null;
+  email?: string | null;
+};
 
 export async function requireEmployer(request: Request) {
   const auth = await getSupabaseProfile(request);
@@ -188,7 +194,70 @@ const emptyStartPack = (reason: string, extra?: Partial<StartPackStatus>): Start
   ...extra,
 });
 
-export async function getFoundingStatus(profileId: string): Promise<StartPackStatus> {
+async function loadStartPackCluster(profileId: string, hint?: StartPackHint) {
+  if (!supabaseAdmin) {
+    return { companyIds: [] as string[], profileIds: [profileId], email: hint?.email || "", companyId: hint?.companyId || null };
+  }
+
+  let email = (hint?.email || "").trim();
+  if (!email) {
+    const { data: profile } = await supabaseAdmin.from("profiles").select("email").eq("id", profileId).maybeSingle();
+    email = profile?.email || "";
+  }
+  const domain = workEmailDomain(email);
+  const profileIds = new Set<string>([profileId]);
+
+  if (domain) {
+    const { data: teammates } = await supabaseAdmin
+      .from("profiles")
+      .select("id,email")
+      .ilike("email", `%@${domain}`);
+    for (const row of teammates || []) {
+      if (workEmailDomain(row.email) === domain) profileIds.add(row.id);
+    }
+  }
+
+  const ids = [...profileIds];
+  const companyIds = new Set<string>();
+  if (hint?.companyId) companyIds.add(hint.companyId);
+
+  const ownerFilter = ids.map((id) => `claimed_by.eq.${id},created_by.eq.${id}`).join(",");
+  const { data: ownedCompanies } = await supabaseAdmin
+    .from("companies")
+    .select("id,name,website,claimed_by,created_by,founding_expires_at")
+    .or(ownerFilter);
+
+  for (const row of ownedCompanies || []) {
+    if (row.id) companyIds.add(row.id);
+  }
+
+  const hintKey = normalizeCompanyKey(hint?.companyName);
+  if (hintKey) {
+    const nameQuery = hint.companyName!.trim().replace(/[%_,()]/g, " ").slice(0, 80);
+    const { data: named } = await supabaseAdmin.from("companies").select("id,name").ilike("name", `%${nameQuery}%`).limit(25);
+    for (const row of named || []) {
+      if (normalizeCompanyKey(row.name) === hintKey && row.id) companyIds.add(row.id);
+    }
+  }
+
+  if (domain) {
+    const { data: bySite } = await supabaseAdmin.from("companies").select("id,website").ilike("website", `%${domain}%`).limit(25);
+    for (const row of bySite || []) {
+      const host = hostnameDomain(row.website);
+      if (host === domain || host.endsWith(`.${domain}`)) companyIds.add(row.id);
+    }
+  }
+
+  const primaryCompany =
+    hint?.companyId ||
+    ownedCompanies?.[0]?.id ||
+    [...companyIds][0] ||
+    null;
+
+  return { companyIds: [...companyIds], profileIds: ids, email, companyId: primaryCompany };
+}
+
+export async function getFoundingStatus(profileId: string, hint?: StartPackHint): Promise<StartPackStatus> {
   if (!supabaseAdmin) {
     return emptyStartPack("not_configured");
   }
@@ -196,13 +265,20 @@ export async function getFoundingStatus(profileId: string): Promise<StartPackSta
     return emptyStartPack("launch_closed");
   }
 
-  const { data: myCompany } = await supabaseAdmin
-    .from("companies")
-    .select("id,founding_expires_at,claimed_by,created_by")
-    .or(`claimed_by.eq.${profileId},created_by.eq.${profileId}`)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const cluster = await loadStartPackCluster(profileId, hint);
+  const { data: myCompany } = cluster.companyId
+    ? await supabaseAdmin
+        .from("companies")
+        .select("id,founding_expires_at")
+        .eq("id", cluster.companyId)
+        .maybeSingle()
+    : await supabaseAdmin
+        .from("companies")
+        .select("id,founding_expires_at,claimed_by,created_by")
+        .or(`claimed_by.eq.${profileId},created_by.eq.${profileId}`)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
   const now = Date.now();
   const myExpiry = myCompany?.founding_expires_at ? new Date(myCompany.founding_expires_at).getTime() : 0;
@@ -216,31 +292,44 @@ export async function getFoundingStatus(profileId: string): Promise<StartPackSta
   const usedSlots = typeof foundingCompanies === "number" ? foundingCompanies : 0;
   const remainingSlots = Math.max(0, FOUNDING_COMPANY_CAP - usedSlots);
 
-  const { data: jobs } = await supabaseAdmin
+  const filters: string[] = [];
+  if (cluster.profileIds.length > 0) filters.push(`created_by.in.(${cluster.profileIds.join(",")})`);
+  if (cluster.companyIds.length > 0) filters.push(`company_id.in.(${cluster.companyIds.join(",")})`);
+  const jobQuery = supabaseAdmin
     .from("jobs")
-    .select("id,status,origin,plan_price,stripe_payment_status")
-    .eq("created_by", profileId);
-  const usedJobs = (jobs || []).filter((job) => {
-    if ((job.origin || "employer") === "greenhouse") return false;
-    if (!COUNTED_FOUNDING_STATUSES.has(job.status || "")) return false;
-    return job.plan_price === 0 || job.stripe_payment_status === "founding";
-  }).length;
-  const remainingJobs = Math.max(0, FOUNDING_JOBS_PER_COMPANY - usedJobs);
+    .select("id,created_by,company_id,origin,plan_price,stripe_payment_status,company_description");
+  const { data: jobs } = filters.length > 0 ? await jobQuery.or(filters.join(",")) : await jobQuery.eq("created_by", profileId);
+  const merged = new Map<string, StartPackJobRow>();
+  for (const job of (jobs || []) as StartPackJobRow[]) merged.set(job.id, job);
+  const nameKey = normalizeCompanyKey(hint?.companyName);
+  if (nameKey && hint?.companyName) {
+    const nameQuery = hint.companyName.trim().replace(/[%_,()]/g, " ").slice(0, 80);
+    const { data: namedJobs } = await supabaseAdmin
+      .from("jobs")
+      .select("id,created_by,company_id,origin,plan_price,stripe_payment_status,company_description")
+      .ilike("company_description", `${nameQuery}%`)
+      .limit(100);
+    for (const job of (namedJobs || []) as Array<StartPackJobRow & { company_description?: string | null }>) {
+      if (normalizeCompanyKey((job.company_description || "").split("\n")[0]) === nameKey) merged.set(job.id, job);
+    }
+  }
+
+  const usage = startPackUsage({ jobs: [...merged.values()], profileId });
   const base = {
     enabled: true,
     remainingSlots,
-    remainingJobs,
-    usedJobs,
-    quota: FOUNDING_JOBS_PER_COMPANY,
+    remainingJobs: usage.remainingJobs,
+    usedJobs: usage.usedJobs,
+    quota: usage.quota,
     nextPrice: START_PACK_NEXT_PRICE,
-    companyId: myCompany?.id || null,
+    companyId: myCompany?.id || cluster.companyId || null,
   };
 
   if (!alreadyFounding && remainingSlots <= 0) {
     return { ...base, eligible: false, reason: "no_slots" };
   }
-  if (remainingJobs <= 0) {
-    return { ...base, remainingJobs: 0, eligible: false, reason: "job_cap" };
+  if (usage.remainingJobs <= 0) {
+    return { ...base, remainingJobs: 0, eligible: false, reason: usage.reason === "account_cap" ? "account_cap" : "company_cap" };
   }
 
   return {

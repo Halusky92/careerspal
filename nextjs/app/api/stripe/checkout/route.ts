@@ -134,7 +134,7 @@ export async function POST(request: Request) {
   const isLaunchDollar =
     Number(price) === FOUNDING_LAUNCH_PRICE && (body.planName || jobRow.plan_type || "Standard") === "Standard";
   if (isLaunchDollar) {
-    const founding = await getFoundingStatus(auth.profile.id);
+    const founding = await getFoundingStatus(auth.profile.id, { email: auth.profile.email });
     if (!founding.eligible) {
       return NextResponse.json({ error: "The Start pack is no longer available for this account." }, { status: 403 });
     }

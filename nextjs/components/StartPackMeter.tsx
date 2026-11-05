@@ -25,7 +25,7 @@ export default function StartPackMeter({
   const remainingAfter = pendingUse ? Math.max(0, remaining - 1) : remaining;
   const nextPrice = status.nextPrice || START_PACK_NEXT_PRICE;
   const closedNew = status.reason === "no_slots" && !status.eligible;
-  const depleted = remaining === 0 || status.reason === "job_cap";
+  const depleted = remaining === 0 || status.reason === "job_cap" || status.reason === "company_cap" || status.reason === "account_cap";
   const low = !depleted && !closedNew && remainingAfter <= 2;
 
   const shell = closedNew || depleted
@@ -37,7 +37,9 @@ export default function StartPackMeter({
   const headline = closedNew
     ? "Start pack is not open for new companies."
     : depleted
-      ? `Start pack used. Next listing is $${nextPrice}.`
+      ? status.reason === "company_cap"
+        ? `This company already used ${quota} free listings. Next is $${nextPrice}.`
+        : `Start pack used. Next listing is $${nextPrice}.`
       : remaining === 1
         ? `Last free listing. Then $${nextPrice}.`
         : `${remaining} free left, then $${nextPrice}.`;

@@ -47,6 +47,11 @@ const PostJobPageInner = () => {
   const [submitIssues, setSubmitIssues] = useState<ListingScreenIssue[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
+  const applyFounding = (data: StartPackStatus) => {
+    setFoundingStatus(data);
+    setFoundingEligible(Boolean(data.eligible));
+  };
+
   // Ensure the admin-only $1 plan never leaks to non-admins via sessionStorage.
   // Price 0 is Start pack, not the $1 test plan.
   useEffect(() => {
@@ -113,9 +118,7 @@ const PostJobPageInner = () => {
       try {
         const foundingRes = await authFetch("/api/employer/founding", {}, accessToken);
         if (foundingRes.ok) {
-          const data = (await foundingRes.json()) as StartPackStatus;
-          setFoundingStatus(data);
-          setFoundingEligible(Boolean(data.eligible));
+          applyFounding((await foundingRes.json()) as StartPackStatus);
         } else {
           setFoundingEligible(false);
           setFoundingStatus(null);
@@ -329,6 +332,15 @@ const PostJobPageInner = () => {
         showTestPlan={showTestPlan}
         foundingEligible={foundingEligible}
         foundingStatus={foundingStatus}
+        onCompanyForFounding={async (company) => {
+          if (!accessToken) return;
+          const foundingRes = await authFetch(
+            `/api/employer/founding?company=${encodeURIComponent(company)}`,
+            {},
+            accessToken,
+          );
+          if (foundingRes.ok) applyFounding((await foundingRes.json()) as StartPackStatus);
+        }}
         initialJob={initialJob}
         submitting={submitting}
         submitError={submitError}

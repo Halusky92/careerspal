@@ -147,7 +147,10 @@ export const POST = async (request: Request) => {
   let storedPlanPrice =
     typeof rawPlanPrice === "number" ? Math.max(0, Math.round(rawPlanPrice)) : null;
   if (requestedType === "Standard" && !isAdminTestPrice) {
-    const founding = await getFoundingStatus(auth.profileId);
+    const founding = await getFoundingStatus(auth.profileId, {
+      email: auth.email,
+      companyName: body.company || null,
+    });
     if (founding.eligible) {
       storedPlanType = "Standard";
       storedPlanPrice = 0;

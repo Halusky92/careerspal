@@ -32,7 +32,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     );
   }
 
-  const founding = await getFoundingStatus(auth.profileId);
+  const founding = await getFoundingStatus(auth.profileId, {
+    email: auth.email,
+    companyId: owned.job.company_id,
+    companyName: owned.job.company_description,
+  });
   if (!founding.eligible) {
     return NextResponse.json(
       {

@@ -24,6 +24,7 @@ interface PostJobProps {
   showTestPlan?: boolean;
   foundingEligible?: boolean;
   foundingStatus?: StartPackStatus | null;
+  onCompanyForFounding?: (company: string) => void;
   initialJob?: Partial<Job>;
   submitting?: boolean;
   submitError?: string;
@@ -110,7 +111,7 @@ const formFromJob = (job?: Partial<Job> | null, draft?: DraftPost | null): JobFo
   };
 };
 
-const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan, foundingEligible, foundingStatus, initialJob, submitting, submitError, submitIssues }) => {
+const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan, foundingEligible, foundingStatus, onCompanyForFounding, initialJob, submitting, submitError, submitIssues }) => {
   const { user, profile, loading: authLoading } = useSupabaseAuth();
   const owner = postingOwnerKey(user?.id, profile?.email);
   const [step, setStep] = useState(1);
@@ -431,6 +432,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
       return;
     }
     setScreenIssues((prev) => prev.filter((issue) => FIELD_STEP[issue.field] === 2 && issueStillApplies(issue)));
+    if (formData.company.trim()) onCompanyForFounding?.(formData.company.trim());
     setStep(2);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -443,6 +445,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     }
     if (allReady && (screenToken || aiOk === true || aiOk === null)) {
       setScreenIssues([]);
+      if (formData.company.trim()) onCompanyForFounding?.(formData.company.trim());
       setStep(3);
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
@@ -477,6 +480,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
         return;
       }
       setScreenIssues([]);
+      if (formData.company.trim()) onCompanyForFounding?.(formData.company.trim());
       setStep(3);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
