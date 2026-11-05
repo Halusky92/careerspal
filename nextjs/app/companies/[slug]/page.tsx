@@ -268,6 +268,12 @@ export default async function CompanyPage({ params }: PageProps) {
                       Visit website
                     </a>
                   ) : null}
+                  <Link
+                    href="/post-a-job"
+                    className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
+                  >
+                    Post a job
+                  </Link>
                 </div>
               </div>
 

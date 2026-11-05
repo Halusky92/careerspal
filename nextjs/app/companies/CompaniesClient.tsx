@@ -233,9 +233,14 @@ const CompaniesClient = ({ companies }: Props) => {
               {companies.length} compan{companies.length === 1 ? "y" : "ies"} with a role on the board in the last 30 days.
             </p>
           </div>
-          <Link href="/jobs" className="inline-flex h-8 items-center rounded-lg bg-slate-900 px-3 text-xs font-medium text-white hover:bg-black">
-            Browse jobs
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/post-a-job" className="inline-flex h-8 items-center rounded-lg bg-indigo-600 px-3 text-xs font-medium text-white hover:bg-indigo-700">
+              Post a job
+            </Link>
+            <Link href="/jobs" className="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700">
+              Browse jobs
+            </Link>
+          </div>
         </div>
 
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_auto] gap-2">

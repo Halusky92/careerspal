@@ -868,7 +868,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-2 md:col-span-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">Company Name * <Mark field="company" /></label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">Company name <Mark field="company" /></label>
                     <input type="text" placeholder="Your Company Name" className={`cp-field w-full h-10 rounded-lg px-3 text-sm outline-none${fieldTone("company")}`} value={formData.company} onChange={e => { setFormData({...formData, company: e.target.value}); setScreenIssues((prev) => prev.filter((issue) => issue.field !== "company")); }} />
                     {showIssue("company") && <p className="text-[11px] font-semibold text-rose-700">{issueFor("company")}</p>}
                   </div>
