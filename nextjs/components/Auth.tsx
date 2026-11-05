@@ -147,7 +147,7 @@ const Auth: React.FC = () => {
         ) : null}
 
         <p className="mt-6 text-center text-xs text-slate-500">
-          By continuing you agree to our{" "}
+          Apply and save need an account. By continuing you agree to our{" "}
           <a className="text-slate-700 hover:underline" href="/privacy">
             Privacy
           </a>{" "}

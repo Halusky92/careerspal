@@ -8,6 +8,7 @@ import Footer from "../components/Footer";
 import Providers from "../components/Providers";
 import AnalyticsTracker from "../components/AnalyticsTracker";
 import CanonicalHostRedirect from "../components/CanonicalHostRedirect";
+import ApplyResume from "../components/ApplyResume";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -90,6 +91,7 @@ export default function RootLayout({
             <AnalyticsTracker />
           </Suspense>
           <Navbar />
+          <ApplyResume />
           <main>{children}</main>
           <Footer />
         </Providers>

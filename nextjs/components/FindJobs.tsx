@@ -13,7 +13,7 @@ import { authFetch } from "../lib/authFetch";
 import JobRow from "./JobRow";
 import JobDetailPanel from "./JobDetailPanel";
 import PredictiveField from "./PredictiveField";
-import { trackJobApply } from "../lib/trackJobEvent";
+import { startApply } from "../lib/startApply";
 import FeaturedBoardZone from "./FeaturedBoardZone";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
 import { jobMatchesLocationQuery, locationLabelsForJobs } from "../lib/locationFilter";
@@ -544,17 +544,17 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   const handleApply = async (job: Job) => {
     const isPrivate = job.status === "private" || job.status === "invite_only";
-    const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl !== "#");
-    if (isPrivate) {
-      router.push("/auth");
-      return;
-    }
-    if (!hasApplyUrl) {
+    const result = startApply({
+      accessToken,
+      jobId: job.id,
+      applyUrl: job.applyUrl,
+      isPrivate,
+    });
+    if (result.missing) {
       alert("Apply link is not available yet.");
       return;
     }
-    trackJobApply(job.id);
-    window.open(job.applyUrl, "_blank", "noopener,noreferrer");
+    if (result.href) router.push(result.href);
   };
 
   const handleSaveSearch = async () => {

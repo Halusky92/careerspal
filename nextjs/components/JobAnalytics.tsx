@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
-import { trackJobApply, trackJobView } from "../lib/trackJobEvent";
+import { useEffect, type MouseEvent, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { trackJobView } from "../lib/trackJobEvent";
+import { useSupabaseAuth } from "./Providers";
+import { startApply } from "../lib/startApply";
 
 export function JobViewTracker({ jobId }: { jobId: string }) {
   useEffect(() => {
@@ -24,15 +27,18 @@ export function ApplyClickLink({
   children: ReactNode;
   external?: boolean;
 }) {
-  const onClick = () => {
-    trackJobApply(jobId);
+  const router = useRouter();
+  const { accessToken } = useSupabaseAuth();
+  const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    const result = startApply({ accessToken, jobId, applyUrl: href });
+    if (result.href) router.push(result.href);
   };
   return (
     <a
       href={href}
       onClick={onClick}
       className={className}
-      target={external ? "_blank" : undefined}
       rel={external ? "noopener noreferrer nofollow" : undefined}
     >
       {children}

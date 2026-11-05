@@ -8,6 +8,7 @@ import { isOnNicheJob } from "../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../lib/liveBoard";
 import { formatSalaryDisplay } from "../../lib/formatSalary";
 import JobViewCount from "../../components/JobViewCount";
+import { ApplyClickLink } from "../../components/JobAnalytics";
 
 export const dynamic = "force-dynamic";
 
@@ -97,14 +98,14 @@ function StaticJobsList({ jobs, total }: { jobs: Job[]; total: number }) {
                       {formatSalaryDisplay(job.salary)}
                     </span>
                     {showApply ? (
-                      <a
+                      <ApplyClickLink
+                        jobId={job.id}
                         href={applyUrl}
-                        target={isExternal ? "_blank" : undefined}
-                        rel={isExternal ? "noopener noreferrer nofollow" : undefined}
+                        external={isExternal}
                         className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 active:bg-indigo-800 transition-colors whitespace-nowrap inline-flex items-center"
                       >
                         Apply
-                      </a>
+                      </ApplyClickLink>
                     ) : (
                       <span className="h-9 px-4 rounded-lg bg-slate-100 text-slate-500 text-sm font-medium whitespace-nowrap inline-flex items-center">
                         Details

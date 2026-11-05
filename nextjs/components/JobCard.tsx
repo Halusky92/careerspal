@@ -9,8 +9,9 @@ import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import FormattedDescription from "./FormattedDescription";
 import { formatSalaryDisplay } from "../lib/formatSalary";
 import { formatRelativePosted } from "../lib/formatPosted";
-import { trackJobApply } from "../lib/trackJobEvent";
 import JobViewCount from "./JobViewCount";
+import { useSupabaseAuth } from "./Providers";
+import { startApply } from "../lib/startApply";
 
 export type JobCardVariant = "board" | "home";
 
@@ -55,6 +56,7 @@ export default function JobCard({
   className = "",
 }: JobCardProps) {
   const router = useRouter();
+  const { accessToken } = useSupabaseAuth();
   const displayType = job.type && job.type !== "Unknown" ? job.type : "";
   const detailHref = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
   const rawSlug = (job.companySlug || "").toString().trim();
@@ -275,13 +277,13 @@ export default function JobCard({
         <button
           onClick={async (event) => {
             event.stopPropagation();
-            if (isPrivate) {
-              router.push("/auth");
-              return;
-            }
-            if (!hasApplyUrl) return;
-            trackJobApply(job.id);
-            window.open(job.applyUrl, "_blank", "noopener,noreferrer");
+            const result = startApply({
+              accessToken,
+              jobId: job.id,
+              applyUrl: job.applyUrl,
+              isPrivate,
+            });
+            if (result.href) router.push(result.href);
           }}
           disabled={!isPrivate && !hasApplyUrl}
           className={`inline-flex items-center justify-center h-9 px-4 rounded-lg text-sm font-medium transition-colors ${

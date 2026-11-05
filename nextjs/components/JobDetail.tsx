@@ -8,9 +8,11 @@ import CompanyLogo from './CompanyLogo';
 import FormattedDescription from "./FormattedDescription";
 import { formatSalaryDisplay } from "../lib/formatSalary";
 import { formatRelativePosted } from "../lib/formatPosted";
-import { trackJobApply, trackJobView } from "../lib/trackJobEvent";
+import { trackJobView } from "../lib/trackJobEvent";
 import FeaturedBadge from "./FeaturedBadge";
 import JobViewCount from "./JobViewCount";
+import { useSupabaseAuth } from "./Providers";
+import { startApply } from "../lib/startApply";
 
 interface JobDetailProps {
   job: Job;
@@ -22,6 +24,7 @@ interface JobDetailProps {
 
 const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob, onSelectCompany }) => {
   const router = useRouter();
+  const { accessToken } = useSupabaseAuth();
   const [isReporting, setIsReporting] = useState(false);
   const [copied, setCopied] = useState(false);
   
@@ -56,16 +59,17 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
   const postedDate = formatRelativePosted(job.timestamp, job.postedAt || "");
 
   const handleApply = async () => {
-    if (isPrivate) {
-      router.push('/auth');
-      return;
-    }
-    if (!hasApplyUrl) {
+    const result = startApply({
+      accessToken,
+      jobId: job.id,
+      applyUrl: job.applyUrl,
+      isPrivate,
+    });
+    if (result.missing) {
       alert("Apply link is not available yet.");
       return;
     }
-    trackJobApply(job.id);
-    window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
+    if (result.href) router.push(result.href);
   };
 
   const handleShare = (target: "linkedin" | "twitter") => {

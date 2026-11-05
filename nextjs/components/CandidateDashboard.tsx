@@ -5,7 +5,8 @@ import React, { useState, useMemo } from 'react';
 import { Job, ResumeAudit, UserSession } from '../types';
 import { createJobSlug } from '../lib/jobs';
 import { auditCandidateProfile } from '../services/geminiService';
-import { trackJobApply } from "../lib/trackJobEvent";
+import { startApply } from "../lib/startApply";
+import { useSupabaseAuth } from "./Providers";
 
 interface CandidateDashboardProps {
   onBrowse: () => void;
@@ -14,6 +15,7 @@ interface CandidateDashboardProps {
 }
 
 const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ onBrowse, user, allJobs }) => {
+  const { accessToken } = useSupabaseAuth();
   const tabs = ['overview', 'applications', 'saved'] as const;
   type CandidateTab = (typeof tabs)[number];
   const [activeTab, setActiveTab] = useState<CandidateTab>('overview');
@@ -326,12 +328,12 @@ const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ onBrowse, user,
                       <button
                         onClick={async (event) => {
                           event.stopPropagation();
-                          trackJobApply(job.id);
-                          if (job.applyUrl && job.applyUrl !== '#') {
-                            window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
-                          } else {
-                            alert("Apply link is not available yet.");
-                          }
+                          const result = startApply({
+                            accessToken,
+                            jobId: job.id,
+                            applyUrl: job.applyUrl,
+                          });
+                          if (result.missing) alert("Apply link is not available yet.");
                         }}
                         disabled={!job.applyUrl || job.applyUrl === '#'}
                         className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black text-xs hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100 disabled:opacity-60 disabled:cursor-not-allowed"
