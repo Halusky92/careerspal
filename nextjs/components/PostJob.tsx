@@ -13,6 +13,7 @@ import StartPackMeter from "./StartPackMeter";
 import type { StartPackStatus } from "../lib/founding";
 import { isOnNicheJob } from "../lib/nicheScope";
 import { DESCRIPTION_MAX, localListingIssues } from "../lib/jobs/listingFieldChecks";
+import { composeJobDescription, parseJobDescription, SECTION_MAX } from "../lib/jobDescriptionSections";
 
 export type ListingScreenIssue = { field: string; message: string };
 
@@ -38,7 +39,11 @@ const FIELD_STEP: Record<string, 1 | 2> = {
   company: 2,
 };
 
-type JobFormData = Omit<Job, 'id' | 'postedAt' | 'isFeatured' | 'planType' | 'plan' | 'timestamp' | 'status' | 'views' | 'matches'>;
+type JobFormData = Omit<Job, 'id' | 'postedAt' | 'isFeatured' | 'planType' | 'plan' | 'timestamp' | 'status' | 'views' | 'matches'> & {
+  workScope?: string;
+  whoYouNeed?: string;
+  aboutTeam?: string;
+};
 
 type DraftPost = { step?: number; formData?: Partial<JobFormData>; logoFileName?: string };
 
@@ -81,22 +86,29 @@ const readDraftPost = (owner: string): DraftPost | null => {
   }
 };
 
-const formFromJob = (job?: Partial<Job> | null, draft?: DraftPost | null): JobFormData => ({
-  title: job?.title || draft?.formData?.title || "",
-  keywords: job?.keywords || draft?.formData?.keywords || "",
-  description: job?.description || draft?.formData?.description || "",
-  company: job?.company || draft?.formData?.company || "",
-  companyWebsite: job?.companyWebsite || draft?.formData?.companyWebsite || "",
-  logo: job?.logo || draft?.formData?.logo || "",
-  salary: job?.salary || draft?.formData?.salary || "",
-  location: job?.location || draft?.formData?.location || "",
-  type: (job?.type as JobFormData["type"]) || (draft?.formData?.type as JobFormData["type"]) || "Full-time",
-  remotePolicy: job?.remotePolicy || draft?.formData?.remotePolicy || "Remote (Global)",
-  category: job?.category || draft?.formData?.category || "Operations",
-  applyUrl: job?.applyUrl || draft?.formData?.applyUrl || "",
-  tags: job?.tags?.length ? job.tags : draft?.formData?.tags?.length ? draft.formData.tags : [],
-  tools: job?.tools?.length ? job.tools : draft?.formData?.tools?.length ? draft.formData.tools : [],
-});
+const formFromJob = (job?: Partial<Job> | null, draft?: DraftPost | null): JobFormData => {
+  const description = job?.description || draft?.formData?.description || "";
+  const parsed = parseJobDescription(description);
+  return {
+    title: job?.title || draft?.formData?.title || "",
+    keywords: job?.keywords || draft?.formData?.keywords || "",
+    description,
+    workScope: draft?.formData?.workScope ?? parsed.work,
+    whoYouNeed: draft?.formData?.whoYouNeed ?? parsed.who,
+    aboutTeam: draft?.formData?.aboutTeam ?? parsed.about,
+    company: job?.company || draft?.formData?.company || "",
+    companyWebsite: job?.companyWebsite || draft?.formData?.companyWebsite || "",
+    logo: job?.logo || draft?.formData?.logo || "",
+    salary: job?.salary || draft?.formData?.salary || "",
+    location: job?.location || draft?.formData?.location || "",
+    type: (job?.type as JobFormData["type"]) || (draft?.formData?.type as JobFormData["type"]) || "Full-time",
+    remotePolicy: job?.remotePolicy || draft?.formData?.remotePolicy || "Remote (Global)",
+    category: job?.category || draft?.formData?.category || "Operations",
+    applyUrl: job?.applyUrl || draft?.formData?.applyUrl || "",
+    tags: job?.tags?.length ? job.tags : draft?.formData?.tags?.length ? draft.formData.tags : [],
+    tools: job?.tools?.length ? job.tools : draft?.formData?.tools?.length ? draft.formData.tools : [],
+  };
+};
 
 const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan, foundingEligible, foundingStatus, initialJob, submitting, submitError, submitIssues }) => {
   const { user, profile, loading: authLoading } = useSupabaseAuth();
@@ -112,7 +124,6 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const [aiChecking, setAiChecking] = useState(false);
   const [aiOk, setAiOk] = useState<boolean | null>(null);
   const [customTool, setCustomTool] = useState("");
-  const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const titleBoxRef = useRef<HTMLDivElement>(null);
   const formatPrice = (value: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
@@ -126,17 +137,6 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   
   const [formData, setFormData] = useState<JobFormData>(() => formFromJob(initialJob));
   const [draftOwner, setDraftOwner] = useState<string | null>(null);
-
-  const resizeDescriptionField = () => {
-    const el = descriptionRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.max(el.scrollHeight, 128)}px`;
-  };
-
-  useEffect(() => {
-    resizeDescriptionField();
-  }, [formData.description]);
 
   useEffect(() => {
     if (!submitIssues?.length) return;
@@ -304,6 +304,22 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     return Boolean(issueFor(field) && (fieldValue(field).trim() || screenIssues.some((issue) => issue.field === field)));
   };
 
+  const applySections = (patch: Partial<Pick<JobFormData, "workScope" | "whoYouNeed" | "aboutTeam">>) => {
+    setFormData((prev) => {
+      const next = { ...prev, ...patch };
+      next.workScope = String(next.workScope || "").slice(0, SECTION_MAX);
+      next.whoYouNeed = String(next.whoYouNeed || "").slice(0, SECTION_MAX);
+      next.aboutTeam = String(next.aboutTeam || "").slice(0, SECTION_MAX);
+      next.description = composeJobDescription({
+        work: next.workScope,
+        who: next.whoYouNeed,
+        about: next.aboutTeam,
+      }).slice(0, DESCRIPTION_MAX);
+      return next;
+    });
+    setScreenIssues((prev) => prev.filter((issue) => issue.field !== "description"));
+  };
+
   const fieldReady = (field: string) => {
     if (field === "title" && formData.title.trim().length < 4) return false;
     if (field === "salary") return !localIssues.some((issue) => issue.field === "salary") && Boolean(formData.salary.trim());
@@ -465,8 +481,14 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     const normalizedApplyUrl = normalizeApplyUrl(formData.applyUrl);
     const normalizedCompanyWebsite = normalizeHttpUrl(formData.companyWebsite || "");
 
+    const { workScope: _work, whoYouNeed: _who, aboutTeam: _about, ...jobFields } = formData;
     const finalJob: Job = { 
-      ...formData,
+      ...jobFields,
+      description: composeJobDescription({
+        work: formData.workScope,
+        who: formData.whoYouNeed,
+        about: formData.aboutTeam,
+      }).slice(0, DESCRIPTION_MAX) || formData.description,
       tags: mergedTags,
       tools: selectedTools,
       keywords: toolsToKeywords(selectedTools) || formData.keywords,
@@ -782,28 +804,52 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center gap-3">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">Job Description * <Mark field="description" /></label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">Role write-up * <Mark field="description" /></label>
                       <span className={`text-[11px] ${formData.description.length >= DESCRIPTION_MAX ? "text-rose-700 font-medium" : "text-slate-400"}`}>
                         {formData.description.length} / {DESCRIPTION_MAX}
                       </span>
                     </div>
-                    <textarea
-                      ref={descriptionRef}
-                      rows={5}
-                      maxLength={DESCRIPTION_MAX}
-                      placeholder="Write the role in your own words: what they will do, what you need, how the team works."
-                      className={`cp-field w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-none overflow-hidden min-h-[8rem]${fieldTone("description")}`}
-                      value={formData.description}
-                      onChange={(e) => {
-                        setFormData({ ...formData, description: e.target.value.slice(0, DESCRIPTION_MAX) });
-                        setScreenIssues((prev) => prev.filter((issue) => issue.field !== "description"));
-                      }}
-                      onInput={resizeDescriptionField}
-                    />
+                    <p className="text-[11px] text-slate-500">Three short boxes, like Indeed. Fill what you know. We only block abusive copy.</p>
+                    <div className={`rounded-xl border bg-slate-50/70 p-3 space-y-1.5${showIssue("description") ? " border-rose-300" : " border-slate-200"}`}>
+                      <label className="text-[11px] font-semibold text-slate-800">What they’ll do</label>
+                      <p className="text-[11px] text-slate-500">Day-to-day work. Bullet points are fine.</p>
+                      <textarea
+                        rows={4}
+                        maxLength={SECTION_MAX}
+                        placeholder="e.g. Own weekly ops reviews, keep Airtable clean, roll out new workflows."
+                        className="cp-field w-full rounded-lg px-3 py-2 text-sm outline-none min-h-[6rem]"
+                        value={formData.workScope || ""}
+                        onChange={(e) => applySections({ workScope: e.target.value })}
+                      />
+                      <p className="text-[10px] text-slate-400 text-right">{(formData.workScope || "").length} / {SECTION_MAX}</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-1.5">
+                      <label className="text-[11px] font-semibold text-slate-800">Who you’re looking for</label>
+                      <p className="text-[11px] text-slate-500">Must-haves. Skip nice-to-haves if you don’t know yet.</p>
+                      <textarea
+                        rows={3}
+                        maxLength={SECTION_MAX}
+                        placeholder="e.g. 3 years in operations, Notion/Airtable, clear writing."
+                        className="cp-field w-full rounded-lg px-3 py-2 text-sm outline-none min-h-[5rem]"
+                        value={formData.whoYouNeed || ""}
+                        onChange={(e) => applySections({ whoYouNeed: e.target.value })}
+                      />
+                      <p className="text-[10px] text-slate-400 text-right">{(formData.whoYouNeed || "").length} / {SECTION_MAX}</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-1.5">
+                      <label className="text-[11px] font-semibold text-slate-800">About the team</label>
+                      <p className="text-[11px] text-slate-500">Optional. Who you are and how you work.</p>
+                      <textarea
+                        rows={3}
+                        maxLength={SECTION_MAX}
+                        placeholder="e.g. 12-person remote product team, async, no meeting-heavy culture."
+                        className="cp-field w-full rounded-lg px-3 py-2 text-sm outline-none min-h-[5rem]"
+                        value={formData.aboutTeam || ""}
+                        onChange={(e) => applySections({ aboutTeam: e.target.value })}
+                      />
+                      <p className="text-[10px] text-slate-400 text-right">{(formData.aboutTeam || "").length} / {SECTION_MAX}</p>
+                    </div>
                     {showIssue("description") && <p className="text-[11px] font-semibold text-rose-700">{issueFor("description")}</p>}
-                    {!showIssue("description") ? (
-                      <p className="text-[11px] text-slate-500">Write it in your own words. Max {DESCRIPTION_MAX} characters. We only block abusive copy.</p>
-                    ) : null}
                   </div>
                 </div>
                 <button onClick={handleStep1} disabled={!step1Ready || aiChecking} className="w-full h-10 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
