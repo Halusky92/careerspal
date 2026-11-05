@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Job } from "../types";
 import { PLAN_PRICE_LINE } from "../lib/plans";
+import PublicSubscriberNoteClient from "./PublicSubscriberNoteClient";
 
 interface HireTalentProps {
   onPostJob: () => void;
@@ -116,6 +117,10 @@ const HireTalent: React.FC<HireTalentProps> = ({ onPostJob }) => {
 
         <ul className="mt-6 space-y-2 text-sm text-slate-700">
           <li>The listing is public after review. People apply on your link.</li>
+          <li>
+            Published roles can appear in twice-weekly email alerts. Not a guaranteed send or a promised volume.
+            <PublicSubscriberNoteClient className="mt-1 text-sm text-slate-500" />
+          </li>
           <li>
             Seekers who opt in can be opened in People. After we review a role, CareersPal may attach a few suggested seekers to that listing — not a volume or fit guarantee.
           </li>

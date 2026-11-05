@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import AlertsClient from "./AlertsClient";
+import { getPublicSubscriberCount } from "../../lib/countAlertSubscribers";
 
 type PageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -34,11 +35,12 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AlertsPage({ searchParams }: PageProps) {
   const resolved = (await searchParams) || {};
   const initialCategory = getParam(resolved.category) || getParam(resolved.query) || null;
+  const subscriberCount = await getPublicSubscriberCount();
 
   return (
     <div className="bg-[#F8F9FD] pb-4">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-4">
-        <AlertsClient initialCategory={initialCategory} />
+        <AlertsClient initialCategory={initialCategory} subscriberCount={subscriberCount} />
       </div>
     </div>
   );

@@ -16,6 +16,8 @@ import { ApplyClickLink, JobViewTracker } from "../../../components/JobAnalytics
 import FeaturedBadge from "../../../components/FeaturedBadge";
 import { isPaidFeaturedListing } from "../../../lib/featuredListing";
 import JobViewCount from "../../../components/JobViewCount";
+import PublicSubscriberNote from "../../../components/PublicSubscriberNote";
+import { getPublicSubscriberCount } from "../../../lib/countAlertSubscribers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -289,6 +291,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
   }
 
   const similarJobs = await fetchSimilarPublishedJobs(job);
+  const subscriberCount = await getPublicSubscriberCount();
   const canonicalSlug = createJobSlug({ id: job.id, title: job.title || "role" });
   const canonicalPath = `/jobs/${canonicalSlug}`;
   const canonicalUrl = `${getBaseUrl()}${canonicalPath}`;
@@ -515,6 +518,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
               <p className="mt-2 text-slate-600 font-medium max-w-2xl">
                 Fresh openings in your inbox as they hit the market.
               </p>
+              <PublicSubscriberNote count={subscriberCount} className="mt-2 text-sm text-slate-600 font-medium" />
             </div>
             <div className="w-full sm:w-auto">
               <Link

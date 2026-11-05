@@ -7,12 +7,14 @@ import { authFetch } from "../../lib/authFetch";
 import { parseAlertQuery, serializeAlertQuery } from "../../lib/categories";
 import { ALERT_MIN_SALARIES, ALERT_REGIONS, type AlertRegion } from "../../lib/alertPrefs";
 import AlertCategoryPicker from "../../components/AlertCategoryPicker";
+import PublicSubscriberNote from "../../components/PublicSubscriberNote";
 
 type AlertsClientProps = {
   initialCategory?: string | null;
+  subscriberCount?: number | null;
 };
 
-export default function AlertsClient({ initialCategory }: AlertsClientProps) {
+export default function AlertsClient({ initialCategory, subscriberCount = null }: AlertsClientProps) {
   const { profile, accessToken, loading } = useSupabaseAuth();
   const [email, setEmail] = useState("");
   const [selected, setSelected] = useState<string[]>(() => parseAlertQuery(initialCategory));
@@ -89,6 +91,7 @@ export default function AlertsClient({ initialCategory }: AlertsClientProps) {
         <p className="mt-2 text-sm text-slate-600 max-w-2xl">
           Send your email and get fresh openings as they hit the market. Stay in the picture — no noise, just new roles.
         </p>
+        <PublicSubscriberNote count={subscriberCount} />
       </div>
 
       <div className="p-4 sm:p-5 space-y-4">

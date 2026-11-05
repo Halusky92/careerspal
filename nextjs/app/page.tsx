@@ -7,6 +7,7 @@ import { mapSupabaseJob, SupabaseJobRow } from "../lib/supabaseJobs";
 import { isOnNicheJob } from "../lib/nicheScope";
 import { applyLiveBoardFilter } from "../lib/liveBoard";
 import { formatJobSalary } from "../lib/formatSalary";
+import { getPublicSubscriberCount } from "../lib/countAlertSubscribers";
 import JobViewCount from "../components/JobViewCount";
 
 export const dynamic = "force-dynamic";
@@ -67,10 +68,11 @@ function StaticHomeJobs({ jobs }: { jobs: Job[] }) {
 
 export default async function HomePage() {
   const jobs = await fetchPublishedJobs();
+  const subscriberCount = await getPublicSubscriberCount();
   return (
     <>
       <StaticHomeJobs jobs={jobs} />
-      <HomeClient initialJobs={jobs} />
+      <HomeClient initialJobs={jobs} subscriberCount={subscriberCount} />
     </>
   );
 }

@@ -14,11 +14,16 @@ export const subscribeUser = async (email: string, preference: string) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, preference }),
     });
-    const payload = (await response.json()) as { message?: string; error?: string };
+    const payload = (await response.json()) as { message?: string; error?: string; pendingConfirm?: boolean };
     if (!response.ok) {
       return { success: false, message: payload.error || "Unable to subscribe right now." };
     }
-    return { success: true, message: payload.message || "Subscription confirmed." };
+    return {
+      success: true,
+      message:
+        payload.message ||
+        (payload.pendingConfirm ? "Check your inbox to confirm alerts." : "You’re in. Fresh roles will land in your inbox."),
+    };
   } catch {
     return { success: false, message: "Unable to subscribe right now." };
   }

@@ -49,7 +49,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unable to subscribe." }, { status: 500 });
   }
 
-  return NextResponse.json({ message: "Subscription confirmed.", subscriber: data });
+  const pendingConfirm = Boolean(payload.pendingConfirm);
+  return NextResponse.json({
+    message: pendingConfirm
+      ? "Check your inbox to confirm alerts."
+      : payload.existing
+        ? "Preferences saved."
+        : "You’re in. Fresh roles will land in your inbox.",
+    pendingConfirm,
+    subscriber: data,
+  });
 }
 
 export async function GET(request: Request) {

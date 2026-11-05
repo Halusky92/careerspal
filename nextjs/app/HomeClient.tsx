@@ -10,10 +10,17 @@ import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing"
 import FeaturedBoardZone from "../components/FeaturedBoardZone";
 import { useSupabaseAuth } from "../components/Providers";
 import { authFetch } from "../lib/authFetch";
+import PublicSubscriberNote from "../components/PublicSubscriberNote";
 
 const PENDING_SAVE_KEY = "cp_pending_save_job";
 
-export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
+export default function HomeClient({
+  initialJobs,
+  subscriberCount = null,
+}: {
+  initialJobs: Job[];
+  subscriberCount?: number | null;
+}) {
   const router = useRouter();
   const { accessToken, loading: authLoading } = useSupabaseAuth();
   const [jobs, setJobs] = useState<Job[]>(() => initialJobs || []);
@@ -210,6 +217,7 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
           >
             <div className="text-sm font-semibold text-slate-900">For candidates</div>
             <p className="mt-1 text-xs text-slate-600">Email when a new role is published. Apply on the company site.</p>
+            <PublicSubscriberNote count={subscriberCount} className="mt-1 text-xs text-slate-500" />
           </button>
           <button
             type="button"
