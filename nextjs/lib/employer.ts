@@ -9,6 +9,7 @@ import {
   type StartPackStatus,
 } from "./founding";
 import { startPackUsage, type StartPackJobRow } from "./startPackQuota";
+import { mergeStartPackUsage, startPackLedgerCounts } from "./startPackLedger";
 import { hostnameDomain, normalizeCompanyKey, workEmailDomain } from "./workEmailDomain";
 
 export const EMPLOYER_JOB_SELECT =
@@ -314,7 +315,13 @@ export async function getFoundingStatus(profileId: string, hint?: StartPackHint)
     }
   }
 
-  const usage = startPackUsage({ jobs: [...merged.values()], profileId });
+  const liveUsage = startPackUsage({ jobs: [...merged.values()], profileId });
+  const ledger = await startPackLedgerCounts(supabaseAdmin, {
+    email: cluster.email,
+    companyId: myCompany?.id || cluster.companyId || hint?.companyId || null,
+    companyName: hint?.companyName || null,
+  });
+  const usage = mergeStartPackUsage(liveUsage, ledger);
   const base = {
     enabled: true,
     remainingSlots,

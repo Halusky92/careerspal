@@ -12,6 +12,7 @@ import JobViewCount from "../../components/JobViewCount";
 import { getCategoryHubForDbCategory, jobMatchesHub, parseAlertQuery, serializeAlertQuery } from "../../lib/categories";
 import AlertCategoryPicker from "../../components/AlertCategoryPicker";
 import { ALERT_MIN_SALARIES, ALERT_REGIONS, alertPrefsLabel, parseAlertPrefs, type AlertRegion } from "../../lib/alertPrefs";
+import ProfileVisibilitySelect from "../../components/ProfileVisibilitySelect";
 
 type AccountUser = {
   name?: string;
@@ -273,7 +274,12 @@ const AccountPageInner = () => {
   };
 
   const handleDeleteAccount = async () => {
-    if (!confirm("This will permanently delete your account. Continue?")) return;
+    if (
+      !confirm(
+        "This closes your login. Listings can stay on the board. We keep your email and company so the 10 free start-pack listings cannot be reset with a new account. Continue?",
+      )
+    )
+      return;
     await authFetch("/api/account/delete", { method: "DELETE" }, accessToken);
     signOut();
     router.replace("/auth");
@@ -512,56 +518,25 @@ const AccountPageInner = () => {
 
                   <div className="rounded-xl border border-slate-200 p-4 space-y-3">
                     <p className="text-sm font-medium text-slate-900">Who can see this profile</p>
-                    <div className="space-y-2">
-                      {(
-                        [
-                          {
-                            id: "private" as const,
-                            title: "Only me",
-                            body: "Employers cannot view your profile.",
-                          },
-                          {
-                            id: "employers" as const,
-                            title: "Employers on CareersPal",
-                            body: "Signed-in employers can open your profile. CareersPal may later suggest you on a reviewed role. You still apply on their job link.",
-                          },
-                          {
-                            id: "link" as const,
-                            title: "Anyone with my link",
-                            body: "Not listed. Only people you send the link to can open it.",
-                          },
-                        ] as const
-                      ).map((opt) => (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => {
-                            setVisibility(opt.id);
-                            void (async () => {
-                              const response = await authFetch(
-                                "/api/account",
-                                {
-                                  method: "PATCH",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ visibility: opt.id, name, headline, bio, hobbies }),
-                                },
-                                accessToken,
-                              );
-                              const data = (await response.json()) as { user?: AccountUser };
-                              if (data.user?.shareToken) setShareToken(data.user.shareToken);
-                            })();
-                          }}
-                          className={`w-full rounded-xl border px-3 py-2.5 text-left ${
-                            visibility === opt.id
-                              ? "border-indigo-500 bg-indigo-50"
-                              : "border-slate-200 bg-white hover:border-slate-300"
-                          }`}
-                        >
-                          <div className="text-sm font-medium text-slate-900">{opt.title}</div>
-                          <div className="text-xs text-slate-500 mt-0.5">{opt.body}</div>
-                        </button>
-                      ))}
-                    </div>
+                    <ProfileVisibilitySelect
+                      value={visibility}
+                      onChange={(next) => {
+                        setVisibility(next);
+                        void (async () => {
+                          const response = await authFetch(
+                            "/api/account",
+                            {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ visibility: next, name, headline, bio, hobbies }),
+                            },
+                            accessToken,
+                          );
+                          const data = (await response.json()) as { user?: AccountUser };
+                          if (data.user?.shareToken) setShareToken(data.user.shareToken);
+                        })();
+                      }}
+                    />
                     {visibility !== "private" && shareToken && (
                       <p className="text-xs text-slate-500">
                         Preview:{" "}
@@ -892,6 +867,9 @@ const AccountPageInner = () => {
                     >
                       Delete account
                     </button>
+                    <p className="text-xs text-slate-500">
+                      Closing the login does not reset the 10 free listings. We keep the email and company for that quota.
+                    </p>
                   </div>
                 </div>
               )}

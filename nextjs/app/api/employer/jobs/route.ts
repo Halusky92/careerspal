@@ -11,6 +11,7 @@ import {
   resolveEmployerCompany,
 } from "../../../../lib/employer";
 import { formatEmployerSalaryForStorage } from "../../../../lib/formatSalary";
+import { recordStartPackLedger } from "../../../../lib/startPackLedger";
 import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../lib/nicheScope";
 import { canUseAdminTestPlan, isAdminTestPrice } from "../../../../lib/adminTestPlan";
 
@@ -221,6 +222,16 @@ export const POST = async (request: Request) => {
 
   if (!data) {
     return NextResponse.json({ error: "Failed to create job." }, { status: 500 });
+  }
+
+  if (storedPlanPrice === 0) {
+    await recordStartPackLedger(supabaseAdmin, {
+      email: auth.email,
+      companyId: company?.id || null,
+      companyName: body.company || null,
+      profileId: auth.profileId,
+      jobId: data.id,
+    });
   }
 
   await supabaseAdmin.from("audit_logs").insert({
