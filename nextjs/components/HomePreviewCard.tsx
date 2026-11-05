@@ -8,7 +8,6 @@ import { formatJobSalary } from "../lib/formatSalary";
 import { inferWorkMode } from "../lib/workMode";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
-import JobViewCount from "./JobViewCount";
 import { formatRelativePosted } from "../lib/formatPosted";
 
 const getWorkMode = (job: Job) => inferWorkMode(job);
@@ -59,8 +58,6 @@ export default function HomePreviewCard({
           <p className="mt-0.5 truncate text-xs text-slate-500">
             {job.company} · {place}
             {timeAgo ? ` · ${timeAgo}` : ""}
-            {" · "}
-            <JobViewCount views={job.views} />
           </p>
           <p className="sm:hidden mt-0.5 text-xs font-semibold tabular-nums text-slate-900">
             {formatJobSalary(job)}

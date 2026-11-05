@@ -26,4 +26,15 @@ test("a stored floor uses the range from the job description", () => {
   );
   assert.match(shown, /\$64k/);
   assert.match(shown, /\$80k/);
+  assert.equal(shown.includes("/ month"), false);
+});
+
+test("Checkr Greenhouse copy is annual even when later benefits mention months", () => {
+  const description =
+    "On-target Earnings OR Base Salary range (Nashville, TN) $80,000 — $100,000 USD What We Offer A fast-paced environment 100% medical coverage Up to 3 months parental leave and $25K reimbursement.";
+  const shown = formatSalaryDisplay("$80k a year", description);
+  assert.match(shown, /\$80k/);
+  assert.match(shown, /\$100k/);
+  assert.match(shown, /a year/);
+  assert.equal(shown.includes("/ month"), false);
 });

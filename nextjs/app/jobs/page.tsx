@@ -7,7 +7,6 @@ import { mapSupabaseJob, SupabaseJobRow } from "../../lib/supabaseJobs";
 import { isOnNicheJob } from "../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../lib/liveBoard";
 import { formatJobSalary } from "../../lib/formatSalary";
-import JobViewCount from "../../components/JobViewCount";
 import { ApplyClickLink } from "../../components/JobAnalytics";
 
 export const dynamic = "force-dynamic";
@@ -88,8 +87,6 @@ function StaticJobsList({ jobs, total }: { jobs: Job[]; total: number }) {
                           </span>
                         </>
                       )}
-                      <span className="text-slate-300">•</span>
-                      <JobViewCount views={job.views} className="truncate" />
                     </div>
                   </div>
 

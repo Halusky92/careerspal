@@ -6,7 +6,6 @@ import CompanyLogo from "../../../components/CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../../../lib/jobs";
 import type { Company, Job } from "../../../types";
 import { formatJobSalary } from "../../../lib/formatSalary";
-import JobViewCount from "../../../components/JobViewCount";
 import { isOnNicheJob } from "../../../lib/nicheScope";
 import { isBoilerplateDescription } from "../../../lib/companyBoard";
 
@@ -380,7 +379,6 @@ export default async function CompanyPage({ params }: PageProps) {
                             <div className="text-sm font-medium text-slate-900 whitespace-nowrap">
                               {formatJobSalary(job)}
                             </div>
-                            <JobViewCount views={job.views} className="mt-0.5 block text-xs text-slate-400" />
                             <Link href={href} className="mt-1 inline-flex text-xs font-medium text-indigo-700 hover:underline">
                               View role
                             </Link>

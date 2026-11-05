@@ -11,7 +11,6 @@ import { inferWorkMode } from "../lib/workMode";
 import { formatRelativePosted } from "../lib/formatPosted";
 import { trackJobView } from "../lib/trackJobEvent";
 import FeaturedBadge from "./FeaturedBadge";
-import JobViewCount from "./JobViewCount";
 import { useSupabaseAuth } from "./Providers";
 import { startApply } from "../lib/startApply";
 
@@ -226,8 +225,6 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                      <button onClick={() => onSelectCompany(job.company)} className="text-indigo-600 hover:text-indigo-800 hover:underline transition-all">{job.company}</button>
                      <span>•</span>
                      <span>{formatJobSalary(job)}</span>
-                     <span>•</span>
-                     <JobViewCount views={job.views} className="text-sm font-semibold text-slate-400" />
                   </div>
                </div>
                <div className="w-full md:w-auto">
@@ -341,7 +338,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                               <div>
                                  <h4 className="font-black text-slate-900 group-hover:text-indigo-600 transition-colors">{simJob.title}</h4>
                                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">
-                                   {simJob.company} · <JobViewCount views={simJob.views} />
+                                   {simJob.company}
                                  </p>
                               </div>
                            </div>
@@ -409,12 +406,6 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                         </div>
                      </div>
                      ) : null}
-                     <div className="mt-6 rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3">
-                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Views</div>
-                        <div className="text-sm font-black text-slate-900 mt-1">
-                          <JobViewCount views={job.views} />
-                        </div>
-                     </div>
                   </div>
 
                   {/* Company Mini Profile */}

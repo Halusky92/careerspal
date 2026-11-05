@@ -10,7 +10,6 @@ import FormattedDescription from "./FormattedDescription";
 import { formatJobSalary } from "../lib/formatSalary";
 import { inferWorkMode } from "../lib/workMode";
 import { formatRelativePosted } from "../lib/formatPosted";
-import JobViewCount from "./JobViewCount";
 import { useSupabaseAuth } from "./Providers";
 import { startApply } from "../lib/startApply";
 
@@ -300,10 +299,6 @@ export default function JobCard({
         <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-widest ${isElite ? "text-yellow-700" : "text-slate-300"}`}>
           {formatPostedDate(job)}
         </span>
-        <JobViewCount
-          views={job.views}
-          className={`text-[7px] sm:text-[8px] font-black uppercase tracking-widest ${isElite ? "text-yellow-700" : "text-slate-400"}`}
-        />
         {job.matchScore && (
           <span
             className={`text-[7px] sm:text-[8px] font-black px-2 py-1 rounded-lg border ${

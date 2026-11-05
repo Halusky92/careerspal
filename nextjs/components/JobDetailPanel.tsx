@@ -11,7 +11,6 @@ import { formatJobSalary } from "../lib/formatSalary";
 import { formatRelativePosted } from "../lib/formatPosted";
 import FeaturedBadge from "./FeaturedBadge";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
-import JobViewCount from "./JobViewCount";
 import { trackJobView } from "../lib/trackJobEvent";
 
 type JobDetailPanelProps = {
@@ -189,7 +188,7 @@ export default function JobDetailPanel({
                 {job.company}
               </a>
               <div className="text-sm font-semibold text-slate-900 mt-1">
-                {formatJobSalary(job)} · <JobViewCount views={job.views} className="font-medium text-slate-500" />
+                {formatJobSalary(job)}
               </div>
             </div>
             <button
@@ -245,7 +244,7 @@ export default function JobDetailPanel({
                   >
                     <div className="text-xs font-bold text-slate-900 truncate">{s.title}</div>
                     <div className="text-[10px] font-medium uppercase tracking-wide text-slate-600 mt-1 truncate">
-                      {s.company} • {formatJobSalary(s)} • <JobViewCount views={s.views} />
+                      {s.company} • {formatJobSalary(s)}
                     </div>
                   </button>
                 ))}

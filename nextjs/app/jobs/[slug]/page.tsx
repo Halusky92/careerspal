@@ -15,7 +15,6 @@ import { inferWorkMode } from "../../../lib/workMode";
 import { ApplyClickLink, JobViewTracker } from "../../../components/JobAnalytics";
 import FeaturedBadge from "../../../components/FeaturedBadge";
 import { isPaidFeaturedListing } from "../../../lib/featuredListing";
-import JobViewCount from "../../../components/JobViewCount";
 import PublicSubscriberNote from "../../../components/PublicSubscriberNote";
 import { getPublicSubscriberCount } from "../../../lib/countAlertSubscribers";
 
@@ -405,8 +404,6 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                   </Link>
                   <span className="text-slate-300">•</span>
                   <span className="text-sm sm:text-base font-black text-slate-900">{formatJobSalary(job)}</span>
-                  <span className="text-slate-300">•</span>
-                  <JobViewCount views={job.views} className="text-sm font-semibold text-slate-500" />
                   {isPaidFeaturedListing(job) ? <FeaturedBadge job={job} size="md" /> : null}
                 </div>
 
@@ -499,7 +496,6 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                         {s.company}
                       </div>
                       <div className="mt-2 text-sm font-black text-slate-900">{formatJobSalary(s)}</div>
-                      <JobViewCount views={s.views} className="mt-1 block text-[10px] font-semibold uppercase tracking-widest text-slate-400" />
                     </Link>
                   ))}
                 </div>

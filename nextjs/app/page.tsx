@@ -8,7 +8,6 @@ import { isOnNicheJob } from "../lib/nicheScope";
 import { applyLiveBoardFilter } from "../lib/liveBoard";
 import { formatJobSalary } from "../lib/formatSalary";
 import { getPublicSubscriberCount } from "../lib/countAlertSubscribers";
-import JobViewCount from "../components/JobViewCount";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +54,7 @@ function StaticHomeJobs({ jobs }: { jobs: Job[] }) {
                   {job.title}
                 </Link>
                 <div className="mt-0.5 text-xs text-slate-500 truncate">
-                  {job.company} · {formatJobSalary(job)} · <JobViewCount views={job.views} />
+                  {job.company} · {formatJobSalary(job)}
                 </div>
               </li>
             );

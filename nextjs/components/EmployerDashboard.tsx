@@ -335,7 +335,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
             </div>
             <p className="mt-1 text-sm text-slate-500">
               {[job.company, formatJobSalary(job), postedDate(job)].filter(Boolean).join(" · ")} ·{" "}
-              <JobViewCount views={job.views} />
+              <JobViewCount views={job.views} forOwner />
               {" · "}
               {job.matches === 1 ? "1 apply click" : `${job.matches || 0} apply clicks`}
             </p>

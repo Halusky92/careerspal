@@ -12,7 +12,6 @@ import { inferWorkMode } from "../lib/workMode";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
 import { formatRelativePosted } from "../lib/formatPosted";
-import JobViewCount from "./JobViewCount";
 
 export type JobRowAction = "copy_link" | "open_new_tab";
 
@@ -233,7 +232,6 @@ export default function JobRow({
                     Verified
                   </span>
                 )}
-                <JobViewCount views={job.views} className="text-[12px] font-medium text-slate-500" />
               </div>
             </div>
 

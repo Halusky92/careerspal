@@ -8,7 +8,6 @@ import { authFetch } from "../../lib/authFetch";
 import { createJobSlug } from "../../lib/jobs";
 import { Job } from "../../types";
 import { formatSalaryDisplay } from "../../lib/formatSalary";
-import JobViewCount from "../../components/JobViewCount";
 import { getCategoryHubForDbCategory, jobMatchesHub, parseAlertQuery, serializeAlertQuery } from "../../lib/categories";
 import AlertCategoryPicker from "../../components/AlertCategoryPicker";
 import { ALERT_MIN_SALARIES, ALERT_REGIONS, alertPrefsLabel, parseAlertPrefs, type AlertRegion } from "../../lib/alertPrefs";
@@ -604,8 +603,7 @@ const AccountPageInner = () => {
                           >
                             <div className="text-sm font-medium text-slate-900 truncate">{job.title}</div>
                             <div className="text-xs text-slate-500 truncate">
-                              {[job.company, formatSalaryDisplay(job.salary)].filter(Boolean).join(" · ")} ·{" "}
-                              <JobViewCount views={job.views} />
+                              {[job.company, formatSalaryDisplay(job.salary)].filter(Boolean).join(" · ")}
                             </div>
                           </Link>
                         ))
@@ -650,12 +648,6 @@ const AccountPageInner = () => {
                             {[job?.company, job?.location, job ? formatSalaryDisplay(job.salary) : ""]
                               .filter(Boolean)
                               .join(" · ")}
-                            {job ? (
-                              <>
-                                {" · "}
-                                <JobViewCount views={job.views} />
-                              </>
-                            ) : null}
                           </p>
                         </div>
                         <button

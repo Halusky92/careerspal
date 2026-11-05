@@ -161,37 +161,29 @@ export function parseSalaryFromText(text: string): ParsedSalary {
     };
   }
 
-  if (isNonExplicitSalary(clean)) {
-    return {
-      salary_text_raw: clean.slice(0, 240),
-      salary_amount_min: null,
-      salary_amount_max: null,
-      salary_currency: null,
-      salary_period: null,
-      salary_present: false,
-      salary_confidence: "low",
-      salary_detected_from: "text_body",
-      salary_parse_notes: ["non_explicit_salary_language"],
-    };
-  }
-
-  let period = detectPeriod(clean);
-  if (!period) notes.push("period_missing");
-
-  // Pattern: currency + min [- max] + period
-  // Examples: $120k-$150k per year, USD 120,000 – 150,000 annual, €60/hr
-  // NOTE: don't use a word-boundary before currency symbols like "$" (it's a non-word char),
-  // otherwise "$120,000" won't match after whitespace.
-  const re =
-    /(?:^|[\s(>])\s*(USD|EUR|GBP|CAD|AUD|CHF|SEK|NOK|DKK|PLN|CZK|JPY|[$€£¥])\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:[-–]\s*(?:\1\s*)?([0-9][0-9,]*(?:\.[0-9]+)?[km]?))?/i;
-  const m = clean.match(re);
-  if (!m) {
+  const salaryRe =
+    /(?:^|[\s(>])\s*(USD|EUR|GBP|CAD|AUD|CHF|SEK|NOK|DKK|PLN|CZK|JPY|[$€£¥])\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:(?:[-–]|to|through)\s*(?:\1\s*)?([0-9][0-9,]*(?:\.[0-9]+)?[km]?))?/gi;
+  const matches = [...clean.matchAll(salaryRe)];
+  if (matches.length === 0) {
+    if (isNonExplicitSalary(clean)) {
+      return {
+        salary_text_raw: clean.slice(0, 240),
+        salary_amount_min: null,
+        salary_amount_max: null,
+        salary_currency: null,
+        salary_period: null,
+        salary_present: false,
+        salary_confidence: "low",
+        salary_detected_from: "text_body",
+        salary_parse_notes: ["non_explicit_salary_language"],
+      };
+    }
     return {
       salary_text_raw: null,
       salary_amount_min: null,
       salary_amount_max: null,
       salary_currency: null,
-      salary_period: period,
+      salary_period: null,
       salary_present: false,
       salary_confidence: "unknown",
       salary_detected_from: "text_body",
@@ -199,50 +191,54 @@ export function parseSalaryFromText(text: string): ParsedSalary {
     };
   }
 
-  const currency = normalizeCurrency(m[1] || null);
-  if (!currency) notes.push("currency_unknown");
-
-  const min = normalizeNumber(m[2]);
-  const max = normalizeNumber(m[3] || "");
-  if (!min) notes.push("min_parse_failed");
-  if (m[3] && !max) notes.push("max_parse_failed");
-
-  const salary_text_raw = m[0].trim().slice(0, 240);
-
-  if (!period && ((min && min >= 10_000) || (max && max >= 10_000))) {
-    period = "year";
-    notes.push("period_assumed_year");
-  }
-
-  const present = Boolean(currency && period && (min || max));
-  const confidence: SalaryConfidence = present ? "medium" : "low";
-
-  // Sanity: guard against obvious false positives (e.g., "$1-$2") getting treated as salary.
-  if (present && isImplausibleSalary(period, min, max)) {
+  const parsedMatches = matches.map((m) => {
+    const localNotes = [...notes];
+    const index = m.index || 0;
+    const context = clean.slice(Math.max(0, index - 48), index + m[0].length + 96);
+    const currency = normalizeCurrency(m[1] || null);
+    if (!currency) localNotes.push("currency_unknown");
+    const min = normalizeNumber(m[2]);
+    const max = normalizeNumber(m[3] || "");
+    if (!min) localNotes.push("min_parse_failed");
+    if (m[3] && !max) localNotes.push("max_parse_failed");
+    const period = periodAroundSalary(context, min, max);
+    if (!period) localNotes.push("period_missing");
+    const present = Boolean(currency && period && (min || max));
+    const implausible = present && isImplausibleSalary(period, min, max);
     return {
-      salary_text_raw,
-      salary_amount_min: null,
-      salary_amount_max: null,
+      salary_text_raw: m[0].trim().slice(0, 240),
+      salary_amount_min: min,
+      salary_amount_max: max,
       salary_currency: currency,
       salary_period: period,
-      salary_present: false,
-      salary_confidence: "low",
-      salary_detected_from: "text_body",
-      salary_parse_notes: notes.concat(["implausible_salary_amount"]),
+      salary_present: present && !implausible,
+      salary_confidence: (present && !implausible ? "medium" : "low") as SalaryConfidence,
+      salary_detected_from: "text_body" as SalaryDetectedFrom,
+      salary_parse_notes: localNotes.concat(implausible ? ["implausible_salary_amount"] : ["rounded_for_storage"]),
     };
-  }
-
-  return withRoundedSalaryAmounts({
-    salary_text_raw,
-    salary_amount_min: min,
-    salary_amount_max: max,
-    salary_currency: currency,
-    salary_period: period,
-    salary_present: present,
-    salary_confidence: confidence,
-    salary_detected_from: "text_body",
-    salary_parse_notes: notes.concat(["rounded_for_storage"]),
   });
+
+  const usable = parsedMatches.filter((item) => item.salary_present);
+  usable.sort((a, b) => {
+    const rangeA = a.salary_amount_min != null && a.salary_amount_max != null && a.salary_amount_min !== a.salary_amount_max ? 1 : 0;
+    const rangeB = b.salary_amount_min != null && b.salary_amount_max != null && b.salary_amount_min !== b.salary_amount_max ? 1 : 0;
+    return rangeB - rangeA;
+  });
+  const chosen = usable[0] || parsedMatches[0];
+  if (!chosen.salary_present) return chosen;
+  return withRoundedSalaryAmounts(chosen);
+}
+
+function periodAroundSalary(context: string, min: number | null, max: number | null): SalaryPeriod | null {
+  const t = context.toLowerCase();
+  const amount = Math.max(min || 0, max || 0);
+  if (/\b(hour|hourly|\/hr|per hour)\b/.test(t)) return "hour";
+  if (/\b(per day|\/day|daily rate)\b/.test(t)) return "day";
+  if (/\b(year|years|yearly|annual|annually|\/yr|per year|a year)\b/.test(t)) return "year";
+  if (/\b(per month|\/mo\b|monthly)\b/.test(t) && amount > 0 && amount < 20_000) return "month";
+  if (amount >= 10_000) return "year";
+  if (/\b(per month|\/mo\b|monthly)\b/.test(t)) return "month";
+  return detectPeriod(t);
 }
 
 export function parsedSalaryFromStructured(args: {
