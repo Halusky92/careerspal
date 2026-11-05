@@ -9,10 +9,10 @@ const Footer = () => {
             Ops and Systems roles. Search, save, apply on the company site.
           </p>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <Link href="/jobs" className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white sm:h-9 sm:w-auto">
+            <Link href="/jobs" className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700 sm:h-9 sm:w-auto">
               Browse jobs
             </Link>
-            <Link href="/hire-talent" className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-800 sm:h-9 sm:w-auto">
+            <Link href="/hire-talent" className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-800 hover:border-slate-300 hover:bg-slate-50 sm:h-9 sm:w-auto">
               For employers
             </Link>
           </div>
