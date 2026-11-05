@@ -8,12 +8,53 @@ import { Job } from "../types";
 import { isOnNicheJob } from "../lib/nicheScope";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
 import FeaturedBoardZone from "../components/FeaturedBoardZone";
+import { useSupabaseAuth } from "../components/Providers";
+import { authFetch } from "../lib/authFetch";
+
+const PENDING_SAVE_KEY = "cp_pending_save_job";
 
 export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
   const router = useRouter();
+  const { accessToken, loading: authLoading } = useSupabaseAuth();
   const [jobs, setJobs] = useState<Job[]>(() => initialJobs || []);
   const [jobsLoading, setJobsLoading] = useState(() => (initialJobs?.length ? false : true));
   const [isSmUp, setIsSmUp] = useState(false);
+  const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadSaved = async () => {
+      if (authLoading || !accessToken) return;
+      try {
+        const response = await authFetch("/api/saved-jobs", {}, accessToken);
+        if (!response.ok) return;
+        const data = (await response.json()) as { savedJobs?: { jobId: string }[] };
+        const serverSaved = data.savedJobs?.map((item) => item.jobId) || [];
+        let pending = "";
+        try {
+          pending = sessionStorage.getItem(PENDING_SAVE_KEY) || "";
+          sessionStorage.removeItem(PENDING_SAVE_KEY);
+        } catch {
+          pending = "";
+        }
+        const merged = Array.from(new Set([...serverSaved, ...(pending ? [pending] : [])]));
+        setSavedJobIds(merged);
+        if (pending && !serverSaved.includes(pending)) {
+          await authFetch(
+            "/api/saved-jobs",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ jobId: pending }),
+            },
+            accessToken,
+          );
+        }
+      } catch {
+        // keep empty
+      }
+    };
+    loadSaved();
+  }, [accessToken, authLoading]);
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -66,6 +107,32 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
 
   const hasJobs = jobs.length > 0;
 
+  const handleToggleSave = (jobId: string) => {
+    if (!accessToken) {
+      try {
+        sessionStorage.setItem(PENDING_SAVE_KEY, jobId);
+      } catch {
+        // ignore
+      }
+      router.push(`/auth?from=${encodeURIComponent("/")}`);
+      return;
+    }
+    setSavedJobIds((prev) => {
+      const isSaved = prev.includes(jobId);
+      const next = isSaved ? prev.filter((id) => id !== jobId) : [...prev, jobId];
+      void authFetch(
+        "/api/saved-jobs",
+        {
+          method: isSaved ? "DELETE" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId }),
+        },
+        accessToken,
+      ).catch(() => setSavedJobIds(prev));
+      return next;
+    });
+  };
+
   return (
     <>
       <Hero onBrowse={() => router.push("/jobs")} onGetAlerts={() => router.push("/alerts")} />
@@ -101,7 +168,12 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
           <div className="space-y-3">
             <FeaturedBoardZone count={featuredPreview.length}>
               {featuredPreview.map((job) => (
-                <HomePreviewCard key={job.id} job={job} />
+                <HomePreviewCard
+                  key={job.id}
+                  job={job}
+                  isSaved={savedJobIds.includes(job.id)}
+                  onToggleSave={() => handleToggleSave(job.id)}
+                />
               ))}
             </FeaturedBoardZone>
             {previewJobs.length > 0 && (
@@ -110,7 +182,12 @@ export default function HomeClient({ initialJobs }: { initialJobs: Job[] }) {
                   <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">Latest roles</p>
                 )}
                 {previewJobs.map((job) => (
-                  <HomePreviewCard key={job.id} job={job} />
+                  <HomePreviewCard
+                  key={job.id}
+                  job={job}
+                  isSaved={savedJobIds.includes(job.id)}
+                  onToggleSave={() => handleToggleSave(job.id)}
+                />
                 ))}
               </div>
             )}
