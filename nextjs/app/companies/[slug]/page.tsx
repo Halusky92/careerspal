@@ -9,7 +9,6 @@ import { formatJobSalary } from "../../../lib/formatSalary";
 import JobViewCount from "../../../components/JobViewCount";
 import { isOnNicheJob } from "../../../lib/nicheScope";
 import { isBoilerplateDescription } from "../../../lib/companyBoard";
-import { workModeLabel } from "../../../lib/workMode";
 
 // Ensure a consistent runtime (avoid edge differences that can cause production-only crashes).
 export const runtime = "nodejs";
