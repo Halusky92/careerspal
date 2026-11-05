@@ -15,6 +15,7 @@ import {
   removePostingItem,
   writePostingItem,
 } from "../../lib/postingSession";
+import { employerCanEditListingContent, LISTING_LOCKED_MESSAGE } from "../../lib/listingLock";
 
 const PLAN_KEY = "cp_selected_plan";
 
@@ -131,7 +132,12 @@ const PostJobPageInner = () => {
           const jobRes = await authFetch(`/api/employer/jobs/${editJobId}`, {}, accessToken);
           if (jobRes.ok) {
             const data = (await jobRes.json()) as { job?: Job };
-            if (data.job) setInitialJob(data.job);
+            if (data.job && employerCanEditListingContent(data.job.status)) {
+              setInitialJob(data.job);
+            } else if (data.job) {
+              setSubmitError(LISTING_LOCKED_MESSAGE);
+              router.replace("/post-a-job");
+            }
           }
         }
       } catch {
@@ -141,7 +147,7 @@ const PostJobPageInner = () => {
       }
     };
     load();
-  }, [accessToken, editJobId, profile?.email]);
+  }, [accessToken, editJobId, profile?.email, router]);
 
   useEffect(() => {
     if (!foundingLoaded) return;
@@ -232,6 +238,12 @@ const PostJobPageInner = () => {
         );
         if (update.ok) {
           router.push("/dashboard/employer");
+          return;
+        }
+        const updatePayload = (await update.json().catch(() => ({}))) as { error?: string; locked?: boolean };
+        if (updatePayload.locked) {
+          setSubmitError(updatePayload.error || LISTING_LOCKED_MESSAGE);
+          setSubmitting(false);
           return;
         }
       }

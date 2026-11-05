@@ -12,6 +12,12 @@ import {
 import { formatEmployerSalaryForStorage } from "../../../../../lib/formatSalary";
 import { canRenewUnpublished, RENEW_PLAN_NAME, RENEW_PRICE } from "../../../../../lib/jobs/unpublishedRetention";
 import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../../lib/nicheScope";
+import {
+  COMPANY_OWNED_ELSEWHERE_MESSAGE,
+  employerCanEditListingContent,
+  LISTING_LOCKED_MESSAGE,
+  patchHasListingContent,
+} from "../../../../../lib/listingLock";
 
 const postedLabel = (status: string) => {
   if (status === "published") return "Just now";
@@ -69,6 +75,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   };
 
   const current = String(owned.job.status || "draft");
+  const contentLocked = !employerCanEditListingContent(current);
+  if (contentLocked && patchHasListingContent(body as Record<string, unknown>)) {
+    return NextResponse.json({ error: LISTING_LOCKED_MESSAGE, locked: true }, { status: 403 });
+  }
+  if (contentLocked && typeof body.status === "string") {
+    return NextResponse.json({ error: LISTING_LOCKED_MESSAGE, locked: true }, { status: 403 });
+  }
   const updateData: Record<string, unknown> = {};
 
   if (body.action === "pause") {
@@ -152,7 +165,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       name: body.company.trim(),
       website: typeof body.companyWebsite === "string" ? body.companyWebsite : null,
     });
-    if (companyResult.companyId && companyResult.error !== "claim_required") {
+    if (companyResult.error === "claim_required") {
+      return NextResponse.json(
+        { error: COMPANY_OWNED_ELSEWHERE_MESSAGE, claimRequired: true },
+        { status: 409 },
+      );
+    }
+    if (companyResult.companyId) {
       updateData.company_id = companyResult.companyId;
     }
   }

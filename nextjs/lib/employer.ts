@@ -158,6 +158,11 @@ export async function resolveEmployerCompany(args: {
     if (!owns) {
       return { companyId: existing.id, error: "claim_required" as const, existing };
     }
+    await fillEmptyCompanyProfile(existing.id, {
+      website: args.website,
+      logoUrl: args.logoUrl,
+      description: args.description,
+    });
     return { companyId: existing.id, error: null, existing };
   }
 
@@ -181,6 +186,25 @@ export async function resolveEmployerCompany(args: {
     return { companyId: null, error: "create_failed" as const, existing: null };
   }
   return { companyId: created.id, error: null, existing: created };
+}
+
+export async function fillEmptyCompanyProfile(
+  companyId: string,
+  fields: { website?: string | null; logoUrl?: string | null; description?: string | null },
+) {
+  if (!supabaseAdmin) return;
+  const { data } = await supabaseAdmin
+    .from("companies")
+    .select("website,logo_url,description")
+    .eq("id", companyId)
+    .maybeSingle();
+  if (!data) return;
+  const patch: Record<string, string> = {};
+  if (!String(data.website || "").trim() && fields.website) patch.website = fields.website;
+  if (!String(data.logo_url || "").trim() && fields.logoUrl) patch.logo_url = fields.logoUrl;
+  if (!String(data.description || "").trim() && fields.description) patch.description = fields.description;
+  if (Object.keys(patch).length === 0) return;
+  await supabaseAdmin.from("companies").update(patch).eq("id", companyId);
 }
 
 const emptyStartPack = (reason: string, extra?: Partial<StartPackStatus>): StartPackStatus => ({

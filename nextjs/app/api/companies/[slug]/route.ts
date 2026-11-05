@@ -161,7 +161,8 @@ export const GET = async (_request: Request, context: { params: Promise<{ slug: 
   const outCompany = mapCompany(company as SupabaseCompanyRow);
   const hasRealDesc = (outCompany.description || "").trim() && !outCompany.description.toLowerCase().includes("coming soon");
   if (!hasRealDesc) {
-    const jobDesc = (mappedJobs[0]?.companyDescription || "").toString().trim();
+    const stableJob = [...mappedJobs].reverse().find((job) => (job.companyDescription || "").toString().trim());
+    const jobDesc = (stableJob?.companyDescription || "").toString().trim();
     if (jobDesc) {
       outCompany.description = jobDesc;
       outCompany.longDescription = jobDesc;

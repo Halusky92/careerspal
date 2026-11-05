@@ -23,8 +23,15 @@ export async function POST(request: Request) {
   }
 
   const claimedBy = (company as { claimed_by?: string | null }).claimed_by;
+  const createdBy = (company as { created_by?: string | null }).created_by;
   if (claimedBy && claimedBy !== auth.profileId) {
     return NextResponse.json({ error: "This company profile is already claimed." }, { status: 409 });
+  }
+  if (createdBy && createdBy !== auth.profileId) {
+    return NextResponse.json(
+      { error: "This company profile is already on the board. Post new jobs under your own company." },
+      { status: 409 },
+    );
   }
 
   const { data: updated, error } = await supabaseAdmin!

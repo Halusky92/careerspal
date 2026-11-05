@@ -295,6 +295,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   const renderJobCard = (job: Job) => {
     const busy = busyId === job.id;
     const canPublish = job.status === "pending_review" || job.status === "draft";
+    const canEdit = job.status === "draft" || job.status === "pending_review";
     const canClose = job.status === "published" || job.status === "paused" || job.status === "pending_review";
     const btn = "h-9 px-3 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 disabled:opacity-50";
     return (
@@ -325,12 +326,14 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
               Publish
             </button>
           ) : null}
-          <a
-            href={`/post-a-job?jobId=${job.id}`}
-            className="h-9 px-3 inline-flex items-center rounded-lg border border-slate-200 text-xs font-medium text-slate-700"
-          >
-            Edit
-          </a>
+          {canEdit ? (
+            <a
+              href={`/post-a-job?jobId=${job.id}`}
+              className="h-9 px-3 inline-flex items-center rounded-lg border border-slate-200 text-xs font-medium text-slate-700"
+            >
+              Edit
+            </a>
+          ) : null}
           {job.status === "published" ? (
             <a
               href={`/jobs/${createJobSlug(job)}`}

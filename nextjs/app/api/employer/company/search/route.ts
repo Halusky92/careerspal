@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
   const { data } = await supabaseAdmin!
     .from("companies")
-    .select("id,name,slug,website,claimed_by,logo_url")
+    .select("id,name,slug,website,claimed_by,created_by,logo_url")
     .ilike("name", `%${q}%`)
     .order("name", { ascending: true })
     .limit(8);
@@ -24,8 +24,8 @@ export async function GET(request: Request) {
     slug: row.slug,
     website: row.website,
     logoUrl: row.logo_url,
-    claimed: Boolean(row.claimed_by),
-    owned: row.claimed_by === auth.profileId,
+    claimed: Boolean(row.claimed_by || row.created_by),
+    owned: row.claimed_by === auth.profileId || row.created_by === auth.profileId,
   }));
 
   return NextResponse.json({ companies });

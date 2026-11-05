@@ -14,6 +14,7 @@ import { formatEmployerSalaryForStorage } from "../../../../lib/formatSalary";
 import { recordStartPackLedger } from "../../../../lib/startPackLedger";
 import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../lib/nicheScope";
 import { canUseAdminTestPlan, isAdminTestPrice } from "../../../../lib/adminTestPlan";
+import { COMPANY_OWNED_ELSEWHERE_MESSAGE } from "../../../../lib/listingLock";
 
 const MAX_LIVE_JOBS_PER_HOUR = 12;
 
@@ -172,7 +173,13 @@ export const POST = async (request: Request) => {
       logoUrl: normalizeHttpUrl(body.logo),
       description: body.companyDescription || null,
     });
-    companyId = companyResult.error === "claim_required" ? null : companyResult.companyId;
+    if (companyResult.error === "claim_required") {
+      return NextResponse.json(
+        { error: COMPANY_OWNED_ELSEWHERE_MESSAGE, claimRequired: true },
+        { status: 409 },
+      );
+    }
+    companyId = companyResult.companyId;
   }
   const company = { id: companyId };
 
