@@ -49,7 +49,7 @@ export function listingPlanInfo(
   }
   const amount = typeof job.plan?.price === "number" ? job.plan.price : null;
   if (amount && amount > 0) {
-    return { kind: "paid", label: `Paid $${amount}`, amount };
+    return { kind: "paid", label: amount === 1 ? "Test $1" : `Paid $${amount}`, amount };
   }
   if (job.stripePaymentStatus === "paid") {
     return { kind: "paid", label: "Paid" };

@@ -12,6 +12,7 @@ import {
 } from "../../../../lib/employer";
 import { formatSalaryForStorage } from "../../../../lib/formatSalary";
 import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../lib/nicheScope";
+import { canUseAdminTestPlan, isAdminTestPrice } from "../../../../lib/adminTestPlan";
 
 const MAX_LIVE_JOBS_PER_HOUR = 12;
 
@@ -32,15 +33,6 @@ const normalizeHttpUrl = (value?: string | null) => {
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
   if (trimmed.includes(".") && !trimmed.includes(" ")) return `https://${trimmed}`;
   return trimmed;
-};
-
-const isEmailAllowed = (email?: string | null) => {
-  if (!email) return false;
-  const allowList = (process.env.ADMIN_TEST_EMAILS || "mb.bilek@gmail.com")
-    .split(",")
-    .map((entry) => entry.trim().toLowerCase())
-    .filter(Boolean);
-  return allowList.includes(email.toLowerCase());
 };
 
 export const GET = async (request: Request) => {
@@ -133,20 +125,15 @@ export const POST = async (request: Request) => {
   const postedAt = body.postedAt || (status === "published" ? "Just now" : "Draft");
   const rawPlanPrice =
     typeof body.plan?.price === "number" ? body.plan.price : body.planPrice;
-  const isAdminTestPrice = Boolean(body.adminInternalPlan) || rawPlanPrice === 1;
-  if (isAdminTestPrice) {
-    if (auth.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    if (!isEmailAllowed(auth.email)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+  const isAdminTestPriceFlag = Boolean(body.adminInternalPlan) || isAdminTestPrice(rawPlanPrice);
+  if (isAdminTestPriceFlag && !canUseAdminTestPlan({ role: auth.role, email: auth.email })) {
+    return NextResponse.json({ error: "The $1 test plan is for admins." }, { status: 403 });
   }
   const requestedType = body.planType || body.plan?.type || "Standard";
   let storedPlanType = requestedType;
   let storedPlanPrice =
     typeof rawPlanPrice === "number" ? Math.max(0, Math.round(rawPlanPrice)) : null;
-  if (requestedType === "Standard" && !isAdminTestPrice) {
+  if (requestedType === "Standard" && !isAdminTestPriceFlag) {
     const founding = await getFoundingStatus(auth.profileId, {
       email: auth.email,
       companyName: body.company || null,

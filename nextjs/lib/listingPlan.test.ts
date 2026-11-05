@@ -34,6 +34,11 @@ test("start pack listings are free and share a company counter", () => {
   assert.equal(listingPlanInfo(paid, used)?.label, "Paid $79");
 });
 
+test("one-dollar admin listings show as Test $1", () => {
+  const testJob = job({ id: "t", plan: { type: "Standard", price: 1 }, stripePaymentStatus: "paid" });
+  assert.equal(listingPlanInfo(testJob)?.label, "Test $1");
+});
+
 test("greenhouse jobs are sourced, not free pack", () => {
   const sourced = job({ origin: "greenhouse", plan: { type: "Standard", price: 0 } });
   assert.equal(isStartPackListing(sourced), false);

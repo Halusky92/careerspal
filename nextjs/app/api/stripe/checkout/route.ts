@@ -14,6 +14,7 @@ import {
 import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
 import { screenListingForBoard } from "../../../../lib/jobs/autoReviewListing";
 import { verifyScreenPass } from "../../../../lib/jobs/screenPass";
+import { canUseAdminTestPlan, isAdminTestPrice } from "../../../../lib/adminTestPlan";
 
 type StripeJobRow = {
   id: string;
@@ -35,15 +36,6 @@ type StripeJobRow = {
 };
 
 export const runtime = "nodejs";
-
-const isEmailAllowed = (email?: string | null) => {
-  if (!email) return false;
-  const allowList = (process.env.ADMIN_TEST_EMAILS || "mb.bilek@gmail.com")
-    .split(",")
-    .map((entry) => entry.trim().toLowerCase())
-    .filter(Boolean);
-  return allowList.includes(email.toLowerCase());
-};
 
 export async function POST(request: Request) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -142,14 +134,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Start pack listings skip checkout." }, { status: 400 });
     }
   } else {
-    const needsAdminApproval = Boolean(body.adminInternalPlan) || price < 1 || price <= 5;
-    if (needsAdminApproval) {
-      if (auth.profile.role !== "admin") {
-        return NextResponse.json({ error: "Internal plan is restricted." }, { status: 403 });
-      }
-      if (!isEmailAllowed(auth.profile.email)) {
-        return NextResponse.json({ error: "Internal plan is restricted." }, { status: 403 });
-      }
+    const needsAdminApproval = Boolean(body.adminInternalPlan) || isAdminTestPrice(price) || price < 1 || price <= 5;
+    if (needsAdminApproval && !canUseAdminTestPlan({ role: auth.profile.role, email: auth.profile.email })) {
+      return NextResponse.json({ error: "The $1 test plan is for admins." }, { status: 403 });
     }
   }
   const planName = isRenew ? RENEW_PLAN_NAME : body.planName || jobRow.plan_type || "Standard";
@@ -166,7 +153,11 @@ export async function POST(request: Request) {
           price_data: {
             currency: "usd",
             product_data: {
-              name: isRenew ? `${planName} listing renewal` : `${planName} Job Listing`,
+              name: isRenew
+                ? `${planName} listing renewal`
+                : isAdminTestPrice(price)
+                  ? "CareersPal admin Stripe test"
+                  : `${planName} Job Listing`,
               description: `${jobRow.title} at ${companyName || "Company"}`,
             },
             unit_amount: Math.round(price * 100),

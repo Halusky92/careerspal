@@ -1,4 +1,6 @@
 import { Resend } from "resend";
+import { adminNotifyEmails } from "./adminNotify";
+import { adminTestPlanLabel } from "./adminTestPlan";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { getResendFrom } from "./resendFrom";
 import { createJobSlug } from "./jobs";
@@ -41,16 +43,7 @@ export async function sendAdminPendingDigest(input: {
   if (!apiKey || input.listings.length === 0) return;
   const resend = new Resend(apiKey);
   const from = getResendFrom();
-  const supportEmail = "info@careerspal.com";
-  const adminTo = new Set(
-    [
-      ...(process.env.ADMIN_NOTIFICATION_EMAIL || supportEmail).split(","),
-      "mb.bilek@gmail.com",
-      ...(input.extraTo || []),
-    ]
-      .map((email) => email.trim())
-      .filter(Boolean),
-  );
+  const adminTo = adminNotifyEmails(input.extraTo);
   const baseUrl = getBaseUrl();
   const adminUrl = `${baseUrl}/dashboard/admin?tab=review`;
   const rows = input.listings
@@ -71,7 +64,7 @@ export async function sendAdminPendingDigest(input: {
       subject: `${input.listings.length} listings waiting for confirm`,
       html: wrap(
         "Waiting for confirm",
-        `<p>Invented company listings are in the queue. Green ✓ publishes. Red ✕ deletes.</p>
+        `<p>Listings are waiting in Confirm. Green ✓ publishes. Red ✕ deletes.</p>
          <table style="border-collapse:collapse;width:100%;font-size:14px;">
            <thead><tr>
              <th style="text-align:left;padding:8px 10px;">Title</th>
@@ -109,15 +102,12 @@ export async function sendListingOutcomeEmails(input: {
   if (!apiKey) return;
   const resend = new Resend(apiKey);
   const from = getResendFrom();
-  const supportEmail = "info@careerspal.com";
-  const adminTo = (process.env.ADMIN_NOTIFICATION_EMAIL || supportEmail)
-    .split(",")
-    .map((email) => email.trim())
-    .filter(Boolean);
+  const adminTo = adminNotifyEmails();
   const jobLine = `${input.title || "Listing"}${input.companyName ? ` at ${input.companyName}` : ""}`;
+  const testLabel = adminTestPlanLabel(input.planPrice);
   const planLine = input.startPack
     ? "Start pack ($0)"
-    : `${input.planType || "Standard"}${typeof input.planPrice === "number" ? ` ($${input.planPrice})` : ""}`;
+    : testLabel || `${input.planType || "Standard"}${typeof input.planPrice === "number" ? ` ($${input.planPrice})` : ""}`;
   const baseUrl = getBaseUrl();
   const jobUrl = `${baseUrl}/jobs/${createJobSlug({ id: input.jobId, title: input.title || "role" })}`;
   const employerUrl = `${baseUrl}/dashboard/employer`;
@@ -125,12 +115,24 @@ export async function sendListingOutcomeEmails(input: {
 
   const buyerLive = input.startPack
     ? "Your Start pack listing is live"
-    : "Payment received — listing is live";
+    : testLabel
+      ? "Test payment received — listing is live"
+      : "Payment received — listing is live";
   const buyerPending = input.startPack
     ? "Your listing is in review"
-    : "Payment received — listing is in review";
-  const adminLive = input.startPack ? "Start pack listing is live ($0)" : "Paid listing is live";
-  const adminPending = input.startPack ? "Start pack listing waiting for confirm" : "Paid listing waiting for confirm";
+    : testLabel
+      ? "Test payment received — listing is in review"
+      : "Payment received — listing is in review";
+  const adminLive = input.startPack
+    ? "Start pack listing is live ($0)"
+    : testLabel
+      ? "Admin $1 test listing is live"
+      : "Paid listing is live";
+  const adminPending = input.startPack
+    ? "Start pack listing waiting for confirm"
+    : testLabel
+      ? "Admin $1 test waiting for confirm"
+      : "Paid listing waiting for confirm";
 
   try {
     if (input.buyerEmail) {
@@ -228,7 +230,7 @@ export async function maybeNotifyStartPackTwoLeft(input: {
         "2 free listings left",
         `<p>You have <strong>2 free Standard listings</strong> left on the Start pack.</p>
          <p>Used: ${input.usedAfter} of ${input.quota}. After those 2, the next listing is Standard <strong>$${input.nextPrice}</strong> / 30 days.</p>
-         <p>A listing only counts after it goes live.</p>`,
+         <p>A listing counts once you send it for review.</p>`,
         `${baseUrl}/post-a-job`,
         "Post the next role",
       ),
@@ -249,9 +251,4 @@ export async function maybeNotifyStartPackTwoLeft(input: {
   }
 }
 
-const wrapLocal = (title: string, body: string, href: string, label: string) => `
-    <div style="font-family:Inter,Segoe UI,Arial,sans-serif;color:#111827;">
-      <h1 style="font-size:20px;">${title}</h1>
-      ${body}
-      <p><a href="${href}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:10px 14px;border-radius:8px;">${label}</a></p>
-    </div>`;
+const wrapLocal = (title: string, body: string, href: string, label: string) => wrap(title, body, href, label);

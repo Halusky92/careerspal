@@ -1,22 +1,17 @@
 import { NextResponse } from "next/server";
+import { canUseAdminTestPlan } from "../../../../lib/adminTestPlan";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 
 export const runtime = "nodejs";
 
-const isEmailAllowed = (email?: string | null) => {
-  if (!email) return false;
-  const allowList = (process.env.ADMIN_TEST_EMAILS || "mb.bilek@gmail.com")
-    .split(",")
-    .map((entry) => entry.trim().toLowerCase())
-    .filter(Boolean);
-  return allowList.includes(email.toLowerCase());
-};
-
 export async function GET(request: Request) {
   const auth = await getSupabaseProfile(request);
-  if (!auth?.profile || auth.profile.role !== "admin") {
+  if (!auth?.profile) {
     return NextResponse.json({ allowed: false }, { status: 403 });
   }
-  const allowed = isEmailAllowed(auth.profile.email);
-  return NextResponse.json({ allowed });
+  const allowed = canUseAdminTestPlan({ role: auth.profile.role, email: auth.profile.email });
+  if (!allowed) {
+    return NextResponse.json({ allowed: false }, { status: 403 });
+  }
+  return NextResponse.json({ allowed: true, price: 1 });
 }

@@ -1,5 +1,6 @@
 export const PLAN_PRICES = {
   startPack: 0,
+  test: 1,
   standard: 79,
   pro: 149,
   elite: 249,

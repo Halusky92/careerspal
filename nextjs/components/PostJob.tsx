@@ -1024,7 +1024,11 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
             {step === 3 && (
               <div className="p-4 sm:p-5 text-center space-y-3">
                 <div className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-100 inline-block text-[11px] font-semibold uppercase tracking-wide">
-                  {foundingEligible && selectedPlan.type === "Standard" ? "Ready to send for review" : "Ready for checkout"}
+                  {selectedPlan.price === 1
+                    ? "Admin $1 Stripe test"
+                    : foundingEligible && selectedPlan.type === "Standard"
+                      ? "Ready to send for review"
+                      : "Ready for checkout"}
                 </div>
                 <h2 className="text-lg font-semibold text-slate-900 tracking-tight">Preview</h2>
                 <div className="bg-slate-50 p-4 sm:p-5 rounded-xl text-left border border-slate-200">
@@ -1061,6 +1065,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 >
                     {submitting
                       ? "Submitting…"
+                      : selectedPlan.price === 1
+                      ? "Pay $1 test (Stripe)"
                       : foundingEligible && selectedPlan.type === "Standard"
                       ? "Submit with Start pack"
                       : `Proceed to Payment (${formatPrice(selectedPlan.price)})`}
@@ -1073,6 +1079,20 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
         </div>
 
         <div className="lg:col-span-4 space-y-3 lg:sticky lg:top-20 self-start">
+           {showTestPlan ? (
+             <div className={`rounded-xl border p-4 ${selectedPlan.price === 1 ? "border-emerald-400 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+               <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Admin only</p>
+               <p className="mt-1 text-sm font-medium text-slate-900">Stripe test — $1</p>
+               <p className="mt-1 text-xs text-slate-600">Real checkout and confirm emails. Not the $79 plan.</p>
+               <button
+                 type="button"
+                 onClick={() => onUpgradePlan("Standard", 1)}
+                 className="mt-3 h-9 px-3 rounded-lg bg-emerald-600 text-white text-xs font-medium"
+               >
+                 {selectedPlan.price === 1 ? "Using $1 test" : "Use $1 Stripe test"}
+               </button>
+             </div>
+           ) : null}
            <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -1216,23 +1236,6 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 </button>
               )}
 
-              {showTestPlan && (
-                <div className="mt-6 rounded-2xl border border-emerald-200/60 bg-emerald-50/70 p-5">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Admin internal plan</div>
-                  <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                      <div className="text-xl font-black text-emerald-900">{formatPrice(1)}</div>
-                      <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-600">Email allowlisted</div>
-                    </div>
-                    <button
-                      onClick={() => onUpgradePlan("Standard", 1)}
-                      className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-colors"
-                    >
-                      Use $1 plan
-                    </button>
-                  </div>
-                </div>
-              )}
            </div>
         </div>
       </div>

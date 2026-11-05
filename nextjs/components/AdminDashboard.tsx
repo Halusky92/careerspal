@@ -671,7 +671,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       <div className="sticky top-14 z-30 mb-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-3 shadow-lg">
         <div className="flex items-center justify-between gap-2 mb-2">
           <p className="text-sm font-medium text-emerald-300">Admin desk</p>
-          <span className="text-[11px] font-mono text-amber-300">{pendingJobs.length} waiting</span>
+          <div className="flex items-center gap-2">
+            <a href="/post-a-job?test=1" className="h-8 px-2.5 inline-flex items-center rounded-lg bg-amber-400 text-zinc-900 text-[11px] font-medium">
+              $1 Stripe test
+            </a>
+            <span className="text-[11px] font-mono text-amber-300">{pendingJobs.length} waiting</span>
+          </div>
         </div>
         <form
           className="flex items-center gap-2"

@@ -32,6 +32,7 @@ const PostJobPageInner = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editJobId = searchParams.get("jobId");
+  const wantTestPlan = searchParams.get("test") === "1";
   const { user, profile, accessToken, loading: authLoading, refreshProfile } = useSupabaseAuth();
   const owner = postingOwnerKey(user?.id, profile?.email);
   const [foundingEligible, setFoundingEligible] = useState(false);
@@ -98,13 +99,17 @@ const PostJobPageInner = () => {
           return;
         }
         const data = (await response.json()) as { allowed?: boolean };
-        setShowTestPlan(Boolean(data.allowed));
+        const allowed = Boolean(data.allowed);
+        setShowTestPlan(allowed);
+        if (allowed && wantTestPlan) {
+          setSelectedPlan({ type: "Standard", price: 1 });
+        }
       } catch {
         setShowTestPlan(false);
       }
     };
     checkTestPlanAccess();
-  }, [accessToken, profile?.role]);
+  }, [accessToken, profile?.role, wantTestPlan]);
 
   useEffect(() => {
     const load = async () => {

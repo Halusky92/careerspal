@@ -98,18 +98,26 @@ export async function POST(request: Request) {
           const { sendListingOutcomeEmails } = await import("../../../../lib/listingNotify");
           const { data: job } = await supabaseAdmin
             .from("jobs")
-            .select("id,title,plan_type,plan_price,companies(name)")
+            .select("id,title,plan_type,plan_price,company_description,created_by,companies(name)")
             .eq("id", jobId)
             .single();
-          const jobRow = (job ?? null) as StripeEmailJobRow | null;
-          const companyName = Array.isArray(jobRow?.companies) ? jobRow?.companies[0]?.name : jobRow?.companies?.name;
+          const jobRow = (job ?? null) as (StripeEmailJobRow & { company_description?: string | null; created_by?: string | null }) | null;
+          const companyName =
+            (Array.isArray(jobRow?.companies) ? jobRow?.companies[0]?.name : jobRow?.companies?.name) ||
+            (jobRow?.company_description || "").split("\n")[0].trim() ||
+            null;
+          let buyerEmail = session.customer_details?.email || session.customer_email || null;
+          if (!buyerEmail && jobRow?.created_by) {
+            const { data: poster } = await supabaseAdmin.from("profiles").select("email").eq("id", jobRow.created_by).maybeSingle();
+            buyerEmail = poster?.email || null;
+          }
           await sendListingOutcomeEmails({
             jobId,
             title: jobRow?.title,
             companyName,
             planType: jobRow?.plan_type,
-            planPrice: jobRow?.plan_price ?? null,
-            buyerEmail: session.customer_details?.email || session.customer_email || null,
+            planPrice: jobRow?.plan_price ?? (typeof session.amount_total === "number" ? session.amount_total / 100 : null),
+            buyerEmail,
             startPack: false,
             live: false,
             paid: true,
