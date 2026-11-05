@@ -32,12 +32,13 @@ export function parseJobDescription(raw?: string | null): DescriptionSections {
     { key: "who" as const, heading: DESCRIPTION_SECTION_HEADINGS.who },
     { key: "about" as const, heading: DESCRIPTION_SECTION_HEADINGS.about },
   ];
+  type MarkerHit = (typeof markers)[number] & { index: number };
   const hits = markers
-    .map((item) => {
+    .map((item): MarkerHit | null => {
       const index = text.toLowerCase().indexOf(item.heading.toLowerCase());
       return index >= 0 ? { ...item, index } : null;
     })
-    .filter((item): item is { key: keyof DescriptionSections; heading: string; index: number } => Boolean(item))
+    .filter((item): item is MarkerHit => item !== null)
     .sort((a, b) => a.index - b.index);
 
   if (!hits.length) return { ...empty, work: text };
