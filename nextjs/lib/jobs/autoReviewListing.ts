@@ -99,7 +99,12 @@ export async function screenListingForBoard(
     opts?.skipAi || (!opts?.aiOnly && !localOk) ? Promise.resolve(null) : aiNicheNote(title, description),
     title.length >= 4 && description.length >= 1 ? aiSafetyNote(title, description) : Promise.resolve(null),
   ]);
-  if (ai && !ai.onNiche) {
+  const descriptionNag = (note?: string) =>
+    /complete job description|responsibilit|requirement|too short|more detail|fuller description|outlines the/i.test(
+      note || "",
+    );
+
+  if (ai && !ai.onNiche && !descriptionNag(ai.note)) {
     issues.push({
       field: "title",
       message: ai.note || "Change the title so this is clearly an Ops / Systems role.",
@@ -115,7 +120,8 @@ export async function screenListingForBoard(
   const unique = issues.filter(
     (item, index) => issues.findIndex((other) => other.field === item.field && other.message === item.message) === index,
   );
-  const ok = unique.length === 0 && blocking.length === 0 && (!ai || ai.onNiche) && (!safety || safety.safe);
+  const nicheOk = !ai || ai.onNiche || descriptionNag(ai.note);
+  const ok = unique.length === 0 && blocking.length === 0 && nicheOk && (!safety || safety.safe);
 
   return {
     decision: ok ? "publish" : "hold",

@@ -8,7 +8,6 @@ import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 import { PLAN_PRICES } from "../../lib/plans";
 import type { StartPackStatus } from "../../lib/founding";
-import { createJobSlug } from "../../lib/jobs";
 import type { ListingScreenIssue } from "../../components/PostJob";
 import {
   postingOwnerKey,
@@ -291,10 +290,7 @@ const PostJobPageInner = () => {
           };
           if (submit.ok) {
             removePostingItem("cp_draft_post", owner);
-            const slug =
-              submitPayload.slug ||
-              createJobSlug({ id: submitPayload.jobId || payload.job.id, title: finalJobData.title });
-            router.push(`/jobs/${slug}`);
+            router.push("/dashboard/employer");
             return;
           }
           if (!submitPayload.checkoutRequired) {

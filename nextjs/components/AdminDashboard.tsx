@@ -114,6 +114,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [adminCreateMsg, setAdminCreateMsg] = useState("");
   const [jobActionTone, setJobActionTone] = useState<"idle" | "success" | "error">("idle");
   const [jobActionMsg, setJobActionMsg] = useState("");
+  const [showOlderLive, setShowOlderLive] = useState(false);
+  const [cmd, setCmd] = useState("");
   const [adminCreateDraft, setAdminCreateDraft] = useState({
     title: "",
     company: "",
@@ -440,14 +442,42 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     return Array.from(new Set(titles)).slice(0, 6);
   }, [jobQuery, jobs]);
 
-  const pendingJobs = sortedJobs.filter((job) => job.status === "pending_review");
+  const pendingJobs = useMemo(
+    () => sortedJobs.filter((job) => job.status === "pending_review"),
+    [sortedJobs],
+  );
+  const liveJobs = useMemo(
+    () => sortedJobs.filter((job) => job.status === "published"),
+    [sortedJobs],
+  );
+  const liveNewest = liveJobs.slice(0, 3);
+  const liveOlder = liveJobs.slice(3);
   const listedJobs = useMemo(() => {
-    if (jobFilter === "live") return sortedJobs.filter((job) => job.status === "published");
-    if (jobFilter === "review") return sortedJobs.filter((job) => job.status === "pending_review");
+    if (jobFilter === "live") return liveJobs;
+    if (jobFilter === "review") return pendingJobs;
     if (jobFilter === "draft") return sortedJobs.filter((job) => job.status === "draft");
     if (jobFilter === "archived") return sortedJobs.filter((job) => job.status === "private" || job.status === "archived" || job.status === "closed");
     return sortedJobs;
-  }, [sortedJobs, jobFilter]);
+  }, [sortedJobs, jobFilter, liveJobs, pendingJobs]);
+
+  const runCommand = () => {
+    const raw = cmd.trim();
+    const q = raw.toLowerCase();
+    if (!q) return;
+    if (q === "auto" || q === "auto-check") {
+      void runAutoReview();
+      setCmd("");
+      return;
+    }
+    if (q === "review" || q === "confirm") {
+      setTab("review");
+      setCmd("");
+      return;
+    }
+    setJobQuery(raw);
+    setTab("jobs");
+    setShowJobSuggestions(false);
+  };
 
 
   const fieldClass = "cp-field w-full rounded-lg px-3 py-2 text-sm";
@@ -458,6 +488,36 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     return (
       <React.Fragment key={job.id}>
         <tr className="border-b border-slate-100 last:border-0">
+          <td className="pl-3 pr-1 py-2.5 w-24">
+            {job.status === "pending_review" || mode === "review" ? (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  title="Publish"
+                  aria-label="Publish"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateJobStatus(job.id, "published");
+                  }}
+                  className="h-9 w-9 rounded-lg bg-emerald-600 text-white text-lg font-semibold leading-none hover:bg-emerald-700"
+                >
+                  ✓
+                </button>
+                <button
+                  type="button"
+                  title="Delete"
+                  aria-label="Delete"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteJob(job.id);
+                  }}
+                  className="h-9 w-9 rounded-lg bg-rose-600 text-white text-lg font-semibold leading-none hover:bg-rose-700"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : null}
+          </td>
           <td className="px-4 py-2.5">
             <button type="button" className="text-left font-medium text-slate-900 line-clamp-2 hover:text-indigo-700" onClick={() => setExpandedJobId(open ? null : job.id)}>
               {job.title}
@@ -474,32 +534,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap hidden md:table-cell">{formatDate(job.timestamp)}</td>
           <td className="px-3 py-2.5 whitespace-nowrap text-right sticky right-0 bg-white shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]">
             {mode === "review" || job.status === "pending_review" ? (
-              <div className="flex justify-end items-center gap-1">
-                <button
-                  type="button"
-                  title="Publish to the board"
-                  aria-label="Publish"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateJobStatus(job.id, "published");
-                  }}
-                  className="h-9 w-9 rounded-lg bg-emerald-600 text-white text-lg font-semibold leading-none hover:bg-emerald-700"
-                >
-                  ✓
-                </button>
-                <button
-                  type="button"
-                  title="Decline"
-                  aria-label="Decline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateJobStatus(job.id, "private");
-                  }}
-                  className="h-9 w-9 rounded-lg bg-rose-600 text-white text-lg font-semibold leading-none hover:bg-rose-700"
-                >
-                  ✕
-                </button>
-              </div>
+              <span className="text-xs text-slate-400">waiting</span>
             ) : (
               <div className="flex justify-end items-center gap-1">
                 <button
@@ -544,7 +579,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </tr>
         {open && (
           <tr className="border-b border-slate-100 bg-slate-50/70">
-            <td colSpan={mode === "jobs" ? 6 : 5} className="px-4 py-4">
+            <td colSpan={mode === "jobs" ? 7 : 6} className="px-4 py-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700">
                 <p>
                   <span className="text-slate-400">Apply</span>
@@ -635,6 +670,39 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </button>
       </div>
 
+      <div className="sticky top-14 z-30 mb-4 rounded-xl border border-slate-800 bg-zinc-950 px-3 py-2">
+        <form
+          className="flex flex-col sm:flex-row sm:items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            runCommand();
+          }}
+        >
+          <label className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="text-emerald-400 font-mono text-sm shrink-0">$</span>
+            <input
+              value={cmd}
+              onChange={(e) => setCmd(e.target.value)}
+              placeholder="search, auto-check, review"
+              className="flex-1 min-w-0 bg-transparent text-sm text-emerald-100 font-mono outline-none placeholder:text-zinc-500 h-9"
+            />
+          </label>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[11px] font-mono text-amber-300">{pendingJobs.length} waiting</span>
+            <button type="submit" className="h-8 px-3 rounded-md bg-emerald-700 text-white text-xs font-medium">
+              Run
+            </button>
+            <button
+              type="button"
+              onClick={() => void runAutoReview()}
+              disabled={autoReviewBusy}
+              className="h-8 px-3 rounded-md border border-emerald-800 text-emerald-300 text-xs font-medium disabled:opacity-50"
+            >
+              {autoReviewBusy ? "…" : "auto-check"}
+            </button>
+          </div>
+        </form>
+      </div>
       <AdminDeskBar pendingCount={pendingJobs.length} onAutoCheck={runAutoReview} autoCheckBusy={autoReviewBusy} />
 
       <div className="flex gap-1 mb-6 border-b border-slate-200">
@@ -659,97 +727,121 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       )}
 
       {tab === "review" && (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <p className="text-sm text-slate-500">
-              Preview, then ✓ to put it on the board or ✕ to decline. Auto-check uses salary, apply link, niche, and AI
-              when the key is set. Off-niche stays here.
-            </p>
-            <button
-              type="button"
-              onClick={runAutoReview}
-              disabled={autoReviewBusy || pendingJobs.length === 0}
-              className="h-9 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 disabled:opacity-50"
-            >
-              {autoReviewBusy ? "Checking…" : "Auto-check queue"}
-            </button>
-          </div>
-          {pendingJobs.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-12 text-center">
-              <p className="font-medium text-slate-900">Nothing to review</p>
-              <p className="text-sm text-slate-500 mt-1">Employer submissions show up here after they submit.</p>
-              <button onClick={() => setTab("jobs")} className="mt-4 h-9 px-4 rounded-lg bg-indigo-600 text-white text-sm font-medium">
-                Open jobs
-              </button>
+        <div className="space-y-6">
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold text-slate-900">Waiting for confirm</h2>
+              <span className="text-xs text-amber-700">{pendingJobs.length}</span>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {pendingJobs.map((job) => (
-                <article key={job.id} className="rounded-xl border border-slate-200 bg-white p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h2 className="text-base font-semibold text-slate-900">{job.title}</h2>
-                      <p className="text-sm text-slate-500 mt-0.5">
-                        {job.company} · {formatSalaryDisplay(job.salary)} · {job.location || "—"}
-                      </p>
+            {pendingJobs.length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center">
+                <p className="font-medium text-slate-900">Nothing waiting</p>
+                <p className="text-sm text-slate-500 mt-1">New employer submissions land here.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingJobs.map((job) => (
+                  <article key={job.id} className="rounded-xl border border-amber-200 bg-amber-50/40 p-3 sm:p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <button
+                          type="button"
+                          title="Publish"
+                          aria-label="Publish"
+                          onClick={() => updateJobStatus(job.id, "published")}
+                          className="h-10 w-10 rounded-lg bg-emerald-600 text-white text-xl font-semibold leading-none hover:bg-emerald-700"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          type="button"
+                          title="Delete"
+                          aria-label="Delete"
+                          onClick={() => handleDeleteJob(job.id)}
+                          className="h-10 w-10 rounded-lg bg-rose-600 text-white text-xl font-semibold leading-none hover:bg-rose-700"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-base font-semibold text-slate-900">{job.title}</h3>
+                        <p className="text-sm text-slate-500 mt-0.5">
+                          {job.company} · {formatSalaryDisplay(job.salary)} · {job.location || "—"}
+                        </p>
+                        <p className="mt-2 text-sm text-slate-600 whitespace-pre-wrap line-clamp-5">{job.description || "No description."}</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                          {job.applyUrl ? (
+                            <a href={job.applyUrl} target="_blank" rel="noreferrer" className="text-indigo-600 break-all">
+                              {job.applyUrl}
+                            </a>
+                          ) : (
+                            <span className="text-rose-600">No apply link</span>
+                          )}
+                          <button type="button" onClick={() => startEditJob(job)} className="text-slate-500 hover:text-slate-800">
+                            Edit first
+                          </button>
+                        </div>
+                        {editingJobId === job.id && editDraft ? (
+                          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <input className={fieldClass} value={editDraft.title} onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })} />
+                            <input className={fieldClass} value={editDraft.salary} onChange={(e) => setEditDraft({ ...editDraft, salary: e.target.value })} />
+                            <input className={fieldClass} value={editDraft.location} onChange={(e) => setEditDraft({ ...editDraft, location: e.target.value })} />
+                            <input className={fieldClass} value={editDraft.applyUrl || job.applyUrl || ""} onChange={(e) => setEditDraft({ ...editDraft, applyUrl: e.target.value })} />
+                            <textarea
+                              className={`${fieldClass} sm:col-span-2 min-h-[100px]`}
+                              value={editDraft.description}
+                              onChange={(e) => setEditDraft({ ...editDraft, description: e.target.value })}
+                            />
+                            <button onClick={() => saveJobEdits(job.id)} className="h-9 rounded-lg bg-indigo-600 text-white text-sm font-medium">
+                              Save
+                            </button>
+                            <button onClick={cancelEditJob} className="h-9 rounded-lg border border-slate-200 text-sm font-medium">
+                              Cancel
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        title="Publish to the board"
-                        aria-label="Publish"
-                        onClick={() => updateJobStatus(job.id, "published")}
-                        className="h-10 w-10 rounded-lg bg-emerald-600 text-white text-xl font-semibold leading-none hover:bg-emerald-700"
-                      >
-                        ✓
-                      </button>
-                      <button
-                        type="button"
-                        title="Decline"
-                        aria-label="Decline"
-                        onClick={() => updateJobStatus(job.id, "private")}
-                        className="h-10 w-10 rounded-lg bg-rose-600 text-white text-xl font-semibold leading-none hover:bg-rose-700"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-sm text-slate-600 whitespace-pre-wrap line-clamp-6">{job.description || "No description."}</p>
-                  <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-                    {job.applyUrl ? (
-                      <a href={job.applyUrl} target="_blank" rel="noreferrer" className="text-indigo-600 break-all">
-                        {job.applyUrl}
-                      </a>
-                    ) : (
-                      <span className="text-rose-600">No apply link</span>
-                    )}
-                    <button type="button" onClick={() => startEditJob(job)} className="text-slate-500 hover:text-slate-800">
-                      Edit first
-                    </button>
-                  </div>
-                  {editingJobId === job.id && editDraft ? (
-                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <input className={fieldClass} value={editDraft.title} onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })} />
-                      <input className={fieldClass} value={editDraft.salary} onChange={(e) => setEditDraft({ ...editDraft, salary: e.target.value })} />
-                      <input className={fieldClass} value={editDraft.location} onChange={(e) => setEditDraft({ ...editDraft, location: e.target.value })} />
-                      <input className={fieldClass} value={editDraft.applyUrl || job.applyUrl || ""} onChange={(e) => setEditDraft({ ...editDraft, applyUrl: e.target.value })} />
-                      <textarea
-                        className={`${fieldClass} sm:col-span-2 min-h-[100px]`}
-                        value={editDraft.description}
-                        onChange={(e) => setEditDraft({ ...editDraft, description: e.target.value })}
-                      />
-                      <button onClick={() => saveJobEdits(job.id)} className="h-9 rounded-lg bg-indigo-600 text-white text-sm font-medium">
-                        Save
-                      </button>
-                      <button onClick={cancelEditJob} className="h-9 rounded-lg border border-slate-200 text-sm font-medium">
-                        Cancel
-                      </button>
-                    </div>
-                  ) : null}
-                </article>
-              ))}
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-slate-900">Live on the board</h2>
+            <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto">
+              {liveNewest.length === 0 ? (
+                <div className="px-4 py-8 text-center text-sm text-slate-500">No live listings yet.</div>
+              ) : (
+                <table className="cp-table w-full min-w-[640px] text-left text-sm">
+                  <thead>
+                    <tr className="text-xs font-medium text-slate-400 border-b border-slate-100">
+                      <th className="pl-3 pr-1 py-2.5 w-24 font-medium" />
+                      <th className="px-4 py-2.5 font-medium">Title</th>
+                      <th className="px-3 py-2.5 font-medium hidden sm:table-cell">Company</th>
+                      <th className="px-3 py-2.5 font-medium">Salary</th>
+                      <th className="px-3 py-2.5 font-medium hidden md:table-cell">Date</th>
+                      <th className="px-3 py-2.5 font-medium text-right sticky right-0 bg-slate-100">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>{liveNewest.map((job) => renderJobRow(job, "review"))}</tbody>
+                </table>
+              )}
             </div>
-          )}
+            {liveOlder.length > 0 ? (
+              <details className="rounded-xl border border-slate-200 bg-white">
+                <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-700">
+                  Older live listings ({liveOlder.length})
+                </summary>
+                <div className="overflow-x-auto border-t border-slate-100">
+                  <table className="cp-table w-full min-w-[640px] text-left text-sm">
+                    <tbody>{liveOlder.map((job) => renderJobRow(job, "review"))}</tbody>
+                  </table>
+                </div>
+              </details>
+            ) : null}
+          </section>
         </div>
       )}
 
@@ -858,6 +950,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               <table className="cp-table w-full min-w-[720px] text-left text-sm">
                 <thead>
                   <tr className="text-xs font-medium text-slate-400 border-b border-slate-100">
+                    <th className="pl-3 pr-1 py-2.5 w-24 font-medium" />
                     <th className="px-4 py-2.5 font-medium">Title</th>
                     <th className="px-3 py-2.5 font-medium hidden sm:table-cell">Company</th>
                     <th className="px-3 py-2.5 font-medium">Salary</th>
@@ -866,10 +959,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <th className="px-3 py-2.5 font-medium text-right min-w-[11rem] sticky right-0 bg-slate-100">Actions</th>
                   </tr>
                 </thead>
-                <tbody>{listedJobs.map((job) => renderJobRow(job, "jobs"))}</tbody>
+                <tbody>
+                  {(jobFilter === "live" && !showOlderLive ? listedJobs.slice(0, 3) : listedJobs).map((job) =>
+                    renderJobRow(job, "jobs"),
+                  )}
+                </tbody>
               </table>
             )}
           </div>
+          {jobFilter === "live" && listedJobs.length > 3 ? (
+            <button
+              type="button"
+              onClick={() => setShowOlderLive((prev) => !prev)}
+              className="mt-3 h-10 w-full rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700"
+            >
+              {showOlderLive ? "Hide older listings" : `Show ${listedJobs.length - 3} older listings`}
+            </button>
+          ) : null}
         </div>
       )}
 

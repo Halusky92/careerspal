@@ -71,6 +71,23 @@ const Auth: React.FC = () => {
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">Sign in</h1>
         </div>
 
+        <div className="mb-5 grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1">
+          <button
+            type="button"
+            onClick={() => setRole("candidate")}
+            className={`h-9 rounded-md text-sm font-medium ${role === "candidate" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+          >
+            Candidate
+          </button>
+          <button
+            type="button"
+            onClick={() => setRole("employer")}
+            className={`h-9 rounded-md text-sm font-medium ${role === "employer" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+          >
+            Employer
+          </button>
+        </div>
+
         <button
           type="button"
           onClick={handleGoogleSignIn}

@@ -8,7 +8,6 @@ import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
 import { PLAN_PRICES } from "../lib/plans";
 import { postingOwnerKey, readPostingItem, writePostingItem } from "../lib/postingSession";
-import { createJobSlug } from "../lib/jobs";
 import type { ListingScreenIssue } from "./PostJob";
 
 interface CheckoutProps {
@@ -178,9 +177,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
           jobId?: string;
         }>(submit)) || {};
         if (submit.ok) {
-          router.push(
-            `/jobs/${submitPayload.slug || createJobSlug({ id: submitPayload.jobId || effectiveJobId, title: jobData.title })}`,
-          );
+          router.push("/dashboard/employer");
           return;
         }
         if (submitPayload.issues?.length) {
@@ -405,7 +402,7 @@ const Checkout: React.FC<CheckoutProps> = ({ jobData, jobId, onSuccess, onCancel
            <div className="bg-white p-8 rounded-[2.5rem] flex items-start gap-4 border border-indigo-100 shadow-sm">
               <span className="text-2xl">🛡️</span>
               <p className="text-xs font-bold text-slate-500 leading-relaxed">
-                 Card payments go through Stripe. After payment, the listing goes live if it still meets the board bar. You get email confirmation.
+                 Card payments go through Stripe. After payment, the listing waits for a last check before it appears on the board. You get email confirmation.
               </p>
            </div>
         </div>

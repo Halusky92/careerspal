@@ -131,7 +131,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const steps = [
     { id: 1, title: "Role details", desc: "Title, scope, salary" },
     { id: 2, title: "Company & apply", desc: "Brand + link" },
-    { id: 3, title: "Preview & pay", desc: foundingEligible ? "Start pack — goes live" : "Confirm & checkout" },
+    { id: 3, title: "Preview & pay", desc: foundingEligible ? "Start pack — then review" : "Confirm & checkout" },
   ] as const;
 
   
@@ -399,7 +399,10 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
         const nicheIssues = (payload.issues || []).filter(
           (issue) =>
             (issue.field === "title" || issue.field === "description") &&
-            !/company|apply link|apply url|careers url/i.test(issue.message),
+            !/company|apply link|apply url|careers url/i.test(issue.message) &&
+            !/complete job description|responsibilit|requirement|too short|more detail|fuller description|outlines the/i.test(
+              issue.message,
+            ),
         );
         if (payload.ok || nicheIssues.length === 0) {
           setAiOk(true);
@@ -1042,7 +1045,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
             {step === 3 && (
               <div className="p-4 sm:p-5 text-center space-y-3">
                 <div className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-100 inline-block text-[11px] font-semibold uppercase tracking-wide">
-                  {foundingEligible && selectedPlan.type === "Standard" ? "Ready to go live" : "Ready for checkout"}
+                  {foundingEligible && selectedPlan.type === "Standard" ? "Ready to send for review" : "Ready for checkout"}
                 </div>
                 <h2 className="text-lg font-semibold text-slate-900 tracking-tight">Preview</h2>
                 <div className="bg-slate-50 p-4 sm:p-5 rounded-xl text-left border border-slate-200">
@@ -1095,7 +1098,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-indigo-600">For employers</div>
-                  <h3 className="text-base font-semibold text-slate-900 mt-1">Check → live.</h3>
+                  <h3 className="text-base font-semibold text-slate-900 mt-1">Reviewed before publish.</h3>
                   <p className="mt-2 text-sm font-medium text-slate-600">
                     Same board bar as pipeline listings. Candidates apply on your link.
                   </p>
@@ -1131,7 +1134,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 <AccordionRow id="review" openId={openInfoId} onToggle={toggleInfo} title="Review & publish timeline">
                   <div className="space-y-2 text-sm font-medium text-slate-700">
                     <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">1</span> Green ticks appear as each field meets the bar. Fix the red note and send again — no cooldown.</div>
-                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">2</span> When every required field is ticked, preview and post. Start pack goes live; paid goes to Stripe.</div>
+                    <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">2</span> When every required field is ticked, preview and send. Start pack and paid listings wait for a last check before they appear on the board.</div>
                     <div className="flex items-start gap-2"><span className="text-indigo-600 font-semibold mt-0.5">3</span> Apply stays on your link. No timed SLA.</div>
                     <p className="mt-3 text-xs text-slate-600">
                       A Start pack slot is used only after the listing is live. Failed checks stay as a draft so you can fix them.

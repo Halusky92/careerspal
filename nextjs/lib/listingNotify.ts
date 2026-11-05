@@ -26,6 +26,74 @@ const wrap = (title: string, body: string, href: string, label: string) => `
       <p><a href="${href}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:10px 14px;border-radius:8px;">${escapeHtml(label)}</a></p>
     </div>`;
 
+export async function sendAdminPendingDigest(input: {
+  listings: Array<{
+    id: string;
+    title: string;
+    company: string;
+    salary?: string | null;
+    location?: string | null;
+    applyUrl?: string | null;
+  }>;
+  extraTo?: string[];
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey || input.listings.length === 0) return;
+  const resend = new Resend(apiKey);
+  const from = getResendFrom();
+  const supportEmail = "info@careerspal.com";
+  const adminTo = new Set(
+    [
+      ...(process.env.ADMIN_NOTIFICATION_EMAIL || supportEmail).split(","),
+      "mb.bilek@gmail.com",
+      ...(input.extraTo || []),
+    ]
+      .map((email) => email.trim())
+      .filter(Boolean),
+  );
+  const baseUrl = getBaseUrl();
+  const adminUrl = `${baseUrl}/dashboard/admin?tab=review`;
+  const rows = input.listings
+    .map(
+      (item) =>
+        `<tr>
+          <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;">${escapeHtml(item.title)}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;">${escapeHtml(item.company)}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;">${escapeHtml(item.salary || "—")}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;">${escapeHtml(item.location || "—")}</td>
+        </tr>`,
+    )
+    .join("");
+  try {
+    await resend.emails.send({
+      from,
+      to: [...adminTo],
+      subject: `${input.listings.length} listings waiting for confirm`,
+      html: wrap(
+        "Waiting for confirm",
+        `<p>Invented company listings are in the queue. Green ✓ publishes. Red ✕ deletes.</p>
+         <table style="border-collapse:collapse;width:100%;font-size:14px;">
+           <thead><tr>
+             <th style="text-align:left;padding:8px 10px;">Title</th>
+             <th style="text-align:left;padding:8px 10px;">Company</th>
+             <th style="text-align:left;padding:8px 10px;">Salary</th>
+             <th style="text-align:left;padding:8px 10px;">Location</th>
+           </tr></thead>
+           <tbody>${rows}</tbody>
+         </table>`,
+        adminUrl,
+        "Open confirm desk",
+      ),
+    });
+  } catch (error) {
+    await supabaseAdmin?.from("audit_logs").insert({
+      action: "email_failed",
+      metadata: { error: String(error), kind: "pending_digest" },
+    });
+    throw error;
+  }
+}
+
 export async function sendListingOutcomeEmails(input: {
   jobId: string;
   title?: string | null;
@@ -58,9 +126,11 @@ export async function sendListingOutcomeEmails(input: {
   const buyerLive = input.startPack
     ? "Your Start pack listing is live"
     : "Payment received — listing is live";
-  const buyerPending = "Payment received — listing is in review";
+  const buyerPending = input.startPack
+    ? "Your listing is in review"
+    : "Payment received — listing is in review";
   const adminLive = input.startPack ? "Start pack listing is live ($0)" : "Paid listing is live";
-  const adminPending = "Paid listing waiting for confirm";
+  const adminPending = input.startPack ? "Start pack listing waiting for confirm" : "Paid listing waiting for confirm";
 
   try {
     if (input.buyerEmail) {
@@ -69,13 +139,13 @@ export async function sendListingOutcomeEmails(input: {
         to: input.buyerEmail,
         subject: input.live ? buyerLive : buyerPending,
         html: wrap(
-          input.live ? "Your listing is live" : "Payment confirmed",
+          input.live ? "Your listing is live" : "Submitted for review",
           `<p><strong>${escapeHtml(jobLine)}</strong></p>
            <p>Plan: ${escapeHtml(planLine)}</p>
            <p>${
              input.live
                ? "It is on the CareersPal board now."
-               : "Payment went through. It will go live after a last check. That is not a timed SLA."
+               : "It will go live after a last check. That is not a timed SLA."
            }</p>`,
           input.live ? jobUrl : employerUrl,
           input.live ? "View listing" : "Open employer dashboard",

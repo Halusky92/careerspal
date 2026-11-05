@@ -33,10 +33,7 @@ const AuthPage = () => {
       }
 
       const currentRole = profile.role || "candidate";
-      const hiringFrom =
-        Boolean(desiredFrom) &&
-        ["/post-a-job", "/checkout", "/hire-talent", "/pricing"].some((path) => (desiredFrom || "").startsWith(path));
-      if (desiredRole === "employer" && currentRole === "candidate" && hiringFrom) {
+      if (desiredRole === "employer" && currentRole === "candidate") {
         try {
           await authFetch(
             "/api/account/role",
@@ -53,7 +50,7 @@ const AuthPage = () => {
         }
       }
 
-      const finalRole = hiringFrom && desiredRole === "employer" ? "employer" : currentRole || "candidate";
+      const finalRole = desiredRole === "employer" ? "employer" : currentRole || "candidate";
       if (!isActive) return;
       let finalFrom: string | null = desiredFrom;
       if (!finalFrom) {

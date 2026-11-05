@@ -95,9 +95,7 @@ export async function POST(request: Request) {
         });
 
         if (isPaid) {
-          const { maybeAutoPublishListing } = await import("../../../../lib/jobs/autoReviewListing");
           const { sendListingOutcomeEmails } = await import("../../../../lib/listingNotify");
-          const auto = await maybeAutoPublishListing(supabaseAdmin, jobId, null);
           const { data: job } = await supabaseAdmin
             .from("jobs")
             .select("id,title,plan_type,plan_price,companies(name)")
@@ -113,7 +111,7 @@ export async function POST(request: Request) {
             planPrice: jobRow?.plan_price ?? null,
             buyerEmail: session.customer_details?.email || session.customer_email || null,
             startPack: false,
-            live: auto.status === "published",
+            live: false,
             paid: true,
           });
         }

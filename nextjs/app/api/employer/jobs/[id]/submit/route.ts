@@ -3,7 +3,7 @@ import { supabaseAdmin } from "../../../../../../lib/supabaseAdmin";
 import { getFoundingStatus, loadEmployerOwnedJob, requireEmployer } from "../../../../../../lib/employer";
 import { foundingExpiresAt } from "../../../../../../lib/founding";
 import { maybeNotifyStartPackTwoLeft, sendListingOutcomeEmails } from "../../../../../../lib/listingNotify";
-import { maybeAutoPublishListing, screenListingForBoard } from "../../../../../../lib/jobs/autoReviewListing";
+import { screenListingForBoard } from "../../../../../../lib/jobs/autoReviewListing";
 import { createJobSlug } from "../../../../../../lib/jobs";
 import { verifyScreenPass } from "../../../../../../lib/jobs/screenPass";
 
@@ -121,24 +121,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
   }
 
-  const auto = await maybeAutoPublishListing(supabaseAdmin!, data.id, auth.profileId, { skipAi });
-  if (auto.status !== "published") {
-    await supabaseAdmin!.from("jobs").update({ status: "draft", posted_at_text: "Draft", stripe_payment_status: null }).eq("id", id);
-    return NextResponse.json(
-      {
-        error: auto.reasons[0] || "This listing does not meet the board bar yet.",
-        issues: auto.issues,
-        reasons: auto.reasons,
-      },
-      { status: 400 },
-    );
-  }
-
   await supabaseAdmin!.from("audit_logs").insert({
     action: "employer_job_submitted_founding",
     job_id: id,
     actor_id: auth.profileId,
-    metadata: { status: "published", plan: "Start pack", planPrice: 0 },
+    metadata: { status: "pending_review", plan: "Start pack", planPrice: 0 },
   });
 
   await sendListingOutcomeEmails({
@@ -149,7 +136,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     planPrice: 0,
     buyerEmail: auth.email || null,
     startPack: true,
-    live: true,
+    live: false,
     paid: false,
   });
 
@@ -166,7 +153,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   return NextResponse.json({
     ok: true,
-    status: "published",
+    status: "pending_review",
     jobId: data.id,
     slug: createJobSlug({ id: data.id, title: owned.job.title || "role" }),
     plan: "Start pack",
