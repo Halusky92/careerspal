@@ -15,6 +15,7 @@ import { PLAN_PRICES } from "../lib/plans";
 import JobViewCount from "./JobViewCount";
 import ListingPlanBadge from "./ListingPlanBadge";
 import { companyPackKey, countCompanyPackUsage } from "../lib/listingPlan";
+import EmployerListingStats, { type ListingStatsPayload } from "./EmployerListingStats";
 
 type TrafficSource = { source: string; label?: string; views: number; applyClicks: number };
 
@@ -86,6 +87,9 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   const [claimQuery, setClaimQuery] = useState("");
   const [claimHits, setClaimHits] = useState<ClaimHit[]>([]);
   const [shortlist, setShortlist] = useState<{ id: string; jobId: string; jobTitle: string; person: PublicPerson | null }[]>([]);
+  const [openJobId, setOpenJobId] = useState<string | null>(null);
+  const [listingStats, setListingStats] = useState<Record<string, ListingStatsPayload>>({});
+  const [statsLoadingId, setStatsLoadingId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     if (!accessToken) return;
@@ -130,6 +134,24 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   useEffect(() => {
     reload().catch(() => undefined);
   }, [reload]);
+
+  useEffect(() => {
+    if (!accessToken || !openJobId || listingStats[openJobId]) return;
+    let cancelled = false;
+    setStatsLoadingId(openJobId);
+    authFetch(`/api/employer/jobs/${openJobId}/stats`, {}, accessToken)
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as ListingStatsPayload;
+        if (!cancelled) setListingStats((prev) => ({ ...prev, [openJobId]: data }));
+      })
+      .finally(() => {
+        if (!cancelled) setStatsLoadingId(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, openJobId, listingStats]);
 
   useEffect(() => {
     const q = claimQuery.trim();
@@ -301,16 +323,23 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
     return (
       <article key={job.id} className="rounded-2xl border border-slate-200 bg-white p-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <button
+            type="button"
+            onClick={() => setOpenJobId((current) => (current === job.id ? null : job.id))}
+            className="min-w-0 text-left"
+            aria-expanded={openJobId === job.id}
+          >
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-semibold text-slate-900 leading-snug">{job.title}</p>
               <ListingPlanBadge job={job} packUsedByCompany={packUsedByCompany} />
             </div>
-            <p className="mt-1 text-sm text-slate-500 truncate">
+            <p className="mt-1 text-sm text-slate-500">
               {[job.company, formatSalaryDisplay(job.salary), postedDate(job)].filter(Boolean).join(" · ")} ·{" "}
               <JobViewCount views={job.views} />
+              {" · "}
+              {job.matches === 1 ? "1 apply click" : `${job.matches || 0} apply clicks`}
             </p>
-          </div>
+          </button>
           <span className={`shrink-0 inline-flex text-xs font-medium px-2 py-0.5 rounded ${statusTone(job.status)}`}>
             {statusLabel(job.status)}
           </span>
@@ -361,6 +390,15 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
             Remove
           </button>
         </div>
+        {openJobId === job.id ? (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <EmployerListingStats
+              loading={statsLoadingId === job.id}
+              stats={listingStats[job.id] || null}
+              seekers={shortlist.filter((item) => item.jobId === job.id)}
+            />
+          </div>
+        ) : null}
       </article>
     );
   };
