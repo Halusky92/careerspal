@@ -81,6 +81,8 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   const [founding, setFounding] = useState<FoundingStatus | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"ok" | "error">("ok");
+  const [showOlderJobs, setShowOlderJobs] = useState(false);
   const [claimQuery, setClaimQuery] = useState("");
   const [claimHits, setClaimHits] = useState<ClaimHit[]>([]);
   const [shortlist, setShortlist] = useState<{ id: string; jobId: string; jobTitle: string; person: PublicPerson | null }[]>([]);
@@ -148,8 +150,10 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
     () => myJobs.filter((job) => job.status === "published").length,
     [myJobs],
   );
+  const newestJobs = myJobs.slice(0, 5);
+  const olderJobs = myJobs.slice(5);
 
-  const runAction = async (job: Job, action: "pause" | "close" | "republish" | "archive" | "delete") => {
+  const runAction = async (job: Job, action: "pause" | "close" | "republish" | "archive" | "delete" | "publish") => {
     if (!accessToken) return;
     setBusyId(job.id);
     setMessage(null);
@@ -158,9 +162,30 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
         const res = await authFetch(`/api/employer/jobs/${job.id}`, { method: "DELETE" }, accessToken);
         const data = (await res.json()) as { error?: string };
         if (!res.ok) {
-          setMessage(data.error || "Could not delete draft.");
+          setMessageTone("error");
+          setMessage(data.error || "Could not remove listing.");
           return;
         }
+        setMessageTone("ok");
+        setMessage("Listing removed.");
+      } else if (action === "publish" && job.status === "draft") {
+        const submit = await authFetch(
+          `/api/employer/jobs/${job.id}/submit`,
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) },
+          accessToken,
+        );
+        const submitData = (await submit.json()) as { error?: string; checkoutRequired?: boolean };
+        if (submit.status === 402 || submitData.checkoutRequired) {
+          onUpgrade();
+          return;
+        }
+        if (!submit.ok) {
+          setMessageTone("error");
+          setMessage(submitData.error || "Could not publish listing.");
+          return;
+        }
+        setMessageTone("ok");
+        setMessage("Sent for review.");
       } else {
         const res = await authFetch(
           `/api/employer/jobs/${job.id}`,
@@ -174,10 +199,32 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
         const data = (await res.json()) as {
           error?: string;
           checkoutRequired?: boolean;
+          submitRequired?: boolean;
           price?: number;
           planName?: string;
           purpose?: string;
         };
+        if (res.status === 409 && data.submitRequired) {
+          const submit = await authFetch(
+            `/api/employer/jobs/${job.id}/submit`,
+            { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) },
+            accessToken,
+          );
+          const submitData = (await submit.json()) as { error?: string; checkoutRequired?: boolean };
+          if (submit.status === 402 || submitData.checkoutRequired) {
+            onUpgrade();
+            return;
+          }
+          if (!submit.ok) {
+            setMessageTone("error");
+            setMessage(submitData.error || "Could not publish listing.");
+            return;
+          }
+          setMessageTone("ok");
+          setMessage("Sent for review.");
+          await reload();
+          return;
+        }
         if (res.status === 402 && data.checkoutRequired) {
           const pay = await authFetch(
             "/api/stripe/checkout",
@@ -195,6 +242,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           );
           const payJson = (await pay.json()) as { url?: string; error?: string };
           if (!pay.ok || !payJson.url) {
+            setMessageTone("error");
             setMessage(payJson.error || data.error || "Could not start renewal checkout.");
             return;
           }
@@ -202,14 +250,111 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           return;
         }
         if (!res.ok) {
+          setMessageTone("error");
           setMessage(data.error || "Could not update listing.");
           return;
         }
+        setMessageTone("ok");
+        setMessage(
+          action === "publish"
+            ? "Listing is live."
+            : action === "close"
+              ? "Listing closed."
+              : action === "pause"
+                ? "Listing paused."
+                : "Listing updated.",
+        );
       }
       await reload();
     } finally {
       setBusyId(null);
     }
+  };
+
+  const renderJobRow = (job: Job) => {
+    const busy = busyId === job.id;
+    const canPublish = job.status === "pending_review" || job.status === "draft";
+    const canClose = job.status === "published" || job.status === "paused" || job.status === "pending_review";
+    const btn = "h-8 px-2.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 disabled:opacity-50";
+    return (
+      <tr key={job.id} className="border-b border-slate-100 last:border-0">
+        <td className="px-4 py-2.5">
+          <div className="font-medium text-slate-900 line-clamp-2">{job.title}</div>
+          <div className="sm:hidden text-xs text-slate-500 mt-0.5">{job.company}</div>
+        </td>
+        <td className="px-3 py-2.5 text-slate-600 hidden sm:table-cell whitespace-nowrap">{job.company}</td>
+        <td className="px-3 py-2.5 text-slate-700 whitespace-nowrap">{formatSalaryDisplay(job.salary)}</td>
+        <td className="px-3 py-2.5">
+          <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded ${statusTone(job.status)}`}>
+            {statusLabel(job.status)}
+          </span>
+        </td>
+        <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">{job.views ?? 0}</td>
+        <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">{job.matches ?? 0}</td>
+        <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap hidden lg:table-cell">{postedDate(job)}</td>
+        <td className="px-3 py-2.5 sticky right-0 bg-white shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]">
+          <div className="flex justify-end items-center gap-1 flex-wrap">
+            {canPublish ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => runAction(job, "publish")}
+                className="h-8 px-2.5 rounded-lg bg-emerald-600 text-white text-xs font-medium disabled:opacity-50"
+              >
+                Publish
+              </button>
+            ) : null}
+            <a
+              href={`/post-a-job?jobId=${job.id}`}
+              className="h-8 px-2.5 inline-flex items-center rounded-lg border border-slate-200 text-xs font-medium text-slate-700"
+            >
+              Edit
+            </a>
+            {job.status === "published" ? (
+              <a
+                href={`/jobs/${createJobSlug(job)}`}
+                className="h-8 px-2.5 inline-flex items-center rounded-lg border border-slate-200 text-xs font-medium text-slate-700"
+              >
+                View
+              </a>
+            ) : null}
+            {job.status === "published" ? (
+              <button type="button" disabled={busy} onClick={() => runAction(job, "pause")} className={btn}>
+                Pause
+              </button>
+            ) : null}
+            {(job.status === "paused" || job.status === "closed" || job.status === "archived") ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => runAction(job, "republish")}
+                className="h-8 px-2.5 rounded-lg bg-emerald-600 text-white text-xs font-medium disabled:opacity-50"
+              >
+                Renew ${PLAN_PRICES.standard}
+              </button>
+            ) : null}
+            {canClose ? (
+              <button type="button" disabled={busy} onClick={() => runAction(job, "close")} className={btn}>
+                Close
+              </button>
+            ) : null}
+            {job.status === "closed" ? (
+              <button type="button" disabled={busy} onClick={() => runAction(job, "archive")} className={btn}>
+                Archive
+              </button>
+            ) : null}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => runAction(job, "delete")}
+              className="h-8 px-2.5 rounded-lg text-xs font-medium text-rose-600 disabled:opacity-50"
+            >
+              Remove
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
   };
 
   const claimCompany = async (companyId: string) => {
@@ -338,7 +483,13 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
       </div>
 
       {message && (
-        <div className="mb-4 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">{message}</div>
+        <div
+          className={`mb-4 rounded-lg border px-3 py-2 text-sm ${
+            messageTone === "error" ? "border-rose-200 bg-rose-50 text-rose-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"
+          }`}
+        >
+          {message}
+        </div>
       )}
 
       <details className="mb-5 rounded-lg border border-slate-200 bg-white">
@@ -401,75 +552,28 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
                   <th className="px-3 py-2.5 font-medium text-right min-w-[11rem] sticky right-0 bg-slate-100">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                {myJobs.map((job) => {
-                  const busy = busyId === job.id;
-                  return (
-                    <tr key={job.id} className="border-b border-slate-100 last:border-0">
-                      <td className="px-4 py-2.5">
-                        <div className="font-medium text-slate-900 line-clamp-2">{job.title}</div>
-                        <div className="sm:hidden text-xs text-slate-500 mt-0.5">{job.company}</div>
-                      </td>
-                      <td className="px-3 py-2.5 text-slate-600 hidden sm:table-cell whitespace-nowrap">{job.company}</td>
-                      <td className="px-3 py-2.5 text-slate-700 whitespace-nowrap">{formatSalaryDisplay(job.salary)}</td>
-                      <td className="px-3 py-2.5">
-                        <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded ${statusTone(job.status)}`}>
-                          {statusLabel(job.status)}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">{job.views ?? 0}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">{job.matches ?? 0}</td>
-                      <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap hidden lg:table-cell">{postedDate(job)}</td>
-                      <td className="px-3 py-2.5 sticky right-0 bg-white shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]">
-                        <div className="flex justify-end items-center gap-1 flex-wrap">
-                          <a
-                            href={`/post-a-job?jobId=${job.id}`}
-                            className="h-8 px-2.5 inline-flex items-center rounded-lg border border-slate-200 text-xs font-medium text-slate-700"
-                          >
-                            Edit
-                          </a>
-                          {job.status === "published" && (
-                            <a
-                              href={`/jobs/${createJobSlug(job)}`}
-                              className="h-8 px-2.5 inline-flex items-center rounded-lg border border-slate-200 text-xs font-medium text-slate-700"
-                            >
-                              View
-                            </a>
-                          )}
-                          {job.status === "published" && (
-                            <button disabled={busy} onClick={() => runAction(job, "pause")} className="h-8 px-2.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 disabled:opacity-50">
-                              Pause
-                            </button>
-                          )}
-                          {(job.status === "paused" || job.status === "closed" || job.status === "archived") && (
-                            <button disabled={busy} onClick={() => runAction(job, "republish")} className="h-8 px-2.5 rounded-lg bg-emerald-600 text-white text-xs font-medium disabled:opacity-50">
-                              Renew ${PLAN_PRICES.standard}
-                            </button>
-                          )}
-                          {(job.status === "published" || job.status === "paused") && (
-                            <button disabled={busy} onClick={() => runAction(job, "close")} className="h-8 px-2.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 disabled:opacity-50">
-                              Close
-                            </button>
-                          )}
-                          {job.status === "closed" && (
-                            <button disabled={busy} onClick={() => runAction(job, "archive")} className="h-8 px-2.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 disabled:opacity-50">
-                              Archive
-                            </button>
-                          )}
-                          {job.status === "draft" && (
-                            <button disabled={busy} onClick={() => runAction(job, "delete")} className="h-8 px-2.5 rounded-lg text-xs font-medium text-rose-600 disabled:opacity-50">
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
+              <tbody>{newestJobs.map((job) => renderJobRow(job))}</tbody>
             </table>
           </div>
         )}
+        {olderJobs.length > 0 ? (
+          <div className="border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setShowOlderJobs((prev) => !prev)}
+              className="w-full px-4 py-3 text-left text-sm font-medium text-slate-700"
+            >
+              {showOlderJobs ? "Hide older listings" : `Older listings (${olderJobs.length})`}
+            </button>
+            {showOlderJobs ? (
+              <div className="overflow-x-auto border-t border-slate-100">
+                <table className="cp-table w-full min-w-[820px] text-left text-sm">
+                  <tbody>{olderJobs.map((job) => renderJobRow(job))}</tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

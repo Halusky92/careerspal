@@ -311,11 +311,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   };
 
   const showIssue = (field: string) => {
-    if (field === "description") {
-      return screenIssues.some((issue) => issue.field === "description");
-    }
-    const message = issueFor(field);
+    const message = screenIssues.find((issue) => issue.field === field)?.message;
     if (!message) return false;
+    if (step === 1 && isLaterStepCopy(message)) return false;
     return issueStillApplies({ field, message });
   };
 
@@ -586,27 +584,6 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     if (showIssue(field)) return " border-rose-300 ring-1 ring-rose-200";
     return "";
   };
-  const IssuesBanner = () => {
-    const stepFields = step === 1 ? ["title", "salary", "description"] : step === 2 ? ["company", "applyUrl"] : [];
-    const shown = [...screenIssues, ...localIssues.filter((issue) => !screenIssues.some((item) => item.field === issue.field))].filter(
-      (issue) => {
-        if (stepFields.length && !stepFields.includes(issue.field)) return false;
-        if (step === 1 && isLaterStepCopy(issue.message)) return false;
-        return issueStillApplies(issue);
-      },
-    );
-    if (!shown.length) return null;
-    return (
-      <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 text-left space-y-1">
-        <p className="font-semibold">Change the field below. You can submit again right away.</p>
-        <ul className="list-disc pl-4 space-y-0.5">
-          {shown.map((issue) => (
-            <li key={`${issue.field}-${issue.message}`}>{issue.message}</li>
-          ))}
-        </ul>
-      </div>
-    );
-  };
   const Mark = ({ field }: { field: "title" | "salary" | "description" | "company" | "applyUrl" }) => {
     const mark = fieldMark(field);
     if (!mark.label) return null;
@@ -692,7 +669,6 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     );
                   })}
                 </div>
-                <IssuesBanner />
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-2">
@@ -890,7 +866,6 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     );
                   })}
                 </div>
-                <IssuesBanner />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">Company Name * <Mark field="company" /></label>

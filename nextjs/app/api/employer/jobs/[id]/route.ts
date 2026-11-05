@@ -10,6 +10,7 @@ import {
 } from "../../../../../lib/employer";
 import { formatSalaryForStorage } from "../../../../../lib/formatSalary";
 import { canRenewUnpublished, RENEW_PLAN_NAME, RENEW_PRICE } from "../../../../../lib/jobs/unpublishedRetention";
+import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../../lib/nicheScope";
 
 const postedLabel = (status: string) => {
   if (status === "published") return "Just now";
@@ -50,7 +51,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   const body = (await request.json()) as {
-    action?: "pause" | "close" | "republish" | "archive" | "renew";
+    action?: "pause" | "close" | "republish" | "archive" | "renew" | "publish";
     status?: string;
     title?: string;
     description?: string;
@@ -74,9 +75,26 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
     updateData.status = "paused";
     updateData.unpublished_at = new Date().toISOString();
+  } else if (body.action === "publish") {
+    if (current === "draft") {
+      return NextResponse.json({ error: "Submit the listing first.", submitRequired: true }, { status: 409 });
+    }
+    if (current !== "pending_review") {
+      return NextResponse.json({ error: "Only listings in review can be published from here." }, { status: 400 });
+    }
+    if (!isOnNicheJob({ title: owned.job.title, category: null, description: owned.job.description })) {
+      return NextResponse.json({ error: NICHE_REJECT_MESSAGE }, { status: 400 });
+    }
+    const paymentStatus = String(owned.job.stripe_payment_status || "");
+    const isPaid = paymentStatus === "paid" || paymentStatus === "founding";
+    const isFree = owned.job.plan_price === 0;
+    if (!isPaid && !isFree && auth.role !== "admin") {
+      return NextResponse.json({ error: "Payment not confirmed." }, { status: 400 });
+    }
+    updateData.status = "published";
   } else if (body.action === "close") {
-    if (current !== "published" && current !== "paused") {
-      return NextResponse.json({ error: "Only live listings can be closed." }, { status: 400 });
+    if (!["published", "paused", "pending_review"].includes(current)) {
+      return NextResponse.json({ error: "This listing cannot be closed." }, { status: 400 });
     }
     updateData.status = "closed";
     updateData.unpublished_at = new Date().toISOString();
@@ -179,16 +197,9 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     return NextResponse.json({ error: "Job not found." }, { status: 404 });
   }
   const status = String(owned.job.status || "draft");
-  if (status !== "draft") {
-    return NextResponse.json(
-      { error: "Published listings are archived, not deleted, so history and stats stay intact." },
-      { status: 400 },
-    );
-  }
-
   const { error } = await supabaseAdmin!.from("jobs").delete().eq("id", id);
   if (error) {
-    return NextResponse.json({ error: "Unable to delete draft." }, { status: 500 });
+    return NextResponse.json({ error: "Unable to remove listing." }, { status: 500 });
   }
   await supabaseAdmin!.from("audit_logs").insert({
     action: "employer_job_deleted",

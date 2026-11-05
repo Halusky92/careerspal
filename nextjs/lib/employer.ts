@@ -122,7 +122,6 @@ export async function loadEmployerOwnedJob(
   if (!data) return { job: null, error: "not_found" };
   const job = toEmployerOwnedJob(data);
   if (job.created_by !== profileId) return { job: null, error: "forbidden" };
-  if ((job.origin || "employer") === "greenhouse") return { job: null, error: "sourced" };
   return { job, error: null };
 }
 
