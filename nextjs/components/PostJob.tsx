@@ -161,7 +161,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     setLogoFileName(draft?.logoFileName || "");
     setStep(n === 2 || n === 3 ? n : 1);
     setDraftOwner(owner);
-  }, [authLoading, owner, initialJob?.id, initialJob?.title, initialJob?.company]);
+  }, [authLoading, owner, initialJob?.id]);
 
   useEffect(() => {
     if (initialJob?.id) return;
@@ -297,11 +297,26 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     return fromLocal?.message;
   };
 
+  const issueStillApplies = (issue: { field: string; message: string }) => {
+    if (issue.field === "company") return !formData.company.trim();
+    if (issue.field === "applyUrl") return localIssues.some((item) => item.field === "applyUrl");
+    if (issue.field === "salary") return localIssues.some((item) => item.field === "salary");
+    if (issue.field === "title") {
+      return localIssues.some((item) => item.field === "title") || (aiOk === false && /ops|systems|hate|abusive|discrimin/i.test(issue.message));
+    }
+    if (issue.field === "description") {
+      return screenIssues.some((item) => item.field === "description" && item.message === issue.message);
+    }
+    return true;
+  };
+
   const showIssue = (field: string) => {
     if (field === "description") {
       return screenIssues.some((issue) => issue.field === "description");
     }
-    return Boolean(issueFor(field) && (fieldValue(field).trim() || screenIssues.some((issue) => issue.field === field)));
+    const message = issueFor(field);
+    if (!message) return false;
+    return issueStillApplies({ field, message });
   };
 
   const applySections = (patch: Partial<Pick<JobFormData, "workScope" | "whoYouNeed" | "aboutTeam">>) => {
@@ -338,11 +353,15 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const fieldMark = (field: "title" | "salary" | "description" | "company" | "applyUrl") => {
     const checking = (field === "title" || field === "description") && aiChecking && titleLocalOk;
     if (checking) return { label: "…", className: "text-slate-400" };
-    if (fieldReady(field) && !(field === "title" && aiOk === false) && !(issueFor(field) && fieldValue(field).trim())) {
+    if (fieldReady(field) && !(field === "title" && aiOk === false && showIssue("title"))) {
       return { label: "✓", className: "text-emerald-600" };
     }
     return { label: "", className: "" };
   };
+
+  useEffect(() => {
+    setScreenIssues((prev) => prev.filter((issue) => issueStillApplies(issue)));
+  }, [formData.company, formData.applyUrl, formData.salary, formData.title, formData.description]);
 
   useEffect(() => {
     const title = formData.title.trim();
@@ -410,6 +429,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
       setScreenIssues(blocked.length ? blocked : screenIssues.filter((issue) => !isLaterStepCopy(issue.message)));
       return;
     }
+    setScreenIssues((prev) => prev.filter((issue) => FIELD_STEP[issue.field] === 2 && issueStillApplies(issue)));
     setStep(2);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -569,11 +589,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
       (issue) => {
         if (stepFields.length && !stepFields.includes(issue.field)) return false;
         if (step === 1 && isLaterStepCopy(issue.message)) return false;
-        if (issue.field === "description" && !screenIssues.some((item) => item.field === "description" && item.message === issue.message)) {
-          return false;
-        }
-        const value = fieldValue(issue.field);
-        return Boolean(value?.trim()) || screenIssues.some((item) => item.field === issue.field);
+        return issueStillApplies(issue);
       },
     );
     if (!shown.length) return null;
@@ -1017,7 +1033,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 <div className="flex gap-2 pt-2">
                   <button onClick={() => setStep(1)} className="h-10 px-4 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">Back</button>
                   <button onClick={handleStep2} disabled={screening} className="flex-1 h-10 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
-                    {screening ? "Checking listing…" : allReady ? "Review listing" : "Fix the marked fields"}
+                    {screening ? "Checking listing…" : "Review listing"}
                   </button>
                 </div>
               </div>

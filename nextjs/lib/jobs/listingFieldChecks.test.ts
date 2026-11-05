@@ -29,6 +29,19 @@ test("step 1 does not nag about company before that field exists", () => {
   assert.ok(!issues.some((issue) => issue.message.startsWith("Add company, apply")));
 });
 
+test("any non-empty company name is accepted", () => {
+  const issues = localListingIssues({
+    title: "Business Systems Analyst",
+    description: "Own internal tools and process work.",
+    salary: "80 000",
+    applyUrl: "mailto:jobs@firm.com",
+    company: "districk 9",
+    remotePolicy: "Remote (Global)",
+    category: "Systems Design",
+  });
+  assert.ok(!issues.some((issue) => issue.field === "company"));
+});
+
 test("short employer copy is allowed; no 280-char or ops-wording nags", () => {
   const issues = localListingIssues({
     title: "Business Systems Analyst",
