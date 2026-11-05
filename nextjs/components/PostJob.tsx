@@ -12,7 +12,13 @@ import { toggleTool, toolsForCategory, toolsToKeywords } from "../lib/postingToo
 import StartPackMeter from "./StartPackMeter";
 import type { StartPackStatus } from "../lib/founding";
 import { DESCRIPTION_MAX, localListingIssues } from "../lib/jobs/listingFieldChecks";
-import { composeJobDescription, parseJobDescription, SECTION_MAX } from "../lib/jobDescriptionSections";
+import {
+  composeJobDescription,
+  EXAMPLE_PAY_AND_BENEFITS,
+  EXAMPLE_WHO_YOU_ARE,
+  parseJobDescription,
+  SECTION_MAX,
+} from "../lib/jobDescriptionSections";
 
 export type ListingScreenIssue = { field: string; message: string };
 
@@ -42,6 +48,7 @@ const FIELD_STEP: Record<string, 1 | 2> = {
 type JobFormData = Omit<Job, 'id' | 'postedAt' | 'isFeatured' | 'planType' | 'plan' | 'timestamp' | 'status' | 'views' | 'matches'> & {
   workScope?: string;
   whoYouNeed?: string;
+  payAndBenefits?: string;
   aboutTeam?: string;
 };
 
@@ -95,6 +102,7 @@ const formFromJob = (job?: Partial<Job> | null, draft?: DraftPost | null): JobFo
     description,
     workScope: draft?.formData?.workScope ?? parsed.work,
     whoYouNeed: draft?.formData?.whoYouNeed ?? parsed.who,
+    payAndBenefits: draft?.formData?.payAndBenefits ?? parsed.pay,
     aboutTeam: draft?.formData?.aboutTeam ?? parsed.about,
     company: job?.company || draft?.formData?.company || "",
     companyWebsite: job?.companyWebsite || draft?.formData?.companyWebsite || "",
@@ -317,15 +325,19 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     return issueStillApplies({ field, message });
   };
 
-  const applySections = (patch: Partial<Pick<JobFormData, "workScope" | "whoYouNeed" | "aboutTeam">>) => {
+  const applySections = (
+    patch: Partial<Pick<JobFormData, "workScope" | "whoYouNeed" | "payAndBenefits" | "aboutTeam">>,
+  ) => {
     setFormData((prev) => {
       const next = { ...prev, ...patch };
       next.workScope = String(next.workScope || "").slice(0, SECTION_MAX);
       next.whoYouNeed = String(next.whoYouNeed || "").slice(0, SECTION_MAX);
+      next.payAndBenefits = String(next.payAndBenefits || "").slice(0, SECTION_MAX);
       next.aboutTeam = String(next.aboutTeam || "").slice(0, SECTION_MAX);
       next.description = composeJobDescription({
         work: next.workScope,
         who: next.whoYouNeed,
+        pay: next.payAndBenefits,
         about: next.aboutTeam,
       }).slice(0, DESCRIPTION_MAX);
       return next;
@@ -500,12 +512,13 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     const normalizedApplyUrl = normalizeApplyUrl(formData.applyUrl);
     const normalizedCompanyWebsite = normalizeHttpUrl(formData.companyWebsite || "");
 
-    const { workScope: _work, whoYouNeed: _who, aboutTeam: _about, ...jobFields } = formData;
+    const { workScope: _work, whoYouNeed: _who, payAndBenefits: _pay, aboutTeam: _about, ...jobFields } = formData;
     const finalJob: Job = { 
       ...jobFields,
       description: composeJobDescription({
         work: formData.workScope,
         who: formData.whoYouNeed,
+        pay: formData.payAndBenefits,
         about: formData.aboutTeam,
       }).slice(0, DESCRIPTION_MAX) || formData.description,
       tags: mergedTags,
@@ -852,7 +865,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                         {formData.description.length} / {DESCRIPTION_MAX}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500">Three short boxes, like Indeed. Fill what you know. We only block abusive copy.</p>
+                    <p className="text-[11px] text-slate-500">What we do is enough to continue. The other boxes are optional. We only block abusive copy.</p>
                     <div className={`rounded-xl border bg-slate-50/70 p-3 space-y-1.5${showIssue("description") ? " border-rose-300" : " border-slate-200"}`}>
                       <label className="text-[11px] font-semibold text-slate-800">What we do</label>
                       <p className="text-[11px] text-slate-500">Write as the company. Day-to-day work of this role.</p>
@@ -867,21 +880,62 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                       <p className="text-[10px] text-slate-400 text-right">{(formData.workScope || "").length} / {SECTION_MAX}</p>
                     </div>
                     <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-1.5">
-                      <label className="text-[11px] font-semibold text-slate-800">Who you’re looking for</label>
-                      <p className="text-[11px] text-slate-500">Must-haves. Skip nice-to-haves if you don’t know yet.</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <label className="text-[11px] font-semibold text-slate-800">Who you are</label>
+                          <p className="text-[11px] text-slate-500">Optional. Minimums vs preferred. Paste bullets if you have them.</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="shrink-0 text-[11px] font-medium text-indigo-600 hover:text-indigo-800"
+                          onClick={() => {
+                            if (formData.whoYouNeed?.trim()) return;
+                            applySections({ whoYouNeed: EXAMPLE_WHO_YOU_ARE });
+                          }}
+                        >
+                          Use example
+                        </button>
+                      </div>
                       <textarea
-                        rows={3}
+                        rows={6}
                         maxLength={SECTION_MAX}
-                        placeholder="e.g. 3 years in operations, Notion/Airtable, clear writing."
-                        className="cp-field w-full rounded-lg px-3 py-2 text-sm outline-none min-h-[5rem]"
+                        placeholder={EXAMPLE_WHO_YOU_ARE}
+                        className="cp-field w-full rounded-lg px-3 py-2 text-sm outline-none min-h-[8rem]"
                         value={formData.whoYouNeed || ""}
                         onChange={(e) => applySections({ whoYouNeed: e.target.value })}
                       />
                       <p className="text-[10px] text-slate-400 text-right">{(formData.whoYouNeed || "").length} / {SECTION_MAX}</p>
                     </div>
                     <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <label className="text-[11px] font-semibold text-slate-800">Pay and benefits</label>
+                          <p className="text-[11px] text-slate-500">Optional. Salary range is above. Add equity, health, bonus, location notes.</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="shrink-0 text-[11px] font-medium text-indigo-600 hover:text-indigo-800"
+                          onClick={() => {
+                            if (formData.payAndBenefits?.trim()) return;
+                            applySections({ payAndBenefits: EXAMPLE_PAY_AND_BENEFITS });
+                          }}
+                        >
+                          Use example
+                        </button>
+                      </div>
+                      <textarea
+                        rows={5}
+                        maxLength={SECTION_MAX}
+                        placeholder={EXAMPLE_PAY_AND_BENEFITS}
+                        className="cp-field w-full rounded-lg px-3 py-2 text-sm outline-none min-h-[7rem]"
+                        value={formData.payAndBenefits || ""}
+                        onChange={(e) => applySections({ payAndBenefits: e.target.value })}
+                      />
+                      <p className="text-[10px] text-slate-400 text-right">{(formData.payAndBenefits || "").length} / {SECTION_MAX}</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-1.5">
                       <label className="text-[11px] font-semibold text-slate-800">About the team</label>
-                      <p className="text-[11px] text-slate-500">Optional. Who you are and how you work.</p>
+                      <p className="text-[11px] text-slate-500">Optional. How the team works.</p>
                       <textarea
                         rows={3}
                         maxLength={SECTION_MAX}

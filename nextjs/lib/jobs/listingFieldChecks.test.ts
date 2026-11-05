@@ -78,7 +78,7 @@ test("description over the character cap is rejected", () => {
     remotePolicy: "Remote (Global)",
     category: "Operations",
   });
-  assert.ok(issues.some((issue) => issue.field === "description" && /4000/.test(issue.message)));
+  assert.ok(issues.some((issue) => issue.field === "description" && new RegExp(String(DESCRIPTION_MAX)).test(issue.message)));
 });
 
 test("apply link still gates the board; own titles are allowed in the form", () => {

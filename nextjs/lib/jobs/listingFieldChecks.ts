@@ -6,7 +6,7 @@ export type ScreenIssue = { field: string; message: string };
 
 export const REQUIRED_FIELDS = ["title", "salary", "description", "applyUrl"] as const;
 export type RequiredField = (typeof REQUIRED_FIELDS)[number];
-export const DESCRIPTION_MAX = 4000;
+export const DESCRIPTION_MAX = 8000;
 
 export const isWorkingApply = (raw?: string | null) => applyUrlLooksUsable(raw);
 

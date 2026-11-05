@@ -1,26 +1,54 @@
 export const DESCRIPTION_SECTION_HEADINGS = {
   work: "What we do",
-  who: "Who we're looking for",
+  who: "Who you are",
+  pay: "Pay and benefits",
   about: "About the team",
 } as const;
 
 const HEADING_ALIASES: Record<keyof DescriptionSections, string[]> = {
   work: ["What we do", "What you'll do", "What they'll do", "What they’ll do"],
-  who: ["Who we're looking for", "Who you're looking for", "Who you’re looking for"],
+  who: [
+    "Who you are",
+    "Who we're looking for",
+    "Who you're looking for",
+    "Who you’re looking for",
+  ],
+  pay: ["Pay and benefits"],
   about: ["About the team"],
 };
 
 export type DescriptionSections = {
   work: string;
   who: string;
+  pay: string;
   about: string;
 };
 
-export const SECTION_MAX = 1200;
+export const SECTION_MAX = 1800;
+
+export const EXAMPLE_WHO_YOU_ARE = `We're looking for someone who meets the minimums. Preferred items are a bonus, not a bar.
+
+Minimum requirements
+- Ops, systems, RevOps, or similar (consulting / analytics also fine)
+- Comfort with messy data, SQL or Excel
+- Clear writing with stakeholders
+- Self-starter in an ambiguous environment
+
+Preferred qualifications
+- BI tools (Looker, Tableau)
+- Salesforce as a user
+- People management`;
+
+export const EXAMPLE_PAY_AND_BENEFITS = `Salary range is in the field above. Use this box for extras, if you have them.
+
+- Equity or bonus
+- Health, dental, vision, retirement
+- Wellness or learning stipend
+- Note if pay differs by country`;
 
 export function composeJobDescription(parts: Partial<DescriptionSections>) {
   const blocks: string[] = [];
-  (["work", "who", "about"] as const).forEach((key) => {
+  (["work", "who", "pay", "about"] as const).forEach((key) => {
     const body = String(parts[key] || "").trim();
     if (!body) return;
     blocks.push(`${DESCRIPTION_SECTION_HEADINGS[key]}\n${body}`);
@@ -30,7 +58,7 @@ export function composeJobDescription(parts: Partial<DescriptionSections>) {
 
 export function parseJobDescription(raw?: string | null): DescriptionSections {
   const text = String(raw || "").trim();
-  const empty: DescriptionSections = { work: "", who: "", about: "" };
+  const empty: DescriptionSections = { work: "", who: "", pay: "", about: "" };
   if (!text) return empty;
 
   const markers = (Object.keys(HEADING_ALIASES) as Array<keyof DescriptionSections>).flatMap((key) =>
