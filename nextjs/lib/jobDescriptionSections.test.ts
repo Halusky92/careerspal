@@ -22,6 +22,12 @@ test("plain text lands in the work frame", () => {
 
 test("empty sections are omitted from the stored description", () => {
   const composed = composeJobDescription({ work: "Ship process docs.", who: "", about: "" });
-  assert.ok(composed.includes("What you'll do"));
+  assert.ok(composed.includes("What we do"));
   assert.ok(!composed.includes("Who we're looking for"));
+});
+
+test("older What you'll do headings still parse", () => {
+  const parsed = parseJobDescription("What you'll do\nOwn the ops calendar.\n\nWho we're looking for\nOps experience.");
+  assert.equal(parsed.work, "Own the ops calendar.");
+  assert.equal(parsed.who, "Ops experience.");
 });

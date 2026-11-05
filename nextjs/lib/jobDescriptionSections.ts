@@ -1,8 +1,14 @@
 export const DESCRIPTION_SECTION_HEADINGS = {
-  work: "What you'll do",
+  work: "What we do",
   who: "Who we're looking for",
   about: "About the team",
 } as const;
+
+const HEADING_ALIASES: Record<keyof DescriptionSections, string[]> = {
+  work: ["What we do", "What you'll do", "What they'll do", "What they’ll do"],
+  who: ["Who we're looking for", "Who you're looking for", "Who you’re looking for"],
+  about: ["About the team"],
+};
 
 export type DescriptionSections = {
   work: string;
@@ -27,18 +33,18 @@ export function parseJobDescription(raw?: string | null): DescriptionSections {
   const empty: DescriptionSections = { work: "", who: "", about: "" };
   if (!text) return empty;
 
-  const markers = [
-    { key: "work" as const, heading: DESCRIPTION_SECTION_HEADINGS.work },
-    { key: "who" as const, heading: DESCRIPTION_SECTION_HEADINGS.who },
-    { key: "about" as const, heading: DESCRIPTION_SECTION_HEADINGS.about },
-  ];
-  type MarkerHit = (typeof markers)[number] & { index: number };
+  const markers = (Object.keys(HEADING_ALIASES) as Array<keyof DescriptionSections>).flatMap((key) =>
+    HEADING_ALIASES[key].map((heading) => ({ key, heading })),
+  );
+  type MarkerHit = { key: keyof DescriptionSections; heading: string; index: number };
   const hits = markers
     .map((item): MarkerHit | null => {
       const index = text.toLowerCase().indexOf(item.heading.toLowerCase());
       return index >= 0 ? { ...item, index } : null;
     })
     .filter((item): item is MarkerHit => item !== null)
+    .sort((a, b) => a.index - b.index || b.heading.length - a.heading.length)
+    .filter((item, index, list) => list.findIndex((other) => other.key === item.key) === index)
     .sort((a, b) => a.index - b.index);
 
   if (!hits.length) return { ...empty, work: text };

@@ -3,7 +3,7 @@ import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../../lib/supabaseJobs";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 import { Job } from "../../../../types";
-import { formatSalaryForStorage } from "../../../../lib/formatSalary";
+import { formatEmployerSalaryForStorage } from "../../../../lib/formatSalary";
 import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../lib/nicheScope";
 
 export const runtime = "nodejs";
@@ -129,7 +129,8 @@ export async function POST(request: Request) {
       location: body.location || "Remote",
       remote_policy: body.remotePolicy || "Remote",
       type: body.type || "Full-time",
-      salary: formatSalaryForStorage(body.salary || ""),
+      salary: formatEmployerSalaryForStorage(body.salary || ""),
+      salary_currency: "USD",
       posted_at_text: postedAt,
       timestamp,
       category: body.category || "Operations",

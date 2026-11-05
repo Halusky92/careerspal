@@ -9,7 +9,7 @@ import {
   requireEmployer,
   resolveEmployerCompany,
 } from "../../../../../lib/employer";
-import { formatSalaryForStorage } from "../../../../../lib/formatSalary";
+import { formatEmployerSalaryForStorage } from "../../../../../lib/formatSalary";
 import { canRenewUnpublished, RENEW_PLAN_NAME, RENEW_PRICE } from "../../../../../lib/jobs/unpublishedRetention";
 import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../../lib/nicheScope";
 
@@ -139,7 +139,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (typeof body.location === "string") updateData.location = body.location;
   if (typeof body.remotePolicy === "string") updateData.remote_policy = body.remotePolicy;
   if (typeof body.type === "string") updateData.type = body.type;
-  if (typeof body.salary === "string") updateData.salary = formatSalaryForStorage(body.salary);
+  if (typeof body.salary === "string") {
+    updateData.salary = formatEmployerSalaryForStorage(body.salary);
+    updateData.salary_currency = "USD";
+  }
   if (typeof body.applyUrl === "string") updateData.apply_url = body.applyUrl;
   if (typeof body.companyWebsite === "string") updateData.company_website = body.companyWebsite;
   if (typeof body.company === "string" && body.company.trim()) {

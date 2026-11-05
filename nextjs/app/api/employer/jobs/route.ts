@@ -10,7 +10,7 @@ import {
   requireEmployer,
   resolveEmployerCompany,
 } from "../../../../lib/employer";
-import { formatSalaryForStorage } from "../../../../lib/formatSalary";
+import { formatEmployerSalaryForStorage } from "../../../../lib/formatSalary";
 import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../lib/nicheScope";
 import { canUseAdminTestPlan, isAdminTestPrice } from "../../../../lib/adminTestPlan";
 
@@ -181,7 +181,8 @@ export const POST = async (request: Request) => {
     location: body.location || "",
     remote_policy: body.remotePolicy || "",
     type: body.type || "Full-time",
-    salary: formatSalaryForStorage(body.salary || ""),
+    salary: formatEmployerSalaryForStorage(body.salary || ""),
+    salary_currency: "USD",
     posted_at_text: postedAt,
     timestamp,
     category: body.category || "Operations",
@@ -210,6 +211,11 @@ export const POST = async (request: Request) => {
   if (!data) {
     const { origin: _origin, ...withoutOrigin } = insertPayload;
     const retry = await supabaseAdmin.from("jobs").insert(withoutOrigin).select(EMPLOYER_JOB_SELECT_FALLBACK).single();
+    data = retry.data;
+  }
+  if (!data) {
+    const { origin: _o, salary_currency: _c, ...minimal } = insertPayload;
+    const retry = await supabaseAdmin.from("jobs").insert(minimal).select(EMPLOYER_JOB_SELECT_FALLBACK).single();
     data = retry.data;
   }
 

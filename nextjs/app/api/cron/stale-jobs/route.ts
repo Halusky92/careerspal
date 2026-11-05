@@ -4,6 +4,8 @@ import { getSourcingCronSecret } from "../../../../lib/sourcing/config";
 import { expireStaleJobs, STALE_JOB_DAYS } from "../../../../lib/jobs/expireStaleJobs";
 import { purgeUnpublishedJobs } from "../../../../lib/jobs/purgeUnpublishedJobs";
 import { UNPUBLISHED_RETENTION_DAYS } from "../../../../lib/jobs/unpublishedRetention";
+import { sweepDeadApplyLinks } from "../../../../lib/jobs/sweepDeadApplyLinks";
+import { purgeSourcingDebris } from "../../../../lib/jobs/purgeSourcingDebris";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -36,11 +38,13 @@ export async function GET(request: Request) {
   const isWeeklyPurgeDay = new Date().getUTCDay() === 0;
   try {
     const expired = await expireStaleJobs(supabaseAdmin, { dryRun, days: STALE_JOB_DAYS });
+    const deadLinks = await sweepDeadApplyLinks(supabaseAdmin, { dryRun, limit: 8, timeoutMs: 6000 });
+    const debris = await purgeSourcingDebris(supabaseAdmin, { dryRun, days: STALE_JOB_DAYS });
     const shouldPurge = forcePurge || isWeeklyPurgeDay;
     const purged = shouldPurge
       ? await purgeUnpublishedJobs(supabaseAdmin, { dryRun, days: UNPUBLISHED_RETENTION_DAYS })
       : { skipped: true, reason: "weekly Sunday UTC only" };
-    return NextResponse.json({ ok: true, expired, purged });
+    return NextResponse.json({ ok: true, expired, deadLinks, debris, purged });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Stale job cleanup failed" },

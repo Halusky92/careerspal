@@ -11,7 +11,6 @@ export function isAdminTestPrice(price?: number | null) {
 }
 
 export function canUseAdminTestPlan(input: { role?: string | null; email?: string | null }) {
-  if ((input.role || "") === "admin") return true;
   const email = (input.email || "").trim().toLowerCase();
   return Boolean(email && extraAllowList().includes(email));
 }

@@ -1,4 +1,5 @@
 import { isOnNicheJob } from "../nicheScope";
+import { applyUrlLooksUsable } from "./applyLinkHealth";
 import { scoreCandidate } from "../sourcing/evaluation/scoring";
 import { REASON_SEVERITY, type ReasonCode } from "../sourcing/evaluation/reasonCodes";
 
@@ -8,18 +9,7 @@ export const REQUIRED_FIELDS = ["title", "salary", "description", "applyUrl"] as
 export type RequiredField = (typeof REQUIRED_FIELDS)[number];
 export const DESCRIPTION_MAX = 4000;
 
-export const isWorkingApply = (raw?: string | null) => {
-  const value = (raw || "").trim();
-  if (!value || value === "#") return false;
-  if (value.startsWith("mailto:") && value.includes("@")) return true;
-  if (value.includes("@") && !value.includes(" ")) return true;
-  try {
-    const url = new URL(value.startsWith("http") ? value : `https://${value}`);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-};
+export const isWorkingApply = (raw?: string | null) => applyUrlLooksUsable(raw);
 
 export const hasSalary = (raw?: string | null) => {
   const value = (raw || "").trim();
@@ -37,7 +27,7 @@ const REASON_COPY: Record<string, ScreenIssue> = {
     field: "description",
     message: "Name the Ops/Systems work in the first lines (workflows, tools, process).",
   },
-  SALARY_MISSING: { field: "salary", message: "Add numbers, e.g. $90k–$120k." },
+  SALARY_MISSING: { field: "salary", message: "Add a USD range, e.g. $90k–$120k." },
   APPLY_MISSING: { field: "applyUrl", message: "Add an apply link (a careers page URL is enough)." },
   DESCRIPTION_THIN: {
     field: "description",

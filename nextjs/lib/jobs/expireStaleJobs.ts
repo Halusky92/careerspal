@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isSourcedListing } from "./applyLinkHealth";
 
 /** Listing lifespan used by Indeed / most job boards. */
 export const STALE_JOB_DAYS = 30;
@@ -9,6 +10,10 @@ const DELETE_STATUSES = new Set(["draft"]);
 type StaleJobRow = {
   id: string;
   status: string | null;
+  origin?: string | null;
+  apply_url?: string | null;
+  plan_price?: number | null;
+  stripe_payment_status?: string | null;
   timestamp: number | null;
   created_at?: string | null;
   published_at?: string | null;
@@ -18,10 +23,33 @@ export type ExpireStaleJobsResult = {
   scanned: number;
   archived: number;
   deletedDrafts: number;
+  deletedSourced: number;
   skipped: number;
   dryRun: boolean;
   days: number;
 };
+
+async function loadSourcedJobIds(sb: SupabaseClient<any, "public", any>) {
+  const ids = new Set<string>();
+  let offset = 0;
+  const pageSize = 500;
+  while (true) {
+    const { data, error } = await sb
+      .from("sourcing_sourced_job_candidates")
+      .select("published_job_id")
+      .not("published_job_id", "is", null)
+      .range(offset, offset + pageSize - 1);
+    if (error) break;
+    const rows = (data || []) as Array<{ published_job_id: string | null }>;
+    if (rows.length === 0) break;
+    for (const row of rows) {
+      if (row.published_job_id) ids.add(row.published_job_id);
+    }
+    if (rows.length < pageSize) break;
+    offset += pageSize;
+  }
+  return ids;
+}
 
 function ageMs(row: StaleJobRow, now: number): number | null {
   if (typeof row.timestamp === "number" && Number.isFinite(row.timestamp) && row.timestamp > 0) {
@@ -52,11 +80,20 @@ export async function expireStaleJobs(
   let skipped = 0;
 
   while (true) {
-    const { data, error } = await sb
+    let { data, error } = await sb
       .from("jobs")
-      .select("id,status,timestamp,created_at,published_at")
-      .in("status", ["draft", "published", "paused", "closed", "private", "invite_only"])
+      .select("id,status,origin,apply_url,plan_price,stripe_payment_status,timestamp,created_at,published_at")
+      .in("status", ["draft", "published", "paused", "closed", "private", "invite_only", "archived"])
       .range(offset, offset + pageSize - 1);
+    if (error) {
+      const retry = await sb
+        .from("jobs")
+        .select("id,status,apply_url,plan_price,stripe_payment_status,timestamp,created_at,published_at")
+        .in("status", ["draft", "published", "paused", "closed", "private", "invite_only", "archived"])
+        .range(offset, offset + pageSize - 1);
+      data = retry.data;
+      error = retry.error;
+    }
     if (error) throw new Error(error.message);
     const rows = (data || []) as StaleJobRow[];
     if (rows.length === 0) break;
@@ -73,10 +110,34 @@ export async function expireStaleJobs(
     offset += pageSize;
   }
 
-  const toArchive = stale.filter((row) => ARCHIVE_STATUSES.has(row.status || "")).map((row) => row.id);
-  const toDelete = stale.filter((row) => DELETE_STATUSES.has(row.status || "")).map((row) => row.id);
+  const sourcedJobIds = await loadSourcedJobIds(sb);
+  const sourcedStale = stale.filter((row) => isSourcedListing({ ...row, sourcedJobIds }));
+  const employerStale = stale.filter((row) => !isSourcedListing({ ...row, sourcedJobIds }));
+  const toArchive = employerStale.filter((row) => ARCHIVE_STATUSES.has(row.status || "")).map((row) => row.id);
+  const toDeleteDrafts = employerStale.filter((row) => DELETE_STATUSES.has(row.status || "")).map((row) => row.id);
+  const toDeleteSourced = sourcedStale.map((row) => row.id);
 
   if (!dryRun) {
+    for (let i = 0; i < toDeleteSourced.length; i += 100) {
+      const chunk = toDeleteSourced.slice(i, i + 100);
+      const { error } = await sb.from("jobs").delete().in("id", chunk);
+      if (error) throw new Error(error.message);
+    }
+    if (toDeleteSourced.length > 0) {
+      try {
+        await sb.from("audit_logs").insert({
+          action: "sourced_jobs_expired",
+          metadata: { deleted: toDeleteSourced.length, days, jobIds: toDeleteSourced.slice(0, 50) },
+        });
+      } catch {
+        // audit table is optional
+      }
+    }
+    for (let i = 0; i < toDeleteDrafts.length; i += 100) {
+      const chunk = toDeleteDrafts.slice(i, i + 100);
+      const { error } = await sb.from("jobs").delete().eq("status", "draft").in("id", chunk);
+      if (error) throw new Error(error.message);
+    }
     for (let i = 0; i < toArchive.length; i += 100) {
       const chunk = toArchive.slice(i, i + 100);
       const payload: Record<string, unknown> = {
@@ -86,15 +147,16 @@ export async function expireStaleJobs(
       };
       let { error } = await sb.from("jobs").update(payload).in("id", chunk);
       if (error) {
-        const { unpublished_at: _unpublished, ...without } = payload;
-        const retry = await sb.from("jobs").update(without).in("id", chunk);
-        error = retry.error;
+        const closed = await sb
+          .from("jobs")
+          .update({ status: "closed", posted_at_text: "Archived", unpublished_at: new Date().toISOString() })
+          .in("id", chunk);
+        error = closed.error;
       }
-      if (error) throw new Error(error.message);
-    }
-    for (let i = 0; i < toDelete.length; i += 100) {
-      const chunk = toDelete.slice(i, i + 100);
-      const { error } = await sb.from("jobs").delete().eq("status", "draft").in("id", chunk);
+      if (error) {
+        const paused = await sb.from("jobs").update({ status: "paused", posted_at_text: "Archived" }).in("id", chunk);
+        error = paused.error;
+      }
       if (error) throw new Error(error.message);
     }
   }
@@ -102,7 +164,8 @@ export async function expireStaleJobs(
   return {
     scanned,
     archived: toArchive.length,
-    deletedDrafts: toDelete.length,
+    deletedDrafts: toDeleteDrafts.length,
+    deletedSourced: toDeleteSourced.length,
     skipped,
     dryRun,
     days,

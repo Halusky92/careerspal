@@ -22,6 +22,7 @@ import { createCompanySlug } from "../../jobs";
 import { enrichCompanyFromWebsite } from "../../companyEnrichment";
 import { publicLogoUrlForWebsite } from "../../companyLogoUrl";
 import { isOnNicheJob } from "../../nicheScope";
+import { probeApplyUrl } from "../../jobs/applyLinkHealth";
 import { formatSalaryForStorage } from "../../formatSalary";
 import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
 
@@ -824,6 +825,19 @@ export async function autoPublishEligibleCandidates(
     }
 
     const applyUrl = (candidate.apply_url || "").trim();
+    const applyProbe = await probeApplyUrl(applyUrl);
+    if (applyProbe.dead) {
+      skipped += 1;
+      await sb
+        .from("sourcing_sourced_job_candidates")
+        .update({
+          publish_status: "skipped_not_eligible",
+          publish_notes: `Apply link is not live (${applyProbe.reason}).`,
+        })
+        .eq("id", candidate.id);
+      results.push({ candidateId: candidate.id, status: "skipped", reason: `apply_dead:${applyProbe.reason}` });
+      continue;
+    }
     const { data: existingJob } = await sb.from("jobs").select("id").eq("apply_url", applyUrl).maybeSingle();
     if (existingJob?.id) {
       skipped += 1;

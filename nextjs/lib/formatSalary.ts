@@ -79,3 +79,11 @@ export function formatSalaryForStorage(raw?: string | null): string {
   const display = formatSalaryDisplay(raw);
   return display === "Salary listed" ? (raw || "").trim() : display;
 }
+
+/** Employer board is USD. If they type numbers without a currency, store them as dollars. */
+export function formatEmployerSalaryForStorage(raw?: string | null): string {
+  const text = (raw || "").trim();
+  if (!text) return "";
+  if (/(USD|EUR|GBP|CAD|AUD|CHF|\$|€|£|¥)/i.test(text)) return formatSalaryForStorage(text);
+  return formatSalaryForStorage(`$${text}`);
+}

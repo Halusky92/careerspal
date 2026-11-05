@@ -56,10 +56,9 @@ const PostJobPageInner = () => {
   // Ensure the admin-only $1 plan never leaks to non-admins via sessionStorage.
   // Price 0 is Start pack, not the $1 test plan.
   useEffect(() => {
-    const isAdmin = profile?.role === "admin";
     const isInternalPrice = selectedPlan.type === "Standard" && selectedPlan.price === 1;
     if (!isInternalPrice) return;
-    if (!(isAdmin && showTestPlan)) {
+    if (!showTestPlan) {
       setSelectedPlan(
         foundingEligible
           ? { type: "Standard", price: 0 }
@@ -67,7 +66,7 @@ const PostJobPageInner = () => {
       );
       removePostingItem("cp_admin_internal_plan", owner);
     }
-  }, [profile?.role, selectedPlan.price, selectedPlan.type, showTestPlan, foundingEligible, owner]);
+  }, [selectedPlan.price, selectedPlan.type, showTestPlan, foundingEligible, owner]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -79,16 +78,16 @@ const PostJobPageInner = () => {
     if (authLoading) return;
     writePostingItem(PLAN_KEY, owner, JSON.stringify(selectedPlan));
     removePostingItem("cp_test_plan_price", owner);
-    if (profile?.role === "admin" && showTestPlan && selectedPlan.type === "Standard" && selectedPlan.price === 1) {
+    if (showTestPlan && selectedPlan.type === "Standard" && selectedPlan.price === 1) {
       writePostingItem("cp_admin_internal_plan", owner, "1");
     } else {
       removePostingItem("cp_admin_internal_plan", owner);
     }
-  }, [selectedPlan, profile?.role, showTestPlan, owner, authLoading]);
+  }, [selectedPlan, showTestPlan, owner, authLoading]);
 
   useEffect(() => {
     const checkTestPlanAccess = async () => {
-      if (!accessToken || profile?.role !== "admin") {
+      if (!accessToken) {
         setShowTestPlan(false);
         return;
       }
@@ -261,7 +260,7 @@ const PostJobPageInner = () => {
               ...finalJobData,
               plan: { ...selectedPlan, price: storagePlanPrice },
               planPrice: storagePlanPrice,
-              adminInternalPlan: profile?.role === "admin" && showTestPlan && selectedPlan.type === "Standard" && selectedPlan.price === 1,
+              adminInternalPlan: showTestPlan && selectedPlan.type === "Standard" && selectedPlan.price === 1,
             }),
           },
           accessToken,

@@ -334,8 +334,10 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     setScreenIssues((prev) => prev.filter((issue) => issue.field !== "description"));
   };
 
+  const titleLocalOk = isOnNicheJob({ title: formData.title, category: formData.category, description: null }) && formData.title.trim().length >= 4;
+
   const fieldReady = (field: string) => {
-    if (field === "title" && formData.title.trim().length < 4) return false;
+    if (field === "title") return titleLocalOk;
     if (field === "salary") return !localIssues.some((issue) => issue.field === "salary") && Boolean(formData.salary.trim());
     if (field === "description") {
       return formData.description.trim().length > 0 && formData.description.length <= DESCRIPTION_MAX;
@@ -345,7 +347,6 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     return !localIssues.some((issue) => issue.field === field);
   };
 
-  const titleLocalOk = isOnNicheJob({ title: formData.title, category: formData.category, description: null }) && formData.title.trim().length >= 4;
   const step1Ready = fieldReady("title") && fieldReady("salary") && fieldReady("description") && aiOk !== false;
   const allReady = step1Ready && fieldReady("applyUrl");
 
@@ -559,7 +560,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     reader.readAsDataURL(file);
   };
 
-  const usingStartPack = Boolean(foundingEligible && selectedPlan.type === "Standard");
+  const usingStartPack = Boolean(foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price !== 1);
 
   const previewPlaceLabel = (() => {
     const policy = (formData.remotePolicy || "").trim();
@@ -574,9 +575,18 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     return `${shortPolicy} · ${loc}`;
   })();
 
+  const salaryInputValue = (formData.salary || "").replace(/^\$\s*/, "");
+  const salaryPreview = (() => {
+    const salary = (formData.salary || "").trim();
+    if (!salary) return "";
+    if (/\$/.test(salary)) return salary.replace(/\s*USD\b/gi, "").trim();
+    if (/\d/.test(salary)) return `$${salary.replace(/\s*USD\b/gi, "").trim()}`;
+    return salary;
+  })();
+
   const previewChips = Array.from(
     new Set(
-      [formData.type, formData.salary, previewPlaceLabel]
+      [formData.type, salaryPreview, previewPlaceLabel]
         .map((v) => (v || "").trim())
         .filter(Boolean),
     ),
@@ -609,7 +619,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 mb-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-indigo-600" />
                   <span className="text-[10px] font-black text-indigo-800 uppercase tracking-[0.16em]">
-                    {usingStartPack
+                    {selectedPlan.price === 1
+                      ? "Current plan: Admin Stripe test · $1"
+                      : usingStartPack
                       ? "Current plan: Start pack · Free"
                       : `Current plan: ${selectedPlan.type} · ${formatPrice(selectedPlan.price)} / 30 days`}
                   </span>
@@ -658,6 +670,24 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               })}
             </div>
           </div>
+
+          {showTestPlan ? (
+            <div className={`mb-3 rounded-xl border p-3 ${selectedPlan.price === 1 ? "border-emerald-300 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-amber-800">Only you</p>
+                  <p className="text-sm font-medium text-slate-900">$1 Stripe test for a live post</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onUpgradePlan("Standard", 1)}
+                  className="h-9 px-3 rounded-lg bg-emerald-600 text-white text-xs font-medium"
+                >
+                  {selectedPlan.price === 1 ? "Using $1 test" : "Use $1 Stripe test"}
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             {step === 1 && (
@@ -737,8 +767,10 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     </div>
                     {showIssue("title") ? (
                       <p className="text-[11px] font-medium text-rose-700">{issueFor("title")}</p>
+                    ) : titleLocalOk ? (
+                      <p className="text-[11px] text-slate-500">Title is set. Suggestions are only hints — your own wording is fine.</p>
                     ) : (
-                      <p className="text-[11px] text-slate-500">Pick a suggestion or type your own. Category shapes the list.</p>
+                      <p className="text-[11px] text-slate-500">Type your own or pick a hint. It just needs to be an Ops / Systems / Automation / RevOps / Product Ops / Chief of Staff title.</p>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -797,9 +829,30 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     )}
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">Salary Range * <Mark field="salary" /></label>
-                    <input type="text" placeholder="e.g. $80k - $120k" className={`cp-field w-full h-10 rounded-lg px-3 text-sm outline-none${fieldTone("salary")}`} value={formData.salary} onChange={e => { setFormData({...formData, salary: e.target.value}); setScreenIssues((prev) => prev.filter((issue) => issue.field !== "salary")); }} />
-                    {showIssue("salary") && <p className="text-[11px] font-semibold text-rose-700">{issueFor("salary")}</p>}
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      Salary range * <Mark field="salary" />
+                    </label>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">$</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="80,000 – 120,000"
+                        className={`cp-field w-full h-10 rounded-lg pl-7 pr-14 text-sm outline-none${fieldTone("salary")}`}
+                        value={salaryInputValue}
+                        onChange={e => {
+                          const next = e.target.value.replace(/^\$\s*/, "");
+                          setFormData({...formData, salary: next});
+                          setScreenIssues((prev) => prev.filter((issue) => issue.field !== "salary"));
+                        }}
+                      />
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-500">USD</span>
+                    </div>
+                    {showIssue("salary") ? (
+                      <p className="text-[11px] font-semibold text-rose-700">{issueFor("salary")}</p>
+                    ) : (
+                      <p className="text-[11px] text-slate-500">Yearly range. Hourly only if you write / hour.</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center gap-3">
@@ -810,12 +863,12 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     </div>
                     <p className="text-[11px] text-slate-500">Three short boxes, like Indeed. Fill what you know. We only block abusive copy.</p>
                     <div className={`rounded-xl border bg-slate-50/70 p-3 space-y-1.5${showIssue("description") ? " border-rose-300" : " border-slate-200"}`}>
-                      <label className="text-[11px] font-semibold text-slate-800">What they’ll do</label>
-                      <p className="text-[11px] text-slate-500">Day-to-day work. Bullet points are fine.</p>
+                      <label className="text-[11px] font-semibold text-slate-800">What we do</label>
+                      <p className="text-[11px] text-slate-500">Write as the company. Day-to-day work of this role.</p>
                       <textarea
                         rows={4}
                         maxLength={SECTION_MAX}
-                        placeholder="e.g. Own weekly ops reviews, keep Airtable clean, roll out new workflows."
+                        placeholder="e.g. We run weekly ops reviews, keep Airtable clean, and roll out new workflows."
                         className="cp-field w-full rounded-lg px-3 py-2 text-sm outline-none min-h-[6rem]"
                         value={formData.workScope || ""}
                         onChange={(e) => applySections({ workScope: e.target.value })}
