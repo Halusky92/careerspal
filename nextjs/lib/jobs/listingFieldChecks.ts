@@ -6,6 +6,7 @@ export type ScreenIssue = { field: string; message: string };
 
 export const REQUIRED_FIELDS = ["title", "salary", "description", "company", "applyUrl"] as const;
 export type RequiredField = (typeof REQUIRED_FIELDS)[number];
+export const DESCRIPTION_MAX = 4000;
 
 export const isWorkingApply = (raw?: string | null) => {
   const value = (raw || "").trim();
@@ -30,22 +31,22 @@ export const hasSalary = (raw?: string | null) => {
 const REASON_COPY: Record<string, ScreenIssue> = {
   OFF_NICHE: {
     field: "title",
-    message: "Change the title to an Ops / Systems / Automation / RevOps / Product Ops / Chief of Staff role. Example: Operations Manager.",
+    message: "Use an Ops / Systems title, e.g. Operations Manager.",
   },
   CAT_LOW_CONF: {
     field: "description",
-    message: "In the first lines, say the Ops or Systems work (workflows, tools, process). Two clear mentions is enough.",
+    message: "Name the Ops/Systems work in the first lines (workflows, tools, process).",
   },
   SALARY_MISSING: { field: "salary", message: "Add numbers, e.g. $90k–$120k." },
-  APPLY_MISSING: { field: "applyUrl", message: "Paste a careers URL or an email like jobs@company.com." },
+  APPLY_MISSING: { field: "applyUrl", message: "Add a careers URL or email, e.g. jobs@company.com." },
   DESCRIPTION_THIN: {
     field: "description",
-    message: "Write responsibilities and requirements, about 280+ characters.",
+    message: "Add responsibilities and requirements (about 280+ characters).",
   },
   METADATA_WEAK: { field: "description", message: "Add company, apply link, and a fuller description." },
 };
 
-const EMPLOYER_IGNORE = new Set(["SOURCE_WEAK", "ONSITE_ONLY", "REMOTE_UNCLEAR"]);
+const EMPLOYER_IGNORE = new Set(["SOURCE_WEAK", "ONSITE_ONLY", "REMOTE_UNCLEAR", "METADATA_WEAK"]);
 
 export type ListingFields = {
   title?: string | null;
@@ -88,6 +89,8 @@ export function localListingIssues(job: ListingFields): ScreenIssue[] {
   if (!String(job.company || "").trim()) issues.push({ field: "company", message: "Add the company name." });
   if (description.length < 40) {
     issues.push({ field: "description", message: "Add a short description of the role." });
+  } else if (description.length > DESCRIPTION_MAX) {
+    issues.push({ field: "description", message: `Keep the description under ${DESCRIPTION_MAX} characters.` });
   }
 
   const scored = scoreCandidate({

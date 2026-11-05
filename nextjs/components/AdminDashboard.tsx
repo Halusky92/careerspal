@@ -256,7 +256,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   useEffect(() => {
     const next = searchParams.get("tab");
-    if (next === "review" || next === "jobs" || next === "people" || next === "sourcing" || next === "more") {
+    if (next === "team" || next === "people") {
+      setTab("people");
+      return;
+    }
+    if (next === "traffic" || next === "more") {
+      setTab("more");
+      return;
+    }
+    if (next === "review" || next === "jobs" || next === "sourcing") {
       setTab(next);
     }
   }, [searchParams]);
@@ -606,7 +614,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const tabs: { id: AdminTab; label: string; count?: number }[] = [
     { id: "review", label: "To confirm", count: pendingJobs.length },
     { id: "jobs", label: "Jobs", count: jobs.filter((j) => j.status === "published").length },
-    { id: "people", label: "People" },
+    { id: "people", label: "Team" },
     { id: "sourcing", label: "Pipeline" },
     { id: "more", label: "Traffic" },
   ];

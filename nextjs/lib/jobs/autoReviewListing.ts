@@ -26,6 +26,41 @@ export type ListingReviewResult = {
   aiNote?: string;
 };
 
+async function parseJsonObject(text: string): Promise<Record<string, unknown> | null> {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+async function aiSafetyNote(title: string, description: string): Promise<{ safe: boolean; note: string } | null> {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) return null;
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `You check a job listing for harmful copy. Flag it if it contains hate, racism, antisemitism, Islamophobia, religious hatred, homophobia, transphobia, sexism, harassment, threats, sexual exploitation, scams, or calls to violence.
+Ordinary hiring rules are fine (work authorization, language, location, years of experience) unless they are clearly hateful.
+Reply with one JSON object: {"safe":true|false,"note":"one short sentence if unsafe, empty if safe"}.
+No markdown.
+Title: ${title.slice(0, 180)}
+Description: ${description.slice(0, 1200)}`,
+    });
+    const parsed = await parseJsonObject((response.text || "").trim());
+    if (!parsed) return null;
+    return {
+      safe: parsed.safe !== false,
+      note: String(parsed.note || "").slice(0, 180),
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function aiNicheNote(title: string, description: string): Promise<{ onNiche: boolean; note: string } | null> {
   const apiKey = process.env.API_KEY;
   if (!apiKey) return null;
@@ -39,10 +74,8 @@ Reply with one JSON object: {"onNiche":true|false,"note":"one short sentence tel
 No markdown. Title: ${title.slice(0, 180)}
 Description: ${description.slice(0, 900)}`,
     });
-    const text = (response.text || "").trim();
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-    const parsed = JSON.parse(match[0]) as { onNiche?: boolean; note?: string };
+    const parsed = await parseJsonObject((response.text || "").trim());
+    if (!parsed) return null;
     return {
       onNiche: Boolean(parsed.onNiche),
       note: String(parsed.note || "").slice(0, 180),
@@ -62,21 +95,27 @@ export async function screenListingForBoard(
   const blocking = opts?.aiOnly ? [] : localBlockingReasons(job);
 
   const localOk = issues.length === 0 && blocking.length === 0;
-  const ai =
-    opts?.skipAi || (!opts?.aiOnly && !localOk)
-      ? null
-      : await aiNicheNote(title, description);
+  const [ai, safety] = await Promise.all([
+    opts?.skipAi || (!opts?.aiOnly && !localOk) ? Promise.resolve(null) : aiNicheNote(title, description),
+    title.length >= 4 && description.length >= 40 ? aiSafetyNote(title, description) : Promise.resolve(null),
+  ]);
   if (ai && !ai.onNiche) {
     issues.push({
       field: "title",
       message: ai.note || "Change the title so this is clearly an Ops / Systems role.",
     });
   }
+  if (safety && !safety.safe) {
+    issues.push({
+      field: "description",
+      message: safety.note || "Remove hateful or abusive language from this listing.",
+    });
+  }
 
   const unique = issues.filter(
     (item, index) => issues.findIndex((other) => other.field === item.field && other.message === item.message) === index,
   );
-  const ok = unique.length === 0 && blocking.length === 0 && (!ai || ai.onNiche);
+  const ok = unique.length === 0 && blocking.length === 0 && (!ai || ai.onNiche) && (!safety || safety.safe);
 
   return {
     decision: ok ? "publish" : "hold",

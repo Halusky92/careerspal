@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSupabaseAuth } from "./Providers";
@@ -18,13 +18,6 @@ const Navbar: React.FC = () => {
   const pathname = usePathname();
   const { profile, signOut } = useSupabaseAuth();
   const accountRef = useRef<HTMLDivElement>(null);
-
-  const dashboardHref = useMemo(() => {
-    if (!profile?.email) return null;
-    if (profile.role === "admin") return "/dashboard/admin";
-    if (profile.role === "employer") return "/dashboard/employer";
-    return "/account";
-  }, [profile]);
 
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? "hidden" : "unset";
@@ -55,13 +48,23 @@ const Navbar: React.FC = () => {
     { label: "Saved jobs", href: "/account?tab=saved" },
     { label: "Alerts", href: "/account?tab=alerts" },
     { label: "Settings", href: "/account?tab=settings" },
-    ...(profile?.role === "employer" || profile?.role === "admin"
+    ...(profile?.role === "employer"
       ? [
           { label: "People", href: "/people" },
-          { label: "Dashboard", href: profile.role === "admin" ? "/dashboard/employer" : dashboardHref || "/account" },
+          { label: "Dashboard", href: "/dashboard/employer" },
         ]
       : []),
-    ...(profile?.role === "admin" ? [{ label: "Admin desk", href: "/dashboard/admin?tab=review" }] : []),
+    ...(profile?.role === "admin"
+      ? [
+          { label: "Ops console", href: "/dashboard/ops" },
+          { label: "Dashboard", href: "/dashboard/admin" },
+          { label: "To confirm", href: "/dashboard/admin?tab=review" },
+          { label: "All jobs", href: "/dashboard/admin?tab=jobs" },
+          { label: "Team", href: "/dashboard/admin?tab=people" },
+          { label: "Traffic", href: "/dashboard/admin?tab=more" },
+          { label: "My listings", href: "/dashboard/employer" },
+        ]
+      : []),
   ];
 
   return (
@@ -124,12 +127,20 @@ const Navbar: React.FC = () => {
                 {hireLabel}
               </Link>
               {profile?.role === "admin" && (
-                <Link
-                  href="/dashboard/admin?tab=review"
-                  className="inline-flex h-10 items-center justify-center px-3 rounded-lg bg-slate-800 text-white text-sm font-medium leading-none hover:bg-slate-700 shrink-0"
-                >
-                  Admin desk
-                </Link>
+                <>
+                  <Link
+                    href="/dashboard/ops"
+                    className="inline-flex h-10 items-center justify-center px-3 rounded-lg bg-zinc-950 text-emerald-300 text-sm font-medium leading-none hover:bg-zinc-800 shrink-0"
+                  >
+                    Ops
+                  </Link>
+                  <Link
+                    href="/dashboard/admin?tab=review"
+                    className="inline-flex h-10 items-center justify-center px-3 rounded-lg bg-slate-800 text-white text-sm font-medium leading-none hover:bg-slate-700 shrink-0"
+                  >
+                    Admin desk
+                  </Link>
+                </>
               )}
 
               {!profile?.email ? (
@@ -267,15 +278,40 @@ const Navbar: React.FC = () => {
               <Link href="/account?tab=settings" onClick={closeMobile} className="block py-3 border-b border-slate-100">
                 Settings
               </Link>
-              {(profile.role === "employer" || profile.role === "admin") && (
-                <Link href={profile.role === "admin" ? "/dashboard/employer" : dashboardHref || "/account"} onClick={closeMobile} className="block py-3 border-b border-slate-100">
-                  Dashboard
-                </Link>
+              {profile.role === "employer" && (
+                <>
+                  <Link href="/people" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                    People
+                  </Link>
+                  <Link href="/dashboard/employer" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                    Dashboard
+                  </Link>
+                </>
               )}
               {profile.role === "admin" && (
-                <Link href="/dashboard/admin?tab=review" onClick={closeMobile} className="block py-3 border-b border-slate-100">
-                  Admin desk
-                </Link>
+                <>
+                  <Link href="/dashboard/ops" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                    Ops console
+                  </Link>
+                  <Link href="/dashboard/admin" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                    Dashboard
+                  </Link>
+                  <Link href="/dashboard/admin?tab=review" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                    To confirm
+                  </Link>
+                  <Link href="/dashboard/admin?tab=jobs" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                    All jobs
+                  </Link>
+                  <Link href="/dashboard/admin?tab=people" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                    Team
+                  </Link>
+                  <Link href="/dashboard/admin?tab=more" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                    Traffic
+                  </Link>
+                  <Link href="/dashboard/employer" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                    My listings
+                  </Link>
+                </>
               )}
             </>
           )}

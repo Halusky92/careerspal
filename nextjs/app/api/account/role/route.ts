@@ -17,6 +17,9 @@ export async function PATCH(request: Request) {
   if (!body.role || !ALLOWED_ROLES.has(body.role)) {
     return NextResponse.json({ error: "Invalid role." }, { status: 400 });
   }
+  if (auth.profile.role === "admin") {
+    return NextResponse.json({ error: "Admin role cannot be switched here.", role: "admin" }, { status: 403 });
+  }
 
   const { data: updated } = await supabaseAdmin
     .from("profiles")

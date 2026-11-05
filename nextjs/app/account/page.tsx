@@ -467,6 +467,31 @@ const AccountPageInner = () => {
             <div className="mt-5">
               {tab === "profile" && (
                 <div className="space-y-4">
+                  {user?.role === "admin" && (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left">
+                      <p className="text-sm font-medium text-slate-900">Admin</p>
+                      <p className="text-xs text-slate-500 mt-1">Confirm listings, jobs, team, and traffic from here too.</p>
+                      <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {[
+                          { label: "Ops console", href: "/dashboard/ops" },
+                          { label: "Dashboard", href: "/dashboard/admin" },
+                          { label: "To confirm", href: "/dashboard/admin?tab=review" },
+                          { label: "All jobs", href: "/dashboard/admin?tab=jobs" },
+                          { label: "Team", href: "/dashboard/admin?tab=people" },
+                          { label: "Traffic", href: "/dashboard/admin?tab=more" },
+                          { label: "My listings", href: "/dashboard/employer" },
+                        ].map((item) => (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className="h-9 px-3 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:border-indigo-300"
+                          >
+                            {item.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { label: "Saved", value: String(savedJobs.length), href: "/account?tab=saved" },
@@ -803,6 +828,15 @@ const AccountPageInner = () => {
 
                   <div className="rounded-xl border border-slate-200 p-4">
                     <p className="text-sm font-medium text-slate-900">Account type</p>
+                    {user?.role === "admin" ? (
+                      <>
+                        <p className="mt-1 text-sm text-slate-500">This account is admin. Role switch is off so you keep dashboard access.</p>
+                        <div className="mt-3 h-9 rounded-lg border border-slate-800 bg-slate-800 text-white text-sm inline-flex items-center px-3">
+                          Admin
+                        </div>
+                      </>
+                    ) : (
+                      <>
                     <p className="mt-1 text-sm text-slate-500">Switch only if you also hire on the board.</p>
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       <button
@@ -830,6 +864,8 @@ const AccountPageInner = () => {
                         Employer
                       </button>
                     </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="rounded-xl border border-slate-200 p-4 space-y-2">

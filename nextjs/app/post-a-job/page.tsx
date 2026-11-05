@@ -210,6 +210,8 @@ const PostJobPageInner = () => {
         applyUrl: finalJobData.applyUrl,
         companyWebsite: finalJobData.companyWebsite,
         keywords: finalJobData.keywords,
+        tools: finalJobData.tools,
+        tags: finalJobData.tags,
       };
       if (editJobId) {
         const update = await authFetch(

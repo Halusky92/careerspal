@@ -45,7 +45,11 @@ export async function POST(request: Request) {
   }
 
   if (mode === "niche") {
-    const local = localListingIssues(fields).filter((issue) => issue.field === "title" || issue.field === "description");
+    const local = localListingIssues(fields).filter(
+      (issue) =>
+        (issue.field === "title" || issue.field === "description") &&
+        !/company|apply link|apply url|careers url/i.test(issue.message),
+    );
     if (local.length) {
       return NextResponse.json({ ok: false, issues: local, reasons: local.map((item) => item.message), token: null, aiNote: null });
     }

@@ -61,6 +61,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     applyUrl?: string;
     companyWebsite?: string;
     keywords?: string;
+    tools?: string[];
+    tags?: string[];
   };
 
   const current = String(owned.job.status || "draft");
@@ -121,6 +123,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (typeof body.applyUrl === "string") updateData.apply_url = body.applyUrl;
   if (typeof body.companyWebsite === "string") updateData.company_website = body.companyWebsite;
   if (typeof body.keywords === "string") updateData.keywords = body.keywords;
+  if (Array.isArray(body.tools)) updateData.tools = body.tools;
+  if (Array.isArray(body.tags)) updateData.tags = body.tags;
 
   if (updateData.status === "published") {
     updateData.published_at = new Date().toISOString();
