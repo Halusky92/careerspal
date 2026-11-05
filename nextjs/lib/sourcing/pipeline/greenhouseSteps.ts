@@ -25,6 +25,8 @@ import { isOnNicheJob } from "../../nicheScope";
 import { probeApplyUrl } from "../../jobs/applyLinkHealth";
 import { formatSalaryForStorage } from "../../formatSalary";
 import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
+import { isBoilerplateDescription } from "../../companyBoard";
+import { inferWorkMode } from "../../workMode";
 
 type AdminSb = SupabaseClient<any, "public", any>;
 
@@ -1033,7 +1035,12 @@ export async function autoPublishEligibleCandidates(
       title: (candidate.title || "").trim() || "Untitled role",
       description: formattedDescription || cleanedDescription || "",
       location: candidate.location_text || null,
-      remote_policy: candidate.remote_policy || null,
+      remote_policy:
+        inferWorkMode({
+          remotePolicy: candidate.remote_policy,
+          location: candidate.location_text,
+          description: formattedDescription || cleanedDescription,
+        }) || candidate.remote_policy || null,
       type: emp.type || null,
       salary: salaryText || null,
       salary_min: minAmt || null,
@@ -1043,7 +1050,11 @@ export async function autoPublishEligibleCandidates(
       timestamp: Number.isFinite(timestamp) ? Math.floor(timestamp) : now,
       category,
       apply_url: applyUrl,
-      company_description: (companyForJob?.description || "").toString().trim() || null,
+      company_description: (() => {
+        const desc = (companyForJob?.description || "").toString().trim();
+        if (!desc || isBoilerplateDescription(desc)) return null;
+        return desc;
+      })(),
       company_website: (() => {
         const raw = ((companyForJob?.website || "").toString().trim() || derivedCompanyWebsite || src?.companies?.website || "").trim();
         const lower = raw.toLowerCase();

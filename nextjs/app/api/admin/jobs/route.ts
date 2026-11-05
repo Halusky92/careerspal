@@ -126,7 +126,7 @@ export async function POST(request: Request) {
       title: body.title,
       description: body.description || "",
       location: body.location || "Remote",
-      remote_policy: body.remotePolicy || "Remote",
+      remote_policy: body.remotePolicy || "",
       type: body.type || "Full-time",
       salary: formatEmployerSalaryForStorage(body.salary || ""),
       salary_currency: "USD",

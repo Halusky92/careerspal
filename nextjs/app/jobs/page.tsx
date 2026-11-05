@@ -6,7 +6,7 @@ import { supabaseAdmin } from "../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../lib/supabaseJobs";
 import { isOnNicheJob } from "../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../lib/liveBoard";
-import { formatSalaryDisplay } from "../../lib/formatSalary";
+import { formatJobSalary } from "../../lib/formatSalary";
 import JobViewCount from "../../components/JobViewCount";
 import { ApplyClickLink } from "../../components/JobAnalytics";
 
@@ -95,7 +95,7 @@ function StaticJobsList({ jobs, total }: { jobs: Job[]; total: number }) {
 
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <span className="text-[12px] sm:text-sm font-black text-slate-900 whitespace-nowrap">
-                      {formatSalaryDisplay(job.salary)}
+                      {formatJobSalary(job)}
                     </span>
                     {showApply ? (
                       <ApplyClickLink

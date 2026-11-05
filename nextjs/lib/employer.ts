@@ -11,6 +11,7 @@ import {
 import { startPackUsage, type StartPackJobRow } from "./startPackQuota";
 import { mergeStartPackUsage, startPackLedgerCounts } from "./startPackLedger";
 import { hostnameDomain, normalizeCompanyKey, workEmailDomain } from "./workEmailDomain";
+import { isBoilerplateDescription } from "./companyBoard";
 
 export const EMPLOYER_JOB_SELECT =
   "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,origin,company_id,created_by,companies(name,slug,logo_url,website,description)";
@@ -202,7 +203,9 @@ export async function fillEmptyCompanyProfile(
   const patch: Record<string, string> = {};
   if (!String(data.website || "").trim() && fields.website) patch.website = fields.website;
   if (!String(data.logo_url || "").trim() && fields.logoUrl) patch.logo_url = fields.logoUrl;
-  if (!String(data.description || "").trim() && fields.description) patch.description = fields.description;
+  if (!String(data.description || "").trim() && fields.description && !isBoilerplateDescription(fields.description)) {
+    patch.description = fields.description;
+  }
   if (Object.keys(patch).length === 0) return;
   await supabaseAdmin.from("companies").update(patch).eq("id", companyId);
 }

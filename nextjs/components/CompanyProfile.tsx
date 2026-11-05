@@ -3,7 +3,7 @@
 
 import React, { useEffect } from 'react';
 import { Company, Job } from '../types';
-import { formatSalaryDisplay } from '../lib/formatSalary';
+import { formatJobSalary } from '../lib/formatSalary';
 import { isOnNicheJob } from '../lib/nicheScope';
 import CompanyLogo from './CompanyLogo';
 import JobViewCount from './JobViewCount';
@@ -223,7 +223,7 @@ const CompanyProfile: React.FC<CompanyProfileProps> = ({ company, companyJobs, o
                             </div>
                          </div>
                          <div className="text-right">
-                            <span className="block font-black text-slate-900">{formatSalaryDisplay(job.salary)}</span>
+                            <span className="block font-black text-slate-900">{formatJobSalary(job)}</span>
                             <JobViewCount views={job.views} className="block text-xs font-bold text-slate-400 mt-1" />
                             <span className="text-indigo-600 text-sm font-black group-hover:translate-x-1 transition-transform inline-block">View &rarr;</span>
                          </div>

@@ -7,7 +7,8 @@ import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import { stripHtmlToText } from "../lib/sourcing/normalization/text";
-import { formatSalaryDisplay } from "../lib/formatSalary";
+import { formatJobSalary } from "../lib/formatSalary";
+import { inferWorkMode } from "../lib/workMode";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
 import { formatRelativePosted } from "../lib/formatPosted";
@@ -32,14 +33,7 @@ type JobRowProps = {
   onOpenCompany?: (companyName: string) => void;
 };
 
-const getWorkMode = (job: Job) => {
-  const policy = (job.remotePolicy || "").toLowerCase();
-  const loc = (job.location || "").toLowerCase();
-  if (policy.includes("hybrid") || loc.includes("hybrid")) return "Hybrid";
-  if (policy.includes("remote") || /\bremote\b/.test(loc)) return "Remote";
-  if (!policy && !loc) return "";
-  return "Onsite";
-};
+const getWorkMode = (job: Job) => inferWorkMode(job);
 
 const formatTimeAgo = (job: Job) => formatRelativePosted(job.timestamp, job.postedAt || "");
 
@@ -94,7 +88,7 @@ export default function JobRow({
   const isElite = job.planType === "Elite Managed";
   const isBoosted = isPaidFeaturedListing(job);
   const isPrivate = job.status === "private" || job.status === "invite_only";
-  const workMode = useMemo(() => getWorkMode(job), [job.remotePolicy]);
+  const workMode = useMemo(() => getWorkMode(job), [job]);
   const timeAgo = useMemo(() => formatTimeAgo(job), [job.timestamp, job.postedAt]);
   const stack = useMemo(() => {
     const tools = (job.tools || []).filter(Boolean);
@@ -352,7 +346,7 @@ export default function JobRow({
             <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-start">
               <div className="flex-1 min-w-0">
                 <span className="block truncate text-[12px] sm:text-sm font-bold text-slate-900">
-                  {formatSalaryDisplay(job.salary)}
+                  {formatJobSalary(job)}
                 </span>
               </div>
               <button

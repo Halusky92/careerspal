@@ -1,4 +1,5 @@
 import {
+  detectAndParseSalaryForGreenhouse,
   parseSalaryFromText,
   roundSalaryAmount,
   type ParsedSalary,
@@ -55,14 +56,20 @@ function tidyUnparsedSalary(text: string): string {
   });
 }
 
-export function formatSalaryDisplay(raw?: string | null): string {
-  const text = (raw || "").replace(/\s+/g, " ").trim();
-  if (!text) return "Salary listed";
-  const parsed = parseSalaryFromText(text);
+function hasRange(parsed: ParsedSalary) {
+  return (
+    parsed.salary_amount_min != null &&
+    parsed.salary_amount_max != null &&
+    parsed.salary_amount_min !== parsed.salary_amount_max
+  );
+}
+
+function displayFrom(parsed: ParsedSalary, fallback: string) {
   const formatted = formatParsed(parsed);
   if (formatted) return formatted;
+  if (!fallback) return "Salary listed";
   return tidyUnparsedSalary(
-    text
+    fallback
       .replace(/\s*-\s*/g, "–")
       .replace(/\bUSD\b/gi, "$")
       .replace(/\bEUR\b/gi, "€")
@@ -74,6 +81,23 @@ export function formatSalaryDisplay(raw?: string | null): string {
       .replace(/\bper year\b/i, "/ year")
       .replace(/\bper month\b/i, "/ month"),
   ).trim();
+}
+
+export function formatSalaryDisplay(raw?: string | null, extraText?: string | null): string {
+  const text = (raw || "").replace(/\s+/g, " ").trim();
+  const extra = (extraText || "").trim();
+  const fromStored = text ? parseSalaryFromText(text) : parseSalaryFromText("");
+  if (hasRange(fromStored)) return displayFrom(fromStored, text);
+  if (extra) {
+    const fromExtra = detectAndParseSalaryForGreenhouse(extra);
+    if (fromExtra.salary_present && hasRange(fromExtra)) return displayFrom(fromExtra, extra);
+  }
+  if (text) return displayFrom(fromStored, text);
+  return "Salary listed";
+}
+
+export function formatJobSalary(job: { salary?: string | null; description?: string | null }) {
+  return formatSalaryDisplay(job.salary, job.description);
 }
 
 export function formatSalaryForStorage(raw?: string | null): string {

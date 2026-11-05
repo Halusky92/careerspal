@@ -26,6 +26,7 @@ type JobRow = {
   title: string | null;
   location: string | null;
   salary: string | null;
+  description?: string | null;
   remote_policy?: string | null;
   apply_url: string | null;
   keywords: string | null;
@@ -66,8 +67,8 @@ function toDigestJobs(matches: JobRow[], baseUrl: string): DigestJob[] {
   return matches.slice(0, 10).map((job) => ({
     title: job.title || "Role",
     company: getCompanyName(job),
-    location: job.location || "Remote",
-    salary: formatSalaryDisplay(job.salary),
+    location: job.location || "—",
+    salary: formatSalaryDisplay(job.salary, job.description),
     href: `${baseUrl}/jobs/${createJobSlug({ title: job.title || "role", id: job.id })}?utm_source=alerts`,
   }));
 }
@@ -113,7 +114,7 @@ export async function GET(request: Request) {
 
   const { data: recentJobs } = await supabaseAdmin
     .from("jobs")
-    .select("id,title,location,salary,remote_policy,apply_url,keywords,tags,category,timestamp,companies(name)")
+    .select("id,title,description,location,salary,remote_policy,apply_url,keywords,tags,category,timestamp,companies(name)")
     .eq("status", "published")
     .gte("timestamp", sinceDefault.getTime());
   const published = ((recentJobs || []) as JobRow[]).filter((job) => isOnNicheJob(job));

@@ -8,7 +8,7 @@ import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
 import { isOnNicheJob } from "../../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../../lib/liveBoard";
-import { formatSalaryDisplay } from "../../../lib/formatSalary";
+import { formatJobSalary } from "../../../lib/formatSalary";
 import JobViewCount from "../../../components/JobViewCount";
 
 type PageProps = {
@@ -197,7 +197,7 @@ export default async function CategoryPage({ params }: PageProps) {
                         </div>
                         <div className="flex-shrink-0 text-right">
                           <div className="text-sm font-black text-slate-900 whitespace-nowrap">
-                            {formatSalaryDisplay(job.salary)}
+                            {formatJobSalary(job)}
                           </div>
                           <JobViewCount views={job.views} className="mt-1 block text-[11px] font-semibold text-slate-400" />
                           <div className="mt-2">

@@ -5,12 +5,15 @@ type FormatOpts = {
 };
 
 function decodeEntities(raw: string): string {
-  // Minimal, safe decoding (same approach as stripHtmlToText, but we preserve newlines).
   return (raw || "")
     .replace(/&nbsp;/gi, " ")
     .replace(/&mdash;|&#8212;|&#x2014;/gi, "-")
     .replace(/&ndash;|&#8211;|&#x2013;/gi, "-")
     .replace(/&minus;|&#8722;|&#x2212;/gi, "-")
+    .replace(/&#(\d+);/g, (_m, n) => {
+      const code = Number(n);
+      return Number.isFinite(code) && code > 0 && code < 0x10ffff ? String.fromCharCode(code) : "";
+    })
     .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
@@ -158,7 +161,7 @@ function dedupeRepeatedChunks(out: string): string {
 
 export function formatSourcedDescription(input: string, opts: FormatOpts = {}): string {
   const maxLen = typeof opts.maxLen === "number" ? opts.maxLen : 18_000;
-  const raw = (input || "").toString();
+  const raw = decodeEntities((input || "").toString());
   if (!raw.trim()) return "";
 
   // If it doesn't look like HTML, keep as-is but normalize whitespace in a readable way.

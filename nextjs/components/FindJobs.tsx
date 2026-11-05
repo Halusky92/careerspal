@@ -14,6 +14,7 @@ import JobRow from "./JobRow";
 import JobDetailPanel from "./JobDetailPanel";
 import PredictiveField from "./PredictiveField";
 import { startApply } from "../lib/startApply";
+import { inferWorkMode } from "../lib/workMode";
 import FeaturedBoardZone from "./FeaturedBoardZone";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
 import { jobMatchesLocationQuery, locationLabelsForJobs } from "../lib/locationFilter";
@@ -361,12 +362,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     if (!value) return 'Any';
     return `$${Math.round(value / 1000)}k+`;
   };
-  const getWorkMode = (job: Job) => {
-    const policy = job.remotePolicy?.toLowerCase() || '';
-    if (policy.includes('hybrid')) return 'Hybrid';
-    if (policy.includes('remote')) return 'Remote';
-    return 'Onsite';
-  };
+  const getWorkMode = (job: Job) => inferWorkMode(job);
 
   // Helper to determine salary competitiveness
   const getSalaryLevel = (salary: string) => {

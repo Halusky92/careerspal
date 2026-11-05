@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatEmployerSalaryForStorage } from "./formatSalary";
+import { formatEmployerSalaryForStorage, formatSalaryDisplay } from "./formatSalary";
 
 test("employer salary numbers are stored as USD", () => {
   const stored = formatEmployerSalaryForStorage("80000-120000");
@@ -17,4 +17,13 @@ test("space thousands like 80 000 become $80k", () => {
   const stored = formatEmployerSalaryForStorage("80 000");
   assert.match(stored, /\$80k/);
   assert.equal(stored.includes("$80 a"), false);
+});
+
+test("a stored floor uses the range from the job description", () => {
+  const shown = formatSalaryDisplay(
+    "$64k a year",
+    "The base salary range for this role is $64,000 – $80,000 a year.",
+  );
+  assert.match(shown, /\$64k/);
+  assert.match(shown, /\$80k/);
 });

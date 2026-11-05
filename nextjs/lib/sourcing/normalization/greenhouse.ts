@@ -1,5 +1,6 @@
 import { stripHtmlToText } from "./text";
 import { detectAndParseSalaryForGreenhouse, type ParsedSalary } from "./salary";
+import { inferWorkMode } from "../../workMode";
 
 type GreenhouseJobDetail = {
   id?: number;
@@ -104,12 +105,13 @@ export function normalizeGreenhouseRawPayload(args: {
   const applyUrl = jobUrl;
 
   const locationText = coalesceString(payload.location?.name as string | null);
-  const remotePolicy = inferRemotePolicy(locationText);
 
   const postedAt = parseIsoMaybe(payload.created_at) || parseIsoMaybe(payload.updated_at);
 
   const descriptionHtml = coalesceString(payload.content);
   const descriptionClean = descriptionHtml ? stripHtmlToText(descriptionHtml) : null;
+  const remotePolicy =
+    inferWorkMode({ location: locationText, description: descriptionClean }) || inferRemotePolicy(locationText);
 
   const salary = detectAndParseSalaryForGreenhouse(descriptionClean || "");
   const team = extractTeamText(payload);

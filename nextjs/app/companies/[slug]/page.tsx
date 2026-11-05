@@ -5,9 +5,11 @@ import { headers } from "next/headers";
 import CompanyLogo from "../../../components/CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../../../lib/jobs";
 import type { Company, Job } from "../../../types";
-import { formatSalaryDisplay } from "../../../lib/formatSalary";
+import { formatJobSalary } from "../../../lib/formatSalary";
 import JobViewCount from "../../../components/JobViewCount";
 import { isOnNicheJob } from "../../../lib/nicheScope";
+import { isBoilerplateDescription } from "../../../lib/companyBoard";
+import { workModeLabel } from "../../../lib/workMode";
 
 // Ensure a consistent runtime (avoid edge differences that can cause production-only crashes).
 export const runtime = "nodejs";
@@ -166,7 +168,8 @@ export default async function CompanyPage({ params }: PageProps) {
   const jobs = rawJobs.filter((job) => isOnNicheJob(job));
   const companyName = company.name || "Company";
   const companyWebsite = (company.website || "").trim();
-  const companyDescription = ((company.longDescription || company.description) || "").trim();
+  const companyDescriptionRaw = ((company.longDescription || company.description) || "").trim();
+  const companyDescription = isBoilerplateDescription(companyDescriptionRaw) ? "" : companyDescriptionRaw;
   const companyLocation = (company.headquarters || "").trim();
   const employeeCount = (company.employeeCount || "").trim();
   const showVerified = Boolean(company.verified);
@@ -376,7 +379,7 @@ export default async function CompanyPage({ params }: PageProps) {
                           </div>
                           <div className="flex-shrink-0 text-right">
                             <div className="text-sm font-medium text-slate-900 whitespace-nowrap">
-                              {formatSalaryDisplay(job.salary)}
+                              {formatJobSalary(job)}
                             </div>
                             <JobViewCount views={job.views} className="mt-0.5 block text-xs text-slate-400" />
                             <Link href={href} className="mt-1 inline-flex text-xs font-medium text-indigo-700 hover:underline">

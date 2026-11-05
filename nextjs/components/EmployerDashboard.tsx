@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Job } from "../types";
 import { createJobSlug } from "../lib/jobs";
-import { formatSalaryDisplay } from "../lib/formatSalary";
+import { formatJobSalary } from "../lib/formatSalary";
 import { formatShortPostedDate } from "../lib/formatPosted";
 import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
@@ -334,7 +334,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
               <ListingPlanBadge job={job} packUsedByCompany={packUsedByCompany} />
             </div>
             <p className="mt-1 text-sm text-slate-500">
-              {[job.company, formatSalaryDisplay(job.salary), postedDate(job)].filter(Boolean).join(" · ")} ·{" "}
+              {[job.company, formatJobSalary(job), postedDate(job)].filter(Boolean).join(" · ")} ·{" "}
               <JobViewCount views={job.views} />
               {" · "}
               {job.matches === 1 ? "1 apply click" : `${job.matches || 0} apply clicks`}

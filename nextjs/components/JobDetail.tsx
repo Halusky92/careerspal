@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Job } from '../types';
 import CompanyLogo from './CompanyLogo';
 import FormattedDescription from "./FormattedDescription";
-import { formatSalaryDisplay } from "../lib/formatSalary";
+import { formatJobSalary } from "../lib/formatSalary";
+import { inferWorkMode } from "../lib/workMode";
 import { formatRelativePosted } from "../lib/formatPosted";
 import { trackJobView } from "../lib/trackJobEvent";
 import FeaturedBadge from "./FeaturedBadge";
@@ -208,9 +209,9 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                      )}
                      <span className="px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200/70">{job.location}</span>
                      <span className="px-3 py-1 bg-white text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200/70">{job.category}</span>
-                     {job.remotePolicy && (
-                       <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-200">{job.remotePolicy}</span>
-                     )}
+                     {inferWorkMode(job) ? (
+                       <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-200">{inferWorkMode(job)}</span>
+                     ) : null}
                      {job.companyVerified && (
                        <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-200">
                          Verified
@@ -224,7 +225,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                   <div className="flex items-center gap-2 text-lg font-bold text-slate-500">
                      <button onClick={() => onSelectCompany(job.company)} className="text-indigo-600 hover:text-indigo-800 hover:underline transition-all">{job.company}</button>
                      <span>•</span>
-                     <span>{formatSalaryDisplay(job.salary)}</span>
+                     <span>{formatJobSalary(job)}</span>
                      <span>•</span>
                      <JobViewCount views={job.views} className="text-sm font-semibold text-slate-400" />
                   </div>
@@ -264,11 +265,11 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
               <span className="whitespace-nowrap">Remote Policy</span>
             </div>
             <div className="min-w-[520px] sm:min-w-[560px] grid grid-cols-5 gap-2 sm:gap-3 px-4 sm:px-5 pb-4 sm:pb-5">
-              <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{formatSalaryDisplay(job.salary)}</div>
+              <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{formatJobSalary(job)}</div>
               <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{job.type}</div>
               <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{job.location}</div>
               <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{job.category}</div>
-              <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{job.remotePolicy || "Remote"}</div>
+              <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{inferWorkMode(job) || job.location || "—"}</div>
             </div>
           </div>
         </div>
@@ -282,10 +283,10 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                <section className="hidden lg:block bg-white p-6 sm:p-8 rounded-[2rem] border border-slate-200/60 shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
                   <div className="grid grid-cols-4 gap-4 text-center">
                      {[
-                       { label: "Salary", value: formatSalaryDisplay(job.salary) },
+                       { label: "Salary", value: formatJobSalary(job) },
                        { label: "Type", value: job.type },
                        { label: "Location", value: job.location },
-                       { label: "Remote", value: job.remotePolicy || "Remote" },
+                       { label: "Work mode", value: inferWorkMode(job) || "—" },
                      ].map((item) => (
                        <div key={item.label} className="bg-slate-50 border border-slate-200/60 rounded-2xl px-4 py-4">
                          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{item.label}</div>
@@ -373,7 +374,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                            </div>
                            <div>
                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Salary Range</p>
-                              <p className="font-black text-slate-900 text-lg">{formatSalaryDisplay(job.salary)}</p>
+                              <p className="font-black text-slate-900 text-lg">{formatJobSalary(job)}</p>
                            </div>
                         </li>
                         <li className="flex items-start gap-4">

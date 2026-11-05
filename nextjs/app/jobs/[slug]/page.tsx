@@ -10,7 +10,8 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
 import { isOnNicheJob } from "../../../lib/nicheScope";
-import { formatSalaryDisplay } from "../../../lib/formatSalary";
+import { formatJobSalary } from "../../../lib/formatSalary";
+import { inferWorkMode } from "../../../lib/workMode";
 import { ApplyClickLink, JobViewTracker } from "../../../components/JobAnalytics";
 import FeaturedBadge from "../../../components/FeaturedBadge";
 import { isPaidFeaturedListing } from "../../../lib/featuredListing";
@@ -84,43 +85,12 @@ const sanitizeDescription = (value?: string | null) => {
   return cleaned.join("\n").trim();
 };
 
-const splitSummary = (value: string) => {
-  const cleaned = sanitizeDescription(value);
-  if (!cleaned) return { summary: "", details: "" };
-  const parts = cleaned.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-  if (parts.length === 0) return { summary: "", details: "" };
-  const summary = parts[0];
-  const details = parts.slice(1).join("\n\n").trim();
-  return { summary, details };
-};
-
-const extractLabeledSection = (value: string, label: string) => {
-  const cleaned = sanitizeDescription(value);
-  if (!cleaned) return "";
-  const lines = cleaned.split("\n");
-  const starts = new RegExp(`^\\s*${label}\\s*:?\\s*$`, "i");
-  const heading = /^\s*(responsibilities|requirements|what you’ll do|what youll do|qualifications)\s*:?\s*$/i;
-  let startIdx = -1;
-  for (let i = 0; i < lines.length; i += 1) {
-    if (starts.test(lines[i])) {
-      startIdx = i + 1;
-      break;
-    }
-  }
-  if (startIdx === -1) return "";
-  const out: string[] = [];
-  for (let i = startIdx; i < lines.length; i += 1) {
-    if (heading.test(lines[i])) break;
-    out.push(lines[i]);
-  }
-  return out.join("\n").trim();
-};
-
 const makeDescription = (job: Job) => {
   const bits: string[] = [];
-  if (job.salary) bits.push(`Salary: ${formatSalaryDisplay(job.salary)}.`);
+  if (job.salary) bits.push(`Salary: ${formatJobSalary(job)}.`);
   if (job.location) bits.push(`Location: ${job.location}.`);
-  if (job.remotePolicy) bits.push(`Remote policy: ${job.remotePolicy}.`);
+  const mode = inferWorkMode(job);
+  if (mode) bits.push(`Work mode: ${mode}.`);
   if (job.category) bits.push(`Category: ${job.category}.`);
   const base = bits.join(" ");
   const desc = plainText(sanitizeDescription(job.description) || "");
@@ -239,7 +209,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const canonicalPath = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
   const canonicalUrl = `${baseUrl}${canonicalPath}`;
 
-  const title = `${job.title} at ${job.company} — ${formatSalaryDisplay(job.salary)} | CareersPal`;
+  const title = `${job.title} at ${job.company} — ${formatJobSalary(job)} | CareersPal`;
   const description = makeDescription(job) || `${job.title} at ${job.company}.`;
 
   const imageUrl = job.logo ? (job.logo.startsWith("http") ? job.logo : `${baseUrl}${job.logo}`) : undefined;
@@ -339,7 +309,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
       sameAs: job.companyWebsite || undefined,
       logo: job.logo || undefined,
     },
-    jobLocationType: (job.remotePolicy || "").toLowerCase().includes("remote") ? "TELECOMMUTE" : undefined,
+    jobLocationType: inferWorkMode(job) === "Remote" ? "TELECOMMUTE" : undefined,
     directApply: isExternalUrl(job.applyUrl) ? true : undefined,
   };
 
@@ -352,9 +322,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
 
   const stack = (job.tools && job.tools.length > 0 ? job.tools : job.tags || []).filter(Boolean).slice(0, 12);
   const benefits = (job.benefits || []).filter(Boolean).slice(0, 12);
-  const { summary, details } = splitSummary(job.description || "");
-  const responsibilities = extractLabeledSection(job.description || "", "Responsibilities");
-  const requirements = extractLabeledSection(job.description || "", "Requirements");
+  const workMode = inferWorkMode(job);
   const alertHub = getCategoryHubForDbCategory(job.category || "");
   const alertsHref = alertHub ? `/alerts?category=${encodeURIComponent(alertHub.slug)}` : "/alerts";
 
@@ -405,11 +373,11 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                       {job.type}
                     </span>
                   )}
-                  {job.remotePolicy && (
+                  {workMode ? (
                     <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
-                      {job.remotePolicy}
+                      {workMode}
                     </span>
-                  )}
+                  ) : null}
                   {job.location && (
                     <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
                       {job.location}
@@ -433,7 +401,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                     {job.company}
                   </Link>
                   <span className="text-slate-300">•</span>
-                  <span className="text-sm sm:text-base font-black text-slate-900">{formatSalaryDisplay(job.salary)}</span>
+                  <span className="text-sm sm:text-base font-black text-slate-900">{formatJobSalary(job)}</span>
                   <span className="text-slate-300">•</span>
                   <JobViewCount views={job.views} className="text-sm font-semibold text-slate-500" />
                   {isPaidFeaturedListing(job) ? <FeaturedBadge job={job} size="md" /> : null}
@@ -477,41 +445,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
 
           <div className="p-4 sm:p-6 space-y-5">
             <section>
-              <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">Summary</h2>
-              <p className="mt-3 text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">
-                {summary || plainText(sanitizeDescription(job.description) || "") || "Description is being updated."}
-              </p>
-            </section>
-
-            {(responsibilities || requirements || details) && (
-              <section>
-                <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">
-                  Responsibilities & requirements
-                </h2>
-                <div className="mt-3 space-y-4 text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">
-                  {responsibilities && (
-                    <div>
-                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                        Responsibilities
-                      </div>
-                      <div className="mt-2">{responsibilities}</div>
-                    </div>
-                  )}
-                  {requirements && (
-                    <div>
-                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                        Requirements
-                      </div>
-                      <div className="mt-2">{requirements}</div>
-                    </div>
-                  )}
-                  {!responsibilities && !requirements && details && <div>{details}</div>}
-                </div>
-              </section>
-            )}
-
-            <section>
-              <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">Full description</h2>
+              <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">The role</h2>
               <div className="mt-3">
                 <FormattedDescriptionStatic text={job.description} />
               </div>
@@ -561,7 +495,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                       <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500 line-clamp-1">
                         {s.company}
                       </div>
-                      <div className="mt-2 text-sm font-black text-slate-900">{formatSalaryDisplay(s.salary)}</div>
+                      <div className="mt-2 text-sm font-black text-slate-900">{formatJobSalary(s)}</div>
                       <JobViewCount views={s.views} className="mt-1 block text-[10px] font-semibold uppercase tracking-widest text-slate-400" />
                     </Link>
                   ))}

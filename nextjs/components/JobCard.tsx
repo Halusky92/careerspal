@@ -7,7 +7,8 @@ import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import FormattedDescription from "./FormattedDescription";
-import { formatSalaryDisplay } from "../lib/formatSalary";
+import { formatJobSalary } from "../lib/formatSalary";
+import { inferWorkMode } from "../lib/workMode";
 import { formatRelativePosted } from "../lib/formatPosted";
 import JobViewCount from "./JobViewCount";
 import { useSupabaseAuth } from "./Providers";
@@ -34,12 +35,7 @@ const isNewListing = (postedAt: string) => {
   return lower.includes("just now") || lower.includes("hour") || lower.includes("min");
 };
 
-const getWorkMode = (job: Job) => {
-  const policy = job.remotePolicy?.toLowerCase() || "";
-  if (policy.includes("hybrid")) return "Hybrid";
-  if (policy.includes("remote")) return "Remote";
-  return "Onsite";
-};
+const getWorkMode = (job: Job) => inferWorkMode(job);
 
 const formatPostedDate = (job: Job) =>
   formatRelativePosted(job.timestamp, job.postedAt || "");
@@ -222,6 +218,7 @@ export default function JobCard({
             >
               {job.location}
             </span>
+            {workModeLabel ? (
             <span
               className={`text-[7px] sm:text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${
                 isElite ? "text-yellow-700 border-yellow-200 bg-yellow-50" : "text-slate-500 border-slate-200 bg-slate-50"
@@ -229,6 +226,7 @@ export default function JobCard({
             >
               {workModeLabel}
             </span>
+            ) : null}
           </div>
 
           {tools.length > 0 && (
@@ -271,7 +269,7 @@ export default function JobCard({
             isElite ? "text-yellow-900" : "text-slate-900"
           }`}
         >
-          {formatSalaryDisplay(job.salary)}
+          {formatJobSalary(job)}
         </div>
 
         <button
@@ -347,7 +345,7 @@ export default function JobCard({
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
               <span className="text-[9px] uppercase tracking-widest text-slate-400">Salary</span>
-              <div className="mt-1">{formatSalaryDisplay(job.salary)}</div>
+              <div className="mt-1">{formatJobSalary(job)}</div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
               <span className="text-[9px] uppercase tracking-widest text-slate-400">Posted</span>

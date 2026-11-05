@@ -25,9 +25,13 @@ export const plainCompanyText = (value: string) =>
 
 export const isBoilerplateDescription = (value?: string | null) => {
   const t = (value || "").toLowerCase();
+  if (!t.trim()) return false;
   return (
     t.includes("greenhouse is more than a hiring platform") ||
+    t.includes("greenhouse is the talent operating system") ||
     t.includes("complete hiring ecosystem") ||
+    t.includes("hiring platform that helps companies") ||
+    /\bgreenhouse software\b/.test(t) ||
     t.includes("coming soon")
   );
 };

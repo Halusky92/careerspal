@@ -4,19 +4,14 @@ import Link from "next/link";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createJobSlug } from "../lib/jobs";
-import { formatSalaryDisplay } from "../lib/formatSalary";
+import { formatJobSalary } from "../lib/formatSalary";
+import { inferWorkMode } from "../lib/workMode";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
 import JobViewCount from "./JobViewCount";
 import { formatRelativePosted } from "../lib/formatPosted";
 
-const getWorkMode = (job: Job) => {
-  const policy = (job.remotePolicy || "").toLowerCase();
-  const loc = (job.location || "").toLowerCase();
-  if (policy.includes("hybrid") || loc.includes("hybrid")) return "Hybrid";
-  if (policy.includes("remote") || /\bremote\b/.test(loc)) return "Remote";
-  return loc ? "Onsite" : "Remote";
-};
+const getWorkMode = (job: Job) => inferWorkMode(job);
 
 export default function HomePreviewCard({
   job,
@@ -68,11 +63,11 @@ export default function HomePreviewCard({
             <JobViewCount views={job.views} />
           </p>
           <p className="sm:hidden mt-0.5 text-xs font-semibold tabular-nums text-slate-900">
-            {formatSalaryDisplay(job.salary)}
+            {formatJobSalary(job)}
           </p>
         </div>
         <p className="hidden sm:block flex-shrink-0 text-sm font-semibold tabular-nums text-slate-900 whitespace-nowrap">
-          {formatSalaryDisplay(job.salary)}
+          {formatJobSalary(job)}
         </p>
       </Link>
       {onToggleSave ? (

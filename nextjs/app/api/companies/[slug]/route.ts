@@ -6,6 +6,7 @@ import { enrichCompanyFromWebsite } from "../../../../lib/companyEnrichment";
 import { isAtsHostname, publicLogoUrlForWebsite } from "../../../../lib/companyLogoUrl";
 import { isOnNicheJob } from "../../../../lib/nicheScope";
 import { applyLiveBoardFilter, isLiveBoardJob } from "../../../../lib/liveBoard";
+import { isBoilerplateDescription } from "../../../../lib/companyBoard";
 
 type SupabaseCompanyRow = {
   id: string;
@@ -140,13 +141,22 @@ export const GET = async (_request: Request, context: { params: Promise<{ slug: 
     // ignore
   }
 
+  const name = ((company as { name?: string | null }).name || "").trim();
+  const companyIds = new Set<string>([company.id]);
+  if (name) {
+    const { data: twins } = await supabaseAdmin.from("companies").select("id").ilike("name", name);
+    for (const row of twins || []) {
+      if (row?.id) companyIds.add(row.id);
+    }
+  }
+
   const jobsQuery = applyLiveBoardFilter(
     supabaseAdmin
       .from("jobs")
       .select(
         "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description)",
       )
-      .eq("company_id", company.id)
+      .in("company_id", [...companyIds].slice(0, 20))
       .eq("status", "published")
       .order("timestamp", { ascending: false }),
   );
@@ -156,12 +166,19 @@ export const GET = async (_request: Request, context: { params: Promise<{ slug: 
     .map(mapSupabaseJob)
     .filter((job) => isOnNicheJob(job) && isLiveBoardJob(job));
 
-  // Safe fallback: if company row is sparse, prefer a non-empty company_description from the newest job.
-  // This mirrors the manual admin-post behavior without inventing facts.
   const outCompany = mapCompany(company as SupabaseCompanyRow);
-  const hasRealDesc = (outCompany.description || "").trim() && !outCompany.description.toLowerCase().includes("coming soon");
+  const hasRealDesc =
+    (outCompany.description || "").trim() &&
+    !isBoilerplateDescription(outCompany.description);
   if (!hasRealDesc) {
-    const stableJob = [...mappedJobs].reverse().find((job) => (job.companyDescription || "").toString().trim());
+    outCompany.description = "";
+    outCompany.longDescription = "";
+    const stableJob = [...mappedJobs]
+      .reverse()
+      .find((job) => {
+        const jobDesc = (job.companyDescription || "").toString().trim();
+        return jobDesc && !isBoilerplateDescription(jobDesc);
+      });
     const jobDesc = (stableJob?.companyDescription || "").toString().trim();
     if (jobDesc) {
       outCompany.description = jobDesc;

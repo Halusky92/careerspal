@@ -132,7 +132,7 @@ export const POST = async (request: Request) => {
       title: body.title,
       description: body.description || "",
       location: body.location || "Remote",
-      remote_policy: body.remotePolicy || "Remote",
+      remote_policy: body.remotePolicy || "",
       type: body.type || "Full-time",
       salary: formatSalaryForStorage(body.salary || ""),
       posted_at_text: postedAt,
