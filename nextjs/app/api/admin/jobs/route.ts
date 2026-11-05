@@ -36,13 +36,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }
 
-  const { data: jobs } = await supabaseAdmin
-    .from("jobs")
-    .select(
-      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,logo_url,website,description)",
-    )
-    .order("created_at", { ascending: false });
-  return NextResponse.json({ jobs: (jobs as SupabaseJobRow[]).map(mapSupabaseJob) });
+  const selectWithOrigin =
+    "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,company_id,origin,companies(name,logo_url,website,description)";
+  const selectFallback =
+    "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,company_id,companies(name,logo_url,website,description)";
+  let { data: jobs, error } = await supabaseAdmin.from("jobs").select(selectWithOrigin).order("created_at", { ascending: false });
+  if (error) {
+    const retry = await supabaseAdmin.from("jobs").select(selectFallback).order("created_at", { ascending: false });
+    jobs = retry.data;
+  }
+  return NextResponse.json({ jobs: ((jobs || []) as SupabaseJobRow[]).map(mapSupabaseJob) });
 }
 
 export async function POST(request: Request) {
@@ -153,7 +156,7 @@ export async function POST(request: Request) {
       stripe_session_id: null,
     })
     .select(
-      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,logo_url,website,description)",
+      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,company_id,origin,companies(name,logo_url,website,description)",
     )
     .single();
 

@@ -11,6 +11,8 @@ import { formatShortPostedDate } from "../lib/formatPosted";
 import SourcingRegistrySection from "./admin/SourcingRegistrySection";
 import AdminPeopleTab from "./AdminPeopleTab";
 import JobViewCount from "./JobViewCount";
+import ListingPlanBadge from "./ListingPlanBadge";
+import { countCompanyPackUsage } from "../lib/listingPlan";
 
 type AnalyticsPeriod = {
   totalViews: number;
@@ -444,6 +446,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     return Array.from(new Set(titles)).slice(0, 6);
   }, [jobQuery, jobs]);
 
+  const packUsedByCompany = useMemo(() => countCompanyPackUsage(jobs), [jobs]);
+
   const pendingJobs = useMemo(
     () => sortedJobs.filter((job) => job.status === "pending_review"),
     [sortedJobs],
@@ -524,11 +528,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <button type="button" className="text-left font-medium text-slate-900 line-clamp-2 hover:text-indigo-700" onClick={() => setExpandedJobId(open ? null : job.id)}>
               {job.title}
             </button>
-            <div className="sm:hidden text-xs text-slate-500 mt-0.5">
-              {job.company} · <JobViewCount views={job.views} />
-            </div>
-            <div className="hidden sm:block text-xs text-slate-500 mt-0.5">
-              <JobViewCount views={job.views} />
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <ListingPlanBadge job={job} packUsedByCompany={packUsedByCompany} />
+              <span className="text-xs text-slate-500">
+                <span className="sm:hidden">{job.company} · </span>
+                <JobViewCount views={job.views} />
+              </span>
             </div>
           </td>
           <td className="px-3 py-2.5 text-slate-600 hidden sm:table-cell whitespace-nowrap">{job.company}</td>
@@ -751,7 +756,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         </button>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-base font-semibold text-slate-900">{job.title}</h3>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-base font-semibold text-slate-900">{job.title}</h3>
+                          <ListingPlanBadge job={job} packUsedByCompany={packUsedByCompany} />
+                        </div>
                         <p className="text-sm text-slate-500 mt-0.5">
                           {job.company} · {formatSalaryDisplay(job.salary)} · {job.location || "—"} · <JobViewCount views={job.views} />
                         </p>
@@ -804,7 +812,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 <article key={job.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-semibold text-slate-900">{job.title}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-slate-900">{job.title}</p>
+                        <ListingPlanBadge job={job} packUsedByCompany={packUsedByCompany} />
+                      </div>
                       <p className="text-sm text-slate-500 mt-0.5">
                         {job.company} · {formatSalaryDisplay(job.salary)} · <JobViewCount views={job.views} />
                       </p>
@@ -829,7 +840,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   {liveOlder.map((job) => (
                     <div key={job.id} className="flex items-center justify-between gap-3 py-2 border-t border-slate-100">
                       <p className="min-w-0 truncate text-sm text-slate-800">
-                        {job.title} · <JobViewCount views={job.views} className="text-slate-500" />
+                        {job.title} · <ListingPlanBadge job={job} packUsedByCompany={packUsedByCompany} /> ·{" "}
+                        <JobViewCount views={job.views} className="text-slate-500" />
                       </p>
                       <button type="button" onClick={() => handleDeleteJob(job.id)} className="text-xs text-rose-600">
                         Remove
@@ -955,7 +967,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       </div>
                     ) : null}
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-900">{job.title}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-slate-900">{job.title}</p>
+                        <ListingPlanBadge job={job} packUsedByCompany={packUsedByCompany} />
+                      </div>
                       <p className="text-sm text-slate-500 mt-0.5">
                         {job.company || "—"} · {formatSalaryDisplay(job.salary)} · {statusLabel(job.status)} · <JobViewCount views={job.views} />
                       </p>

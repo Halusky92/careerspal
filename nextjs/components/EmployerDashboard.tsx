@@ -13,6 +13,8 @@ import type { PublicPerson } from "../lib/publicPerson";
 import Link from "next/link";
 import { PLAN_PRICES } from "../lib/plans";
 import JobViewCount from "./JobViewCount";
+import ListingPlanBadge from "./ListingPlanBadge";
+import { companyPackKey, countCompanyPackUsage } from "../lib/listingPlan";
 
 type TrafficSource = { source: string; label?: string; views: number; applyClicks: number };
 
@@ -150,6 +152,14 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   );
   const newestJobs = myJobs.slice(0, 5);
   const olderJobs = myJobs.slice(5);
+  const packUsedByCompany = useMemo(() => {
+    const used = countCompanyPackUsage(myJobs);
+    const fromApi = founding?.usedJobs || 0;
+    if (!fromApi) return used;
+    const keys = new Set([...used.keys(), ...myJobs.map((job) => companyPackKey(job))]);
+    for (const key of keys) used.set(key, Math.max(used.get(key) || 0, fromApi));
+    return used;
+  }, [myJobs, founding]);
 
   const runAction = async (job: Job, action: "pause" | "close" | "republish" | "archive" | "delete" | "publish") => {
     if (!accessToken) return;
@@ -291,7 +301,10 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
       <article key={job.id} className="rounded-2xl border border-slate-200 bg-white p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-semibold text-slate-900 leading-snug">{job.title}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-semibold text-slate-900 leading-snug">{job.title}</p>
+              <ListingPlanBadge job={job} packUsedByCompany={packUsedByCompany} />
+            </div>
             <p className="mt-1 text-sm text-slate-500 truncate">
               {[job.company, formatSalaryDisplay(job.salary), postedDate(job)].filter(Boolean).join(" · ")} ·{" "}
               <JobViewCount views={job.views} />

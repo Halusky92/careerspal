@@ -38,6 +38,8 @@ export type SupabaseJobRow = {
   matches: number | null;
   stripe_payment_status: string | null;
   stripe_session_id: string | null;
+  company_id?: string | null;
+  origin?: string | null;
   companies?: SupabaseCompanyRow;
 };
 
@@ -68,6 +70,8 @@ export const mapSupabaseJob = (row: SupabaseJobRow): Job => ({
   title: row.title || "",
   company: companyLabel(row),
   companySlug: row.companies?.slug || undefined,
+  companyId: row.company_id || undefined,
+  origin: row.origin || undefined,
   logo: row.logo_url || row.companies?.logo_url || "",
   location: row.location || "",
   // Keep conservative: if we don't have a confident type stored, show Unknown rather than guessing.

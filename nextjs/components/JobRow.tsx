@@ -277,7 +277,7 @@ export default function JobRow({
               )}
 
               {showMenu && (
-              <div className="relative hidden sm:block">
+              <div className="relative">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
