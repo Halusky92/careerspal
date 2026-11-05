@@ -51,7 +51,7 @@ export default function ApplyResume() {
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
         <p className="text-lg font-semibold text-slate-900">Open the employer apply page</p>
         <p className="mt-2 text-sm text-slate-500">
-          You are still on CareersPal. The company form opens in a new tab.
+          This tab stays on the job. The employer apply page opens in front.
         </p>
         <a
           href={blocked.applyUrl}

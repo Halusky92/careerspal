@@ -6,7 +6,8 @@ import Auth from "../../components/Auth";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 import { hasPendingPosting, postingOwnerKey } from "../../lib/postingSession";
-import { peekPendingApply } from "../../lib/applyGate";
+import { handoffPendingApplyAfterLogin, peekPendingApply } from "../../lib/applyGate";
+import { trackJobApply } from "../../lib/trackJobEvent";
 
 const AuthPage = () => {
   const router = useRouter();
@@ -23,6 +24,10 @@ const AuthPage = () => {
       if (loading) return;
       if (!profile?.email || !accessToken) return;
       const pending = peekPendingApply();
+      if (pending) {
+        trackJobApply(pending.jobId);
+        handoffPendingApplyAfterLogin();
+      }
 
       const email = profile.email.toLowerCase();
       if (email === "admin@careerspal.com" || profile.role === "admin") {

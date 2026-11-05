@@ -77,7 +77,28 @@ export function openCompanyApply(applyUrl: string) {
     return true;
   }
   const opened = window.open(applyUrl, "_blank", "noopener,noreferrer");
+  if (opened) {
+    try {
+      opened.focus();
+    } catch {
+      // ignore
+    }
+  }
   return Boolean(opened);
+}
+
+/** After login: send this tab back to the job, put the employer form in a new focused tab. */
+export function handoffPendingApplyAfterLogin() {
+  const pending = peekPendingApply();
+  if (!pending) return { openedApply: false, returnTo: null as string | null };
+  if (pending.applyUrl.startsWith("mailto:")) {
+    takePendingApply();
+    window.location.href = pending.applyUrl;
+    return { openedApply: true, returnTo: pending.returnTo };
+  }
+  const opened = openCompanyApply(pending.applyUrl);
+  if (opened) takePendingApply();
+  return { openedApply: opened, returnTo: pending.returnTo };
 }
 
 export function openApplyContinueTab() {
