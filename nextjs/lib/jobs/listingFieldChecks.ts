@@ -46,7 +46,14 @@ const REASON_COPY: Record<string, ScreenIssue> = {
   METADATA_WEAK: { field: "description", message: "Add company, apply link, and a fuller description." },
 };
 
-const EMPLOYER_IGNORE = new Set(["SOURCE_WEAK", "ONSITE_ONLY", "REMOTE_UNCLEAR", "METADATA_WEAK"]);
+const EMPLOYER_IGNORE = new Set([
+  "SOURCE_WEAK",
+  "ONSITE_ONLY",
+  "REMOTE_UNCLEAR",
+  "METADATA_WEAK",
+  "DESCRIPTION_THIN",
+  "CAT_LOW_CONF",
+]);
 
 export type ListingFields = {
   title?: string | null;
@@ -87,8 +94,8 @@ export function localListingIssues(job: ListingFields): ScreenIssue[] {
   if (!hasSalary(job.salary)) issues.push(REASON_COPY.SALARY_MISSING);
   if (!isWorkingApply(applyFrom(job))) issues.push(REASON_COPY.APPLY_MISSING);
   if (!String(job.company || "").trim()) issues.push({ field: "company", message: "Add the company name." });
-  if (description.length < 40) {
-    issues.push({ field: "description", message: "Add a short description of the role." });
+  if (!description) {
+    issues.push({ field: "description", message: "Add a description of the role." });
   } else if (description.length > DESCRIPTION_MAX) {
     issues.push({ field: "description", message: `Keep the description under ${DESCRIPTION_MAX} characters.` });
   }

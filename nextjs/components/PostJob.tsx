@@ -297,17 +297,18 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     return fromLocal?.message;
   };
 
-  const showIssue = (field: string) =>
-    Boolean(issueFor(field) && (fieldValue(field).trim() || screenIssues.some((issue) => issue.field === field)));
+  const showIssue = (field: string) => {
+    if (field === "description") {
+      return screenIssues.some((issue) => issue.field === "description");
+    }
+    return Boolean(issueFor(field) && (fieldValue(field).trim() || screenIssues.some((issue) => issue.field === field)));
+  };
 
   const fieldReady = (field: string) => {
     if (field === "title" && formData.title.trim().length < 4) return false;
     if (field === "salary") return !localIssues.some((issue) => issue.field === "salary") && Boolean(formData.salary.trim());
     if (field === "description") {
-      const blocked = localIssues.some(
-        (issue) => issue.field === "description" && !isLaterStepCopy(issue.message),
-      );
-      return !blocked && formData.description.trim().length >= 40;
+      return formData.description.trim().length > 0 && formData.description.length <= DESCRIPTION_MAX;
     }
     if (field === "company") return Boolean(formData.company.trim()) && !localIssues.some((issue) => issue.field === "company");
     if (field === "applyUrl") return Boolean(formData.applyUrl.trim()) && !localIssues.some((issue) => issue.field === "applyUrl");
@@ -330,7 +331,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   useEffect(() => {
     const title = formData.title.trim();
     const description = formData.description.trim();
-    if (title.length < 4 || !isOnNicheJob({ title, category: formData.category, description: null }) || description.length < 80) {
+    if (title.length < 4 || !isOnNicheJob({ title, category: formData.category, description: null }) || description.length < 1) {
       setAiChecking(false);
       if (aiOk === true) setScreenToken(null);
       if (!isOnNicheJob({ title, category: formData.category, description: null }) || title.length < 4) setAiOk(null);
@@ -546,6 +547,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
       (issue) => {
         if (stepFields.length && !stepFields.includes(issue.field)) return false;
         if (step === 1 && isLaterStepCopy(issue.message)) return false;
+        if (issue.field === "description" && !screenIssues.some((item) => item.field === "description" && item.message === issue.message)) {
+          return false;
+        }
         const value = fieldValue(issue.field);
         return Boolean(value?.trim()) || screenIssues.some((item) => item.field === issue.field);
       },
@@ -798,7 +802,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     />
                     {showIssue("description") && <p className="text-[11px] font-semibold text-rose-700">{issueFor("description")}</p>}
                     {!showIssue("description") ? (
-                      <p className="text-[11px] text-slate-500">Write it yourself. We only check length and that the copy is not abusive.</p>
+                      <p className="text-[11px] text-slate-500">Write it in your own words. Max {DESCRIPTION_MAX} characters. We only block abusive copy.</p>
                     ) : null}
                   </div>
                 </div>

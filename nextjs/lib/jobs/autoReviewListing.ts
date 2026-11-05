@@ -97,7 +97,7 @@ export async function screenListingForBoard(
   const localOk = issues.length === 0 && blocking.length === 0;
   const [ai, safety] = await Promise.all([
     opts?.skipAi || (!opts?.aiOnly && !localOk) ? Promise.resolve(null) : aiNicheNote(title, description),
-    title.length >= 4 && description.length >= 40 ? aiSafetyNote(title, description) : Promise.resolve(null),
+    title.length >= 4 && description.length >= 1 ? aiSafetyNote(title, description) : Promise.resolve(null),
   ]);
   if (ai && !ai.onNiche) {
     issues.push({
