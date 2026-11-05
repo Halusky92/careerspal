@@ -109,7 +109,7 @@ export function filterJobTitleSuggestions(
       const categoryIndex = categoryPool.findIndex((item) => item.toLowerCase() === t);
       if (categoryIndex >= 0) score += 20 - Math.min(categoryIndex, 9);
       if (!q) return { title, score: score + 1, index };
-      if (t === q) return { title, score: -1, index };
+      if (t === q) return { title, score: score + 12, index };
       if (t.startsWith(q)) score += 8;
       else if (t.includes(q)) score += 4;
       else return { title, score: -1, index };

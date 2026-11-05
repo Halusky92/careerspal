@@ -11,7 +11,6 @@ import { filterJobTitleSuggestions } from "../lib/jobTitleSuggestions";
 import { toggleTool, toolsForCategory, toolsToKeywords } from "../lib/postingTools";
 import StartPackMeter from "./StartPackMeter";
 import type { StartPackStatus } from "../lib/founding";
-import { isOnNicheJob } from "../lib/nicheScope";
 import { DESCRIPTION_MAX, localListingIssues } from "../lib/jobs/listingFieldChecks";
 import { composeJobDescription, parseJobDescription, SECTION_MAX } from "../lib/jobDescriptionSections";
 
@@ -303,7 +302,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     if (issue.field === "applyUrl") return localIssues.some((item) => item.field === "applyUrl");
     if (issue.field === "salary") return localIssues.some((item) => item.field === "salary");
     if (issue.field === "title") {
-      return localIssues.some((item) => item.field === "title") || (aiOk === false && /ops|systems|hate|abusive|discrimin/i.test(issue.message));
+      return localIssues.some((item) => item.field === "title");
     }
     if (issue.field === "description") {
       return screenIssues.some((item) => item.field === "description" && item.message === issue.message);
@@ -334,7 +333,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     setScreenIssues((prev) => prev.filter((issue) => issue.field !== "description"));
   };
 
-  const titleLocalOk = isOnNicheJob({ title: formData.title, category: formData.category, description: null }) && formData.title.trim().length >= 4;
+  const titleLocalOk = formData.title.trim().length >= 4;
 
   const fieldReady = (field: string) => {
     if (field === "title") return titleLocalOk;
@@ -347,13 +346,14 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     return !localIssues.some((issue) => issue.field === field);
   };
 
-  const step1Ready = fieldReady("title") && fieldReady("salary") && fieldReady("description") && aiOk !== false;
+  const hateBlocked = aiOk === false && screenIssues.some((issue) => /hate|abusive|discrimin|racist|violence/i.test(issue.message));
+  const step1Ready = fieldReady("title") && fieldReady("salary") && fieldReady("description") && !hateBlocked;
   const allReady = step1Ready && fieldReady("applyUrl");
 
   const fieldMark = (field: "title" | "salary" | "description" | "company" | "applyUrl") => {
     const checking = (field === "title" || field === "description") && aiChecking && titleLocalOk;
-    if (checking) return { label: "…", className: "text-slate-400" };
-    if (fieldReady(field) && !(field === "title" && aiOk === false && showIssue("title"))) {
+    if (checking && field === "description") return { label: "…", className: "text-slate-400" };
+    if (fieldReady(field) && !(field === "description" && hateBlocked)) {
       return { label: "✓", className: "text-emerald-600" };
     }
     return { label: "", className: "" };
@@ -366,10 +366,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   useEffect(() => {
     const title = formData.title.trim();
     const description = formData.description.trim();
-    if (title.length < 4 || !isOnNicheJob({ title, category: formData.category, description: null }) || description.length < 1) {
+    if (title.length < 4 || description.length < 1) {
       setAiChecking(false);
-      if (aiOk === true) setScreenToken(null);
-      if (!isOnNicheJob({ title, category: formData.category, description: null }) || title.length < 4) setAiOk(null);
       return;
     }
     const timer = window.setTimeout(async () => {
@@ -396,22 +394,17 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
           token?: string | null;
           error?: string;
         };
-        const nicheIssues = (payload.issues || []).filter(
-          (issue) =>
-            (issue.field === "title" || issue.field === "description") &&
-            !/company|apply link|apply url|careers url/i.test(issue.message) &&
-            !/complete job description|responsibilit|requirement|too short|more detail|fuller description|outlines the/i.test(
-              issue.message,
-            ),
+        const hateIssues = (payload.issues || []).filter(
+          (issue) => issue.field === "description" && /hate|abusive|discrimin|racist|violence/i.test(issue.message),
         );
-        if (payload.ok || nicheIssues.length === 0) {
+        if (hateIssues.length) {
+          setAiOk(false);
+          setScreenToken(null);
+          setScreenIssues(hateIssues);
+        } else {
           setAiOk(true);
           setScreenToken(payload.token || null);
           setScreenIssues((prev) => prev.filter((issue) => issue.field !== "title" && issue.field !== "description"));
-        } else {
-          setAiOk(false);
-          setScreenToken(null);
-          setScreenIssues(nicheIssues);
         }
       } catch {
         setAiOk(null);
@@ -428,7 +421,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
         (issue.field === "title" || issue.field === "salary" || issue.field === "description") &&
         !isLaterStepCopy(issue.message),
     );
-    if (blocked.length || aiOk === false) {
+    if (blocked.length || hateBlocked) {
       setScreenIssues(blocked.length ? blocked : screenIssues.filter((issue) => !isLaterStepCopy(issue.message)));
       return;
     }
@@ -767,10 +760,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                     </div>
                     {showIssue("title") ? (
                       <p className="text-[11px] font-medium text-rose-700">{issueFor("title")}</p>
-                    ) : titleLocalOk ? (
-                      <p className="text-[11px] text-slate-500">Title is set. Suggestions are only hints — your own wording is fine.</p>
                     ) : (
-                      <p className="text-[11px] text-slate-500">Type your own or pick a hint. It just needs to be an Ops / Systems / Automation / RevOps / Product Ops / Chief of Staff title.</p>
+                      <p className="text-[11px] text-slate-500">Suggestions are optional. Type your own title or pick one from the list.</p>
                     )}
                   </div>
                   <div className="space-y-2">

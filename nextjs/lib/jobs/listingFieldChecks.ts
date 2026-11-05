@@ -1,4 +1,3 @@
-import { isOnNicheJob } from "../nicheScope";
 import { applyUrlLooksUsable } from "./applyLinkHealth";
 import { scoreCandidate } from "../sourcing/evaluation/scoring";
 import { REASON_SEVERITY, type ReasonCode } from "../sourcing/evaluation/reasonCodes";
@@ -43,6 +42,7 @@ const EMPLOYER_IGNORE = new Set([
   "METADATA_WEAK",
   "DESCRIPTION_THIN",
   "CAT_LOW_CONF",
+  "OFF_NICHE",
 ]);
 
 export type ListingFields = {
@@ -78,8 +78,6 @@ export function localListingIssues(job: ListingFields): ScreenIssue[] {
 
   if (title.length < 4) {
     issues.push({ field: "title", message: "Enter a job title (4+ characters)." });
-  } else if (!isOnNicheJob({ title, category: job.category, description: null })) {
-    issues.push(REASON_COPY.OFF_NICHE);
   }
   if (!hasSalary(job.salary)) issues.push(REASON_COPY.SALARY_MISSING);
   if (!isWorkingApply(applyFrom(job))) issues.push(REASON_COPY.APPLY_MISSING);

@@ -81,15 +81,15 @@ test("description over the character cap is rejected", () => {
   assert.ok(issues.some((issue) => issue.field === "description" && /4000/.test(issue.message)));
 });
 
-test("apply link and niche title still gate the board", () => {
+test("apply link still gates the board; own titles are allowed in the form", () => {
   const off = localListingIssues({
-    title: "Sales Intern",
-    description: "Sell widgets on the phone every day with a headset and a CRM login. ".repeat(6),
+    title: "Systems Analyst",
+    description: "q",
     salary: "$80k-$100k",
     applyUrl: "#",
     company: "Acme",
-    category: "Operations",
+    category: "Systems Design",
   });
-  assert.ok(off.some((issue) => issue.field === "title"));
+  assert.ok(!off.some((issue) => issue.field === "title"));
   assert.ok(off.some((issue) => issue.field === "applyUrl"));
 });
