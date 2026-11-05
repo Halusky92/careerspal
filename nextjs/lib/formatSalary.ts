@@ -70,8 +70,9 @@ export function formatSalaryDisplay(raw?: string | null): string {
       .replace(/\bJPY\b/gi, "¥")
       .replace(/\bCAD\b/gi, "CA$")
       .replace(/\.00\b/g, "")
-      .replace(/\s+year\b/i, " / year")
-      .replace(/\s+month\b/i, " / month"),
+      .replace(/\ba year\b/i, "/ year")
+      .replace(/\bper year\b/i, "/ year")
+      .replace(/\bper month\b/i, "/ month"),
   ).trim();
 }
 
@@ -82,7 +83,7 @@ export function formatSalaryForStorage(raw?: string | null): string {
 
 /** Employer board is USD. If they type numbers without a currency, store them as dollars. */
 export function formatEmployerSalaryForStorage(raw?: string | null): string {
-  const text = (raw || "").trim();
+  const text = (raw || "").replace(/\u00a0/g, " ").trim();
   if (!text) return "";
   if (/(USD|EUR|GBP|CAD|AUD|CHF|\$|€|£|¥)/i.test(text)) return formatSalaryForStorage(text);
   return formatSalaryForStorage(`$${text}`);

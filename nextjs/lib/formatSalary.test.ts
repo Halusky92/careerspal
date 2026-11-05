@@ -12,3 +12,9 @@ test("employer salary already marked in dollars stays dollars", () => {
   const stored = formatEmployerSalaryForStorage("$90k–$110k");
   assert.match(stored, /\$90k/);
 });
+
+test("space thousands like 80 000 become $80k", () => {
+  const stored = formatEmployerSalaryForStorage("80 000");
+  assert.match(stored, /\$80k/);
+  assert.equal(stored.includes("$80 a"), false);
+});

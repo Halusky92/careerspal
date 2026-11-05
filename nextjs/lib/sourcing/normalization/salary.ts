@@ -78,10 +78,23 @@ const CURRENCY_SYMBOL_TO_CODE: Record<string, string> = {
   "¥": "JPY",
 };
 
+function collapseThousandGroups(text: string) {
+  let next = text;
+  let prev = "";
+  while (next !== prev) {
+    prev = next;
+    next = prev.replace(/(\d)[ \u00a0\u202f](\d{3})(?!\d)/g, "$1$2");
+  }
+  return next;
+}
+
 function normalizeNumber(value: string): number | null {
-  const raw = (value || "").trim().toLowerCase();
+  const raw = collapseThousandGroups(value || "")
+    .replace(/,/g, "")
+    .trim()
+    .toLowerCase();
   if (!raw) return null;
-  const m = raw.match(/^(\d+(?:\.\d+)?)(k|m)?$/i);
+  const m = raw.match(/^(\d+(?:\.\d+)?|\d+)(k|m)?$/i);
   if (m) {
     const n = Number(m[1]);
     if (!Number.isFinite(n)) return null;
@@ -94,8 +107,7 @@ function normalizeNumber(value: string): number | null {
     }
     return Math.round(n);
   }
-  const cleaned = raw.replace(/,/g, "");
-  const n = Number(cleaned);
+  const n = Number(raw);
   return Number.isFinite(n) ? Math.round(n) : null;
 }
 
@@ -131,7 +143,7 @@ function isNonExplicitSalary(text: string): boolean {
 
 export function parseSalaryFromText(text: string): ParsedSalary {
   const notes: string[] = [];
-  const clean = (text || "")
+  const clean = collapseThousandGroups(text || "")
     .trim()
     // Normalize common dash variants to hyphen so ranges like "$221,000—$260,000" match reliably.
     .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-");
