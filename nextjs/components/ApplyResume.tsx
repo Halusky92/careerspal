@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useSupabaseAuth } from "./Providers";
 import {
   APPLY_BLOCKED_EVENT,
-  openArmedApplyTab,
   openCompanyApply,
   peekPendingApply,
   takePendingApply,
@@ -32,8 +31,10 @@ export default function ApplyResume() {
     if (pathname.startsWith("/auth") || pathname.startsWith("/apply/continue")) return;
     const pending = peekPendingApply();
     if (!pending) return;
+    const returnPath = (pending.returnTo || "/").split("?")[0];
+    if (returnPath.startsWith("/jobs") && !pathname.startsWith("/jobs")) return;
     trackJobApply(pending.jobId);
-    const opened = openArmedApplyTab(pending.applyUrl) || openCompanyApply(pending.applyUrl);
+    const opened = openCompanyApply(pending.applyUrl);
     if (opened) {
       takePendingApply();
       setBlocked(null);
