@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Job } from "../types";
@@ -11,6 +11,8 @@ import { formatSalaryDisplay } from "../lib/formatSalary";
 import { formatRelativePosted } from "../lib/formatPosted";
 import FeaturedBadge from "./FeaturedBadge";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
+import JobViewCount from "./JobViewCount";
+import { trackJobView } from "../lib/trackJobEvent";
 
 type JobDetailPanelProps = {
   job: Job | null;
@@ -36,6 +38,10 @@ export default function JobDetailPanel({
   isSaved,
 }: JobDetailPanelProps) {
   const router = useRouter();
+
+  useEffect(() => {
+    if (job?.id) trackJobView(job.id);
+  }, [job?.id]);
 
   const rawSlug = (job?.companySlug || "").toString().trim();
   const safeSlug = rawSlug && rawSlug !== "undefined" && rawSlug !== "null" ? rawSlug : "";
@@ -182,7 +188,9 @@ export default function JobDetailPanel({
               >
                 {job.company}
               </a>
-              <div className="text-sm font-semibold text-slate-900 mt-1">{formatSalaryDisplay(job.salary)}</div>
+              <div className="text-sm font-semibold text-slate-900 mt-1">
+                {formatSalaryDisplay(job.salary)} · <JobViewCount views={job.views} className="font-medium text-slate-500" />
+              </div>
             </div>
             <button
               onClick={() => onApply(job)}
@@ -237,7 +245,7 @@ export default function JobDetailPanel({
                   >
                     <div className="text-xs font-bold text-slate-900 truncate">{s.title}</div>
                     <div className="text-[10px] font-medium uppercase tracking-wide text-slate-600 mt-1 truncate">
-                      {s.company} • {formatSalaryDisplay(s.salary)}
+                      {s.company} • {formatSalaryDisplay(s.salary)} • <JobViewCount views={s.views} />
                     </div>
                   </button>
                 ))}

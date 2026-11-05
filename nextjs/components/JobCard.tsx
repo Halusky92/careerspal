@@ -10,6 +10,7 @@ import FormattedDescription from "./FormattedDescription";
 import { formatSalaryDisplay } from "../lib/formatSalary";
 import { formatRelativePosted } from "../lib/formatPosted";
 import { trackJobApply } from "../lib/trackJobEvent";
+import JobViewCount from "./JobViewCount";
 
 export type JobCardVariant = "board" | "home";
 
@@ -299,6 +300,10 @@ export default function JobCard({
         <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-widest ${isElite ? "text-yellow-700" : "text-slate-300"}`}>
           {formatPostedDate(job)}
         </span>
+        <JobViewCount
+          views={job.views}
+          className={`text-[7px] sm:text-[8px] font-black uppercase tracking-widest ${isElite ? "text-yellow-700" : "text-slate-400"}`}
+        />
         {job.matchScore && (
           <span
             className={`text-[7px] sm:text-[8px] font-black px-2 py-1 rounded-lg border ${

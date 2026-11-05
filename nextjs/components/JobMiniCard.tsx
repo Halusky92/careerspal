@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import { formatSalaryDisplay } from "../lib/formatSalary";
+import JobViewCount from "./JobViewCount";
 
 type JobMiniCardProps = {
   job: Job;
@@ -26,6 +27,7 @@ export default function JobMiniCard({ job, className = "" }: JobMiniCardProps) {
     >
       <div className="min-w-0">
         <div className="text-sm font-bold text-slate-900 truncate">{job.title}</div>
+        <JobViewCount views={job.views} className="mt-0.5 block text-[11px] font-medium text-slate-500" />
       </div>
 
       <div className="flex-shrink-0 text-[11px] font-semibold text-slate-900 whitespace-nowrap">

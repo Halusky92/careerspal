@@ -10,6 +10,7 @@ import { formatSalaryDisplay } from "../lib/formatSalary";
 import { formatRelativePosted } from "../lib/formatPosted";
 import { trackJobApply, trackJobView } from "../lib/trackJobEvent";
 import FeaturedBadge from "./FeaturedBadge";
+import JobViewCount from "./JobViewCount";
 
 interface JobDetailProps {
   job: Job;
@@ -220,6 +221,8 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                      <button onClick={() => onSelectCompany(job.company)} className="text-indigo-600 hover:text-indigo-800 hover:underline transition-all">{job.company}</button>
                      <span>•</span>
                      <span>{formatSalaryDisplay(job.salary)}</span>
+                     <span>•</span>
+                     <JobViewCount views={job.views} className="text-sm font-semibold text-slate-400" />
                   </div>
                </div>
                <div className="w-full md:w-auto">
@@ -332,7 +335,9 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                               </div>
                               <div>
                                  <h4 className="font-black text-slate-900 group-hover:text-indigo-600 transition-colors">{simJob.title}</h4>
-                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{simJob.company}</p>
+                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                                   {simJob.company} · <JobViewCount views={simJob.views} />
+                                 </p>
                               </div>
                            </div>
                            <div className="text-right">
@@ -387,24 +392,22 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                         </li>
                      </ul>
 
+                     {(job.benefits || []).length > 0 ? (
                      <div className="mt-8 pt-8 border-t border-slate-50">
                         <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Benefits & Perks</h4>
                         <div className="flex flex-wrap gap-2">
-                           {(job.benefits || ['Remote First', 'Equipment Stipend', 'Flexible Hours']).map(benefit => (
+                           {(job.benefits || []).map(benefit => (
                               <span key={benefit} className="px-3 py-1.5 bg-white text-slate-700 rounded-lg text-[10px] font-bold border border-slate-200/60">
                                  {benefit}
                               </span>
                            ))}
                         </div>
                      </div>
-                     <div className="mt-6 grid grid-cols-2 gap-3">
-                        <div className="rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3">
-                           <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Views</div>
-                           <div className="text-sm font-black text-slate-900 mt-1">{job.views ?? 0}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3">
-                           <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Matches</div>
-                           <div className="text-sm font-black text-slate-900 mt-1">{job.matches ?? 0}</div>
+                     ) : null}
+                     <div className="mt-6 rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3">
+                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Views</div>
+                        <div className="text-sm font-black text-slate-900 mt-1">
+                          <JobViewCount views={job.views} />
                         </div>
                      </div>
                   </div>

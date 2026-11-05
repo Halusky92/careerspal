@@ -7,6 +7,7 @@ import { createJobSlug } from "../lib/jobs";
 import { formatSalaryDisplay } from "../lib/formatSalary";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
+import JobViewCount from "./JobViewCount";
 
 const getWorkMode = (job: Job) => {
   const policy = (job.remotePolicy || "").toLowerCase();
@@ -51,7 +52,7 @@ export default function HomePreviewCard({ job }: { job: Job }) {
           <FeaturedBadge job={job} />
         </div>
         <p className="mt-0.5 truncate text-xs text-slate-500">
-          {job.company} · {place}
+          {job.company} · {place} · <JobViewCount views={job.views} />
         </p>
         <p className="sm:hidden mt-0.5 text-xs font-semibold tabular-nums text-slate-900">
           {formatSalaryDisplay(job.salary)}

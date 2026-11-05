@@ -12,6 +12,7 @@ import type { StartPackStatus } from "../lib/founding";
 import type { PublicPerson } from "../lib/publicPerson";
 import Link from "next/link";
 import { PLAN_PRICES } from "../lib/plans";
+import JobViewCount from "./JobViewCount";
 
 type TrafficSource = { source: string; label?: string; views: number; applyClicks: number };
 
@@ -292,7 +293,8 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           <div className="min-w-0">
             <p className="font-semibold text-slate-900 leading-snug">{job.title}</p>
             <p className="mt-1 text-sm text-slate-500 truncate">
-              {[job.company, formatSalaryDisplay(job.salary), postedDate(job)].filter(Boolean).join(" · ")}
+              {[job.company, formatSalaryDisplay(job.salary), postedDate(job)].filter(Boolean).join(" · ")} ·{" "}
+              <JobViewCount views={job.views} />
             </p>
           </div>
           <span className={`shrink-0 inline-flex text-xs font-medium px-2 py-0.5 rounded ${statusTone(job.status)}`}>

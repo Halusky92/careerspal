@@ -10,6 +10,7 @@ import { formatSalaryDisplay } from "../lib/formatSalary";
 import { formatShortPostedDate } from "../lib/formatPosted";
 import SourcingRegistrySection from "./admin/SourcingRegistrySection";
 import AdminPeopleTab from "./AdminPeopleTab";
+import JobViewCount from "./JobViewCount";
 
 type AnalyticsPeriod = {
   totalViews: number;
@@ -523,7 +524,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <button type="button" className="text-left font-medium text-slate-900 line-clamp-2 hover:text-indigo-700" onClick={() => setExpandedJobId(open ? null : job.id)}>
               {job.title}
             </button>
-            <div className="sm:hidden text-xs text-slate-500 mt-0.5">{job.company}</div>
+            <div className="sm:hidden text-xs text-slate-500 mt-0.5">
+              {job.company} · <JobViewCount views={job.views} />
+            </div>
+            <div className="hidden sm:block text-xs text-slate-500 mt-0.5">
+              <JobViewCount views={job.views} />
+            </div>
           </td>
           <td className="px-3 py-2.5 text-slate-600 hidden sm:table-cell whitespace-nowrap">{job.company}</td>
           <td className="px-3 py-2.5 text-slate-700 whitespace-nowrap">{formatSalaryDisplay(job.salary)}</td>
@@ -747,7 +753,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <div className="min-w-0 flex-1">
                         <h3 className="text-base font-semibold text-slate-900">{job.title}</h3>
                         <p className="text-sm text-slate-500 mt-0.5">
-                          {job.company} · {formatSalaryDisplay(job.salary)} · {job.location || "—"}
+                          {job.company} · {formatSalaryDisplay(job.salary)} · {job.location || "—"} · <JobViewCount views={job.views} />
                         </p>
                         <p className="mt-2 text-sm text-slate-600 whitespace-pre-wrap line-clamp-5">{job.description || "No description."}</p>
                         <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
@@ -800,7 +806,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900">{job.title}</p>
                       <p className="text-sm text-slate-500 mt-0.5">
-                        {job.company} · {formatSalaryDisplay(job.salary)}
+                        {job.company} · {formatSalaryDisplay(job.salary)} · <JobViewCount views={job.views} />
                       </p>
                     </div>
                     <button
@@ -822,7 +828,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 <div className="px-4 pb-4 space-y-2">
                   {liveOlder.map((job) => (
                     <div key={job.id} className="flex items-center justify-between gap-3 py-2 border-t border-slate-100">
-                      <p className="min-w-0 truncate text-sm text-slate-800">{job.title}</p>
+                      <p className="min-w-0 truncate text-sm text-slate-800">
+                        {job.title} · <JobViewCount views={job.views} className="text-slate-500" />
+                      </p>
                       <button type="button" onClick={() => handleDeleteJob(job.id)} className="text-xs text-rose-600">
                         Remove
                       </button>
@@ -949,7 +957,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-slate-900">{job.title}</p>
                       <p className="text-sm text-slate-500 mt-0.5">
-                        {job.company || "—"} · {formatSalaryDisplay(job.salary)} · {statusLabel(job.status)}
+                        {job.company || "—"} · {formatSalaryDisplay(job.salary)} · {statusLabel(job.status)} · <JobViewCount views={job.views} />
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {job.status !== "published" && job.status !== "pending_review" ? (

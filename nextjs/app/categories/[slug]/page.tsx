@@ -9,6 +9,7 @@ import type { Job } from "../../../types";
 import { isOnNicheJob } from "../../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../../lib/liveBoard";
 import { formatSalaryDisplay } from "../../../lib/formatSalary";
+import JobViewCount from "../../../components/JobViewCount";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -198,6 +199,7 @@ export default async function CategoryPage({ params }: PageProps) {
                           <div className="text-sm font-black text-slate-900 whitespace-nowrap">
                             {formatSalaryDisplay(job.salary)}
                           </div>
+                          <JobViewCount views={job.views} className="mt-1 block text-[11px] font-semibold text-slate-400" />
                           <div className="mt-2">
                             <Link
                               href={href}

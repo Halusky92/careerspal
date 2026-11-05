@@ -14,6 +14,7 @@ import { formatSalaryDisplay } from "../../../lib/formatSalary";
 import { ApplyClickLink, JobViewTracker } from "../../../components/JobAnalytics";
 import FeaturedBadge from "../../../components/FeaturedBadge";
 import { isPaidFeaturedListing } from "../../../lib/featuredListing";
+import JobViewCount from "../../../components/JobViewCount";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -433,6 +434,8 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                   </Link>
                   <span className="text-slate-300">•</span>
                   <span className="text-sm sm:text-base font-black text-slate-900">{formatSalaryDisplay(job.salary)}</span>
+                  <span className="text-slate-300">•</span>
+                  <JobViewCount views={job.views} className="text-sm font-semibold text-slate-500" />
                   {isPaidFeaturedListing(job) ? <FeaturedBadge job={job} size="md" /> : null}
                 </div>
 
@@ -559,6 +562,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                         {s.company}
                       </div>
                       <div className="mt-2 text-sm font-black text-slate-900">{formatSalaryDisplay(s.salary)}</div>
+                      <JobViewCount views={s.views} className="mt-1 block text-[10px] font-semibold uppercase tracking-widest text-slate-400" />
                     </Link>
                   ))}
                 </div>

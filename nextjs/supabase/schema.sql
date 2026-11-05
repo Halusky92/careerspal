@@ -444,6 +444,12 @@ create table if not exists public.job_views (
 );
 
 create index if not exists job_views_job_id_idx on public.job_views (job_id);
+create unique index if not exists job_views_job_viewer_uidx
+  on public.job_views (job_id, viewer_id)
+  where viewer_id is not null;
+create unique index if not exists job_views_job_fingerprint_uidx
+  on public.job_views (job_id, ip_hash)
+  where viewer_id is null and ip_hash is not null;
 
 alter table public.job_views enable row level security;
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { classifyListingSource } from "./listingTraffic";
+import { supabase } from "./supabaseClient";
 
 const sessionId = () => {
   if (typeof window === "undefined") return "";
@@ -34,21 +35,39 @@ const postEvent = (jobId: string, kind: "view" | "apply") => {
   if (!jobId) return;
   const url = kind === "view" ? `/api/jobs/${jobId}/view` : `/api/jobs/${jobId}/match`;
   const body = JSON.stringify(payloadFor(kind));
-  if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-    navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
-    return;
-  }
-  fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body,
-    keepalive: true,
-  }).catch(() => undefined);
+  void (async () => {
+    let token = "";
+    try {
+      const { data } = await supabase.auth.getSession();
+      token = data.session?.access_token || "";
+    } catch {
+      token = "";
+    }
+    if (token) {
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body,
+        keepalive: true,
+      }).catch(() => undefined);
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+      navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+      return;
+    }
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true,
+    }).catch(() => undefined);
+  })();
 };
 
 export const trackJobView = (jobId: string) => {
   if (typeof window === "undefined" || !jobId) return;
-  const key = `cp_view_${jobId}`;
+  const key = `cp_view_${jobId}_${sessionId()}`;
   try {
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, "1");

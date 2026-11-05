@@ -1,10 +1,8 @@
-import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { classifyListingSource } from "../../../../../lib/listingTraffic";
+import { uniqueViewerFromRequest } from "../../../../../lib/jobViews";
+import { getSupabaseUser } from "../../../../../lib/supabaseServerAuth";
 import { supabaseAdmin } from "../../../../../lib/supabaseAdmin";
-
-const hashIp = (ip: string, jobId: string) =>
-  createHash("sha256").update(`${ip}:${jobId}`).digest("hex").slice(0, 32);
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
@@ -12,7 +10,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }
 
-  const { data: job } = await supabaseAdmin.from("jobs").select("id,views").eq("id", id).single();
+  const { data: job } = await supabaseAdmin.from("jobs").select("id,views,created_by").eq("id", id).single();
   if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
@@ -29,7 +27,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     request.headers.get("x-real-ip") ||
     "";
-  const ipHash = ip ? hashIp(ip, job.id) : null;
+  const user = await getSupabaseUser(request);
+  const identity = uniqueViewerFromRequest({
+    jobId: job.id,
+    userId: user?.id,
+    sessionId: body.sessionId,
+    ip,
+  });
   const userAgent = (request.headers.get("user-agent") || "").slice(0, 180);
   const referrer = body.referrer || request.headers.get("referer") || "";
   const path = body.path || "";
@@ -42,33 +46,65 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         ? new URLSearchParams(path.split("?")[1] || "").get("utm_source")
         : null,
     });
+  const currentViews = job.views || 0;
 
-  if (ipHash) {
-    const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+  if (job.created_by && identity.viewerId && job.created_by === identity.viewerId) {
+    return NextResponse.json({ views: currentViews, owner: true });
+  }
+
+  if (!identity.viewerId && !identity.fingerprint) {
+    return NextResponse.json({ views: currentViews, skipped: true });
+  }
+
+  if (identity.viewerId) {
     const { data: recent } = await supabaseAdmin
       .from("job_views")
       .select("id")
       .eq("job_id", job.id)
-      .eq("ip_hash", ipHash)
-      .gte("created_at", since)
+      .eq("viewer_id", identity.viewerId)
       .limit(1);
     if (recent && recent.length > 0) {
-      return NextResponse.json({ views: job.views || 0, duplicate: true });
+      return NextResponse.json({ views: currentViews, duplicate: true });
+    }
+  } else if (identity.fingerprint) {
+    const { data: recent } = await supabaseAdmin
+      .from("job_views")
+      .select("id")
+      .eq("job_id", job.id)
+      .eq("ip_hash", identity.fingerprint)
+      .limit(1);
+    if (recent && recent.length > 0) {
+      return NextResponse.json({ views: currentViews, duplicate: true });
     }
   }
 
-  const nextViews = (job.views || 0) + 1;
-  await supabaseAdmin.from("jobs").update({ views: nextViews }).eq("id", id);
-  await supabaseAdmin.from("job_views").insert({
+  const nextViews = currentViews + 1;
+  let inserted = await supabaseAdmin.from("job_views").insert({
     job_id: job.id,
-    ip_hash: ipHash,
+    viewer_id: identity.viewerId,
+    ip_hash: identity.fingerprint,
     user_agent: userAgent || null,
-  }).then(() => undefined);
-  await supabaseAdmin.from("audit_logs").insert({
-    action: "view",
-    job_id: job.id,
-    metadata: { views: nextViews, source, referrer: referrer.slice(0, 240), path: path.slice(0, 240) },
-  }).then(() => undefined);
+  });
+  if (inserted.error && identity.viewerId) {
+    inserted = await supabaseAdmin.from("job_views").insert({
+      job_id: job.id,
+      viewer_id: null,
+      ip_hash: identity.fingerprint,
+      user_agent: userAgent || null,
+    });
+  }
+  if (inserted.error) {
+    return NextResponse.json({ views: currentViews, duplicate: true });
+  }
+  await supabaseAdmin.from("jobs").update({ views: nextViews }).eq("id", id);
+  await supabaseAdmin
+    .from("audit_logs")
+    .insert({
+      action: "view",
+      job_id: job.id,
+      metadata: { views: nextViews, source, referrer: referrer.slice(0, 240), path: path.slice(0, 240) },
+    })
+    .then(() => undefined);
 
   return NextResponse.json({ views: nextViews });
 }
