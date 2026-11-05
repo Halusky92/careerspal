@@ -5,10 +5,13 @@ import { usePathname } from "next/navigation";
 import { useSupabaseAuth } from "./Providers";
 import {
   APPLY_BLOCKED_EVENT,
+  openArmedApplyTab,
+  openCompanyApply,
   peekPendingApply,
   takePendingApply,
   type PendingApply,
 } from "../lib/applyGate";
+import { trackJobApply } from "../lib/trackJobEvent";
 
 export default function ApplyResume() {
   const pathname = usePathname();
@@ -27,31 +30,41 @@ export default function ApplyResume() {
   useEffect(() => {
     if (loading || !accessToken) return;
     if (pathname.startsWith("/auth") || pathname.startsWith("/apply/continue")) return;
-    const timer = window.setTimeout(() => {
-      const pending = peekPendingApply();
-      if (pending) setBlocked(pending);
-    }, 1200);
-    return () => window.clearTimeout(timer);
+    const pending = peekPendingApply();
+    if (!pending) return;
+    trackJobApply(pending.jobId);
+    const opened = openArmedApplyTab(pending.applyUrl) || openCompanyApply(pending.applyUrl);
+    if (opened) {
+      takePendingApply();
+      setBlocked(null);
+      return;
+    }
+    setBlocked(pending);
   }, [accessToken, loading, pathname]);
 
   if (!blocked) return null;
+  if (pathname.startsWith("/auth") || pathname.startsWith("/apply/continue")) return null;
 
   return (
-    <div className="fixed bottom-4 inset-x-4 z-40 mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-lg">
-      <p className="text-sm font-medium text-slate-900">Continue on the employer site</p>
-      <p className="mt-0.5 text-xs text-slate-500">This CareersPal tab stays here. The apply form is the other tab.</p>
-      <a
-        href={blocked.applyUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={() => {
-          takePendingApply();
-          setBlocked(null);
-        }}
-        className="mt-3 inline-flex h-9 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700"
-      >
-        Open apply page
-      </a>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+        <p className="text-lg font-semibold text-slate-900">Open the employer apply page</p>
+        <p className="mt-2 text-sm text-slate-500">
+          You are still on CareersPal. The company form opens in a new tab.
+        </p>
+        <a
+          href={blocked.applyUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => {
+            takePendingApply();
+            setBlocked(null);
+          }}
+          className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-xl bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700"
+        >
+          Open apply page
+        </a>
+      </div>
     </div>
   );
 }

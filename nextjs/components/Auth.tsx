@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSupabaseAuth } from "./Providers";
 import { hasPendingPosting, postingOwnerKey } from "../lib/postingSession";
+import { armApplyTab, peekPendingApply } from "../lib/applyGate";
 
 const Auth: React.FC = () => {
   const { signInWithGoogle, signInWithEmail } = useSupabaseAuth();
@@ -40,6 +41,7 @@ const Auth: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
+    if (peekPendingApply()) armApplyTab();
     await signInWithGoogle({ role, from: desiredFrom });
   };
 
@@ -47,6 +49,7 @@ const Auth: React.FC = () => {
     event?.preventDefault();
     if (!email.trim()) return;
     setIsLoading(true);
+    if (peekPendingApply()) armApplyTab();
     try {
       const result = await signInWithEmail(email.trim(), { role, from: desiredFrom });
       if (result.error) {

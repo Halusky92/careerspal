@@ -1,5 +1,6 @@
 export const PENDING_APPLY_KEY = "cp_pending_apply";
 export const APPLY_CONTINUE_PATH = "/apply/continue";
+export const APPLY_TAB_NAME = "cp-apply";
 export const APPLY_BLOCKED_EVENT = "cp-apply-blocked";
 const PENDING_APPLY_MAX_MS = 30 * 60 * 1000;
 
@@ -83,6 +84,35 @@ export function openApplyContinueTab() {
   if (typeof window === "undefined") return false;
   const opened = window.open(APPLY_CONTINUE_PATH, "_blank", "noopener,noreferrer");
   return Boolean(opened);
+}
+
+export function armApplyTab() {
+  if (typeof window === "undefined") return false;
+  const pending = peekPendingApply();
+  if (!pending || pending.applyUrl.startsWith("mailto:")) return false;
+  const tab = window.open("about:blank", APPLY_TAB_NAME);
+  if (!tab) return false;
+  try {
+    tab.document.open();
+    tab.document.write(
+      "<!doctype html><title>Apply</title><p style=\"font-family:system-ui,sans-serif;padding:24px;color:#64748b\">Finish sign in on CareersPal. This tab will open the employer apply page.</p>",
+    );
+    tab.document.close();
+  } catch {
+    // ignore
+  }
+  window.focus();
+  return true;
+}
+
+export function openArmedApplyTab(applyUrl: string) {
+  if (typeof window === "undefined") return false;
+  if (applyUrl.startsWith("mailto:")) {
+    window.location.href = applyUrl;
+    return true;
+  }
+  const tab = window.open(applyUrl, APPLY_TAB_NAME);
+  return Boolean(tab);
 }
 
 export function goToCompanyApply(applyUrl: string) {

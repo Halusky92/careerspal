@@ -6,6 +6,8 @@ import Auth from "../../components/Auth";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 import { hasPendingPosting, postingOwnerKey } from "../../lib/postingSession";
+import { openArmedApplyTab, peekPendingApply, takePendingApply } from "../../lib/applyGate";
+import { trackJobApply } from "../../lib/trackJobEvent";
 
 const AuthPage = () => {
   const router = useRouter();
@@ -15,12 +17,22 @@ const AuthPage = () => {
   const fromParam = searchParams.get("from");
   const desiredRole = roleParam === "employer" || roleParam === "candidate" ? roleParam : null;
   const desiredFrom = fromParam && fromParam.startsWith("/") ? fromParam : null;
+  const isPopup = searchParams.get("popup") === "1";
 
   useEffect(() => {
     let isActive = true;
     const syncRoleAndRedirect = async () => {
       if (loading) return;
       if (!profile?.email || !accessToken) return;
+      if (isPopup && window.opener && !window.opener.closed) {
+        window.close();
+        return;
+      }
+      const pending = peekPendingApply();
+      if (pending) {
+        trackJobApply(pending.jobId);
+        if (openArmedApplyTab(pending.applyUrl)) takePendingApply();
+      }
 
       const email = profile.email.toLowerCase();
       if (email === "admin@careerspal.com" || profile.role === "admin") {
@@ -52,7 +64,7 @@ const AuthPage = () => {
 
       const finalRole = desiredRole === "employer" ? "employer" : currentRole || "candidate";
       if (!isActive) return;
-      let finalFrom: string | null = desiredFrom;
+      let finalFrom: string | null = desiredFrom || pending?.returnTo || null;
       if (!finalFrom) {
         try {
           const stored = sessionStorage.getItem("cp_auth_from");
@@ -85,7 +97,7 @@ const AuthPage = () => {
     return () => {
       isActive = false;
     };
-  }, [router, accessToken, loading, profile, refreshProfile, desiredRole, desiredFrom, user?.id]);
+  }, [router, accessToken, loading, profile, refreshProfile, desiredRole, desiredFrom, user?.id, isPopup]);
 
   if (loading) {
     return (

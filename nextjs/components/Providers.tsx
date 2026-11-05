@@ -164,6 +164,17 @@ const Providers = ({ children }: ProvidersProps) => {
 
   const signInWithGoogle = useCallback(
     async (options?: AuthRedirectOptions) => {
+      const popupRedirect = `${window.location.origin}/auth?popup=1`;
+      const { data } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: popupRedirect, skipBrowserRedirect: true },
+      });
+      if (data?.url) {
+        const popup = window.open(data.url, "cp-google-auth", "width=480,height=720");
+        if (popup) return;
+        window.location.assign(data.url);
+        return;
+      }
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: buildRedirect(options) },
