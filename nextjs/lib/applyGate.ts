@@ -36,13 +36,22 @@ export function currentReturnTo() {
   return `${window.location.pathname}${window.location.search || ""}` || "/";
 }
 
+export const APPLY_BLOCKED_EVENT = "cp-apply-blocked";
+
 export function openCompanyApply(applyUrl: string) {
+  if (typeof window === "undefined") return false;
   if (applyUrl.startsWith("mailto:")) {
     window.location.href = applyUrl;
-    return;
+    return true;
   }
   const opened = window.open(applyUrl, "_blank", "noopener,noreferrer");
-  if (!opened) window.location.assign(applyUrl);
+  return Boolean(opened);
+}
+
+export function notifyApplyBlocked(pending: PendingApply) {
+  if (typeof window === "undefined") return;
+  stashPendingApply(pending);
+  window.dispatchEvent(new CustomEvent(APPLY_BLOCKED_EVENT, { detail: pending }));
 }
 
 export function authHrefForApply(returnTo: string) {

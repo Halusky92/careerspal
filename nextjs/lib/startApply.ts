@@ -3,6 +3,7 @@ import {
   applyLinkReady,
   authHrefForApply,
   currentReturnTo,
+  notifyApplyBlocked,
   openCompanyApply,
   stashPendingApply,
 } from "./applyGate";
@@ -27,6 +28,9 @@ export function startApply(args: {
     return { ok: false as const, href: authHrefForApply(returnTo) };
   }
   trackJobApply(args.jobId);
-  openCompanyApply(applyUrl);
+  const opened = openCompanyApply(applyUrl);
+  if (!opened) {
+    notifyApplyBlocked({ jobId: args.jobId, applyUrl, returnTo });
+  }
   return { ok: true as const, href: null };
 }

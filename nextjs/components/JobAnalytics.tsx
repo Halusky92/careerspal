@@ -2,8 +2,9 @@
 
 import { useEffect, type MouseEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { trackJobView } from "../lib/trackJobEvent";
+import { trackJobView, trackJobApply } from "../lib/trackJobEvent";
 import { useSupabaseAuth } from "./Providers";
+import { applyLinkReady } from "../lib/applyGate";
 import { startApply } from "../lib/startApply";
 
 export function JobViewTracker({ jobId }: { jobId: string }) {
@@ -30,16 +31,21 @@ export function ApplyClickLink({
   const router = useRouter();
   const { accessToken } = useSupabaseAuth();
   const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-    const result = startApply({ accessToken, jobId, applyUrl: href });
-    if (result.href) router.push(result.href);
+    if (!accessToken || !applyLinkReady(href)) {
+      event.preventDefault();
+      const result = startApply({ accessToken, jobId, applyUrl: href });
+      if (result.href) router.push(result.href);
+      return;
+    }
+    trackJobApply(jobId);
   };
   return (
     <a
       href={href}
       onClick={onClick}
+      target="_blank"
+      rel={external ? "noopener noreferrer nofollow" : "noopener noreferrer"}
       className={className}
-      rel={external ? "noopener noreferrer nofollow" : undefined}
     >
       {children}
     </a>
