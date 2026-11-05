@@ -15,7 +15,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/dashboard", "/checkout", "/supabase-test"],
+        disallow: ["/dashboard", "/checkout", "/apply", "/supabase-test"],
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,
