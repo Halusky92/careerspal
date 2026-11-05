@@ -232,8 +232,8 @@ async function loadStartPackCluster(profileId: string, hint?: StartPackHint) {
   }
 
   const hintKey = normalizeCompanyKey(hint?.companyName);
-  if (hintKey) {
-    const nameQuery = hint.companyName!.trim().replace(/[%_,()]/g, " ").slice(0, 80);
+  if (hint && hintKey) {
+    const nameQuery = (hint.companyName || "").trim().replace(/[%_,()]/g, " ").slice(0, 80);
     const { data: named } = await supabaseAdmin.from("companies").select("id,name").ilike("name", `%${nameQuery}%`).limit(25);
     for (const row of named || []) {
       if (normalizeCompanyKey(row.name) === hintKey && row.id) companyIds.add(row.id);

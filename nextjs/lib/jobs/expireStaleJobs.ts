@@ -80,22 +80,20 @@ export async function expireStaleJobs(
   let skipped = 0;
 
   while (true) {
-    let { data, error } = await sb
+    const first = await sb
       .from("jobs")
       .select("id,status,origin,apply_url,plan_price,stripe_payment_status,timestamp,created_at,published_at")
       .in("status", ["draft", "published", "paused", "closed", "private", "invite_only", "archived"])
       .range(offset, offset + pageSize - 1);
-    if (error) {
-      const retry = await sb
-        .from("jobs")
-        .select("id,status,apply_url,plan_price,stripe_payment_status,timestamp,created_at,published_at")
-        .in("status", ["draft", "published", "paused", "closed", "private", "invite_only", "archived"])
-        .range(offset, offset + pageSize - 1);
-      data = retry.data;
-      error = retry.error;
-    }
-    if (error) throw new Error(error.message);
-    const rows = (data || []) as StaleJobRow[];
+    const page = first.error
+      ? await sb
+          .from("jobs")
+          .select("id,status,apply_url,plan_price,stripe_payment_status,timestamp,created_at,published_at")
+          .in("status", ["draft", "published", "paused", "closed", "private", "invite_only", "archived"])
+          .range(offset, offset + pageSize - 1)
+      : first;
+    if (page.error) throw new Error(page.error.message);
+    const rows = (page.data || []) as StaleJobRow[];
     if (rows.length === 0) break;
     scanned += rows.length;
     for (const row of rows) {
