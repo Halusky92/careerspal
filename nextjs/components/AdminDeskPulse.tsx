@@ -41,12 +41,13 @@ export default function AdminDeskPulse({
   const applyPath = sparkPath(points.map((day) => day.applyClicks), 280, 64);
   const [pipeBusy, setPipeBusy] = useState(false);
   const [hygieneBusy, setHygieneBusy] = useState(false);
+  const [digestBusy, setDigestBusy] = useState(false);
   const [pipeLog, setPipeLog] = useState("");
 
   const runCommand = async (label: string, path: string, body?: Record<string, unknown>) => {
-    if (!accessToken || pipeBusy || hygieneBusy) return;
-    const hygiene = path.includes("hygiene");
-    if (hygiene) setHygieneBusy(true);
+    if (!accessToken || pipeBusy || hygieneBusy || digestBusy) return;
+    if (path.includes("hygiene")) setHygieneBusy(true);
+    else if (path.includes("alerts")) setDigestBusy(true);
     else setPipeBusy(true);
     setPipeLog(`> ${label}\nrunning…`);
     try {
@@ -67,6 +68,7 @@ export default function AdminDeskPulse({
     } finally {
       setPipeBusy(false);
       setHygieneBusy(false);
+      setDigestBusy(false);
     }
   };
 
@@ -83,7 +85,7 @@ export default function AdminDeskPulse({
             onClick={() =>
               void runCommand("pipeline --next", "/api/admin/sourcing/pipeline/greenhouse", { maxSources: 1 })
             }
-            disabled={pipeBusy || hygieneBusy || !accessToken}
+            disabled={pipeBusy || hygieneBusy || digestBusy || !accessToken}
             className="h-10 px-4 rounded-lg bg-emerald-500 text-zinc-950 text-xs font-mono font-semibold hover:bg-emerald-400 disabled:opacity-50"
           >
             {pipeBusy ? "pipeline…" : "$ run pipeline"}
@@ -91,15 +93,23 @@ export default function AdminDeskPulse({
           <button
             type="button"
             onClick={() => void runCommand("sweep --dead", "/api/admin/hygiene")}
-            disabled={pipeBusy || hygieneBusy || !accessToken}
+            disabled={pipeBusy || hygieneBusy || digestBusy || !accessToken}
             className="h-10 px-4 rounded-lg border border-zinc-600 text-zinc-100 text-xs font-mono font-semibold hover:border-emerald-400 hover:text-emerald-300 disabled:opacity-50"
           >
             {hygieneBusy ? "sweep…" : "$ sweep dead"}
           </button>
+          <button
+            type="button"
+            onClick={() => void runCommand("digest --trial", "/api/admin/alerts/send")}
+            disabled={pipeBusy || hygieneBusy || digestBusy || !accessToken}
+            className="h-10 px-4 rounded-lg border border-zinc-600 text-zinc-100 text-xs font-mono font-semibold hover:border-emerald-400 hover:text-emerald-300 disabled:opacity-50"
+          >
+            {digestBusy ? "digest…" : "$ send digest"}
+          </button>
         </div>
       </div>
       <p className="mt-1 text-[11px] font-mono text-zinc-500">
-        Pipeline: next stale ATS board. Sweep: close listings whose apply page is gone. Cron still runs in the morning.
+        Pipeline: next ATS board. Sweep: close dead apply links. Digest: live roles to alert opt-ins, candidates, and you — not to employers who never subscribed.
       </p>
 
       <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-2">

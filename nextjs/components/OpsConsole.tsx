@@ -148,6 +148,30 @@ const OpsConsole = () => {
             <button type="button" onClick={() => void autoCheck()} className={ghost} disabled={busy === "auto"}>
               {busy === "auto" ? "Checking…" : "Auto-check"}
             </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!accessToken) return;
+                setBusy("digest");
+                setNote("");
+                const response = await authFetch(
+                  "/api/admin/alerts/send",
+                  { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" },
+                  accessToken,
+                );
+                const data = (await response.json().catch(() => ({}))) as { error?: string; sent?: number; subscriberSent?: number; recipients?: string[] };
+                setBusy("");
+                setNote(
+                  response.ok
+                    ? `Digest sent ${Number(data.sent || 0) + Number(data.subscriberSent || 0)} · ${(data.recipients || []).join(", ") || "nobody"}`
+                    : data.error || "Digest failed.",
+                );
+              }}
+              className={ghost}
+              disabled={Boolean(busy)}
+            >
+              {busy === "digest" ? "Sending…" : "Send digest"}
+            </button>
           </div>
         </div>
 
