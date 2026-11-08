@@ -317,18 +317,18 @@ export default function JobCard({
             <div className="mt-2">
               <FormattedDescription text={job.description} maxLen={1200} />
               {!job.description ? (
-                <p className="text-sm sm:text-base text-slate-700 font-medium">Description coming soon.</p>
+                <p className="text-sm sm:text-base text-slate-700 font-medium">This information is not provided by the employer.</p>
               ) : null}
             </div>
           </div>
           <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] font-bold text-slate-600">
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
               <span className="text-[9px] uppercase tracking-widest text-slate-400">Company</span>
-              <div className="mt-1">{job.company || "N/A"}</div>
+              <div className="mt-1">{job.company || "—"}</div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
               <span className="text-[9px] uppercase tracking-widest text-slate-400">Location</span>
-              <div className="mt-1">{job.location || "N/A"}</div>
+              <div className="mt-1">{job.location || "—"}</div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
               <span className="text-[9px] uppercase tracking-widest text-slate-400">Work mode</span>

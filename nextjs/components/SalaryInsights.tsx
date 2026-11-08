@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Job } from "../types";
-import { parseSalaryFromText } from "../lib/sourcing/normalization/salary";
+import { detectAndParseSalaryForGreenhouse, parseSalaryFromText } from "../lib/sourcing/normalization/salary";
 import { CATEGORY_FILTER_LABELS } from "../constants";
 import { isOnNicheJob } from "../lib/nicheScope";
 import { formatSalaryDisplay } from "../lib/formatSalary";
@@ -29,7 +29,9 @@ function median(values: number[]) {
 }
 
 function yearlyAmount(job: Job): number | null {
-  const parsed = parseSalaryFromText(job.salary || "");
+  const blob = `${job.salary || ""}\n${job.description || ""}`;
+  const fromFull = parseSalaryFromText(blob);
+  const parsed = fromFull.salary_present ? fromFull : detectAndParseSalaryForGreenhouse(blob);
   if (!parsed.salary_present) return null;
   const mid =
     parsed.salary_amount_min != null && parsed.salary_amount_max != null

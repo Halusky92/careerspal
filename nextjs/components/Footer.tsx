@@ -34,7 +34,7 @@ const Footer = () => {
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Employers</h4>
             <ul className="space-y-1.5 text-slate-600">
-              <li><Link href="/hire-talent" className="hover:text-indigo-600">Post a job</Link></li>
+              <li><Link href="/post-a-job" className="hover:text-indigo-600">Post a job</Link></li>
               <li><Link href="/pricing" className="hover:text-indigo-600">Pricing</Link></li>
               <li><Link href="/about" className="hover:text-indigo-600">About</Link></li>
               <li><a href="mailto:info@careerspal.com" className="hover:text-indigo-600">Support</a></li>

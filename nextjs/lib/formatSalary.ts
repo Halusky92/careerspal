@@ -89,7 +89,9 @@ export function formatSalaryDisplay(raw?: string | null, extraText?: string | nu
   const fromStored = text ? parseSalaryFromText(text) : parseSalaryFromText("");
   if (hasRange(fromStored)) return displayFrom(fromStored, text);
   if (extra) {
-    const fromExtra = detectAndParseSalaryForGreenhouse(extra);
+    const fromFull = parseSalaryFromText(extra);
+    const fromSnippet = detectAndParseSalaryForGreenhouse(extra);
+    const fromExtra = hasRange(fromFull) ? fromFull : fromSnippet;
     if (fromExtra.salary_present && hasRange(fromExtra)) return displayFrom(fromExtra, extra);
   }
   if (text) return displayFrom(fromStored, text);
