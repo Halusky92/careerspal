@@ -574,7 +574,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     : usingStartPack
       ? "Current plan: Start pack · Free"
       : !isEmployerAccount
-        ? "Start pack: 10 free, then $79"
+        ? "Start pack: 1 free, then $79"
         : `Current plan: ${selectedPlan.type} · ${formatPrice(selectedPlan.price)} / 30 days`;
 
   const previewPlaceLabel = (() => {
@@ -1273,9 +1273,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 </>
               ) : !isEmployerAccount ? (
                 <>
-                  <div className="text-2xl font-semibold text-indigo-700 mb-1 leading-none">10 free, then $79</div>
+                  <div className="text-2xl font-semibold text-indigo-700 mb-1 leading-none">1 free, then $79</div>
                   <p className="text-sm text-indigo-900/80 mb-3">
-                    Start pack is 10 Standard listings per company and account. Sign in as an employer to use it. After that, Standard is $79 / 30 days.
+                    Start pack is 1 Standard listing per company and account. Sign in as an employer to use it. After that, Standard is $79 / 30 days.
                   </p>
                 </>
               ) : (

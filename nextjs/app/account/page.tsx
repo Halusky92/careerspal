@@ -275,7 +275,7 @@ const AccountPageInner = () => {
   const handleDeleteAccount = async () => {
     if (
       !confirm(
-        "This closes your login. Listings can stay on the board. We keep your email and company so the 10 free start-pack listings cannot be reset with a new account. Continue?",
+        "This closes your login. Listings can stay on the board. We keep your email and company so the free start-pack listing cannot be reset with a new account. Continue?",
       )
     )
       return;
@@ -860,7 +860,7 @@ const AccountPageInner = () => {
                       Delete account
                     </button>
                     <p className="text-xs text-slate-500">
-                      Closing the login does not reset the 10 free listings. We keep the email and company for that quota.
+                      Closing the login does not reset the free listing. We keep the email and company for that quota.
                     </p>
                   </div>
                 </div>

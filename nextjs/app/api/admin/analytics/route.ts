@@ -3,6 +3,7 @@ import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 import { utcDateKey } from "../../../../lib/jobListingStats";
 import { buildDailySiteTraffic, visitorKey } from "../../../../lib/siteTraffic";
+import { countConfirmedAlertRecipients } from "../../../../lib/countAlertSubscribers";
 
 export const runtime = "nodejs";
 
@@ -81,10 +82,11 @@ export async function GET(request: Request) {
   const todayKey = utcDateKey(now);
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 29 * 24 * 60 * 60 * 1000);
 
-  const [monthLogs, applyLogs, matchLogs] = await Promise.all([
+  const [monthLogs, applyLogs, matchLogs, subscribers] = await Promise.all([
     fetchActionLogs("page_view", monthStart.toISOString()),
     fetchActionLogs("apply_click", monthStart.toISOString()),
     fetchActionLogs("match", monthStart.toISOString()),
+    countConfirmedAlertRecipients(),
   ]);
   const applyCombined = [...applyLogs, ...matchLogs];
   const weekDays = buildDailySiteTraffic(monthLogs, applyCombined, 7, now);
@@ -128,6 +130,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     periods,
     weekDays,
+    subscribers,
     pages: {
       today: countPages(todayLogs),
       week: countPages(weekLogs),

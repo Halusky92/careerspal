@@ -13,7 +13,7 @@ import AdminPeopleTab from "./AdminPeopleTab";
 import JobViewCount from "./JobViewCount";
 import ListingPlanBadge from "./ListingPlanBadge";
 import { countCompanyPackUsage } from "../lib/listingPlan";
-import AdminWeekTraffic from "./AdminWeekTraffic";
+import AdminDeskPulse from "./AdminDeskPulse";
 import type { SiteDayTraffic } from "../lib/siteTraffic";
 
 type AnalyticsPeriod = {
@@ -39,6 +39,7 @@ type AnalyticsPayload = {
     month: AnalyticsPageRow[];
   };
   weekDays?: SiteDayTraffic[];
+  subscribers?: number;
 };
 
 interface AdminDashboardProps {
@@ -722,7 +723,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </div>
 
       <div className="mb-4">
-        <AdminWeekTraffic days={analytics?.weekDays} loading={!analytics} />
+        <AdminDeskPulse
+          days={analytics?.weekDays}
+          subscribers={analytics?.subscribers}
+          loading={!analytics}
+          accessToken={accessToken}
+        />
       </div>
 
       {jobActionMsg && (

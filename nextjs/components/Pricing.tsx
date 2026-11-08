@@ -18,14 +18,14 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex flex-col">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800">Start pack</p>
-          <h2 className="mt-1 text-base font-semibold text-slate-900">First 10 listings</h2>
+          <h2 className="mt-1 text-base font-semibold text-slate-900">First listing</h2>
           <p className="mt-2 text-3xl font-semibold text-emerald-800">
-            Free <span className="text-sm font-medium text-emerald-700">/ 10 Standard</span>
+            Free <span className="text-sm font-medium text-emerald-700">/ 1 Standard</span>
           </p>
           <ul className="mt-3 space-y-1.5 text-sm text-slate-700 flex-1">
-            <li>10 Standard roles, then paid plans</li>
+            <li>One Standard role, then paid plans</li>
             <li>Views, apply clicks, traffic source</li>
-            <li>30 days live each</li>
+            <li>30 days live</li>
           </ul>
           <button
             type="button"

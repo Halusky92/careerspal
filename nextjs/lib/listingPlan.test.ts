@@ -30,7 +30,7 @@ test("start pack listings are free and share a company counter", () => {
   assert.equal(companyPackKey(a), companyPackKey(b));
   const used = countCompanyPackUsage([a, b, paid]);
   assert.equal(used.get(companyPackKey(a)), 2);
-  assert.equal(listingPlanInfo(a, used)?.label, "Free 2/10");
+  assert.equal(listingPlanInfo(a, used)?.label, "Free 1/1");
   assert.equal(listingPlanInfo(paid, used)?.label, "Paid $79");
 });
 

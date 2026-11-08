@@ -1,7 +1,7 @@
 import { PLAN_PRICES } from "./plans";
 
 export const FOUNDING_COMPANY_CAP = 20;
-export const FOUNDING_JOBS_PER_COMPANY = 10;
+export const FOUNDING_JOBS_PER_COMPANY = 1;
 export const FOUNDING_LAUNCH_PRICE = 0;
 export const FOUNDING_DAYS = 90;
 export const START_PACK_NEXT_PRICE = PLAN_PRICES.standard;

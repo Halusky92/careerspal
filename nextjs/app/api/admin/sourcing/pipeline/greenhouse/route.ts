@@ -34,12 +34,19 @@ async function requireAdminOrCronSecret(request: Request): Promise<{ ok: true; a
 export async function POST(request: Request) {
   const gate = await requireAdminOrCronSecret(request);
   if (!gate.ok) return gate.res;
-  const body = (await request.json().catch(() => ({}))) as { sourceId?: string; limitRaw?: number; limitCandidates?: number };
+  const body = (await request.json().catch(() => ({}))) as {
+    sourceId?: string;
+    limitRaw?: number;
+    limitCandidates?: number;
+    maxSources?: number;
+  };
   try {
+    const sourceId = (body.sourceId || "").trim() || null;
     const summary = await runPipelineGreenhouse({
-      sourceId: (body.sourceId || "").trim() || null,
+      sourceId,
       limitRaw: body.limitRaw,
       limitCandidates: body.limitCandidates,
+      maxSources: sourceId ? undefined : typeof body.maxSources === "number" ? body.maxSources : undefined,
       actorId: gate.actorId,
       trigger: gate.actorId ? "manual" : "github",
     });

@@ -43,7 +43,7 @@ const TermsOfService: React.FC = () => {
         <section>
           <h2 className="text-base font-semibold text-slate-900">4. Fees</h2>
           <p className="mt-2">
-            The first 10 Standard listings per employer are free (Start pack). After that: Standard $79 / 30 days,
+            The first Standard listing per employer is free (Start pack). After that: Standard $79 / 30 days,
             Featured Pro $149, Elite Managed $249 (USD). Paid listings go through Stripe.
           </p>
           <p className="mt-2">

@@ -26,7 +26,7 @@ const AboutUs: React.FC = () => {
           <h2 className="text-lg font-semibold text-slate-900">For people hiring</h2>
           <ul className="mt-3 space-y-2 text-[15px] text-slate-700">
             <li>Post → review → live. Salary and a working apply link are required.</li>
-            <li>The listing sits on the public board. Candidates apply on your link. First 10 Standard listings are free, then $79 / $149 / $249 (USD).</li>
+            <li>The listing sits on the public board. Candidates apply on your link. First Standard listing is free, then $79 / $149 / $249 (USD).</li>
             <li>We do not run a talent pool, intros, or candidate screening.</li>
           </ul>
         </section>

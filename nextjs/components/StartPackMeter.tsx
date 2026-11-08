@@ -38,14 +38,14 @@ export default function StartPackMeter({
     ? "Start pack is not open for new companies."
     : depleted
       ? status.reason === "company_cap"
-        ? `This company already used ${quota} free listings. Next is $${nextPrice}.`
+        ? `This company already used its free listing. Next is $${nextPrice}.`
         : `Start pack used. Next listing is $${nextPrice}.`
       : remaining === 1
         ? `Last free listing. Then $${nextPrice}.`
         : `${remaining} free left, then $${nextPrice}.`;
 
   const detail = depleted
-    ? `${quota} of ${quota} free Standard listings used.`
+    ? `${quota} of ${quota} free Standard listing${quota === 1 ? "" : "s"} used.`
     : pendingUse
       ? `This listing is #${shownUsed} of ${quota}. After submit: ${remainingAfter} free left.`
       : `${used} of ${quota} used.`;
