@@ -8,7 +8,8 @@ import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import { stripHtmlToText } from "../lib/sourcing/normalization/text";
 import { formatJobSalary } from "../lib/formatSalary";
-import { inferWorkMode } from "../lib/workMode";
+import { inferWorkMode, publicLocationLabel } from "../lib/workMode";
+import { publicCategoryLabel } from "../lib/categories";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
 import { formatRelativePosted } from "../lib/formatPosted";
@@ -37,7 +38,7 @@ const getWorkMode = (job: Job) => inferWorkMode(job);
 const formatTimeAgo = (job: Job) => formatRelativePosted(job.timestamp, job.postedAt || "");
 
 const getRemoteMeta = (job: Job, workMode: string) => {
-  const loc = (job.location || "").trim();
+  const loc = publicLocationLabel(job);
   const lower = loc.toLowerCase();
   const looksRemote = lower.includes("remote");
   const clean = loc
@@ -113,10 +114,11 @@ export default function JobRow({
     const typeChip = job.type && job.type !== "Unknown" ? job.type : null;
     if (variant === "board") return typeChip ? [typeChip] : [];
     const out: string[] = [];
-    if (job.category) out.push(job.category);
+    const categoryLabel = publicCategoryLabel(job);
+    if (categoryLabel) out.push(categoryLabel);
     if (typeChip) out.push(typeChip);
     return out.slice(0, 2);
-  }, [job.type, job.category, variant]);
+  }, [job.type, job.category, job.title, variant]);
 
   const toolList = useMemo(() => (stack || []).filter(Boolean), [stack]);
 
@@ -369,7 +371,7 @@ export default function JobRow({
                   {job.type}
                 </span>
                 <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1">
-                  {job.category}
+                  {publicCategoryLabel(job) || job.category}
                 </span>
                 {job.companyVerified && (
                   <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2 py-1 text-emerald-700">

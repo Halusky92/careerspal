@@ -39,6 +39,11 @@ test("a long Checkr about section still yields the base salary range", () => {
   assert.match(shown, /a year/);
 });
 
+test("a stored floor without a range is labeled From", () => {
+  const shown = formatSalaryDisplay("$95k a year");
+  assert.match(shown, /^From \$95k a year$/);
+});
+
 test("Checkr Greenhouse copy is annual even when later benefits mention months", () => {
   const description =
     "On-target Earnings OR Base Salary range (Nashville, TN) $80,000 — $100,000 USD What We Offer A fast-paced environment 100% medical coverage Up to 3 months parental leave and $25K reimbursement.";

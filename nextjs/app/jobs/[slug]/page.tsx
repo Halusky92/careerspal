@@ -4,14 +4,16 @@ import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import CompanyLogo from "../../../components/CompanyLogo";
 import FormattedDescriptionStatic from "../../../components/FormattedDescriptionStatic";
-import { getCategoryHubForDbCategory } from "../../../lib/categories";
+import { extractJobDetailSections } from "../../../lib/sourcing/normalization/description";
+import { publicCategoryLabel, resolveCategoryHub } from "../../../lib/categories";
 import { createCompanySlug, createJobSlug, getJobIdFromSlug } from "../../../lib/jobs";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
 import { isOnNicheJob } from "../../../lib/nicheScope";
 import { formatJobSalary } from "../../../lib/formatSalary";
-import { inferWorkMode } from "../../../lib/workMode";
+import { inferWorkMode, publicLocationLabel } from "../../../lib/workMode";
+import { applyLiveBoardFilter } from "../../../lib/liveBoard";
 import { ApplyClickLink, JobViewTracker } from "../../../components/JobAnalytics";
 import FeaturedBadge from "../../../components/FeaturedBadge";
 import { isPaidFeaturedListing } from "../../../lib/featuredListing";
@@ -92,7 +94,8 @@ const makeDescription = (job: Job) => {
   if (job.location) bits.push(`Location: ${job.location}.`);
   const mode = inferWorkMode(job);
   if (mode) bits.push(`Work mode: ${mode}.`);
-  if (job.category) bits.push(`Category: ${job.category}.`);
+  const category = publicCategoryLabel(job);
+  if (category) bits.push(`Category: ${category}.`);
   const base = bits.join(" ");
   const desc = plainText(sanitizeDescription(job.description) || "");
   const clipped = desc.length > 240 ? `${desc.slice(0, 240).trim()}…` : desc;
@@ -185,20 +188,25 @@ async function debugResolveJob(slug: string) {
 
 async function fetchSimilarPublishedJobs(job: Job): Promise<Job[]> {
   if (!supabaseAdmin) return [];
-  if (!job.category) return [];
+  const hub = resolveCategoryHub(job);
+  if (!hub) return [];
 
-  const { data } = await supabaseAdmin
-    .from("jobs")
-    .select(
-      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,logo_url,website,description,verified)",
-    )
-    .eq("status", "published")
-    .eq("category", job.category)
-    .neq("id", job.id)
-    .order("timestamp", { ascending: false })
-    .range(0, 2);
+  const { data } = await applyLiveBoardFilter(
+    supabaseAdmin
+      .from("jobs")
+      .select(
+        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,logo_url,website,description,verified)",
+      )
+      .eq("status", "published")
+      .neq("id", job.id)
+      .order("timestamp", { ascending: false })
+      .range(0, 39),
+  );
 
-  return (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob).filter((job) => isOnNicheJob(job));
+  return (data as SupabaseJobRow[] | null || [])
+    .map(mapSupabaseJob)
+    .filter((item) => isOnNicheJob(item) && resolveCategoryHub(item)?.slug === hub.slug)
+    .slice(0, 3);
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -325,7 +333,11 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
   const stack = (job.tools && job.tools.length > 0 ? job.tools : job.tags || []).filter(Boolean).slice(0, 12);
   const benefits = (job.benefits || []).filter(Boolean).slice(0, 12);
   const workMode = inferWorkMode(job);
-  const alertHub = getCategoryHubForDbCategory(job.category || "");
+  const locationLabel = publicLocationLabel(job);
+  const categoryLabel = publicCategoryLabel(job);
+  const displayType = job.type && job.type !== "Unknown" ? job.type : null;
+  const roleSections = extractJobDetailSections(sanitizeDescription(job.description) || "");
+  const alertHub = resolveCategoryHub(job);
   const alertsHref = alertHub ? `/alerts?category=${encodeURIComponent(alertHub.slug)}` : "/alerts";
 
   return (
@@ -365,14 +377,14 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
 
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  {job.category && (
+                  {categoryLabel && (
                     <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
-                      {job.category}
+                      {categoryLabel}
                     </span>
                   )}
-                  {job.type && (
+                  {displayType && (
                     <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
-                      {job.type}
+                      {displayType}
                     </span>
                   )}
                   {workMode ? (
@@ -380,9 +392,9 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                       {workMode}
                     </span>
                   ) : null}
-                  {job.location && (
+                  {locationLabel && (
                     <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
-                      {job.location}
+                      {locationLabel}
                     </span>
                   )}
                   {job.postedAt && (
@@ -444,12 +456,14 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
           </div>
 
           <div className="p-4 sm:p-6 space-y-5">
-            <section>
-              <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">The role</h2>
-              <div className="mt-3">
-                <FormattedDescriptionStatic text={job.description} />
-              </div>
-            </section>
+            {roleSections.map((section) => (
+              <section key={section.heading}>
+                <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">{section.heading}</h2>
+                <div className="mt-3">
+                  <FormattedDescriptionStatic text={section.body} />
+                </div>
+              </section>
+            ))}
 
             {stack.length > 0 && (
               <section>
@@ -483,7 +497,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
 
             {similarJobs.length > 0 && (
               <section>
-                <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">More in {job.category}</h2>
+                <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">More in {categoryLabel || "this category"}</h2>
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {similarJobs.map((s) => (
                     <Link

@@ -33,9 +33,17 @@ export function inferWorkMode(job: WorkModeInput): WorkMode | "" {
     return "Remote";
   }
   if (location && !/\bremote\b/i.test(location)) return "Onsite";
+  if (!location && !policy && remoteCue.test(description)) return "Remote";
   return "";
 }
 
 export function workModeLabel(job: WorkModeInput) {
   return inferWorkMode(job);
+}
+
+/** Location as shown on the board. Does not invent a city. */
+export function publicLocationLabel(job: WorkModeInput): string {
+  const location = (job.location || "").trim();
+  if (location) return location;
+  return inferWorkMode(job) === "Remote" ? "Remote" : "";
 }

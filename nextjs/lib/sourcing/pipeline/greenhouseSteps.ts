@@ -27,6 +27,7 @@ import { formatSalaryForStorage } from "../../formatSalary";
 import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
 import { isBoilerplateDescription } from "../../companyBoard";
 import { inferWorkMode } from "../../workMode";
+import { resolveCategoryHub } from "../../categories";
 
 type AdminSb = SupabaseClient<any, "public", any>;
 
@@ -685,43 +686,8 @@ export async function autoPublishEligibleCandidates(
   const deriveFaviconUrl = (website: string | null) => publicLogoUrlForWebsite(website);
 
   const inferCategory = (candidate: AutoPublishCandidateRow) => {
-    const blob = [candidate.title, candidate.description_clean, candidate.location_text, candidate.remote_policy]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    if (!blob) return "Other";
-    if (blob.includes("chief of staff") || blob.includes("office of the ceo") || blob.includes("strategic initiatives"))
-      return "Executive & Staff";
-    if (blob.includes("product ops") || blob.includes("product operations")) return "Product Management";
-    if (
-      blob.includes("revops") ||
-      blob.includes("revenue operations") ||
-      blob.includes("marketing ops") ||
-      blob.includes("sales ops") ||
-      blob.includes("gtm operations")
-    )
-      return "Marketing & Growth Ops"; // TEMP mapping for RevOps hub
-    if (blob.includes("automation") || blob.includes("zapier") || blob.includes("make.com") || blob.includes("n8n"))
-      return "Automation";
-    if (
-      blob.includes("systems") ||
-      blob.includes("business systems") ||
-      blob.includes("salesforce") ||
-      blob.includes("hubspot") ||
-      blob.includes("netsuite") ||
-      blob.includes("workday") ||
-      blob.includes("integrations")
-    )
-      return "Systems Design";
-    // Only classify as Operations when we see explicit ops language (avoid defaulting unknown roles).
-    const ops =
-      blob.includes("operations") ||
-      blob.includes("business operations") ||
-      blob.includes("bizops") ||
-      blob.includes(" ops ");
-    const looksLikeDevOps = blob.includes("devops") || blob.includes("site reliability") || blob.includes("sre");
-    if (ops && !looksLikeDevOps) return "Operations";
-    return "Other";
+    const hub = resolveCategoryHub({ title: candidate.title, category: null });
+    return hub?.dbCategories[0] || "Other";
   };
 
   const extractTools = (text: string) => {

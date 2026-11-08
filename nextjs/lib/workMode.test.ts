@@ -25,3 +25,12 @@ test("missing location is not invented as Remote", () => {
 test("explicit remote policy without office days stays Remote", () => {
   assert.equal(inferWorkMode({ remotePolicy: "Remote (Global)", location: "Remote" }), "Remote");
 });
+
+test("a fully remote sentence can fill work mode when location is blank", () => {
+  assert.equal(
+    inferWorkMode({
+      description: "This is a fully remote role. You can work from home anywhere in the US.",
+    }),
+    "Remote",
+  );
+});

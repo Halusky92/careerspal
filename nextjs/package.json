@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test lib/jobTitleSuggestions.test.ts lib/postingTools.test.ts lib/jobs/listingFieldChecks.test.ts lib/jobDescriptionSections.test.ts lib/jobViews.test.ts lib/startPackQuota.test.ts lib/startPackLedger.test.ts lib/listingPlan.test.ts lib/adminTestPlan.test.ts lib/jobs/applyLinkHealth.test.ts lib/formatSalary.test.ts lib/listingLock.test.ts lib/applyGate.test.ts lib/jobListingStats.test.ts lib/workMode.test.ts lib/publicSubscriberCount.test.ts lib/siteTraffic.test.ts",
+    "test": "tsx --test lib/jobTitleSuggestions.test.ts lib/postingTools.test.ts lib/jobs/listingFieldChecks.test.ts lib/jobDescriptionSections.test.ts lib/jobViews.test.ts lib/startPackQuota.test.ts lib/startPackLedger.test.ts lib/listingPlan.test.ts lib/adminTestPlan.test.ts lib/jobs/applyLinkHealth.test.ts lib/formatSalary.test.ts lib/listingLock.test.ts lib/applyGate.test.ts lib/jobListingStats.test.ts lib/workMode.test.ts lib/publicSubscriberCount.test.ts lib/siteTraffic.test.ts lib/categories.test.ts lib/sourcing/normalization/description.test.ts",
     "seed:supabase": "tsx scripts/seed-supabase.ts",
     "import:jobs": "tsx scripts/import-jobs-csv.ts",
     "cleanup:jobs": "tsx scripts/cleanup-stale-jobs.ts",

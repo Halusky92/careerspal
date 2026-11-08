@@ -112,7 +112,7 @@ export default function HomeClient({
     return rest.slice(0, room);
   }, [liveJobs, featuredPreview.length, isSmUp]);
 
-  const hasJobs = jobs.length > 0;
+  const hasJobs = liveJobs.length > 0;
 
   const handleToggleSave = (jobId: string) => {
     if (!accessToken) {
@@ -206,7 +206,7 @@ export default function HomeClient({
           onClick={() => router.push("/jobs")}
           className="mt-4 w-full h-11 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-800 hover:border-slate-300 hover:bg-slate-50"
         >
-          {hasJobs ? `See all ${jobs.length} jobs` : "Browse jobs"}
+          {hasJobs ? `See all ${liveJobs.length} jobs` : "Browse jobs"}
         </button>
 
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2">

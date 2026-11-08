@@ -143,6 +143,10 @@ export async function loadPublicCompanyBySlug(slug: string): Promise<PublicCompa
     .filter((job) => isOnNicheJob(job) && isLiveBoardJob(job));
 
   const outCompany = mapCompany(company as CompanyRow);
+  if (isBoilerplateDescription(outCompany.description) || isBoilerplateDescription(outCompany.longDescription)) {
+    outCompany.description = "";
+    outCompany.longDescription = "";
+  }
   const hasRealDesc = Boolean((outCompany.description || "").trim()) && !isBoilerplateDescription(outCompany.description);
   if (!hasRealDesc) {
     outCompany.description = "";

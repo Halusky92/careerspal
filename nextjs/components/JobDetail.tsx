@@ -7,7 +7,8 @@ import { Job } from '../types';
 import CompanyLogo from './CompanyLogo';
 import FormattedDescription from "./FormattedDescription";
 import { formatJobSalary } from "../lib/formatSalary";
-import { inferWorkMode } from "../lib/workMode";
+import { inferWorkMode, publicLocationLabel } from "../lib/workMode";
+import { publicCategoryLabel } from "../lib/categories";
 import { formatRelativePosted } from "../lib/formatPosted";
 import { trackJobView } from "../lib/trackJobEvent";
 import FeaturedBadge from "./FeaturedBadge";
@@ -206,8 +207,12 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
                          displayType === "Contract" ? "bg-amber-50 text-amber-800 border-amber-200" : "bg-indigo-50 text-indigo-600 border-indigo-100"
                        }`}>{displayType}</span>
                      )}
-                     <span className="px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200/70">{job.location}</span>
-                     <span className="px-3 py-1 bg-white text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200/70">{job.category}</span>
+                     {publicLocationLabel(job) ? (
+                       <span className="px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200/70">{publicLocationLabel(job)}</span>
+                     ) : null}
+                     {publicCategoryLabel(job) ? (
+                       <span className="px-3 py-1 bg-white text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200/70">{publicCategoryLabel(job)}</span>
+                     ) : null}
                      {inferWorkMode(job) ? (
                        <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-200">{inferWorkMode(job)}</span>
                      ) : null}
@@ -263,9 +268,9 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
             </div>
             <div className="min-w-[520px] sm:min-w-[560px] grid grid-cols-5 gap-2 sm:gap-3 px-4 sm:px-5 pb-4 sm:pb-5">
               <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{formatJobSalary(job)}</div>
-              <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{job.type}</div>
-              <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{job.location}</div>
-              <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{job.category}</div>
+              <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{displayType || "—"}</div>
+              <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{publicLocationLabel(job) || "—"}</div>
+              <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{publicCategoryLabel(job) || "—"}</div>
               <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{inferWorkMode(job) || job.location || "—"}</div>
             </div>
           </div>

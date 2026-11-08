@@ -42,9 +42,10 @@ function formatParsed(parsed: ParsedSalary): string | null {
   const lo = min ?? max;
   const hi = max ?? min;
   if (lo == null || hi == null) return null;
-  const range =
-    lo === hi ? formatAmount(lo, currency, periodKey) : `${formatAmount(lo, currency, periodKey)}–${formatAmount(hi, currency, periodKey)}`;
-  return period === "year" ? `${range} a year` : `${range} / ${period}`;
+  const amount = formatAmount(lo, currency, periodKey);
+  const suffix = period === "year" ? " a year" : ` / ${period}`;
+  if (lo === hi) return `From ${amount}${suffix}`;
+  return `${amount}–${formatAmount(hi, currency, periodKey)}${suffix}`;
 }
 
 function tidyUnparsedSalary(text: string): string {

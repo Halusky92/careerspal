@@ -29,6 +29,7 @@ export const CATEGORY_HUBS: CategoryHub[] = [
       /\bbiz ops\b/i,
       /\bbusiness operations\b/i,
       /\bstrategy (and|&) operations\b/i,
+      /\bops\b/i,
     ],
     intro: "Business operations, process, and operational leadership.",
   },
@@ -112,6 +113,11 @@ export function resolveCategoryHub(job: { title?: string | null; category?: stri
     if (hub && title && titleHitsHub(title, hub)) return hub;
   }
   return getCategoryHubForDbCategory(job.category || "");
+}
+
+/** Public hub label (Operations, RevOps, …). Hides internal DB names like Systems Design. */
+export function publicCategoryLabel(job: { title?: string | null; category?: string | null }): string | null {
+  return resolveCategoryHub(job)?.label || null;
 }
 
 export function jobMatchesHub(job: { title?: string | null; category?: string | null }, hub: CategoryHub): boolean {

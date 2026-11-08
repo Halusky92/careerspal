@@ -1,4 +1,5 @@
 import { stripHtmlToText } from "./text";
+import { isBoilerplateDescription } from "../../companyBoard";
 
 type FormatOpts = {
   maxLen?: number;
@@ -146,6 +147,14 @@ function isNearDuplicate(a: string, b: string): boolean {
   return false;
 }
 
+function dropVendorBlurbs(out: string): string {
+  return (out || "")
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter((p) => p && !isBoilerplateDescription(p))
+    .join("\n\n");
+}
+
 function dedupeRepeatedChunks(out: string): string {
   const parts = (out || "")
     .split(/\n{2,}/)
@@ -156,7 +165,53 @@ function dedupeRepeatedChunks(out: string): string {
     if (kept.some((prev) => isNearDuplicate(prev, part))) continue;
     kept.push(part);
   }
-  return kept.join("\n\n");
+  return dropVendorBlurbs(kept.join("\n\n"));
+}
+
+const DETAIL_SECTIONS: Array<{ heading: string; aliases: string[] }> = [
+  { heading: "About the role", aliases: ["about the role", "the role", "summary", "about this job", "what we do", "about the team"] },
+  { heading: "What you'll do", aliases: ["what you'll do", "what you’ll do", "what you will do", "responsibilities"] },
+  { heading: "Requirements", aliases: ["requirements", "qualifications", "what you'll need", "what you’ll need", "who you are", "about you"] },
+  { heading: "Benefits", aliases: ["benefits", "what we offer", "pay and benefits", "compensation"] },
+];
+
+function headingKey(line: string): string | null {
+  const t = line.replace(/:$/, "").trim().toLowerCase();
+  for (const section of DETAIL_SECTIONS) {
+    if (section.aliases.includes(t)) return section.heading;
+  }
+  return null;
+}
+
+export function extractJobDetailSections(input: string): Array<{ heading: string; body: string }> {
+  const text = formatSourcedDescription(input);
+  if (!text.trim()) return [];
+  const lines = text.split("\n");
+  const blocks: Array<{ heading: string; body: string }> = [];
+  let current = { heading: "About the role", body: "" };
+  let sawNamed = false;
+  for (const line of lines) {
+    const key = headingKey(line.trim());
+    if (key) {
+      if (current.body.trim()) blocks.push({ heading: current.heading, body: current.body.trim() });
+      current = { heading: key, body: "" };
+      sawNamed = true;
+      continue;
+    }
+    current.body = current.body ? `${current.body}\n${line}` : line;
+  }
+  if (current.body.trim()) blocks.push({ heading: current.heading, body: current.body.trim() });
+  const merged = new Map<string, string>();
+  for (const block of blocks) {
+    const prev = merged.get(block.heading);
+    merged.set(block.heading, prev ? `${prev}\n\n${block.body}` : block.body);
+  }
+  const ordered = DETAIL_SECTIONS.map((s) => {
+    const body = merged.get(s.heading);
+    return body ? { heading: s.heading, body } : null;
+  }).filter((s): s is { heading: string; body: string } => Boolean(s));
+  if (!sawNamed || ordered.length < 2) return [{ heading: "About the role", body: text }];
+  return ordered;
 }
 
 export function formatSourcedDescription(input: string, opts: FormatOpts = {}): string {

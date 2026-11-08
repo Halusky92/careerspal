@@ -31,7 +31,11 @@ export const isBoilerplateDescription = (value?: string | null) => {
     t.includes("greenhouse is the talent operating system") ||
     t.includes("complete hiring ecosystem") ||
     t.includes("hiring platform that helps companies") ||
+    t.includes("structured hiring") && t.includes("greenhouse") ||
+    t.includes("applicant tracking") && t.includes("greenhouse") ||
+    t.includes("talent operating system") ||
     /\bgreenhouse software\b/.test(t) ||
+    /\bgreenhouse\.io\b/.test(t) ||
     t.includes("coming soon")
   );
 };
