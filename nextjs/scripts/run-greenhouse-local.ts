@@ -21,25 +21,39 @@ async function main() {
 
   const { data: sources, error } = await supabaseAdmin
     .from("sourcing_sources")
-    .select("id,source_type,validation_state,enabled")
+    .select("id,source_type,validation_state,enabled,ats_identifier")
     .in("source_type", ["greenhouse", "ashby", "lever"])
     .eq("validation_state", "allowed")
     .eq("enabled", true);
 
   if (error) throw error;
-  const eligible = (sources || []).filter((s) => s.enabled && s.validation_state === "allowed");
+  const only = new Set(
+    (process.env.SOURCING_ONLY || "")
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const eligible = (sources || []).filter((s) => {
+    if (!(s.enabled && s.validation_state === "allowed")) return false;
+    if (only.size === 0) return true;
+    return only.has(String(s.ats_identifier || "").toLowerCase());
+  });
   console.log(`sources=${eligible.length}`);
+
+  const skipIngest = process.env.SOURCING_SKIP_INGEST === "1";
+  const batch = Math.min(400, Math.max(80, Number(process.env.SOURCING_LIMIT) || 250));
 
   for (const s of eligible) {
     const type = (s.source_type || "").toLowerCase();
-    const ingest =
-      type === "ashby"
+    const ingest = skipIngest
+      ? { ran: 0, results: [] as Array<{ fetchedCount?: number; insertedCount?: number }> }
+      : type === "ashby"
         ? await ingestAshbyRawJobs(supabaseAdmin, { sourceId: s.id })
         : type === "lever"
           ? await ingestLeverRawJobs(supabaseAdmin, { sourceId: s.id })
           : await ingestGreenhouseRawJobs(supabaseAdmin, { sourceId: s.id });
-    const norm = await normalizeGreenhouseRawJobsToCandidates(supabaseAdmin, { sourceId: s.id, limit: 80 });
-    const ev = await evaluateCandidates(supabaseAdmin, { sourceId: s.id, limit: 80 });
+    const norm = await normalizeGreenhouseRawJobsToCandidates(supabaseAdmin, { sourceId: s.id, limit: batch });
+    const ev = await evaluateCandidates(supabaseAdmin, { sourceId: s.id, limit: batch });
     const sal = await enrichCandidatesSalaryBulk(supabaseAdmin, {
       sourceId: s.id,
       limit: 12,
@@ -47,7 +61,7 @@ async function main() {
       cooldownHours: 24,
       scanLimit: 120,
     });
-    const pub = await autoPublishEligibleCandidates(supabaseAdmin, { actorId: null, sourceId: s.id, limit: 80 });
+    const pub = await autoPublishEligibleCandidates(supabaseAdmin, { actorId: null, sourceId: s.id, limit: batch });
     console.log(
       JSON.stringify({
         id: s.id,

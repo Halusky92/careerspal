@@ -46,9 +46,9 @@ export const SOURCING_SEED_BOARDS = [
   },
   {
     displayName: "Sentry",
-    sourceType: "greenhouse" as const,
+    sourceType: "ashby" as const,
     atsIdentifier: "sentry",
-    baseUrl: "https://boards.greenhouse.io/sentry",
+    baseUrl: "https://jobs.ashbyhq.com/sentry",
     website: "https://sentry.io",
   },
   {
@@ -75,16 +75,16 @@ export const SOURCING_SEED_BOARDS = [
   {
     displayName: "HubSpot",
     sourceType: "greenhouse" as const,
-    atsIdentifier: "hubspot",
-    baseUrl: "https://boards.greenhouse.io/hubspot",
+    atsIdentifier: "hubspotjobs",
+    baseUrl: "https://boards.greenhouse.io/hubspotjobs",
     website: "https://www.hubspot.com",
   },
   {
-    displayName: "Postman",
+    displayName: "Intercom",
     sourceType: "greenhouse" as const,
-    atsIdentifier: "postman",
-    baseUrl: "https://boards.greenhouse.io/postman",
-    website: "https://www.postman.com",
+    atsIdentifier: "intercom",
+    baseUrl: "https://boards.greenhouse.io/intercom",
+    website: "https://www.intercom.com",
   },
 ];
 
