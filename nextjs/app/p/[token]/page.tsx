@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useSupabaseAuth } from "../../../components/Providers";
-import { authFetch } from "../../../lib/authFetch";
 import { hobbyChips } from "../../../lib/publicPerson";
 import PersonAvatar from "../../../components/PersonAvatar";
 
@@ -19,7 +17,6 @@ type Person = {
 export default function PublicProfilePage() {
   const params = useParams<{ token: string }>();
   const token = params?.token || "";
-  const { accessToken } = useSupabaseAuth();
   const [person, setPerson] = useState<Person | null>(null);
   const [missing, setMissing] = useState(false);
 
@@ -27,9 +24,7 @@ export default function PublicProfilePage() {
     const load = async () => {
       if (!token) return;
       try {
-        const response = accessToken
-          ? await authFetch(`/api/people/${encodeURIComponent(token)}`, {}, accessToken)
-          : await fetch(`/api/people/${encodeURIComponent(token)}`);
+        const response = await fetch(`/api/people/${encodeURIComponent(token)}`);
         if (!response.ok) {
           setMissing(true);
           return;
@@ -42,7 +37,7 @@ export default function PublicProfilePage() {
       }
     };
     load();
-  }, [token, accessToken]);
+  }, [token]);
 
   if (missing) {
     return (

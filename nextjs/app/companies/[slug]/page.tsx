@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { headers } from "next/headers";
 import CompanyLogo from "../../../components/CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../../../lib/jobs";
-import type { Company, Job } from "../../../types";
+import type { Company } from "../../../types";
 import { formatJobSalary } from "../../../lib/formatSalary";
 import { isOnNicheJob } from "../../../lib/nicheScope";
 import { isBoilerplateDescription } from "../../../lib/companyBoard";
+import { loadPublicCompanyBySlug } from "../../../lib/publicCompany";
 
 // Ensure a consistent runtime (avoid edge differences that can cause production-only crashes).
 export const runtime = "nodejs";
@@ -17,11 +19,8 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-type CompanyApiPayload = { company: Company & { verified?: boolean }; jobs: Job[] };
-type CompanyFetchResult =
-  | { kind: "ok"; company: Company & { verified?: boolean }; jobs: Job[] }
-  | { kind: "not_found" }
-  | { kind: "error" };
+type CompanyFetchResult = Awaited<ReturnType<typeof loadPublicCompanyBySlug>>;
+const loadCompany = cache(loadPublicCompanyBySlug);
 
 const getBaseUrl = async () => {
   // Prefer per-request host to avoid env mismatch across apex/www or preview domains.
@@ -66,14 +65,12 @@ const safeHost = (value?: string | null) => {
 };
 
 async function fetchCompanyAndJobs(slug: string): Promise<CompanyFetchResult> {
-  const baseUrl = await getBaseUrl();
-  const url = `${baseUrl}/api/companies/${encodeURIComponent(slug)}`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (res.status === 404) return { kind: "not_found" };
-  if (!res.ok) return { kind: "error" };
-  const json = (await res.json()) as CompanyApiPayload;
-  if (!json?.company) return { kind: "error" };
-  return { kind: "ok", company: json.company, jobs: Array.isArray(json.jobs) ? json.jobs : [] };
+  try {
+    return await loadCompany(slug);
+  } catch (error) {
+    console.error("[companies/[slug]] load_failed", { slug, error: (error as Error)?.message || String(error) });
+    return { kind: "error" };
+  }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

@@ -27,7 +27,7 @@ export function extractCompensationSnippet(text: string): string | null {
   const t = (text || "").trim();
   if (!t) return null;
   // Heuristic: capture a short window after common headings.
-  const markers = ["compensation", "salary", "pay", "base salary", "what we offer"];
+  const markers = ["base salary", "on-target earnings", "salary range", "what we offer", "compensation", "salary", "pay"];
   const lower = t.toLowerCase();
   for (const m of markers) {
     const idx = lower.indexOf(m);

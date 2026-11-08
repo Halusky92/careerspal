@@ -13,10 +13,13 @@ import AdminPeopleTab from "./AdminPeopleTab";
 import JobViewCount from "./JobViewCount";
 import ListingPlanBadge from "./ListingPlanBadge";
 import { countCompanyPackUsage } from "../lib/listingPlan";
+import AdminWeekTraffic from "./AdminWeekTraffic";
+import type { SiteDayTraffic } from "../lib/siteTraffic";
 
 type AnalyticsPeriod = {
   totalViews: number;
   uniqueVisitors: number;
+  applyClicks?: number;
   newVisitors: number;
   returningVisitors: number;
 };
@@ -35,6 +38,7 @@ type AnalyticsPayload = {
     week: AnalyticsPageRow[];
     month: AnalyticsPageRow[];
   };
+  weekDays?: SiteDayTraffic[];
 };
 
 interface AdminDashboardProps {
@@ -717,6 +721,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
       </div>
 
+      <div className="mb-4">
+        <AdminWeekTraffic days={analytics?.weekDays} loading={!analytics} />
+      </div>
+
       {jobActionMsg && (
         <div className={`mb-4 rounded-lg border px-3 py-2 text-sm ${jobActionTone === "error" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
           {jobActionMsg}
@@ -1034,7 +1042,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               <div>
                 <div className="text-slate-400">Views 7d</div>
                 <div className="font-semibold text-slate-900">{analytics?.periods.week.totalViews ?? "—"}</div>
-                <div className="text-xs text-slate-400">{analytics?.periods.week.uniqueVisitors ?? "—"} unique</div>
+                <div className="text-xs text-slate-400">
+                  {analytics?.periods.week.uniqueVisitors ?? "—"} people · {analytics?.periods.week.applyClicks ?? "—"} apply
+                </div>
               </div>
               <div>
                 <div className="text-slate-400">Views 30d</div>
