@@ -76,15 +76,19 @@ export function openCompanyApply(applyUrl: string) {
     window.location.href = applyUrl;
     return true;
   }
-  const opened = window.open(applyUrl, "_blank", "noopener,noreferrer");
+  // Do not pass noopener here: browsers then return null even when the tab opened,
+  // and the job tab would show a second "Open apply page" overlay.
+  const opened = window.open(applyUrl, "_blank");
   if (opened) {
     try {
+      opened.opener = null;
       opened.focus();
     } catch {
       // ignore
     }
+    return true;
   }
-  return Boolean(opened);
+  return false;
 }
 
 /** After login: send this tab back to the job, put the employer form in a new focused tab. */
