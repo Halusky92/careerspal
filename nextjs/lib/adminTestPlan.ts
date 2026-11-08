@@ -1,18 +1,13 @@
-export const ADMIN_TEST_PRICE = 1;
+import { isOwnerAdminEmail } from "./adminAccess";
 
-const extraAllowList = () =>
-  (process.env.ADMIN_TEST_EMAILS || "mb.bilek@gmail.com")
-    .split(",")
-    .map((entry) => entry.trim().toLowerCase())
-    .filter(Boolean);
+export const ADMIN_TEST_PRICE = 1;
 
 export function isAdminTestPrice(price?: number | null) {
   return Number(price) === ADMIN_TEST_PRICE;
 }
 
 export function canUseAdminTestPlan(input: { role?: string | null; email?: string | null }) {
-  const email = (input.email || "").trim().toLowerCase();
-  return Boolean(email && extraAllowList().includes(email));
+  return isOwnerAdminEmail(input.email);
 }
 
 export function adminTestPlanLabel(price?: number | null) {

@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { supabaseAdmin } from "./supabaseAdmin";
+import { isOwnerAdminEmail } from "./adminAccess";
 
 export type SupabaseProfile = {
   id: string;
@@ -41,9 +42,8 @@ export const getSupabaseProfile = async (
   if (existing) {
     // Safety: ensure the canonical admin account is actually marked as admin in DB.
     // This avoids inconsistent "email fallback" checks across the app.
-    const email = user.email.toLowerCase();
-    const role = (existing as any)?.role;
-    if (email === "admin@careerspal.com" && role !== "admin") {
+    const role = (existing as { role?: string }).role;
+    if (isOwnerAdminEmail(user.email) && role !== "admin") {
       const { data: updated } = await supabaseAdmin
         .from("profiles")
         .update({ role: "admin" })
@@ -55,7 +55,7 @@ export const getSupabaseProfile = async (
     return { user, profile: existing as SupabaseProfile };
   }
 
-  const role = user.email === "admin@careerspal.com" ? "admin" : "candidate";
+  const role = isOwnerAdminEmail(user.email) ? "admin" : "candidate";
   const { data: created } = await supabaseAdmin
     .from("profiles")
     .insert({

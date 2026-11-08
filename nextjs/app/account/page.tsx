@@ -12,6 +12,7 @@ import { getCategoryHubForDbCategory, jobMatchesHub, parseAlertQuery, serializeA
 import AlertCategoryPicker from "../../components/AlertCategoryPicker";
 import { ALERT_MIN_SALARIES, ALERT_REGIONS, alertPrefsLabel, parseAlertPrefs, type AlertRegion } from "../../lib/alertPrefs";
 import ProfileVisibilitySelect from "../../components/ProfileVisibilitySelect";
+import AdminDeskBar from "../../components/AdminDeskBar";
 
 type AccountUser = {
   name?: string;
@@ -784,6 +785,7 @@ const AccountPageInner = () => {
 
               {tab === "settings" && (
                 <div className="space-y-4">
+                  {user?.role === "admin" ? <AdminDeskBar /> : null}
                   <div className="rounded-xl border border-slate-200 p-4 space-y-2">
                     <p className="text-sm font-medium text-slate-900">Photo</p>
                     <p className="text-sm text-slate-500">Change it with the + on your avatar. No URL needed.</p>

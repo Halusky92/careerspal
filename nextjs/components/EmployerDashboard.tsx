@@ -16,6 +16,9 @@ import JobViewCount from "./JobViewCount";
 import ListingPlanBadge from "./ListingPlanBadge";
 import { companyPackKey, countCompanyPackUsage } from "../lib/listingPlan";
 import EmployerListingStats, { type ListingStatsPayload } from "./EmployerListingStats";
+import AdminDeskBar from "./AdminDeskBar";
+import AdminDeskPulse from "./AdminDeskPulse";
+import type { SiteDayTraffic } from "../lib/siteTraffic";
 
 type TrafficSource = { source: string; label?: string; views: number; applyClicks: number };
 
@@ -75,7 +78,8 @@ const postedDate = (job: Job) => {
 };
 
 const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPostJob }) => {
-  const { accessToken } = useSupabaseAuth();
+  const { accessToken, profile } = useSupabaseAuth();
+  const isAdmin = profile?.role === "admin";
   const [myJobs, setMyJobs] = useState<Job[]>([]);
   const [summary, setSummary] = useState<Record<string, number>>({});
   const [stats, setStats] = useState({ jobs: 0, views: 0, matches: 0, applyClicks: 0, sources: [] as TrafficSource[] });
@@ -90,6 +94,9 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   const [openJobId, setOpenJobId] = useState<string | null>(null);
   const [listingStats, setListingStats] = useState<Record<string, ListingStatsPayload>>({});
   const [statsLoadingId, setStatsLoadingId] = useState<string | null>(null);
+  const [deskDays, setDeskDays] = useState<SiteDayTraffic[] | null>(null);
+  const [deskSubscribers, setDeskSubscribers] = useState<number | null>(null);
+  const [deskLoading, setDeskLoading] = useState(false);
 
   const reload = useCallback(async () => {
     if (!accessToken) return;
@@ -134,6 +141,26 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   useEffect(() => {
     reload().catch(() => undefined);
   }, [reload]);
+
+  useEffect(() => {
+    if (!isAdmin || !accessToken) return;
+    let cancelled = false;
+    setDeskLoading(true);
+    authFetch("/api/admin/analytics", {}, accessToken)
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as { weekDays?: SiteDayTraffic[]; subscribers?: number };
+        if (cancelled) return;
+        setDeskDays(data.weekDays || []);
+        setDeskSubscribers(typeof data.subscribers === "number" ? data.subscribers : null);
+      })
+      .finally(() => {
+        if (!cancelled) setDeskLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, accessToken]);
 
   useEffect(() => {
     if (!accessToken || !openJobId || listingStats[openJobId]) return;
@@ -424,6 +451,17 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
+      {isAdmin ? (
+        <div className="mb-5 space-y-4">
+          <AdminDeskBar />
+          <AdminDeskPulse
+            days={deskDays}
+            subscribers={deskSubscribers}
+            loading={deskLoading}
+            accessToken={accessToken}
+          />
+        </div>
+      ) : null}
       <div className="flex items-center justify-between gap-3 mb-5">
         <div>
           <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Your jobs</h1>
