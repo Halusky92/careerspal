@@ -7,6 +7,7 @@ import { authFetch } from "../lib/authFetch";
 import { hasSalary } from "../lib/jobs/listingFieldChecks";
 import { isOnNicheJob } from "../lib/nicheScope";
 import type { Job } from "../types";
+import AdminInbox from "./AdminInbox";
 
 type Stats = { users: number; jobs: number; savedJobs: number; files: number };
 type Period = { totalViews: number; uniqueVisitors: number; newVisitors?: number; returningVisitors?: number };
@@ -28,7 +29,7 @@ const COMMANDS = [
   { href: "/dashboard/admin?tab=review", label: "Confirm queue" },
   { href: "/dashboard/admin?tab=jobs", label: "All listings" },
   { href: "/dashboard/admin?tab=sourcing", label: "Sourcing pipeline" },
-  { href: "/dashboard/admin?tab=people", label: "Accounts / team" },
+  { href: "/dashboard/admin?tab=people", label: "Inbox" },
   { href: "/dashboard/admin?tab=more", label: "Traffic desk" },
   { href: "/dashboard/employer", label: "My listings" },
   { href: "/post-a-job", label: "Post a job" },
@@ -165,6 +166,8 @@ const OpsConsole = () => {
             </div>
           ))}
         </div>
+
+        <AdminInbox compact />
 
         <div className={card}>
           <p className="text-[10px] uppercase tracking-widest text-zinc-500 mb-3">Command panel</p>

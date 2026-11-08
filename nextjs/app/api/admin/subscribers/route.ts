@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
+import { accountAlertRows, guestAlertRows } from "../../../../lib/adminInbox";
 
 export const runtime = "nodejs";
 
@@ -13,19 +14,27 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }
 
-  const { data, error } = await supabaseAdmin
-    .from("subscribers")
-    .select("email,preference,created_at")
-    .order("created_at", { ascending: false });
+  const [{ data, error }, { data: alerts }] = await Promise.all([
+    supabaseAdmin.from("subscribers").select("email,preference,created_at").order("created_at", { ascending: false }),
+    supabaseAdmin.from("alerts").select("user_id,query,location,created_at").order("created_at", { ascending: false }),
+  ]);
 
   if (error) {
     return NextResponse.json({ error: "Unable to load subscribers." }, { status: 500 });
   }
 
-  const subscribers = (data || []).map((item) => ({
-    email: item.email,
-    preference: item.preference,
-    joinedAt: item.created_at,
+  const guests = guestAlertRows(data || []);
+  const userIds = [...new Set((alerts || []).map((row) => row.user_id).filter((id): id is string => Boolean(id)))];
+  const { data: profiles } = userIds.length
+    ? await supabaseAdmin.from("profiles").select("id,email").in("id", userIds)
+    : { data: [] };
+  const fromAccounts = accountAlertRows(alerts || [], profiles || []);
+  const subscribers = [...guests, ...fromAccounts].map((row) => ({
+    email: row.email,
+    preference: row.label,
+    joinedAt: row.joinedAt || "",
+    source: row.source,
+    confirmed: row.confirmed,
   }));
 
   return NextResponse.json({ subscribers });

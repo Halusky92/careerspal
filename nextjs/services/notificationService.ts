@@ -5,6 +5,8 @@ export interface Subscriber {
   email: string;
   preference: string;
   joinedAt: string;
+  source?: "guest" | "account";
+  confirmed?: boolean;
 }
 
 export const subscribeUser = async (email: string, preference: string) => {

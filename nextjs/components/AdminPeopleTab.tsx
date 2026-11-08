@@ -6,6 +6,7 @@ import { useSupabaseAuth } from "./Providers";
 import { authFetch } from "../lib/authFetch";
 import type { PublicPerson } from "../lib/publicPerson";
 import type { Job } from "../types";
+import AdminInbox from "./AdminInbox";
 
 type ShortItem = { id: string; jobId: string; jobTitle: string; person: PublicPerson | null };
 
@@ -69,6 +70,7 @@ export default function AdminPeopleTab({ jobs }: { jobs: Job[] }) {
 
   return (
     <div className="space-y-6">
+      <AdminInbox />
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         <p className="text-sm font-medium text-slate-900">Attach seekers to a listing</p>
         <p className="mt-1 text-xs text-slate-500">

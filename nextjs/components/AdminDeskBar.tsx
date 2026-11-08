@@ -6,7 +6,7 @@ const deskLinks = [
   { href: "/dashboard/ops", label: "Ops console" },
   { href: "/dashboard/admin?tab=review", label: "Confirm jobs" },
   { href: "/dashboard/admin?tab=jobs", label: "All jobs" },
-  { href: "/dashboard/admin?tab=people", label: "Team" },
+  { href: "/dashboard/admin?tab=people", label: "Inbox" },
   { href: "/dashboard/admin?tab=sourcing", label: "Pipeline" },
   { href: "/dashboard/admin?tab=more", label: "Traffic" },
   { href: "/dashboard/employer", label: "My listings" },

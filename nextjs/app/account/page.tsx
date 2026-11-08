@@ -484,7 +484,7 @@ const AccountPageInner = () => {
                           { label: "Dashboard", href: "/dashboard/admin" },
                           { label: "To confirm", href: "/dashboard/admin?tab=review" },
                           { label: "All jobs", href: "/dashboard/admin?tab=jobs" },
-                          { label: "Team", href: "/dashboard/admin?tab=people" },
+                          { label: "Inbox", href: "/dashboard/admin?tab=people" },
                           { label: "Traffic", href: "/dashboard/admin?tab=more" },
                           { label: "My listings", href: "/dashboard/employer" },
                         ].map((item) => (

@@ -666,7 +666,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const tabs: { id: AdminTab; label: string; count?: number }[] = [
     { id: "review", label: "To confirm", count: pendingJobs.length },
     { id: "jobs", label: "Jobs", count: jobs.filter((j) => j.status === "published").length },
-    { id: "people", label: "Team" },
+    { id: "people", label: "Inbox" },
     { id: "sourcing", label: "Pipeline" },
     { id: "more", label: "Traffic" },
   ];
@@ -1138,13 +1138,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               <table className="cp-table w-full text-sm">
                 <tbody>
                   {subscribers.map((sub) => (
-                    <tr key={sub.email} className="border-b border-slate-100 last:border-0">
-                      <td className="px-4 py-2.5">{sub.email}</td>
+                    <tr key={`${sub.source || "guest"}-${sub.email}-${sub.joinedAt}`} className="border-b border-slate-100 last:border-0">
+                      <td className="px-4 py-2.5">
+                        <div>{sub.email}</div>
+                        <div className="text-[11px] text-slate-400">
+                          {sub.source === "account" ? "Account" : "Guest"}
+                          {sub.confirmed === false ? " · pending" : ""}
+                        </div>
+                      </td>
                       <td className="px-3 py-2.5 text-slate-500">{sub.preference}</td>
                       <td className="px-3 py-2.5 text-right">
-                        <button onClick={() => handleDeleteSubscriber(sub.email)} className="text-xs text-rose-600">
-                          Remove
-                        </button>
+                        {sub.source === "account" ? (
+                          <span className="text-xs text-slate-400">On account</span>
+                        ) : (
+                          <button onClick={() => handleDeleteSubscriber(sub.email)} className="text-xs text-rose-600">
+                            Remove
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
