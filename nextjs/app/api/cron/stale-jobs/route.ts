@@ -38,7 +38,7 @@ export async function GET(request: Request) {
   const isWeeklyPurgeDay = new Date().getUTCDay() === 0;
   try {
     const expired = await expireStaleJobs(supabaseAdmin, { dryRun, days: STALE_JOB_DAYS });
-    const deadLinks = await sweepDeadApplyLinks(supabaseAdmin, { dryRun, limit: 8, timeoutMs: 6000 });
+    const deadLinks = await sweepDeadApplyLinks(supabaseAdmin, { dryRun, limit: 16, timeoutMs: 6000 });
     const debris = await purgeSourcingDebris(supabaseAdmin, { dryRun, days: STALE_JOB_DAYS });
     const shouldPurge = forcePurge || isWeeklyPurgeDay;
     const purged = shouldPurge

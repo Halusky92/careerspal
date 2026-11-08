@@ -3,6 +3,7 @@ import { classifyListingSource } from "../../../../../lib/listingTraffic";
 import { uniqueViewerFromRequest } from "../../../../../lib/jobViews";
 import { getSupabaseUser } from "../../../../../lib/supabaseServerAuth";
 import { supabaseAdmin } from "../../../../../lib/supabaseAdmin";
+import { isLikelyBot } from "../../../../../lib/trafficBots";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
@@ -35,6 +36,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     ip,
   });
   const userAgent = (request.headers.get("user-agent") || "").slice(0, 180);
+  const currentViews = job.views || 0;
+  if (isLikelyBot(userAgent)) {
+    return NextResponse.json({ views: currentViews, skipped: "bot" });
+  }
   const referrer = body.referrer || request.headers.get("referer") || "";
   const path = body.path || "";
   const source =
@@ -46,7 +51,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         ? new URLSearchParams(path.split("?")[1] || "").get("utm_source")
         : null,
     });
-  const currentViews = job.views || 0;
 
   if (job.created_by && identity.viewerId && job.created_by === identity.viewerId) {
     return NextResponse.json({ views: currentViews, owner: true });

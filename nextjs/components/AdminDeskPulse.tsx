@@ -40,29 +40,33 @@ export default function AdminDeskPulse({
   const visitorPath = sparkPath(points.map((day) => day.visitors), 280, 64);
   const applyPath = sparkPath(points.map((day) => day.applyClicks), 280, 64);
   const [pipeBusy, setPipeBusy] = useState(false);
+  const [hygieneBusy, setHygieneBusy] = useState(false);
   const [pipeLog, setPipeLog] = useState("");
 
-  const runPipeline = async () => {
-    if (!accessToken || pipeBusy) return;
-    setPipeBusy(true);
-    setPipeLog("> pipeline --next\nrunning…");
+  const runCommand = async (label: string, path: string, body?: Record<string, unknown>) => {
+    if (!accessToken || pipeBusy || hygieneBusy) return;
+    const hygiene = path.includes("hygiene");
+    if (hygiene) setHygieneBusy(true);
+    else setPipeBusy(true);
+    setPipeLog(`> ${label}\nrunning…`);
     try {
       const response = await authFetch(
-        "/api/admin/sourcing/pipeline/greenhouse",
+        path,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ maxSources: 1 }),
+          body: JSON.stringify(body || {}),
         },
         accessToken,
       );
       const data = await response.json();
       const text = JSON.stringify(data.summary || data, null, 2);
-      setPipeLog(`> pipeline --next\nexit ${response.status}\n${text.slice(0, 4000)}`);
+      setPipeLog(`> ${label}\nexit ${response.status}\n${text.slice(0, 4000)}`);
     } catch (error) {
-      setPipeLog(`> pipeline --next\n${error instanceof Error ? error.message : "failed"}`);
+      setPipeLog(`> ${label}\n${error instanceof Error ? error.message : "failed"}`);
     } finally {
       setPipeBusy(false);
+      setHygieneBusy(false);
     }
   };
 
@@ -73,17 +77,29 @@ export default function AdminDeskPulse({
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-emerald-400">desk://pulse</p>
           <h2 className="mt-1 text-base font-semibold text-white">Traffic · alerts · pipeline</h2>
         </div>
-        <button
-          type="button"
-          onClick={() => void runPipeline()}
-          disabled={pipeBusy || !accessToken}
-          className="h-10 px-4 rounded-lg bg-emerald-500 text-zinc-950 text-xs font-mono font-semibold hover:bg-emerald-400 disabled:opacity-50"
-        >
-          {pipeBusy ? "pipeline…" : "$ run pipeline"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              void runCommand("pipeline --next", "/api/admin/sourcing/pipeline/greenhouse", { maxSources: 1 })
+            }
+            disabled={pipeBusy || hygieneBusy || !accessToken}
+            className="h-10 px-4 rounded-lg bg-emerald-500 text-zinc-950 text-xs font-mono font-semibold hover:bg-emerald-400 disabled:opacity-50"
+          >
+            {pipeBusy ? "pipeline…" : "$ run pipeline"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void runCommand("sweep --dead", "/api/admin/hygiene")}
+            disabled={pipeBusy || hygieneBusy || !accessToken}
+            className="h-10 px-4 rounded-lg border border-zinc-600 text-zinc-100 text-xs font-mono font-semibold hover:border-emerald-400 hover:text-emerald-300 disabled:opacity-50"
+          >
+            {hygieneBusy ? "sweep…" : "$ sweep dead"}
+          </button>
+        </div>
       </div>
       <p className="mt-1 text-[11px] font-mono text-zinc-500">
-        Next stale ATS board only. Click again for another. Cron still runs in the morning.
+        Pipeline: next stale ATS board. Sweep: close listings whose apply page is gone. Cron still runs in the morning.
       </p>
 
       <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-2">

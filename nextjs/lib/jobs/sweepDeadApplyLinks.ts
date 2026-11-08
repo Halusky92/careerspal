@@ -12,6 +12,7 @@ type LiveJob = {
 export type SweepDeadApplyLinksResult = {
   scanned: number;
   checked: number;
+  closed: number;
   deleted: number;
   skipped: number;
   dryRun: boolean;
@@ -37,7 +38,7 @@ export async function sweepDeadApplyLinks(
   const jobs = (data || []) as LiveJob[];
 
   let checked = 0;
-  let deleted = 0;
+  let closed = 0;
   let skipped = 0;
   const samples: SweepDeadApplyLinksResult["samples"] = [];
   const toDelete: Array<{ id: string; title: string; reason: string }> = [];
@@ -61,18 +62,30 @@ export async function sweepDeadApplyLinks(
   for (const item of toDelete) {
     samples.push(item);
     if (dryRun) {
-      deleted += 1;
+      closed += 1;
       continue;
     }
-    const { error: delError } = await sb.from("jobs").delete().eq("id", item.id).eq("status", "published");
-    if (delError) continue;
-    deleted += 1;
+    const { error: closeError } = await sb
+      .from("jobs")
+      .update({ status: "closed" })
+      .eq("id", item.id)
+      .eq("status", "published");
+    if (closeError) continue;
+    closed += 1;
     await sb.from("audit_logs").insert({
-      action: "dead_apply_link_removed",
+      action: "dead_apply_link_closed",
       job_id: item.id,
       metadata: { title: item.title, reason: item.reason },
     });
   }
 
-  return { scanned: jobs.length, checked, deleted, skipped, dryRun, samples: samples.slice(0, 40) };
+  return {
+    scanned: jobs.length,
+    checked,
+    closed,
+    deleted: closed,
+    skipped,
+    dryRun,
+    samples: samples.slice(0, 40),
+  };
 }

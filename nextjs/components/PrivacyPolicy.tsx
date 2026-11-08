@@ -1,15 +1,8 @@
 import React from "react";
+import { publicOperator } from "../lib/operator";
 
 const PrivacyPolicy: React.FC = () => {
-  const operatorName = process.env.NEXT_PUBLIC_OPERATOR_NAME || "Mgr. Marek Bilek";
-  const operatorAddress = process.env.NEXT_PUBLIC_OPERATOR_ADDRESS || "";
-  const operatorCompanyId = process.env.NEXT_PUBLIC_OPERATOR_COMPANY_ID || "";
-  const operatorVatId = process.env.NEXT_PUBLIC_OPERATOR_VAT_ID || "";
-  const operatorDetails = [
-    operatorCompanyId ? `Company ID ${operatorCompanyId}` : null,
-    operatorVatId ? `VAT ${operatorVatId}` : null,
-    operatorAddress ? operatorAddress : null,
-  ].filter(Boolean) as string[];
+  const operator = publicOperator();
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
@@ -20,17 +13,19 @@ const PrivacyPolicy: React.FC = () => {
         <section>
           <h2 className="text-base font-semibold text-slate-900">1. Controller</h2>
           <p className="mt-2">
-            {operatorName} is the data controller. Contact{" "}
-            <a href="mailto:info@careerspal.com" className="text-indigo-700 hover:underline">
-              info@careerspal.com
+            {operator.name}, a natural person in the {operator.country}, is the data controller. Contact{" "}
+            <a href={`mailto:${operator.email}`} className="text-indigo-700 hover:underline">
+              {operator.email}
             </a>
             .
           </p>
-          <p className="mt-1 text-xs text-slate-500">
-            {operatorDetails.length > 0
-              ? operatorDetails.join(" · ")
-              : "Operator details: provided on invoice or available on request."}
-          </p>
+          {operator.lines.length > 0 ? (
+            <p className="mt-1 text-xs text-slate-500">{operator.lines.join(" · ")}</p>
+          ) : (
+            <p className="mt-1 text-xs text-slate-500">
+              Company ID or VAT, if required, appears on the Stripe invoice.
+            </p>
+          )}
         </section>
         <section>
           <h2 className="text-base font-semibold text-slate-900">2. What we collect</h2>
@@ -38,7 +33,7 @@ const PrivacyPolicy: React.FC = () => {
             <li>Account name, email, and role (candidate or employer).</li>
             <li>Document links you save in your account. We do not send them to employers.</li>
             <li>Employer company details, billing email, and listings. Paid listings are charged in USD via Stripe.</li>
-            <li>Technical data needed to run the site (session, IP, basic usage).</li>
+            <li>Technical data needed to run the site (session, IP, basic usage). We skip obvious crawler traffic.</li>
           </ul>
         </section>
         <section>
@@ -71,8 +66,8 @@ const PrivacyPolicy: React.FC = () => {
           <h2 className="text-base font-semibold text-slate-900">7. Your rights</h2>
           <p className="mt-2">
             You can ask to access, correct, delete, or export your data. Email{" "}
-            <a href="mailto:info@careerspal.com" className="text-indigo-700 hover:underline">
-              info@careerspal.com
+            <a href={`mailto:${operator.email}`} className="text-indigo-700 hover:underline">
+              {operator.email}
             </a>{" "}
             from the address on your account. We aim to complete requests within 30 days.
           </p>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
+import { isLikelyBot } from "../../../../lib/trafficBots";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,9 @@ export async function POST(request: Request) {
 
   const ip = getClientIp(request);
   const ua = payload.userAgent || request.headers.get("user-agent") || "unknown";
+  if (isLikelyBot(ua)) {
+    return NextResponse.json({ ok: true, skipped: "bot" });
+  }
   const ipHash = hashValue(`${ip}:${ua}`);
 
   await supabaseAdmin.from("audit_logs").insert({
