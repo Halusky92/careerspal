@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSupabaseAuth } from "./Providers";
+import BrandMark from "./BrandMark";
 
 const AccountIcon = () => (
   <svg viewBox="0 0 24 24" className="h-5 w-5 text-slate-700" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
@@ -83,9 +84,7 @@ const Navbar: React.FC = () => {
               }}
               className="flex items-center gap-2"
             >
-              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">C</span>
-              </div>
+              <BrandMark size={32} className="h-8 w-8" />
               <span className="text-base font-semibold tracking-tight text-indigo-600">CareersPal</span>
             </Link>
 

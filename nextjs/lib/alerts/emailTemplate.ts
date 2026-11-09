@@ -1,3 +1,6 @@
+const siteUrl = () =>
+  (process.env.NEXT_PUBLIC_SITE_URL || "https://www.careerspal.com").replace(/\/+$/, "");
+
 const escapeHtml = (value?: string | null) =>
   (value ?? "")
     .replace(/&/g, "&amp;")
@@ -59,6 +62,7 @@ export function renderAlertEmail(args: {
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border-radius:16px;overflow:hidden;">
               <tr>
                 <td style="padding:28px 28px 8px;">
+                  <img src="${siteUrl()}/logo.png" width="36" height="36" alt="CareersPal" style="display:block;border-radius:8px;margin-bottom:12px;" />
                   <div style="font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:#64748b;">CareersPal</div>
                   <h1 style="margin:10px 0 0;font-size:22px;line-height:1.3;color:#111827;">${escapeHtml(args.title)}</h1>
                 </td>
