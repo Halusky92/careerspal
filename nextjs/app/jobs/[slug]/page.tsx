@@ -13,7 +13,9 @@ import type { Job } from "../../../types";
 import { isOnNicheJob } from "../../../lib/nicheScope";
 import { formatJobSalary } from "../../../lib/formatSalary";
 import { inferWorkMode, publicLocationLabel } from "../../../lib/workMode";
-import { applyLiveBoardFilter } from "../../../lib/liveBoard";
+import { applyLiveBoardFilter, isLiveBoardJob } from "../../../lib/liveBoard";
+import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
+import { buildJobPostingLd } from "../../../lib/jobPostingLd";
 import { ApplyClickLink, JobViewTracker } from "../../../components/JobAnalytics";
 import FeaturedBadge from "../../../components/FeaturedBadge";
 import { isPaidFeaturedListing } from "../../../lib/featuredListing";
@@ -28,13 +30,7 @@ type PageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-const getBaseUrl = () => {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  if (siteUrl) return siteUrl.replace(/\/+$/, "");
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) return `https://${vercelUrl}`;
-  return "http://localhost:3000";
-};
+const getBaseUrl = () => getCanonicalSiteUrl();
 
 async function fetchPublicJobViaApi(jobId: string): Promise<Job | null> {
   try {
@@ -223,10 +219,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const imageUrl = job.logo ? (job.logo.startsWith("http") ? job.logo : `${baseUrl}${job.logo}`) : undefined;
 
+  const live = isLiveBoardJob({ timestamp: job.timestamp });
   return {
     title,
     description,
     alternates: { canonical: canonicalUrl },
+    robots: live ? undefined : { index: false, follow: true },
     openGraph: {
       title,
       description,
@@ -303,25 +301,10 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
   const canonicalPath = `/jobs/${canonicalSlug}`;
   const canonicalUrl = `${getBaseUrl()}${canonicalPath}`;
 
-  const postedDateIso =
-    job.timestamp && Number.isFinite(job.timestamp) ? new Date(job.timestamp).toISOString() : undefined;
-
-  const jobPostingLd = {
-    "@context": "https://schema.org",
-    "@type": "JobPosting",
-    title: job.title,
-    description: plainText(sanitizeDescription(job.description) || ""),
-    datePosted: postedDateIso,
-    employmentType: job.type,
-    hiringOrganization: {
-      "@type": "Organization",
-      name: job.company,
-      sameAs: job.companyWebsite || undefined,
-      logo: job.logo || undefined,
-    },
-    jobLocationType: inferWorkMode(job) === "Remote" ? "TELECOMMUTE" : undefined,
-    directApply: isExternalUrl(job.applyUrl) ? true : undefined,
-  };
+  const jobPostingLd = buildJobPostingLd(
+    { ...job, description: sanitizeDescription(job.description) || job.description },
+    canonicalUrl,
+  );
 
   const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl.trim() !== "#");
   const applyExternal = isExternalUrl(job.applyUrl);
@@ -343,7 +326,9 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
   return (
     <div className="bg-[#F8F9FD] pb-8">
       <JobViewTracker jobId={job.id} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingLd) }} />
+      {jobPostingLd ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingLd) }} />
+      ) : null}
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
         <div className="flex items-center justify-between gap-3">

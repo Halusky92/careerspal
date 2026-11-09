@@ -6,14 +6,9 @@ import { isOnNicheJob } from "../../lib/nicheScope";
 import { applyLiveBoardFilter, isLiveBoardJob } from "../../lib/liveBoard";
 import { addJobToCompany, type BoardCompany } from "../../lib/companyBoard";
 import CompaniesClient from "./CompaniesClient";
+import { getCanonicalSiteUrl } from "../../lib/alerts/siteUrl";
 
-const getBaseUrl = () => {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  if (siteUrl) return siteUrl.replace(/\/+$/, "");
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) return `https://${vercelUrl}`;
-  return "http://localhost:3000";
-};
+const getBaseUrl = () => getCanonicalSiteUrl();
 
 async function fetchCompaniesWithLiveRoles(): Promise<BoardCompany[]> {
   if (!supabaseAdmin) return [];

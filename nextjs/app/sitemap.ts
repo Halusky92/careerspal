@@ -4,17 +4,32 @@ import { CATEGORY_SLUGS } from "../lib/categories";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { applyLiveBoardFilter, isLiveBoardJob } from "../lib/liveBoard";
 import { isOnNicheJob } from "../lib/nicheScope";
+import { getCanonicalSiteUrl } from "../lib/alerts/siteUrl";
+import { isNonProductionDeployment } from "../lib/siteIndexing";
 
-const getBaseUrl = () => {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  if (siteUrl) return siteUrl.replace(/\/+$/, "");
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) return `https://${vercelUrl}`;
-  return "http://localhost:3000";
-};
+function lastmodFromTimestamp(timestamp?: number | null): Date | undefined {
+  if (typeof timestamp !== "number" || !Number.isFinite(timestamp) || timestamp <= 0) return undefined;
+  const ms = timestamp < 1e12 ? timestamp * 1000 : timestamp;
+  const date = new Date(ms);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function lastmodFromIso(value?: string | null): Date | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function lastmodForJob(job: { timestamp?: number | null; updated_at?: string | null }): Date | undefined {
+  const posted = lastmodFromTimestamp(job.timestamp);
+  const updated = lastmodFromIso(job.updated_at || null);
+  if (posted && updated) return updated.getTime() > posted.getTime() ? updated : posted;
+  return updated || posted;
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = getBaseUrl();
+  if (isNonProductionDeployment()) return [];
+  const baseUrl = getCanonicalSiteUrl();
 
   const staticRoutes = [
     "",
@@ -32,13 +47,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/accessibility",
   ];
 
-  let jobRoutes: string[] = [];
-  let companyRoutes: string[] = [];
+  const entries: MetadataRoute.Sitemap = staticRoutes.map((path) => ({
+    url: `${baseUrl}${path}`,
+  }));
+
   if (supabaseAdmin) {
     const { data: jobs } = await applyLiveBoardFilter(
       supabaseAdmin
         .from("jobs")
-        .select("id,title,category,description,timestamp,companies(name,slug)")
+        .select("id,title,category,description,timestamp,updated_at,companies(name,slug)")
         .eq("status", "published"),
     );
 
@@ -46,24 +63,39 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       (job) => isLiveBoardJob({ timestamp: job.timestamp }) && isOnNicheJob(job),
     );
 
-    jobRoutes = live.map((job) => `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`);
+    for (const job of live) {
+      const lastModified = lastmodForJob(job);
+      entries.push({
+        url: `${baseUrl}/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`,
+        ...(lastModified ? { lastModified } : {}),
+      });
+    }
 
-    const companies = new Map<string, string>();
+    const companies = new Map<string, number>();
     for (const job of live) {
       const rel = job.companies as { name?: string | null; slug?: string | null } | { name?: string | null; slug?: string | null }[] | null;
       const row = Array.isArray(rel) ? rel[0] : rel;
       const name = (row?.name || "").trim();
       if (!name) continue;
       const slug = ((row?.slug || "").trim() || createCompanySlug({ name })).trim();
-      if (slug) companies.set(slug, name);
+      if (!slug) continue;
+      const posted = typeof job.timestamp === "number" ? job.timestamp : 0;
+      const updatedMs = job.updated_at ? Date.parse(job.updated_at) : 0;
+      const ts = Math.max(posted, Number.isFinite(updatedMs) ? updatedMs : 0);
+      companies.set(slug, Math.max(companies.get(slug) || 0, ts));
     }
-    companyRoutes = [...companies.keys()].map((slug) => `/companies/${slug}`);
+    for (const [slug, ts] of companies) {
+      const lastModified = lastmodFromTimestamp(ts);
+      entries.push({
+        url: `${baseUrl}/companies/${slug}`,
+        ...(lastModified ? { lastModified } : {}),
+      });
+    }
   }
 
-  const categoryRoutes = CATEGORY_SLUGS.map((slug) => `/categories/${slug}`);
+  for (const slug of CATEGORY_SLUGS) {
+    entries.push({ url: `${baseUrl}/categories/${slug}` });
+  }
 
-  return [...staticRoutes, ...categoryRoutes, ...jobRoutes, ...companyRoutes].map((path) => ({
-    url: `${baseUrl}${path}`,
-    lastModified: new Date(),
-  }));
+  return entries;
 }

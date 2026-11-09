@@ -4,14 +4,9 @@ import { CATEGORY_HUBS, jobMatchesHub } from "../../lib/categories";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
 import { applyLiveBoardFilter } from "../../lib/liveBoard";
 import { isOnNicheJob } from "../../lib/nicheScope";
+import { getCanonicalSiteUrl } from "../../lib/alerts/siteUrl";
 
-const getBaseUrl = () => {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  if (siteUrl) return siteUrl.replace(/\/+$/, "");
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) return `https://${vercelUrl}`;
-  return "http://localhost:3000";
-};
+const getBaseUrl = () => getCanonicalSiteUrl();
 
 export async function generateMetadata(): Promise<Metadata> {
   const baseUrl = getBaseUrl();

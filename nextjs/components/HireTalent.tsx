@@ -1,13 +1,9 @@
-"use client";
-
-import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Job } from "../types";
 import { PLAN_PRICE_LINE } from "../lib/plans";
 import PublicSubscriberNoteClient from "./PublicSubscriberNoteClient";
 
 interface HireTalentProps {
-  onPostJob: () => void;
+  companyNames?: string[];
 }
 
 const STEPS = [
@@ -16,32 +12,8 @@ const STEPS = [
   { title: "Live", text: "On the public board. People apply on your link." },
 ];
 
-const HireTalent: React.FC<HireTalentProps> = ({ onPostJob }) => {
-  const [companyNames, setCompanyNames] = useState<string[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/jobs")
-      .then((res) => res.json())
-      .then((data: { jobs?: Job[] }) => {
-        if (cancelled) return;
-        const names = Array.from(
-          new Set((data.jobs || []).map((job) => job.company).filter((name): name is string => Boolean(name))),
-        ).slice(0, 8);
-        setCompanyNames(names);
-      })
-      .catch(() => {
-        if (!cancelled) setCompanyNames([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const logosLabel = useMemo(() => {
-    if (companyNames.length < 2) return null;
-    return companyNames.slice(0, 6);
-  }, [companyNames]);
+export default function HireTalent({ companyNames = [] }: HireTalentProps) {
+  const logosLabel = companyNames.length < 2 ? null : companyNames.slice(0, 6);
 
   return (
     <div>
@@ -72,13 +44,12 @@ const HireTalent: React.FC<HireTalentProps> = ({ onPostJob }) => {
           </ol>
 
           <div className="mt-8 flex flex-col items-center">
-            <button
-              type="button"
-              onClick={onPostJob}
-              className="h-12 px-10 rounded-lg bg-amber-400 text-slate-900 text-base font-semibold hover:bg-amber-300"
+            <Link
+              href="/post-a-job"
+              className="inline-flex h-12 items-center px-10 rounded-lg bg-amber-400 text-slate-900 text-base font-semibold hover:bg-amber-300"
             >
               Post a job
-            </button>
+            </Link>
             <Link
               href="/pricing"
               className="mt-3 text-sm font-medium text-indigo-100 hover:text-white"
@@ -128,13 +99,12 @@ const HireTalent: React.FC<HireTalentProps> = ({ onPostJob }) => {
         </ul>
 
         <div className="mt-8 flex flex-col items-center">
-          <button
-            type="button"
-            onClick={onPostJob}
-            className="h-11 px-6 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
+          <Link
+            href="/post-a-job"
+            className="inline-flex h-11 items-center px-6 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
           >
             Post a job
-          </button>
+          </Link>
           <Link
             href="/jobs"
             className="mt-3 text-sm font-medium text-slate-600 hover:text-indigo-700"
@@ -146,5 +116,3 @@ const HireTalent: React.FC<HireTalentProps> = ({ onPostJob }) => {
     </div>
   );
 };
-
-export default HireTalent;
