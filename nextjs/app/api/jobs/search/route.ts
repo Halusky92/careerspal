@@ -1,65 +1,36 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
-import { mapSupabaseJob, SupabaseJobRow } from "../../../../lib/supabaseJobs";
-import { isOnNicheJob } from "../../../../lib/nicheScope";
+import { boardTierFromRequest } from "../../../../lib/boardAccessServer";
+import { PAID_JOBS_PAGE_MAX } from "../../../../lib/boardAccess";
+import { loadPublishedBoardJobs, pagePublishedBoard } from "../../../../lib/publicJobBoard";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const query = (searchParams.get("q") || "").trim();
-  const location = (searchParams.get("location") || "").trim();
-  const type = searchParams.get("type") || "";
-  const category = searchParams.get("category") || "";
-  const planType = searchParams.get("planType") || "";
-  const remote = searchParams.get("remote") || "";
-  const status = searchParams.get("status") || "published";
-  const limitParam = Number(searchParams.get("limit") || "0");
-  const skipParam = Number(searchParams.get("skip") || "0");
-  const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 100) : undefined;
-  const skip = Number.isFinite(skipParam) && skipParam > 0 ? skipParam : undefined;
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }
-
-  let queryBuilder = supabaseAdmin
-    .from("jobs")
-    .select(
-      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description,verified)",
-      { count: "exact" },
-    )
-    .eq("status", status)
-    .order("timestamp", { ascending: false });
-
-  if (query) {
-    queryBuilder = queryBuilder.or(
-      `title.ilike.%${query}%,description.ilike.%${query}%,keywords.ilike.%${query}%,companies.name.ilike.%${query}%`,
-    );
-  }
-  if (location) {
-    queryBuilder = queryBuilder.ilike("location", `%${location}%`);
-  }
-  if (type) {
-    queryBuilder = queryBuilder.eq("type", type);
-  }
-  if (category) {
-    queryBuilder = queryBuilder.eq("category", category);
-  }
-  if (planType) {
-    queryBuilder = queryBuilder.eq("plan_type", planType);
-  }
-  if (remote) {
-    queryBuilder = queryBuilder.ilike("remote_policy", `%${remote}%`);
-  }
-  if (limit && typeof skip === "number") {
-    queryBuilder = queryBuilder.range(skip, skip + limit - 1);
-  } else if (limit) {
-    queryBuilder = queryBuilder.range(0, limit - 1);
-  }
-
-  const { data, count } = await queryBuilder;
-  const mapped = ((data as SupabaseJobRow[]) || []).map(mapSupabaseJob).filter((job) => (status === "published" ? isOnNicheJob(job) : true));
-
+  const { searchParams } = new URL(request.url);
+  const limitParam = Number(searchParams.get("limit") || "0");
+  const skipParam = Number(searchParams.get("skip") || "0");
+  const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, PAID_JOBS_PAGE_MAX) : PAID_JOBS_PAGE_MAX;
+  const skip = Number.isFinite(skipParam) && skipParam > 0 ? skipParam : 0;
+  const tier = await boardTierFromRequest(request);
+  const jobs = await loadPublishedBoardJobs(supabaseAdmin, {
+    category: searchParams.get("category"),
+    type: searchParams.get("type"),
+    planType: searchParams.get("planType"),
+    remote: searchParams.get("remote"),
+  });
+  const location = (searchParams.get("location") || "").trim().toLowerCase();
+  const query = (searchParams.get("q") || "").trim().toLowerCase();
+  const filtered = jobs.filter((job) => {
+    if (location && !(job.location || "").toLowerCase().includes(location)) return false;
+    if (!query) return true;
+    const hay = `${job.title || ""} ${job.description || ""} ${job.company || ""} ${job.keywords || ""}`.toLowerCase();
+    return hay.includes(query);
+  });
+  const page = pagePublishedBoard(filtered, tier, { skip, limit });
   return NextResponse.json(
-    { jobs: mapped, total: mapped.length || count || 0 },
-    { headers: { "Cache-Control": "s-maxage=60, stale-while-revalidate=300" } },
+    { jobs: page.jobs, total: page.total, visible: page.visible, access: page.access },
+    { headers: { "Cache-Control": "private, no-store" } },
   );
 }

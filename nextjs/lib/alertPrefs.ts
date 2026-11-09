@@ -127,6 +127,10 @@ export function isTwiceWeeklySendDay(now = new Date()): boolean {
   return day === 2 || day === 5;
 }
 
+export function isWeeklySendDay(now = new Date()): boolean {
+  return now.getUTCDay() === 2;
+}
+
 export function alertPrefsLabel(prefs: AlertPrefs): string {
   const cats = parseAlertQuery(prefs.categories);
   const catLabel = cats.includes("all") ? "all categories" : cats.join(", ");

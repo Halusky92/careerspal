@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSupabaseAuth } from "../../../components/Providers";
 import { authFetch } from "../../../lib/authFetch";
+import { trackFunnelOnce } from "../../../lib/funnelTrack";
 
 type SessionPayload = {
   paid?: boolean;
@@ -12,6 +13,7 @@ type SessionPayload = {
   listingStatus?: string;
   planType?: string;
   amount?: number;
+  boardAccess?: boolean;
   error?: string;
 };
 
@@ -41,6 +43,11 @@ function CheckoutSuccessInner() {
 
   const paid = payload?.paid === true;
   const title = payload?.title;
+  useEffect(() => {
+    if (paid && payload?.boardAccess) {
+      trackFunnelOnce("checkout_paid", { purpose: "board_access" });
+    }
+  }, [paid, payload?.boardAccess]);
   const waiting = Boolean(sessionId && accessToken && !payload) || loading;
 
   return (
@@ -51,9 +58,13 @@ function CheckoutSuccessInner() {
           {waiting ? "Confirming payment…" : paid ? "Payment received" : "Checkout finished"}
         </h1>
         <p className="mt-3 text-sm text-slate-600 leading-relaxed">
-          {paid
-            ? `${title ? `“${title}”` : "Your listing"} is paid. It waits for a last check, then it can go live. That is not a timed SLA.`
-            : "Stripe will confirm, then the listing waits for a last check. You also get an email. That is not a timed SLA."}
+          {payload?.boardAccess
+            ? paid
+              ? "Payment received. Premium search is on for this billing period. Cancel anytime in Stripe."
+              : "Stripe will confirm this payment, then Premium search unlocks automatically."
+            : paid
+              ? `${title ? `“${title}”` : "Your listing"} is paid. It waits for a last check, then it can go live. That is not a timed SLA.`
+              : "Stripe will confirm, then the listing waits for a last check. You also get an email. That is not a timed SLA."}
         </p>
         {payload?.planType ? (
           <p className="mt-2 text-sm text-slate-500">
@@ -62,6 +73,15 @@ function CheckoutSuccessInner() {
           </p>
         ) : null}
         <div className="mt-6 flex flex-col sm:flex-row gap-2">
+          {payload?.boardAccess ? (
+            <Link
+              href="/jobs"
+              className="inline-flex h-11 items-center justify-center rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              Open the board
+            </Link>
+          ) : (
+            <>
           <Link
             href="/dashboard/employer"
             className="inline-flex h-11 items-center justify-center rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-700"
@@ -74,6 +94,8 @@ function CheckoutSuccessInner() {
           >
             Post another
           </Link>
+            </>
+          )}
         </div>
       </div>
     </div>

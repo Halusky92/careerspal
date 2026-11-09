@@ -1,5 +1,7 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import JobsClient from "./JobsClient";
+import { getCanonicalSiteUrl } from "../../lib/alerts/siteUrl";
 import { Job } from "../../types";
 import { createJobSlug } from "../../lib/jobs";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
@@ -8,8 +10,23 @@ import { isOnNicheJob } from "../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../lib/liveBoard";
 import { formatJobSalary } from "../../lib/formatSalary";
 import { ApplyClickLink } from "../../components/JobAnalytics";
+import { GUEST_VISIBLE_JOBS } from "../../lib/boardAccess";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const canonicalUrl = `${getCanonicalSiteUrl()}/jobs`;
+  const title = "Ops jobs with salary — CareersPal";
+  const description =
+    "Browse live Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff roles. Salary on every listing.";
+  return {
+    title,
+    description,
+    alternates: { canonical: canonicalUrl },
+    openGraph: { title, description, url: canonicalUrl, type: "website" },
+    twitter: { card: "summary", title, description },
+  };
+}
 
 type PageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -38,7 +55,7 @@ async function fetchPublishedJobs(): Promise<{ jobs: Job[]; total: number }> {
 }
 
 function StaticJobsList({ jobs, total }: { jobs: Job[]; total: number }) {
-  const preview = jobs.slice(0, 20);
+  const preview = jobs.slice(0, 4);
   return (
     <section className="cp-static-jobs hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -132,12 +149,13 @@ export default async function JobsPage({ searchParams }: PageProps) {
   const initialQuery = getParam(params.query);
   const initialLocation = getParam(params.location);
   const { jobs, total } = await fetchPublishedJobs();
+  const guestSlice = jobs.slice(0, GUEST_VISIBLE_JOBS);
 
   return (
     <div className="pt-3">
-      <StaticJobsList jobs={jobs} total={total} />
+      <StaticJobsList jobs={guestSlice} total={total} />
       <JobsClient
-        initialJobs={jobs}
+        initialJobs={guestSlice}
         initialTotal={total}
         initialQuery={initialQuery}
         initialLocation={initialLocation}

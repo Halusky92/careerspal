@@ -4,9 +4,10 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../lib/supabaseJobs";
 import { getSupabaseProfile } from "../../../lib/supabaseServerAuth";
 import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../lib/nicheScope";
-import { applyLiveBoardFilter } from "../../../lib/liveBoard";
-import { getCategoryHub, jobMatchesHub, resolveCategoryParam } from "../../../lib/categories";
 import { formatSalaryForStorage } from "../../../lib/formatSalary";
+import { boardTierFromRequest } from "../../../lib/boardAccessServer";
+import { loadPublishedBoardJobs, pagePublishedBoard } from "../../../lib/publicJobBoard";
+import { PAID_JOBS_PAGE_MAX } from "../../../lib/boardAccess";
 
 const isValidApplyUrl = (value: string) => {
   if (value === "#" || value.startsWith("/")) return true;
@@ -26,9 +27,8 @@ export const GET = async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const limitParam = Number(searchParams.get("limit") || "0");
   const skipParam = Number(searchParams.get("skip") || "0");
-  const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 100) : undefined;
-  const skip = Number.isFinite(skipParam) && skipParam > 0 ? skipParam : undefined;
-  // Public endpoint: never expose draft/private/pending jobs.
+  const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, PAID_JOBS_PAGE_MAX) : PAID_JOBS_PAGE_MAX;
+  const skip = Number.isFinite(skipParam) && skipParam > 0 ? skipParam : 0;
   const requestedStatus = searchParams.get("status");
   const status = requestedStatus === "invite_only" ? "invite_only" : "published";
   const company = searchParams.get("company");
@@ -36,40 +36,33 @@ export const GET = async (request: Request) => {
   const type = searchParams.get("type");
   const planType = searchParams.get("planType");
   const remote = searchParams.get("remote");
-  // Note: we use `timestamp` (ms) for recency filtering because it's reliably set on publish.
-  // Some legacy/imported records may have `published_at` missing, which would incorrectly hide live roles.
+  if (status === "published") {
+    const tier = await boardTierFromRequest(request);
+    const jobs = await loadPublishedBoardJobs(supabaseAdmin, { company, category, type, planType, remote });
+    const page = pagePublishedBoard(jobs, tier, { skip, limit });
+    return NextResponse.json(
+      { jobs: page.jobs, total: page.total, visible: page.visible, access: page.access },
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
+  }
   let query = supabaseAdmin
     .from("jobs")
     .select(
       "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
       { count: "exact" },
     )
+    .eq("status", status)
     .order("timestamp", { ascending: false });
-
-  query = query.eq("status", status);
-  if (status === "published") {
-    query = applyLiveBoardFilter(query);
-  }
-  const categoryParam = resolveCategoryParam(category);
-  const categoryHub = categoryParam !== "All Roles" ? getCategoryHub(categoryParam) : null;
   if (type) query = query.eq("type", type);
   if (planType) query = query.eq("plan_type", planType);
   if (remote) query = query.ilike("remote_policy", `%${remote}%`);
   if (company) query = query.ilike("companies.name", `%${company}%`);
-  if (limit && typeof skip === "number") {
-    query = query.range(skip, skip + limit - 1);
-  } else if (limit) {
-    query = query.range(0, limit - 1);
-  }
-
-  const { data, count } = await query;
-  const mapped = (data as SupabaseJobRow[] | null || [])
-    .map(mapSupabaseJob)
-    .filter((job) => isOnNicheJob(job) && (!categoryHub || jobMatchesHub(job, categoryHub)));
+  query = query.range(0, Math.min(limit, 20) - 1);
+  const { data } = await query;
+  const mapped = (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob);
   return NextResponse.json(
-    { jobs: mapped, total: mapped.length },
-    // Ensure public pages reflect archive/delete immediately.
-    { headers: { "Cache-Control": "no-store" } },
+    { jobs: mapped, total: mapped.length, access: "guest" },
+    { headers: { "Cache-Control": "private, no-store" } },
   );
 };
 

@@ -71,7 +71,7 @@ export default async function HomePage() {
   return (
     <>
       <StaticHomeJobs jobs={jobs} />
-      <HomeClient initialJobs={jobs} subscriberCount={subscriberCount} />
+      <HomeClient initialJobs={jobs.slice(0, 4)} subscriberCount={subscriberCount} />
     </>
   );
 }
