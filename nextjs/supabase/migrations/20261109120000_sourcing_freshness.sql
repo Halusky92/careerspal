@@ -1,7 +1,8 @@
--- CareersPal sourcing freshness (Phase 0)
--- Local / staging only until explicitly approved for production.
--- Does not rewrite employer paid listings. Origin backfill only maps
--- ATS-published jobs that were incorrectly stamped greenhouse.
+-- CareersPal sourcing freshness.
+-- Adds columns only. Does not change jobs.origin, listing status, or company accounts.
+-- Idempotent. Staging already has these columns; production does not.
+-- jobs.origin is intentionally untouched. Production has no origin column, and the
+-- employer screens still treat only origin = greenhouse as a sourced listing.
 
 alter table public.sourcing_sourced_jobs_raw
   add column if not exists last_seen_at timestamptz;
@@ -22,10 +23,3 @@ alter table public.jobs
 
 alter table public.jobs
   add column if not exists content_hash text;
-
-update public.jobs as j
-set origin = c.source_type
-from public.sourcing_sourced_job_candidates as c
-where c.published_job_id = j.id
-  and c.source_type in ('ashby', 'lever')
-  and coalesce(j.origin, 'greenhouse') = 'greenhouse';

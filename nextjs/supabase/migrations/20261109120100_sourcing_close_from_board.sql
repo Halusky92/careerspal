@@ -1,6 +1,6 @@
--- CareersPal close-from-board streak (Phase 1)
--- Local / staging only until explicitly approved for production.
--- Additive. Does not delete jobs or change employer paid listings.
+-- CareersPal close-from-board streak.
+-- Adds columns only. Does not close jobs or change employer accounts.
+-- Idempotent. A missing streak stays 0, so nothing is closed by this migration.
 
 alter table public.sourcing_sourced_job_candidates
   add column if not exists missing_board_streak int not null default 0;
