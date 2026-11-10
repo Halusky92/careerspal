@@ -1,0 +1,223 @@
+import { SOURCING_SEED_BOARDS } from "../seedBoards";
+import { officialBoardUrl, type OfficialBoard } from "./atsLinks";
+import { validateSourceUrl } from "../validator";
+import type { DiscoveryReview } from "./review";
+
+/** Prepared cadence. It is not registered in vercel.json. */
+export const DISCOVERY_CADENCE = "0 9 * * 1,3,5";
+export const MONTHLY_SEARCH_CAP = 250;
+export const BOARDS_PER_GROUP = 4;
+export const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
+export const ZERO_STREAK_TO_COOL = 2;
+export const STAGING_HOST = "rpwutygkiiphqdphitdg.supabase.co";
+export const PRODUCTION_REF = "uahdliiwhvviinujtyjj";
+
+export const DISCOVERY_DOMAINS = [
+  "boards.greenhouse.io",
+  "boards.eu.greenhouse.io",
+  "job-boards.greenhouse.io",
+  "job-boards.eu.greenhouse.io",
+  "jobs.ashbyhq.com",
+  "jobs.lever.co",
+];
+
+export const AGGREGATOR_TOKENS = new Set(["jobgether"]);
+
+export const DISCOVERY_GROUPS = [
+  {
+    id: "revops",
+    phrases: [
+      "Revenue Operations Manager remote United States",
+      "RevOps Manager remote United States",
+      "Revenue Operations Lead remote United States",
+    ],
+  },
+  {
+    id: "sales-ops",
+    phrases: [
+      "Sales Operations Manager remote United States",
+      "Deal Desk Manager remote United States",
+      "Sales Operations Lead remote United States",
+    ],
+  },
+  {
+    id: "bizops",
+    phrases: [
+      "Business Operations Manager remote United States",
+      "BizOps Manager remote United States",
+      "Business Operations Lead remote United States",
+    ],
+  },
+  {
+    id: "chief-of-staff",
+    phrases: [
+      "Chief of Staff remote United States",
+      "Chief of Staff to the CEO remote United States",
+      "Head of Staff remote United States",
+    ],
+  },
+  {
+    id: "product-ops",
+    phrases: [
+      "Product Operations Manager remote United States",
+      "Product Ops Manager remote United States",
+      "Product Operations Lead remote United States",
+    ],
+  },
+  {
+    id: "systems",
+    phrases: [
+      "Business Systems Analyst remote United States",
+      "Business Systems Manager remote United States",
+      "Systems Analyst business systems remote United States",
+    ],
+  },
+  {
+    id: "automation",
+    phrases: [
+      "Workflow Automation Specialist remote United States",
+      "Automation Specialist remote United States",
+      "Marketing Automation Manager remote United States",
+    ],
+  },
+  {
+    id: "gtm-ops",
+    phrases: [
+      "GTM Operations Manager remote United States",
+      "Go-to-market Operations Manager remote United States",
+      "GTM Ops Lead remote United States",
+    ],
+  },
+] as const;
+
+export type PhraseState = {
+  variantIndex: number;
+  zeroNewStreak: number;
+  cooledUntil: string | null;
+};
+
+export type SearchHit = { url: string; title: string };
+
+const TOKEN_RE = /^[a-z0-9][a-z0-9_-]{1,60}$/;
+
+export function seedBoardKeys(): Set<string> {
+  return new Set(SOURCING_SEED_BOARDS.map((board) => `${board.sourceType}:${board.atsIdentifier.toLowerCase()}`));
+}
+
+export function assertStagingDatabaseUrl(url: string) {
+  let host = "";
+  try {
+    host = new URL(url).host;
+  } catch {
+    host = "";
+  }
+  if (host !== STAGING_HOST || url.includes(PRODUCTION_REF)) {
+    throw new Error(`REFUSED database host ${host || "missing"}`);
+  }
+}
+
+export function claimSearchSlot(count: number, cap = MONTHLY_SEARCH_CAP) {
+  if (count >= cap) return { ok: false as const, next: count };
+  return { ok: true as const, next: count + 1 };
+}
+
+export function phraseForGroup(phrases: readonly string[], state: PhraseState | undefined, now: Date) {
+  const current = state || { variantIndex: 0, zeroNewStreak: 0, cooledUntil: null };
+  if (current.cooledUntil && Date.parse(current.cooledUntil) > now.getTime()) return null;
+  const variantIndex = current.variantIndex % phrases.length;
+  return { phrase: phrases[variantIndex], variantIndex };
+}
+
+export function nextPhraseState(previous: PhraseState | undefined, variantIndex: number, phraseCount: number, newBoards: number, now: Date): PhraseState {
+  const streak = newBoards > 0 ? 0 : (previous?.zeroNewStreak || 0) + 1;
+  const cool = streak >= ZERO_STREAK_TO_COOL;
+  return {
+    variantIndex: (variantIndex + 1) % phraseCount,
+    zeroNewStreak: cool ? 0 : streak,
+    cooledUntil: cool ? new Date(now.getTime() + COOLDOWN_MS).toISOString() : null,
+  };
+}
+
+export function boardFromHit(raw: string): OfficialBoard | null {
+  const boardUrl = officialBoardUrl(raw);
+  if (!boardUrl) return null;
+  const validated = validateSourceUrl(boardUrl);
+  const provider = validated.detected_ats_type;
+  const identifier = (validated.ats_identifier || "").trim();
+  if (!validated.source_allowed || validated.denylist_match) return null;
+  if (provider !== "greenhouse" && provider !== "ashby" && provider !== "lever") return null;
+  if (!TOKEN_RE.test(identifier)) return null;
+  if (AGGREGATOR_TOKENS.has(identifier.toLowerCase())) return null;
+  return { provider, identifier, boardUrl };
+}
+
+export function selectNewBoards(hits: SearchHit[], known: Set<string>, limit = BOARDS_PER_GROUP) {
+  const chosen: Array<OfficialBoard & { searchTitle: string; foundUrl: string }> = [];
+  for (const hit of hits) {
+    const board = boardFromHit(hit.url);
+    if (!board) continue;
+    const key = `${board.provider}:${board.identifier.toLowerCase()}`;
+    if (known.has(key)) continue;
+    known.add(key);
+    chosen.push({ ...board, searchTitle: hit.title, foundUrl: hit.url });
+    if (chosen.length >= limit) break;
+  }
+  return chosen;
+}
+
+export async function runJobFirstDiscovery(args: {
+  now: Date;
+  monthCount: number;
+  phrases: Record<string, PhraseState | undefined>;
+  known: Set<string>;
+  search: (query: string) => Promise<SearchHit[]>;
+  review: (board: OfficialBoard) => Promise<DiscoveryReview>;
+  cap?: number;
+  claim?: () => Promise<boolean>;
+  onGroup?: (groupId: string, update: PhraseState | null, info: { phrase: string | null; boards: number; qualifying: number; skipped: string }) => Promise<void>;
+}) {
+  const cap = args.cap ?? MONTHLY_SEARCH_CAP;
+  let monthCount = args.monthCount;
+  const phraseUpdates: Record<string, PhraseState> = {};
+  const pending: DiscoveryReview[] = [];
+  const groups: Array<{ id: string; phrase: string | null; boards: number; qualifying: number; skipped: string }> = [];
+  let searches = 0;
+  let stopped: string | null = null;
+
+  for (const group of DISCOVERY_GROUPS) {
+    if (stopped) {
+      groups.push({ id: group.id, phrase: null, boards: 0, qualifying: 0, skipped: stopped });
+      continue;
+    }
+    const picked = phraseForGroup(group.phrases, args.phrases[group.id], args.now);
+    if (!picked) {
+      const info = { id: group.id, phrase: null, boards: 0, qualifying: 0, skipped: "cooled" };
+      groups.push(info);
+      await args.onGroup?.(group.id, null, info);
+      continue;
+    }
+    const claimed = args.claim ? await args.claim() : claimSearchSlot(monthCount, cap).ok;
+    if (!claimed) {
+      stopped = "monthly_cap";
+      groups.push({ id: group.id, phrase: picked.phrase, boards: 0, qualifying: 0, skipped: "monthly_cap" });
+      continue;
+    }
+    if (!args.claim) monthCount = claimSearchSlot(monthCount, cap).next;
+    searches += 1;
+    const hits = await args.search(picked.phrase);
+    const boards = selectNewBoards(hits, args.known, BOARDS_PER_GROUP);
+    let qualifying = 0;
+    for (const board of boards) {
+      const review = await args.review(board);
+      qualifying += review.qualifyingJobCount;
+      if (review.decision === "pending_approval") pending.push(review);
+    }
+    const update = nextPhraseState(args.phrases[group.id], picked.variantIndex, group.phrases.length, boards.length, args.now);
+    phraseUpdates[group.id] = update;
+    const info = { id: group.id, phrase: picked.phrase, boards: boards.length, qualifying, skipped: "" };
+    groups.push(info);
+    await args.onGroup?.(group.id, update, info);
+  }
+
+  return { searches, stopped, groups, pending, phraseUpdates, endingCount: monthCount };
+}
