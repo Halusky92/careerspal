@@ -9,6 +9,7 @@ import { authFetch } from "../lib/authFetch";
 import { formatSalaryDisplay } from "../lib/formatSalary";
 import { formatShortPostedDate } from "../lib/formatPosted";
 import SourcingRegistrySection from "./admin/SourcingRegistrySection";
+import SourcingOverviewSection from "./admin/SourcingOverviewSection";
 import AdminPeopleTab from "./AdminPeopleTab";
 import JobViewCount from "./JobViewCount";
 import ListingPlanBadge from "./ListingPlanBadge";
@@ -1028,8 +1029,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           <div className="px-4 py-3 bg-white border-b border-slate-200">
             <p className="text-sm font-medium text-slate-900">Pipeline tests</p>
             <p className="text-xs text-slate-500 mt-0.5">
-              Use <span className="font-medium text-slate-700">Run full pipeline now</span> at the top for a manual Greenhouse/Ashby/Lever run. Cron is 06:00 UTC. Listings without salary or apply stay unpublished.
+              Morning refresh is 06:15 UTC and salary is 07:15 UTC. Discovery is 09:00 UTC.
             </p>
+          </div>
+          <div className="p-4 bg-slate-50">
+            <SourcingOverviewSection />
           </div>
           <SourcingRegistrySection />
         </div>
