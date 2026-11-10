@@ -38,16 +38,21 @@ async function loadJobsForBoardClose(sb: AdminSb, jobIds: string[]) {
   for (let i = 0; i < jobIds.length; i += 200) {
     const slice = jobIds.slice(i, i + 200);
     const first = await sb.from("jobs").select("id,status,origin,plan_price,stripe_payment_status").in("id", slice);
-    let page = first;
-    if (first.error && /origin/i.test(first.error.message || "")) {
-      page = await sb.from("jobs").select("id,status,plan_price,stripe_payment_status").in("id", slice);
+    let data = ((first.data as BoardJobRow[] | null) || []) as BoardJobRow[];
+    let error = first.error as { message?: string } | null;
+    if (error && /origin/i.test(error.message || "")) {
+      const second = await sb.from("jobs").select("id,status,plan_price,stripe_payment_status").in("id", slice);
+      data = ((second.data as BoardJobRow[] | null) || []) as BoardJobRow[];
+      error = second.error;
     }
-    if (page.error && /plan_price|stripe_payment_status/i.test(page.error.message || "")) {
+    if (error && /plan_price|stripe_payment_status/i.test(error.message || "")) {
       paymentKnown = false;
-      page = await sb.from("jobs").select("id,status").in("id", slice);
+      const third = await sb.from("jobs").select("id,status").in("id", slice);
+      data = ((third.data as BoardJobRow[] | null) || []) as BoardJobRow[];
+      error = third.error;
     }
-    if (page.error) throw new Error(page.error.message);
-    jobs.push(...(((page.data as BoardJobRow[] | null) || []) as BoardJobRow[]));
+    if (error) throw new Error(error.message || "jobs_load_failed");
+    jobs.push(...data);
   }
   return { jobs, paymentKnown };
 }
