@@ -3,12 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import CompanyLogo from "../../../components/CompanyLogo";
-import { createCompanySlug } from "../../../lib/jobs";
+import { createCompanySlug, createJobSlug } from "../../../lib/jobs";
+import { formatJobSalary } from "../../../lib/formatSalary";
 import type { Company } from "../../../types";
 import { isOnNicheJob } from "../../../lib/nicheScope";
 import { isBoilerplateDescription } from "../../../lib/companyBoard";
 import { loadPublicCompanyBySlug } from "../../../lib/publicCompany";
-import BoardCappedJobs from "../../../components/BoardCappedJobs";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
 
 // Ensure a consistent runtime (avoid edge differences that can cause production-only crashes).
@@ -329,7 +329,39 @@ export default async function CompanyPage({ params }: PageProps) {
               </p>
 
               {jobs.length > 0 ? (
-                <BoardCappedJobs jobs={jobs} variant="company" />
+                <ul className="mt-3 space-y-2">
+                  {jobs.map((job) => {
+                    const href = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
+                    return (
+                      <li key={job.id} className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 hover:border-indigo-200">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <Link href={href} className="block text-sm font-semibold text-slate-900 hover:text-indigo-700 truncate">
+                              {job.title}
+                            </Link>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[12px] text-slate-500">
+                              {job.location && <span className="truncate">{job.location}</span>}
+                              {job.postedAt && (
+                                <>
+                                  <span className="text-slate-300">·</span>
+                                  <span className="truncate">{job.postedAt}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0 text-right">
+                            <div className="text-sm font-medium text-slate-900 whitespace-nowrap">
+                              {formatJobSalary(job)}
+                            </div>
+                            <Link href={href} className="mt-1 inline-flex text-xs font-medium text-indigo-700 hover:underline">
+                              View role
+                            </Link>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               ) : (
                 <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-center">
                   <p className="text-sm text-slate-600">Browse the job board for other live roles.</p>
