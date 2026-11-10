@@ -10,6 +10,7 @@ type Overview = {
   discoveredBoards: number | null;
   pendingReview: number | null;
   autoApproved: number | null;
+  approvals?: Array<{ at: string; identifier: string | null; title: string }>;
   publishedJobs: number | null;
   tavily: { used: number | null; cap: number };
   runs: Array<{ createdAt: string; trigger: string | null; error: string | null }>;
@@ -80,6 +81,16 @@ export default function SourcingOverviewSection() {
             <div><div className="text-xs text-slate-400">Auto-approved</div><div className="font-medium">{cell(overview.autoApproved)}</div></div>
             <div><div className="text-xs text-slate-400">Live jobs</div><div className="font-medium">{cell(overview.publishedJobs)}</div></div>
           </div>
+          {(overview.approvals || []).length > 0 ? (
+            <div>
+              <div className="text-xs text-slate-400">Auto-approved sources</div>
+              {overview.approvals?.map((item) => (
+                <p key={`${item.at}-${item.identifier}`} className="text-slate-700">
+                  {item.at.slice(0, 16).replace("T", " ")} UTC · {item.identifier || "source"} · {item.title}
+                </p>
+              ))}
+            </div>
+          ) : null}
           <p className="text-slate-700">Tavily {cell(overview.tavily.used)} / {overview.tavily.cap} this month</p>
           <div>
             <div className="text-xs text-slate-400">Recent runs</div>

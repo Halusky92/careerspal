@@ -20,6 +20,8 @@ test("overview counts saved discovery sources and leaves unknown history empty",
         createdAt: "2026-11-10T20:00:00.000Z",
         companyId: null,
         companyCreatedAt: null,
+        approvedAt: "2026-11-10T20:05:00.000Z",
+        approvalNotes: "auto: Revenue Operations Manager",
       },
       {
         sourceType: "greenhouse",
@@ -56,7 +58,8 @@ test("overview counts saved discovery sources and leaves unknown history empty",
   assert.equal(view.windows?.days30.published, 1);
   assert.equal(view.windows?.days30.closed, 0);
   assert.equal(view.pendingReview, 1);
-  assert.equal(view.autoApproved, null);
+  assert.equal(view.autoApproved, 1);
+  assert.equal(view.approvals[0]?.title, "Revenue Operations Manager");
   assert.equal(view.tavily.used, 1);
   assert.equal(view.tavily.cap, 250);
   assert.equal(view.runs[1]?.error, "ingest");
