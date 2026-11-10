@@ -8,6 +8,8 @@ export type OverviewSource = {
   createdAt: string;
   companyId: string | null;
   companyCreatedAt: string | null;
+  approvedAt?: string | null;
+  approvalNotes?: string | null;
 };
 
 export type OverviewBoard = { provider: string; identifier: string };
@@ -100,7 +102,16 @@ export function buildSourcingOverview(args: {
           },
     discoveredBoards: args.boards?.length ?? null,
     pendingReview: pending,
-    autoApproved: null as number | null,
+    autoApproved: args.sources === null ? null : sources.filter((source) => (source.approvalNotes || "").startsWith("auto:")).length,
+    approvals: sources
+      .filter((source) => (source.approvalNotes || "").startsWith("auto:") && source.approvedAt)
+      .map((source) => ({
+        at: source.approvedAt || "",
+        identifier: source.identifier,
+        title: (source.approvalNotes || "").slice("auto:".length).trim(),
+      }))
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, 8),
     publishedJobs: args.publishedJobs,
     tavily: { used: args.tavilySearches, cap: SOURCING_OVERVIEW_CAP },
     runs: (args.runs || []).slice(0, 5).map((run) => ({

@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   const month = new Date().toISOString().slice(0, 7);
   const [boards, sources, runs, usage, jobs] = await Promise.all([
     supabaseAdmin.from("sourcing_discovery_boards").select("provider,identifier"),
-    supabaseAdmin.from("sourcing_sources").select("source_type,ats_identifier,enabled,validation_state,created_at,company_id,companies(created_at)"),
+    supabaseAdmin.from("sourcing_sources").select("source_type,ats_identifier,enabled,validation_state,created_at,company_id,approved_at,approval_notes,companies(created_at)"),
     supabaseAdmin.from("audit_logs").select("metadata,created_at").eq("action", "sourcing_greenhouse_pipeline_run").gte("created_at", since).order("created_at", { ascending: false }).limit(100),
     supabaseAdmin.from("sourcing_discovery_usage").select("search_count").eq("month_key", month).maybeSingle(),
     applyLiveBoardFilter(supabaseAdmin.from("jobs").select("id", { count: "exact", head: true }).eq("status", "published")),
@@ -51,6 +51,8 @@ export async function GET(request: Request) {
             enabled: row.enabled === true,
             validationState: String(row.validation_state || ""),
             createdAt: row.created_at,
+            approvedAt: row.approved_at,
+            approvalNotes: row.approval_notes,
             companyId: row.company_id,
             companyCreatedAt: (Array.isArray(row.companies) ? row.companies[0]?.created_at : row.companies?.created_at) || null,
           })),

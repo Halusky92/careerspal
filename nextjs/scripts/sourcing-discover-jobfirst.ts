@@ -1,6 +1,7 @@
 /**
  * Job-first discovery. Eight niche groups, four new boards each, basic Tavily
- * searches, existing ATS review. New sources stay disabled.
+ * searches, existing ATS review. A new qualifying board can be enabled.
+ * An existing source is left unchanged. Set DISCOVERY_AUTO_APPROVE=0 to stop.
  *
  *   npx tsx scripts/sourcing-discover-jobfirst.ts --jobfirst --read-only
  *   npx tsx scripts/sourcing-discover-jobfirst.ts --jobfirst --staging-candidates
@@ -27,6 +28,7 @@ import {
   type PhraseState,
 } from "../lib/sourcing/discovery/jobfirst";
 import { reviewDiscoveryLead, toPendingSourceRow, type DiscoveryFetcher, type DiscoveryReview } from "../lib/sourcing/discovery/review";
+import { autoApprovalForNewSource, discoveryAutoApproveEnabled } from "../lib/sourcing/discovery/autoApprove";
 
 const ATS_GAP_MS = 700;
 const TIMEOUT_MS = 25_000;
@@ -244,7 +246,7 @@ async function main() {
     }
     if (sb) {
       const companyId = name ? await ensureCompany(sb, name) : null;
-      const wrote = await ensureDisabledSource(sb, { ...review, companyName }, companyId);
+      const wrote = await ensureSource(sb, { ...review, companyName }, companyId, (production || productionDaily) && discoveryAutoApproveEnabled());
       if (wrote) savedSources += 1;
     }
   }
@@ -285,7 +287,7 @@ async function ensureCompany(sb: SupabaseClient, name: string) {
   return data.id as string;
 }
 
-async function ensureDisabledSource(sb: SupabaseClient, review: DiscoveryReview, companyId: string | null) {
+async function ensureSource(sb: SupabaseClient, review: DiscoveryReview, companyId: string | null, autoApprove: boolean) {
   const row = toPendingSourceRow(review);
   if (!row) return false;
   const { data: existing, error: readError } = await sb
@@ -296,8 +298,41 @@ async function ensureDisabledSource(sb: SupabaseClient, review: DiscoveryReview,
     .maybeSingle();
   if (readError) throw new Error(readError.message);
   if (existing?.id) return false;
-  const { error } = await sb.from("sourcing_sources").insert({ ...row, company_id: companyId, enabled: false });
+  const approval = autoApprovalForNewSource({
+    alreadySaved: false,
+    autoApproveEnabled: autoApprove,
+    decision: review.decision,
+    qualifyingJobs: review.qualifyingJobs,
+  });
+  const approvedAt = new Date().toISOString();
+  const { error } = await sb.from("sourcing_sources").insert(
+    approval.approve
+      ? {
+          ...row,
+          company_id: companyId,
+          enabled: true,
+          validation_state: "allowed",
+          approval_decision: "approved_as_official_ats",
+          approved_at: approvedAt,
+          approval_notes: `auto: ${approval.title}`,
+        }
+      : { ...row, company_id: companyId, enabled: false },
+  );
   if (error) throw new Error(error.message);
+  if (!approval.approve) return true;
+  const { error: auditError } = await sb.from("audit_logs").insert({
+    actor_id: null,
+    action: "sourcing_discovery_auto_approve",
+    metadata: {
+      provider: row.source_type,
+      identifier: row.ats_identifier,
+      title: approval.title,
+      applyUrl: approval.applyUrl,
+      salary: approval.salary,
+      approvedAt,
+    },
+  });
+  if (auditError) throw new Error(auditError.message);
   return true;
 }
 
