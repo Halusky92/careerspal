@@ -3,8 +3,9 @@ import { officialBoardUrl, type OfficialBoard } from "./atsLinks";
 import { validateSourceUrl } from "../validator";
 import type { DiscoveryReview } from "./review";
 
-/** Prepared cadence. It is not registered in vercel.json. */
-export const DISCOVERY_CADENCE = "0 9 * * 1,3,5";
+/** Prepared daily cadence. It is not registered until this branch is approved. */
+export const DISCOVERY_CADENCE = "0 9 * * *";
+export const DAILY_SEARCH_CAP = 8;
 export const MONTHLY_SEARCH_CAP = 250;
 export const BOARDS_PER_GROUP = 4;
 export const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
@@ -94,7 +95,20 @@ export type PhraseState = {
   variantIndex: number;
   zeroNewStreak: number;
   cooledUntil: string | null;
+  updatedAt?: string | null;
 };
+
+export function rotateDiscoveryGroups<T>(groups: readonly T[], now: Date): T[] {
+  if (groups.length < 2) return [...groups];
+  const start = Math.floor(now.getTime() / 86_400_000) % groups.length;
+  return [...groups.slice(start), ...groups.slice(0, start)];
+}
+
+export function sameUtcDay(iso: string | null | undefined, now: Date) {
+  if (!iso) return false;
+  const then = new Date(iso);
+  return !Number.isNaN(then.getTime()) && then.toISOString().slice(0, 10) === now.toISOString().slice(0, 10);
+}
 
 export type SearchHit = { url: string; title: string };
 
@@ -188,6 +202,8 @@ export async function runJobFirstDiscovery(args: {
   cap?: number;
   maxSearches?: number;
   maxBoards?: number;
+  groups?: typeof DISCOVERY_GROUPS;
+  oncePerDay?: boolean;
   claim?: () => Promise<boolean>;
   onGroup?: (groupId: string, update: PhraseState | null, info: { phrase: string | null; boards: number; qualifying: number; skipped: string }) => Promise<void>;
 }) {
@@ -200,11 +216,15 @@ export async function runJobFirstDiscovery(args: {
   let reviewed = 0;
   let stopped: string | null = null;
 
-  for (const group of DISCOVERY_GROUPS) {
+  for (const group of args.groups ?? DISCOVERY_GROUPS) {
     if (!stopped && typeof args.maxSearches === "number" && searches >= args.maxSearches) stopped = "search_cap";
     if (!stopped && typeof args.maxBoards === "number" && reviewed >= args.maxBoards) stopped = "board_cap";
     if (stopped) {
       groups.push({ id: group.id, phrase: null, boards: 0, qualifying: 0, skipped: stopped });
+      continue;
+    }
+    if (args.oncePerDay && sameUtcDay(args.phrases[group.id]?.updatedAt, args.now)) {
+      groups.push({ id: group.id, phrase: null, boards: 0, qualifying: 0, skipped: "already_today" });
       continue;
     }
     const picked = phraseForGroup(group.phrases, args.phrases[group.id], args.now);
