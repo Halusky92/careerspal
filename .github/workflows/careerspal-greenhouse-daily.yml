@@ -2,12 +2,12 @@ name: CareersPal - Greenhouse daily pipeline
 
 # Local schedule only. Do not merge until the post-midnight refresh is approved.
 # 06:15 UTC refreshes boards, then evaluates and publishes.
-# 16:15 UTC enriches salaries, then evaluates and publishes.
+# 07:15 UTC enriches salaries, then evaluates and publishes.
 # A board already fetched today is not fetched again.
 on:
   schedule:
     - cron: "15 6 * * *"
-    - cron: "15 16 * * *"
+    - cron: "15 7 * * *"
   workflow_dispatch:
     inputs:
       mode:
@@ -45,7 +45,7 @@ jobs:
           fi
           if [ -n "$MODE_INPUT" ]; then
             MODE="$MODE_INPUT"
-          elif [ "$EVENT_SCHEDULE" = "15 16 * * *" ]; then
+          elif [ "$EVENT_SCHEDULE" = "15 7 * * *" ]; then
             MODE="salary"
           else
             MODE="refresh"
