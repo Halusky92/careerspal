@@ -44,13 +44,6 @@ export default function SourcingOverviewSection() {
   }, [accessToken]);
 
   const windows = overview?.windows;
-  const rows = windows
-    ? [
-        ["Today", windows.today],
-        ["7 days", windows.days7],
-        ["30 days", windows.days30],
-      ]
-    : [];
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4">
@@ -60,20 +53,27 @@ export default function SourcingOverviewSection() {
       {!overview && !error ? <p className="mt-3 text-sm text-slate-500">Loading…</p> : null}
       {overview ? (
         <div className="mt-3 space-y-3 text-sm">
-          <div className="grid grid-cols-3 gap-2">
-            {rows.map(([label, counts]) => {
-              const item = counts as WindowCounts;
-              return (
-                <div key={String(label)} className="rounded-lg bg-slate-50 px-3 py-2">
+          {windows ? (
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  ["Today", windows.today],
+                  ["7 days", windows.days7],
+                  ["30 days", windows.days30],
+                ] as Array<[string, WindowCounts]>
+              ).map(([label, item]) => (
+                <div key={label} className="rounded-lg bg-slate-50 px-3 py-2">
                   <div className="text-xs text-slate-400">{label}</div>
                   <div className="mt-1 text-slate-700">{cell(item.companies)} companies</div>
                   <div className="text-slate-700">{cell(item.sources)} ATS sources</div>
                   <div className="text-slate-700">{cell(item.published)} published</div>
                   <div className="text-slate-700">{cell(item.closed)} closed</div>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-500">Period counts are unavailable.</p>
+          )}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <div><div className="text-xs text-slate-400">Boards seen</div><div className="font-medium">{cell(overview.discoveredBoards)}</div></div>
             <div><div className="text-xs text-slate-400">Waiting review</div><div className="font-medium">{cell(overview.pendingReview)}</div></div>
