@@ -1,0 +1,31 @@
+name: CareersPal - Discovery daily
+
+# Do not merge until the daily discovery schedule is approved.
+# 09:00 UTC searches one rotated pass of all 8 categories.
+# At most 8 searches per day. The ledger stops the run at 250 for the month.
+# New sources stay disabled. This workflow is inactive until it reaches main.
+on:
+  schedule:
+    - cron: "0 9 * * *"
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: nextjs/package-lock.json
+      - name: Install
+        working-directory: nextjs
+        run: npm ci
+      - name: Run one daily discovery pass
+        working-directory: nextjs
+        env:
+          SUPABASE_URL: ${{ secrets.CAREERSPAL_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CAREERSPAL_SUPABASE_SERVICE_ROLE_KEY }}
+          TAVILY_API_KEY: ${{ secrets.CAREERSPAL_TAVILY_API_KEY }}
+        run: npx tsx scripts/sourcing-discover-jobfirst.ts --jobfirst --production-daily

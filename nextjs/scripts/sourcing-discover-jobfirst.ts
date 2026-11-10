@@ -7,9 +7,10 @@
  *   npx tsx scripts/sourcing-discover-jobfirst.ts --jobfirst --production-candidates
  *
  * --staging-candidates writes only to the staging project and refuses production.
- * --production-candidates is the only production entry. It allows at most 8 searches
+ * --production-candidates is the one-shot production entry. It allows at most 8 searches
  * and 4 new sources, inserts them disabled, and does not publish jobs.
- * The 3x weekly cadence is DISCOVERY_CADENCE and is not registered as a cron.
+ * --production-daily is the daily entry. It rotates all 8 groups, allows at most 8
+ * searches, and stops when the monthly ledger reaches 250. It is not scheduled yet.
  */
 import fs from "fs";
 import path from "path";
@@ -17,8 +18,10 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   assertProductionDatabaseUrl,
   assertStagingDatabaseUrl,
+  DAILY_SEARCH_CAP,
   DISCOVERY_DOMAINS,
   DISCOVERY_GROUPS,
+  rotateDiscoveryGroups,
   runJobFirstDiscovery,
   seedBoardKeys,
   type PhraseState,
@@ -30,9 +33,10 @@ const TIMEOUT_MS = 25_000;
 const readOnly = process.argv.includes("--read-only");
 const staging = process.argv.includes("--staging-candidates");
 const production = process.argv.includes("--production-candidates");
+const productionDaily = process.argv.includes("--production-daily");
 
-if (!process.argv.includes("--jobfirst") || [readOnly, staging, production].filter(Boolean).length !== 1) {
-  console.error("REFUSED. Pass --jobfirst and exactly one of --read-only, --staging-candidates, or --production-candidates.");
+if (!process.argv.includes("--jobfirst") || [readOnly, staging, production, productionDaily].filter(Boolean).length !== 1) {
+  console.error("REFUSED. Pass --jobfirst and exactly one of --read-only, --staging-candidates, --production-candidates, or --production-daily.");
   process.exit(2);
 }
 
@@ -138,10 +142,10 @@ function stagingClient() {
 }
 
 function productionClient() {
-  const env = loadEnv(path.join(process.cwd(), ".env.local"));
-  const url = env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const file = loadEnv(path.join(process.cwd(), ".env.local"));
+  const url = file.SUPABASE_URL || file.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   assertProductionDatabaseUrl(url);
-  const key = env.SUPABASE_SERVICE_ROLE_KEY || "";
+  const key = file.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
   if (!key) throw new Error("REFUSED missing production service role");
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
@@ -152,7 +156,7 @@ async function main() {
     console.error("MISSING TAVILY_API_KEY in nextjs/.env.local");
     process.exit(2);
   }
-  const sb = staging ? stagingClient() : production ? productionClient() : null;
+  const sb = staging ? stagingClient() : production || productionDaily ? productionClient() : null;
   const known = seedBoardKeys();
   const phrases: Record<string, PhraseState | undefined> = {};
   if (sb) {
@@ -171,6 +175,7 @@ async function main() {
         variantIndex: row.variant_index || 0,
         zeroNewStreak: row.zero_new_streak || 0,
         cooledUntil: row.cooled_until,
+        updatedAt: row.updated_at,
       };
     }
   }
@@ -184,12 +189,16 @@ async function main() {
   const fetcher = atsFetcher();
   const reviews: DiscoveryReview[] = [];
   const started = Date.now();
+  const now = new Date();
   const result = await runJobFirstDiscovery({
-    now: new Date(),
+    now,
     monthCount,
     phrases,
     known,
     ...(production ? { maxSearches: 8, maxBoards: 4 } : {}),
+    ...(productionDaily
+      ? { maxSearches: DAILY_SEARCH_CAP, groups: rotateDiscoveryGroups(DISCOVERY_GROUPS, now), oncePerDay: true }
+      : {}),
     claim: sb
       ? async () => {
           const { data, error } = await sb.rpc("claim_discovery_search", { p_month: month, p_cap: 250 });
@@ -248,8 +257,9 @@ async function main() {
       .eq("month_key", month);
   }
   const seconds = Math.round((Date.now() - started) / 1000);
+  const mode = staging ? "staging-candidates" : production ? "production-candidates" : productionDaily ? "production-daily" : "read-only";
   console.log(
-    `RESULT mode=${staging ? "staging-candidates" : "read-only"} searches=${result.searches} groups=${result.groups.length} pending_sources=${result.pending.length} saved_sources=${savedSources} qualifying_jobs=${result.pending.reduce((sum, review) => sum + review.qualifyingJobCount, 0)} reviewed=${reviews.length} seconds=${seconds} published=0 enabled=0`,
+    `RESULT mode=${mode} searches=${result.searches} groups=${result.groups.length} pending_sources=${result.pending.length} saved_sources=${savedSources} qualifying_jobs=${result.pending.reduce((sum, review) => sum + review.qualifyingJobCount, 0)} reviewed=${reviews.length} seconds=${seconds} published=0 enabled=0`,
   );
 }
 
