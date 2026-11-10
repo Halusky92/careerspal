@@ -1,9 +1,12 @@
 name: CareersPal - Greenhouse daily pipeline
 
-# Schedule is intentionally absent. The first production merge must not start
-# automatic sourcing. Add the 06:15 and 16:15 UTC crons only after one manual
-# refresh and one manual salary run have been checked.
+# Local schedule only. Do not merge until a real refresh has processed at least one source.
+# Both times run refresh. A board already fetched today is left alone.
+# Salary stays on workflow_dispatch.
 on:
+  schedule:
+    - cron: "15 6 * * *"
+    - cron: "15 16 * * *"
   workflow_dispatch:
     inputs:
       mode:
@@ -14,6 +17,10 @@ on:
         options:
           - refresh
           - salary
+
+concurrency:
+  group: careerspal-greenhouse-pipeline
+  cancel-in-progress: false
 
 jobs:
   run-pipeline:
