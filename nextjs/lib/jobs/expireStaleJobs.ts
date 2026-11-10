@@ -39,6 +39,7 @@ async function loadSourcedJobIds(sb: SupabaseClient<any, "public", any>) {
     const { data, error } = await sb
       .from("sourcing_sourced_job_candidates")
       .select("published_job_id")
+      .eq("publish_status", "auto_published")
       .not("published_job_id", "is", null)
       .range(offset, offset + pageSize - 1);
     if (error) break;

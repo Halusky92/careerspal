@@ -124,7 +124,8 @@ export function isSourcedListing(row: {
   sourcedJobIds?: Set<string>;
 }) {
   if (isSourcedOrigin(row.origin)) return true;
-  if (row.id && row.sourcedJobIds?.has(row.id)) return true;
+  if (row.origin && !isSourcedOrigin(row.origin)) return false;
+  if (row.id && row.sourcedJobIds?.has(row.id) && applyUrlLooksSourcedAts(row.apply_url)) return true;
   const paid =
     (typeof row.plan_price === "number" && row.plan_price > 0) ||
     row.stripe_payment_status === "paid" ||

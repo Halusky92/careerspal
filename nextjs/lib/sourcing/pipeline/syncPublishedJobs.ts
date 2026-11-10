@@ -8,7 +8,7 @@ import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
 import { isOnNicheJob } from "../../nicheScope";
 import { inferWorkMode } from "../../workMode";
 import { resolveCategoryHub } from "../../categories";
-import { probeApplyUrl } from "../../jobs/applyLinkHealth";
+import { applyUrlLooksSourcedAts, probeApplyUrl } from "../../jobs/applyLinkHealth";
 import { isSourcedJobOrigin, sourcedOriginFromSourceType } from "../origin";
 
 type AdminSb = SupabaseClient<any, "public", any>;
@@ -222,10 +222,15 @@ export async function syncPublishedSourcedJobs(
       status?: string | null;
     } | null;
     if (!jobRow?.id) continue;
-    if (isPaidEmployerJob(jobRow)) {
+    if (isPaidEmployerJob(jobRow) || jobRow.plan_price === 0 || jobRow.stripe_payment_status === "founding") {
       skippedPaid += 1;
       continue;
     }
+    const atsShape =
+      isSourcedJobOrigin(jobRow.origin) ||
+      applyUrlLooksSourcedAts(jobRow.apply_url) ||
+      applyUrlLooksSourcedAts(candidate.apply_url);
+    if (!atsShape) continue;
 
     if (jobRow.content_hash && candidate.payload_hash && jobRow.content_hash === candidate.payload_hash) {
       await patchJob(sb, jobRow.id, { last_seen_at: now });

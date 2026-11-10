@@ -24,6 +24,22 @@ test("closed job pages are detected from copy", () => {
   assert.equal(isClosedApplyCopy("Join our operations team."), false);
 });
 
+test("an empty price or owner does not make an employer apply link sourced", () => {
+  assert.equal(
+    isSourcedListing({ apply_url: "https://example.com/employer-role", plan_price: null }),
+    false,
+  );
+  assert.equal(
+    isSourcedListing({
+      id: "employer-job",
+      apply_url: "https://example.com/employer-role",
+      plan_price: null,
+      sourcedJobIds: new Set(["employer-job"]),
+    }),
+    false,
+  );
+});
+
 test("greenhouse and ashby origins count as sourced", () => {
   assert.equal(isSourcedOrigin("greenhouse"), true);
   assert.equal(isSourcedOrigin("ashby"), true);

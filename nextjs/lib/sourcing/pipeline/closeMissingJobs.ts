@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isPaidEmployerJob, sourcedPublishBlockers, applyUrlWouldDuplicate, type CandidateRow } from "./syncPublishedJobs";
 import { assessBoardFetchHealth, boardHealthReason, planBoardClosures, type BoardListing } from "../boardHealth";
 import { isSourcedJobOrigin } from "../origin";
-import { probeApplyUrl } from "../../jobs/applyLinkHealth";
+import { applyUrlLooksSourcedAts, probeApplyUrl } from "../../jobs/applyLinkHealth";
 
 type AdminSb = SupabaseClient<any, "public", any>;
 
@@ -10,6 +10,7 @@ type BoardJobRow = {
   id: string;
   status: string | null;
   origin?: string | null;
+  apply_url?: string | null;
   plan_price?: number | null;
   stripe_payment_status?: string | null;
 };
@@ -18,6 +19,7 @@ type BoardJobRow = {
 export function boardCloseProtectsEmployer(
   job: {
     origin?: string | null;
+    apply_url?: string | null;
     plan_price?: number | null;
     stripe_payment_status?: string | null;
   },
@@ -29,7 +31,9 @@ export function boardCloseProtectsEmployer(
   if (isPaidEmployerJob(job)) return true;
   if (job.plan_price === 0 || job.stripe_payment_status === "founding") return true;
   if (job.origin && !isSourcedJobOrigin(job.origin)) return true;
-  return false;
+  if (isSourcedJobOrigin(job.origin)) return false;
+  if (publishStatus === "auto_published" && applyUrlLooksSourcedAts(job.apply_url)) return false;
+  return true;
 }
 
 async function loadJobsForBoardClose(sb: AdminSb, jobIds: string[]) {
@@ -37,11 +41,11 @@ async function loadJobsForBoardClose(sb: AdminSb, jobIds: string[]) {
   let paymentKnown = true;
   for (let i = 0; i < jobIds.length; i += 200) {
     const slice = jobIds.slice(i, i + 200);
-    const first = await sb.from("jobs").select("id,status,origin,plan_price,stripe_payment_status").in("id", slice);
+    const first = await sb.from("jobs").select("id,status,origin,apply_url,plan_price,stripe_payment_status").in("id", slice);
     let data = ((first.data as BoardJobRow[] | null) || []) as BoardJobRow[];
     let error = first.error as { message?: string } | null;
     if (error && /origin/i.test(error.message || "")) {
-      const second = await sb.from("jobs").select("id,status,plan_price,stripe_payment_status").in("id", slice);
+      const second = await sb.from("jobs").select("id,status,apply_url,plan_price,stripe_payment_status").in("id", slice);
       data = ((second.data as BoardJobRow[] | null) || []) as BoardJobRow[];
       error = second.error;
     }
@@ -168,11 +172,21 @@ export async function closeJobsMissingFromBoard(sb: AdminSb, ingest: IngestClose
       continue;
     }
     if (action.type === "close") {
-      await sb
+      const closedUpdate = await sb
         .from("jobs")
         .update({ status: "closed", unpublished_at: now })
         .eq("id", action.jobId)
         .eq("status", "published");
+      if (closedUpdate.error && /check constraint|status/i.test(closedUpdate.error.message || "")) {
+        const pausedUpdate = await sb
+          .from("jobs")
+          .update({ status: "paused", unpublished_at: now })
+          .eq("id", action.jobId)
+          .eq("status", "published");
+        if (pausedUpdate.error) throw new Error(pausedUpdate.error.message);
+      } else if (closedUpdate.error) {
+        throw new Error(closedUpdate.error.message);
+      }
       await sb
         .from("sourcing_sourced_job_candidates")
         .update({
@@ -193,7 +207,7 @@ export async function closeJobsMissingFromBoard(sb: AdminSb, ingest: IngestClose
           .from("jobs")
           .update({ status: "pending_review", unpublished_at: now, last_seen_at: now })
           .eq("id", action.jobId)
-          .in("status", ["closed", "archived"]);
+          .in("status", ["closed", "archived", "paused"]);
         await sb
           .from("sourcing_sourced_job_candidates")
           .update({
@@ -211,7 +225,7 @@ export async function closeJobsMissingFromBoard(sb: AdminSb, ingest: IngestClose
         .from("jobs")
         .update({ status: "published", unpublished_at: null, last_seen_at: now })
         .eq("id", action.jobId)
-        .in("status", ["closed", "archived"]);
+        .in("status", ["closed", "archived", "paused"]);
       await sb
         .from("sourcing_sourced_job_candidates")
         .update({

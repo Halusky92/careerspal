@@ -87,7 +87,7 @@ export function planBoardClosures(args: {
   for (const listing of args.listings) {
     if (listing.paidEmployer) continue;
     if (seen.has(String(listing.externalJobId))) {
-      if (listing.closedByBoard && (listing.jobStatus === "closed" || listing.jobStatus === "archived")) {
+      if (listing.closedByBoard && (listing.jobStatus === "closed" || listing.jobStatus === "archived" || listing.jobStatus === "paused")) {
         actions.push({ type: "reopen", candidateId: listing.candidateId, jobId: listing.jobId, nextStreak: 0 });
       } else {
         actions.push({ type: "seen", candidateId: listing.candidateId, jobId: listing.jobId, nextStreak: 0 });

@@ -276,7 +276,13 @@ test("a missing origin column still closes an auto-published ATS job", async () 
           publish_notes: null,
         },
       ],
-      jobs: [{ id: "j-src", status: "published", plan_price: null, stripe_payment_status: null }],
+      jobs: [{
+        id: "j-src",
+        status: "published",
+        plan_price: null,
+        stripe_payment_status: null,
+        apply_url: "https://boards.greenhouse.io/acme/jobs/1",
+      }],
       updates,
     }) as never,
     {
@@ -295,7 +301,21 @@ test("a missing origin column still closes an auto-published ATS job", async () 
 test("missing origin does not turn a duplicate or an employer listing into an ATS close", () => {
   assert.equal(
     boardCloseProtectsEmployer({ plan_price: null, stripe_payment_status: null }, "auto_published"),
+    true,
+  );
+  assert.equal(
+    boardCloseProtectsEmployer(
+      { plan_price: null, stripe_payment_status: null, apply_url: "https://boards.greenhouse.io/acme/jobs/1" },
+      "auto_published",
+    ),
     false,
+  );
+  assert.equal(
+    boardCloseProtectsEmployer(
+      { plan_price: null, stripe_payment_status: null, apply_url: "https://example.com/employer-role" },
+      "auto_published",
+    ),
+    true,
   );
   assert.equal(
     boardCloseProtectsEmployer({ plan_price: null, stripe_payment_status: null }, "skipped_duplicate"),
@@ -315,6 +335,11 @@ test("missing origin does not turn a duplicate or an employer listing into an AT
     true,
   );
   assert.equal(boardCloseProtectsEmployer({ plan_price: null }, "auto_published", false), true);
+  assert.equal(
+    boardCloseProtectsEmployer({ plan_price: null, stripe_payment_status: null }, "not_published"),
+    true,
+  );
+  assert.equal(boardCloseProtectsEmployer({ plan_price: null, stripe_payment_status: null }), true);
 });
 
 test("a returned role that fails salary-first stays unpublished", async () => {
