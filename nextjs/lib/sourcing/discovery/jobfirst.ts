@@ -202,7 +202,7 @@ export async function runJobFirstDiscovery(args: {
   cap?: number;
   maxSearches?: number;
   maxBoards?: number;
-  groups?: typeof DISCOVERY_GROUPS;
+  groups?: ReadonlyArray<{ id: string; phrases: readonly string[] }>;
   oncePerDay?: boolean;
   claim?: () => Promise<boolean>;
   onGroup?: (groupId: string, update: PhraseState | null, info: { phrase: string | null; boards: number; qualifying: number; skipped: string }) => Promise<void>;
