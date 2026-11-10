@@ -1,8 +1,9 @@
 name: CareersPal - Greenhouse daily pipeline
 
-# Local schedule only. Do not merge until a real refresh has processed at least one source.
-# Both times run refresh. A board already fetched today is left alone.
-# Salary stays on workflow_dispatch.
+# Local schedule only. Do not merge until the post-midnight refresh is approved.
+# 06:15 UTC refreshes boards, then evaluates and publishes.
+# 16:15 UTC enriches salaries, then evaluates and publishes.
+# A board already fetched today is not fetched again.
 on:
   schedule:
     - cron: "15 6 * * *"
@@ -32,6 +33,7 @@ jobs:
           PIPELINE_URL: ${{ secrets.CAREERSPAL_PIPELINE_URL }}
           CRON_SECRET: ${{ secrets.CAREERSPAL_CRON_SECRET }}
           MODE_INPUT: ${{ github.event.inputs.mode }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
         run: |
           if [ -z "$PIPELINE_URL" ]; then
             echo "Missing secret CAREERSPAL_PIPELINE_URL (e.g. https://www.careerspal.com/api/admin/sourcing/pipeline/greenhouse)"
@@ -41,7 +43,13 @@ jobs:
             echo "Missing secret CAREERSPAL_CRON_SECRET (must match Vercel env SOURCING_CRON_SECRET)"
             exit 1
           fi
-          MODE="${MODE_INPUT:-refresh}"
+          if [ -n "$MODE_INPUT" ]; then
+            MODE="$MODE_INPUT"
+          elif [ "$EVENT_SCHEDULE" = "15 16 * * *" ]; then
+            MODE="salary"
+          else
+            MODE="refresh"
+          fi
           echo "Running $MODE slices"
           for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
             echo "slice $i"
@@ -61,4 +69,5 @@ jobs:
               exit 0
             fi
           done
-          echo "slice cap reached"
+          echo "slice cap reached; queue not empty"
+          exit 1
