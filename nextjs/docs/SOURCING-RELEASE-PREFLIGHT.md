@@ -15,7 +15,7 @@ Not in this release: Tavily Discovery, discovery SQL, Premium limits, Stripe sub
 
 `20261109120100_sourcing_close_from_board.sql` adds `missing_board_streak` (default 0) and `missing_board_streak_at`. Re-running it does not reset an existing streak. It does not delete jobs.
 
-Production does not have `jobs.origin`. The earlier draft rewrote that column for Ashby and Lever rows. That statement is not in these files. Employer screens still treat only `greenhouse` as sourced, so an origin backfill belongs in a later change together with those screens.
+Production does not have `jobs.origin`. The earlier draft rewrote that column for Ashby and Lever rows. That statement is not in these files. Publish, freshness, and close-from-board keep working without it. An auto-published unpaid ATS job can still be updated or closed. A paid listing, a Start pack listing (`plan_price` 0), a founding listing, an explicit non-ATS origin, or a duplicate link to an existing job cannot. Employer screens still treat only `greenhouse` as sourced. Adding the column and switching those screens belongs in a later change, not this release.
 
 Staging already has the columns. Its migration history records versions `20261109120000` and `20261109120100`. Production history does not, and must not until this SQL is approved.
 

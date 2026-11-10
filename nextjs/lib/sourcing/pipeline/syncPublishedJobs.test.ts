@@ -4,6 +4,7 @@ import {
   applyUrlWouldDuplicate,
   buildSourcedJobContentPatch,
   isPaidEmployerJob,
+  omitMissingJobColumns,
   sourcedPublishBlockers,
 } from "./syncPublishedJobs";
 import { sourcedOriginFromSourceType } from "../origin";
@@ -111,8 +112,23 @@ test("ATS source types keep distinct origins", () => {
   }
 });
 
+test("a missing origin column is dropped without dropping the rest of the patch", () => {
+  const patch = buildSourcedJobContentPatch(base, {
+    applyUrl: base.apply_url || "",
+    lastSeenAt: "2026-11-09T12:00:00.000Z",
+  });
+  const next = omitMissingJobColumns(patch, 'column jobs.origin does not exist');
+  assert.equal(next?.origin, undefined);
+  assert.equal(next?.content_hash, "abc");
+  assert.equal(next?.last_seen_at, "2026-11-09T12:00:00.000Z");
+  assert.equal(next?.apply_url, base.apply_url);
+  assert.equal(omitMissingJobColumns(patch, "permission denied"), null);
+});
+
 test("paid employer listings are skipped; sourced rows are not treated as paid", () => {
   assert.equal(isPaidEmployerJob({ origin: "employer", plan_price: 79, stripe_payment_status: "paid" }), true);
   assert.equal(isPaidEmployerJob({ origin: "ashby", plan_price: 0, stripe_payment_status: null }), false);
   assert.equal(isPaidEmployerJob({ origin: "greenhouse", plan_price: null, stripe_payment_status: null }), false);
+  assert.equal(isPaidEmployerJob({ plan_price: null, stripe_payment_status: null }), false);
+  assert.equal(isPaidEmployerJob({ plan_price: 0, stripe_payment_status: "founding" }), false);
 });

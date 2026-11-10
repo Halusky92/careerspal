@@ -132,16 +132,52 @@ export function sourcedPublishBlockers(candidate: CandidateRow, scoreTotal: numb
   return reasons;
 }
 
+export function omitMissingJobColumns(patch: Record<string, unknown>, message: string) {
+  const next = { ...patch };
+  let removed = false;
+  for (const column of ["origin", "content_hash", "last_seen_at"] as const) {
+    if (column in next && new RegExp(column, "i").test(message)) {
+      delete next[column];
+      removed = true;
+    }
+  }
+  return removed ? next : null;
+}
+
 async function patchJob(sb: AdminSb, jobId: string, patch: Record<string, unknown>) {
-  const first = await sb.from("jobs").update(patch).eq("id", jobId);
-  if (!first.error) return;
+  let payload = { ...patch };
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const result = await sb.from("jobs").update(payload).eq("id", jobId);
+    if (!result.error) return;
+    const next = omitMissingJobColumns(payload, result.error.message || "");
+    if (!next) throw new Error(result.error.message || "job_patch_failed");
+    payload = next;
+  }
+  throw new Error("job_patch_failed");
+}
+
+async function loadJobForSync(sb: AdminSb, jobId: string) {
+  const first = await sb
+    .from("jobs")
+    .select("id,origin,plan_price,stripe_payment_status,apply_url,content_hash,status")
+    .eq("id", jobId)
+    .maybeSingle();
+  if (!first.error) return first.data;
   const message = first.error.message || "";
-  if (!/content_hash|last_seen_at|origin/i.test(message)) throw new Error(message);
-  const fallback = { ...patch };
-  delete fallback.content_hash;
-  delete fallback.last_seen_at;
-  const second = await sb.from("jobs").update(fallback).eq("id", jobId);
-  if (second.error) throw new Error(second.error.message);
+  if (!/origin|content_hash/i.test(message)) return null;
+  const second = await sb
+    .from("jobs")
+    .select("id,plan_price,stripe_payment_status,apply_url,content_hash,status")
+    .eq("id", jobId)
+    .maybeSingle();
+  if (!second.error) return second.data;
+  if (!/content_hash/i.test(second.error.message || "")) return null;
+  const third = await sb
+    .from("jobs")
+    .select("id,plan_price,stripe_payment_status,apply_url,status")
+    .eq("id", jobId)
+    .maybeSingle();
+  return third.error ? null : third.data;
 }
 
 export async function syncPublishedSourcedJobs(
@@ -175,11 +211,7 @@ export async function syncPublishedSourcedJobs(
   for (const candidate of rows) {
     const jobId = candidate.published_job_id;
     if (!jobId) continue;
-    const { data: job } = await sb
-      .from("jobs")
-      .select("id,origin,plan_price,stripe_payment_status,apply_url,content_hash,status")
-      .eq("id", jobId)
-      .maybeSingle();
+    const job = await loadJobForSync(sb, jobId);
     const jobRow = job as {
       id: string;
       origin?: string | null;

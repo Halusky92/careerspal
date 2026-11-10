@@ -6,6 +6,52 @@ import { probeApplyUrl } from "../../jobs/applyLinkHealth";
 
 type AdminSb = SupabaseClient<any, "public", any>;
 
+type BoardJobRow = {
+  id: string;
+  status: string | null;
+  origin?: string | null;
+  plan_price?: number | null;
+  stripe_payment_status?: string | null;
+};
+
+/** Missing jobs.origin is not an employer listing. Only a real employer signal is. */
+export function boardCloseProtectsEmployer(
+  job: {
+    origin?: string | null;
+    plan_price?: number | null;
+    stripe_payment_status?: string | null;
+  },
+  publishStatus?: string | null,
+  paymentKnown = true,
+) {
+  if (!paymentKnown) return true;
+  if (publishStatus && publishStatus !== "auto_published") return true;
+  if (isPaidEmployerJob(job)) return true;
+  if (job.plan_price === 0 || job.stripe_payment_status === "founding") return true;
+  if (job.origin && !isSourcedJobOrigin(job.origin)) return true;
+  return false;
+}
+
+async function loadJobsForBoardClose(sb: AdminSb, jobIds: string[]) {
+  const jobs: BoardJobRow[] = [];
+  let paymentKnown = true;
+  for (let i = 0; i < jobIds.length; i += 200) {
+    const slice = jobIds.slice(i, i + 200);
+    const first = await sb.from("jobs").select("id,status,origin,plan_price,stripe_payment_status").in("id", slice);
+    let page = first;
+    if (first.error && /origin/i.test(first.error.message || "")) {
+      page = await sb.from("jobs").select("id,status,plan_price,stripe_payment_status").in("id", slice);
+    }
+    if (page.error && /plan_price|stripe_payment_status/i.test(page.error.message || "")) {
+      paymentKnown = false;
+      page = await sb.from("jobs").select("id,status").in("id", slice);
+    }
+    if (page.error) throw new Error(page.error.message);
+    jobs.push(...(((page.data as BoardJobRow[] | null) || []) as BoardJobRow[]));
+  }
+  return { jobs, paymentKnown };
+}
+
 export type IngestCloseSignal = {
   sourceId: string;
   runId?: string | null;
@@ -74,20 +120,7 @@ export async function closeJobsMissingFromBoard(sb: AdminSb, ingest: IngestClose
   if (rows.length === 0) return empty;
 
   const jobIds = rows.map((row) => row.published_job_id).filter(Boolean) as string[];
-  const jobs: Array<{
-    id: string;
-    status: string | null;
-    origin?: string | null;
-    plan_price?: number | null;
-    stripe_payment_status?: string | null;
-  }> = [];
-  for (let i = 0; i < jobIds.length; i += 200) {
-    const { data } = await sb
-      .from("jobs")
-      .select("id,status,origin,plan_price,stripe_payment_status")
-      .in("id", jobIds.slice(i, i + 200));
-    jobs.push(...(((data as typeof jobs | null) || []) as typeof jobs));
-  }
+  const { jobs, paymentKnown } = await loadJobsForBoardClose(sb, jobIds);
   const jobMap = new Map(jobs.map((job) => [job.id, job]));
 
   const listings: BoardListing[] = [];
@@ -102,7 +135,7 @@ export async function closeJobsMissingFromBoard(sb: AdminSb, ingest: IngestClose
       streak: Number(row.missing_board_streak) || 0,
       jobStatus: job.status,
       closedByBoard: /closed_from_board/i.test(row.publish_notes || ""),
-      paidEmployer: isPaidEmployerJob(job) || !isSourcedJobOrigin(job.origin),
+      paidEmployer: boardCloseProtectsEmployer(job, row.publish_status, paymentKnown),
       lastMissAt: row.missing_board_streak_at || null,
     });
   }

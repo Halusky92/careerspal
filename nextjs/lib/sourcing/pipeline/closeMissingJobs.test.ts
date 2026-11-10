@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { closeJobsMissingFromBoard } from "./closeMissingJobs";
+import { boardCloseProtectsEmployer, closeJobsMissingFromBoard } from "./closeMissingJobs";
 
 type UpdateCall = { table: string; payload: Record<string, unknown> };
 
@@ -9,13 +9,15 @@ function fakeSb(opts: {
   candidatesError?: { message: string };
   candidates?: Array<Record<string, unknown>>;
   jobs?: Array<Record<string, unknown>>;
+  missingOrigin?: boolean;
   updates?: UpdateCall[];
 }) {
   const updates = opts.updates || [];
   return {
     from(table: string) {
+      let selected = "";
       const q: {
-        select: () => typeof q;
+        select: (cols?: string) => typeof q;
         eq: () => typeof q;
         not: () => typeof q;
         in: () => typeof q;
@@ -26,7 +28,10 @@ function fakeSb(opts: {
         update: (payload: Record<string, unknown>) => typeof q;
         then: (onFulfilled: (value: { data: unknown; error: unknown }) => unknown) => Promise<unknown>;
       } = {
-        select: () => q,
+        select: (cols?: string) => {
+          if (typeof cols === "string") selected = cols;
+          return q;
+        },
         eq: () => q,
         not: () => q,
         in: () => q,
@@ -52,6 +57,9 @@ function fakeSb(opts: {
             return Promise.resolve({ data: opts.candidates || [], error: null }).then(onFulfilled);
           }
           if (table === "jobs") {
+            if (opts.missingOrigin && selected.includes("origin")) {
+              return Promise.resolve({ data: null, error: { message: "column jobs.origin does not exist" } }).then(onFulfilled);
+            }
             return Promise.resolve({ data: opts.jobs || [], error: null }).then(onFulfilled);
           }
           return Promise.resolve({ data: [], error: null }).then(onFulfilled);
@@ -249,6 +257,64 @@ test("a board-closed job reopens when it returns, without rewriting history time
   assert.equal(jobUpdate?.payload.unpublished_at, null);
   const candidate = updates.find((u) => u.table === "sourcing_sourced_job_candidates");
   assert.match(String(candidate?.payload.publish_notes), /timestamp unchanged/i);
+});
+
+test("a missing origin column still closes an auto-published ATS job", async () => {
+  const updates: UpdateCall[] = [];
+  const out = await closeJobsMissingFromBoard(
+    fakeSb({
+      previousRuns: [{ id: "prev", fetched_count: 2 }],
+      missingOrigin: true,
+      candidates: [
+        {
+          id: "c-src",
+          external_job_id: "gone",
+          published_job_id: "j-src",
+          publish_status: "auto_published",
+          missing_board_streak: 1,
+          missing_board_streak_at: new Date(Date.now() - 13 * 60 * 60 * 1000).toISOString(),
+          publish_notes: null,
+        },
+      ],
+      jobs: [{ id: "j-src", status: "published", plan_price: null, stripe_payment_status: null }],
+      updates,
+    }) as never,
+    {
+      sourceId: "src-1",
+      runId: "run-now",
+      status: "success",
+      fetchedCount: 1,
+      externalIds: ["still-1"],
+    },
+  );
+  assert.equal(out.breaker, null);
+  assert.equal(out.closed, 1);
+  assert.equal(updates.filter((u) => u.table === "jobs" && u.payload.status === "closed").length, 1);
+});
+
+test("missing origin does not turn a duplicate or an employer listing into an ATS close", () => {
+  assert.equal(
+    boardCloseProtectsEmployer({ plan_price: null, stripe_payment_status: null }, "auto_published"),
+    false,
+  );
+  assert.equal(
+    boardCloseProtectsEmployer({ plan_price: null, stripe_payment_status: null }, "skipped_duplicate"),
+    true,
+  );
+  assert.equal(
+    boardCloseProtectsEmployer({ origin: "employer", plan_price: null, stripe_payment_status: null }, "auto_published"),
+    true,
+  );
+  assert.equal(
+    boardCloseProtectsEmployer({ origin: "ashby", plan_price: null, stripe_payment_status: null }, "auto_published"),
+    false,
+  );
+  assert.equal(boardCloseProtectsEmployer({ plan_price: 0, stripe_payment_status: null }, "auto_published"), true);
+  assert.equal(
+    boardCloseProtectsEmployer({ plan_price: 79, stripe_payment_status: "paid" }, "auto_published"),
+    true,
+  );
+  assert.equal(boardCloseProtectsEmployer({ plan_price: null }, "auto_published", false), true);
 });
 
 test("a returned role that fails salary-first stays unpublished", async () => {
