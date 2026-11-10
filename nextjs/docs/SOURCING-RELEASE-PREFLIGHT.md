@@ -9,25 +9,17 @@ Short pipeline slices, resume after a timeout, salary lookup before evaluation a
 
 Not in this release: Tavily Discovery, discovery SQL, Premium limits, Stripe subscriptions, and the `/jobs` search fix.
 
-## Migrations, not yet applied
+## Migrations, not yet applied to production
 
-`20261109_sourcing_freshness.sql` adds `last_seen_at` and `content_hash`. Re-running it does not overwrite a `last_seen_at` that is already set. It changes `jobs.origin` only from empty or `greenhouse` to `ashby` or `lever`, and only when that published job is already linked to an Ashby or Lever candidate. It does not change status, salary, company name, website, or logo.
+`20261109120000_sourcing_freshness.sql` adds `last_seen_at` and `content_hash`. Re-running it does not overwrite a `last_seen_at` that is already set. It does not change `jobs.origin`, status, salary, company name, website, or logo.
 
-`20261109_sourcing_close_from_board.sql` adds `missing_board_streak` (default 0) and `missing_board_streak_at`. Re-running it does not reset an existing streak. It does not delete jobs.
+`20261109120100_sourcing_close_from_board.sql` adds `missing_board_streak` (default 0) and `missing_board_streak_at`. Re-running it does not reset an existing streak. It does not delete jobs.
 
-The current production code ignores the new columns, so it can keep running after the migration and before the new deploy. The new code needs the columns, so the migration comes first.
+Production does not have `jobs.origin`. The earlier draft rewrote that column for Ashby and Lever rows. That statement is not in these files. Employer screens still treat only `greenhouse` as sourced, so an origin backfill belongs in a later change together with those screens.
 
-Check before, do not run until approved:
+Staging already has the columns. Its migration history records versions `20261109120000` and `20261109120100`. Production history does not, and must not until this SQL is approved.
 
-```sql
-select j.id, j.origin, c.source_type
-from public.jobs j
-join public.sourcing_sourced_job_candidates c on c.published_job_id = j.id
-where c.source_type in ('ashby', 'lever')
-  and coalesce(j.origin, 'greenhouse') = 'greenhouse';
-```
-
-Check after: that query returns no rows. Company count and published job count stay the same.
+The current production code ignores the new columns, so it can keep running after the migration and before the new deploy. The new code can also run before the columns exist, then persist streaks once they are added. Apply the SQL first so the first manual run can store them.
 
 ## Unavailable ATS
 
