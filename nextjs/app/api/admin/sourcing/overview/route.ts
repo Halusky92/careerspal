@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "../../../../../../lib/supabaseAdmin";
-import { getSupabaseProfile } from "../../../../../../lib/supabaseServerAuth";
-import { applyLiveBoardFilter } from "../../../../../../lib/liveBoard";
-import { buildSourcingOverview, type OverviewRun } from "../../../../../../lib/sourcing/sourcingOverview";
+import { supabaseAdmin } from "../../../../../lib/supabaseAdmin";
+import { getSupabaseProfile } from "../../../../../lib/supabaseServerAuth";
+import { applyLiveBoardFilter } from "../../../../../lib/liveBoard";
+import { buildSourcingOverview, type OverviewRun } from "../../../../../lib/sourcing/sourcingOverview";
 
 export const runtime = "nodejs";
 
