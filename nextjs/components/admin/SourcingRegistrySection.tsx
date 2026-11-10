@@ -139,7 +139,12 @@ type AutomationRun = {
     skippedNotEligible: number;
     publishedJobIds: string[];
     duplicateJobIds: string[];
+    reasons: Record<string, number> | null;
   };
+  salary: { updated: number; notFound: number; failed: number } | null;
+  freshnessUpdated: number | null;
+  closed: number | null;
+  failedStep: string | null;
 };
 
 const formatTs = (value?: string | null) => {
@@ -1142,7 +1147,7 @@ export default function SourcingRegistrySection() {
                   <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Automation</div>
                   <div className="mt-1 text-sm font-black text-white">Daily pipeline summary</div>
                   <div className="mt-1 text-xs text-slate-500">
-                    Vercel Hobby slices at 06:00–07:00 UTC (one board each). GitHub runs the full sweep at 06:15 UTC.
+                    Morning slices refresh one board at a time. The 16:15 UTC run looks up missing salaries, then publishes.
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1260,6 +1265,27 @@ export default function SourcingRegistrySection() {
                           <div className="mt-2 text-[11px] text-slate-500">
                             {`dup ${r.autoPublish.skippedDuplicates || 0} · not eligible ${r.autoPublish.skippedNotEligible || 0}`}
                           </div>
+                          {r.autoPublish.skippedNotEligible > 0 && !r.autoPublish.reasons && (
+                            <div className="mt-1 text-[11px] text-slate-500">reason split not stored</div>
+                          )}
+                          {r.autoPublish.reasons && Object.keys(r.autoPublish.reasons).length > 0 && (
+                            <div className="mt-1 text-[11px] text-slate-400">
+                              {Object.entries(r.autoPublish.reasons)
+                                .map(([reason, count]) => `${reason} ${count}`)
+                                .join(" · ")}
+                            </div>
+                          )}
+                          {r.salary && (
+                            <div className="mt-1 text-[11px] text-slate-400">
+                              {`salary filled ${r.salary.updated} · not found ${r.salary.notFound}`}
+                            </div>
+                          )}
+                          {(r.freshnessUpdated != null || r.closed != null) && (
+                            <div className="mt-1 text-[11px] text-slate-400">
+                              {`updated ${r.freshnessUpdated ?? 0} · closed ${r.closed ?? 0}`}
+                            </div>
+                          )}
+                          {r.failedStep && <div className="mt-1 text-[11px] text-red-300">{`stopped at ${r.failedStep}`}</div>}
                         </td>
                       </tr>
                     ))}

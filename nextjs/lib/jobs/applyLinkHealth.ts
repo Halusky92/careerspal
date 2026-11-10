@@ -1,3 +1,5 @@
+import { isSourcedJobOrigin } from "../sourcing/origin";
+
 export const CLOSED_APPLY_PHRASES = [
   "job not found",
   "this job is no longer available",
@@ -99,8 +101,7 @@ export async function probeApplyUrl(raw: string, timeoutMs = 10000): Promise<App
 }
 
 export function isSourcedOrigin(origin?: string | null) {
-  const value = (origin || "").toLowerCase();
-  return value === "greenhouse" || value === "ashby" || value === "lever" || value === "sourced";
+  return isSourcedJobOrigin(origin);
 }
 
 export function applyUrlLooksSourcedAts(raw?: string | null) {
@@ -123,7 +124,8 @@ export function isSourcedListing(row: {
   sourcedJobIds?: Set<string>;
 }) {
   if (isSourcedOrigin(row.origin)) return true;
-  if (row.id && row.sourcedJobIds?.has(row.id)) return true;
+  if (row.origin && !isSourcedOrigin(row.origin)) return false;
+  if (row.id && row.sourcedJobIds?.has(row.id) && applyUrlLooksSourcedAts(row.apply_url)) return true;
   const paid =
     (typeof row.plan_price === "number" && row.plan_price > 0) ||
     row.stripe_payment_status === "paid" ||

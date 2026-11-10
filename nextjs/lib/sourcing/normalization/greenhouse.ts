@@ -111,7 +111,7 @@ export function normalizeGreenhouseRawPayload(args: {
   const descriptionHtml = coalesceString(payload.content);
   const descriptionClean = descriptionHtml ? stripHtmlToText(descriptionHtml) : null;
   const remotePolicy =
-    inferWorkMode({ location: locationText, description: descriptionClean }) || inferRemotePolicy(locationText);
+    inferWorkMode({ title, location: locationText, description: descriptionClean }) || inferRemotePolicy(locationText);
 
   const salary = detectAndParseSalaryForGreenhouse(descriptionClean || "");
   const team = extractTeamText(payload);

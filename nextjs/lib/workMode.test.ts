@@ -26,6 +26,49 @@ test("explicit remote policy without office days stays Remote", () => {
   assert.equal(inferWorkMode({ remotePolicy: "Remote (Global)", location: "Remote" }), "Remote");
 });
 
+test("an in-person title stays Onsite when the company describes itself as remote-first", () => {
+  assert.equal(
+    inferWorkMode({
+      title: "Strategy & Operations Manager, In-person",
+      remotePolicy: "Remote",
+      description: "At Rula, we are a remote-first company. This role scales in-person psychiatry services.",
+    }),
+    "Onsite",
+  );
+});
+
+test("a required hybrid office schedule is Hybrid", () => {
+  assert.equal(
+    inferWorkMode({
+      remotePolicy: "Remote",
+      location: "United States - Remote; United States - San Francisco, California",
+      description: "This individual will work a hybrid schedule in-office (2 days a week), if within the Bay Area.",
+    }),
+    "Hybrid",
+  );
+});
+
+test("company hybrid-hub boilerplate does not override a Remote - US location", () => {
+  assert.equal(
+    inferWorkMode({
+      remotePolicy: "Remote",
+      location: "Remote - US",
+      description: "We have a hybrid-hub model. Whether you are in one of our offices or fully remote, we will support you.",
+    }),
+    "Remote",
+  );
+});
+
+test("optional local hybrid stays Remote", () => {
+  assert.equal(
+    inferWorkMode({
+      remotePolicy: "Remote",
+      description: "Location: Remote, or hybrid in Cambridge, MA if you're local.",
+    }),
+    "Remote",
+  );
+});
+
 test("a fully remote sentence can fill work mode when location is blank", () => {
   assert.equal(
     inferWorkMode({

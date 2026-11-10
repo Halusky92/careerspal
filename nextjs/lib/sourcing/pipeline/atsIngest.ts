@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchAshbyJobBoard, inferAshbyBoardTokenFromUrl } from "../connectors/ashby";
 import { fetchLeverPostings, inferLeverBoardTokenFromUrl } from "../connectors/lever";
 import { sha256Json } from "../connectors/greenhouse";
+import { upsertRawJobsByHash } from "./rawIngest";
 
 type AdminSb = SupabaseClient<any, "public", any>;
 
@@ -117,28 +118,12 @@ async function ingestBoardList(
         fetched_at: new Date().toISOString(),
       }));
 
-      let insertedCount = 0;
-      let skippedCount = 0;
-      if (rows.length > 0) {
-        const { data: existing } = await sb
-          .from("sourcing_sourced_jobs_raw")
-          .select("external_job_id,payload_hash")
-          .eq("source_id", s.id)
-          .in(
-            "external_job_id",
-            rows.map((r) => r.external_job_id),
-          );
-        const seen = new Map(((existing as any[] | null) || []).map((r) => [String(r.external_job_id), r.payload_hash]));
-        const fresh = rows.filter((row) => seen.get(row.external_job_id) !== row.payload_hash);
-        skippedCount = rows.length - fresh.length;
-        if (fresh.length > 0) {
-          const { error: insErr } = await sb.from("sourcing_sourced_jobs_raw").upsert(fresh, {
-            onConflict: "source_id,external_job_id",
-          });
-          if (insErr) throw new Error("Raw upsert failed.");
-          insertedCount = fresh.length;
-        }
-      }
+      const hashWrite =
+        rows.length > 0
+          ? await upsertRawJobsByHash(sb, rows)
+          : { inserted: 0, updated: 0, unchanged: 0 };
+      const insertedCount = hashWrite.inserted + hashWrite.updated;
+      const skippedCount = hashWrite.unchanged;
 
       if (runId) {
         await sb
@@ -160,6 +145,7 @@ async function ingestBoardList(
         fetchedCount: jobs.length,
         insertedCount,
         skippedCount,
+        externalIds: jobs.map((job) => job.externalId),
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : `${args.sourceType} run failed`;
@@ -172,7 +158,7 @@ async function ingestBoardList(
           .update({ status: "failed", finished_at: new Date().toISOString(), error_summary: msg })
           .eq("id", runId);
       }
-      results.push({ sourceId: s.id, runId, status: "failed", error: msg });
+      results.push({ sourceId: s.id, runId, status: "failed", error: msg, fetchedCount: 0, externalIds: [] });
     }
   }
 

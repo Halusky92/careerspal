@@ -12,6 +12,27 @@ export type GreenhouseListResponse = {
   jobs?: GreenhouseListJob[];
 };
 
+export async function fetchGreenhouseBoardJobs(boardToken: string): Promise<GreenhouseListJob[]> {
+  const token = (boardToken || "").trim();
+  if (!token) return [];
+
+  const url = `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(token)}/jobs?content=true`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "CareersPalSourcing/1.0",
+    },
+    signal: AbortSignal.timeout(20_000),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Greenhouse list failed (${res.status})`);
+  }
+  const json = (await res.json()) as GreenhouseListResponse;
+  return (json.jobs || []).filter((j) => typeof j.id === "number");
+}
+
 export async function fetchGreenhouseJobsList(boardToken: string): Promise<GreenhouseListJob[]> {
   const token = (boardToken || "").trim();
   if (!token) return [];

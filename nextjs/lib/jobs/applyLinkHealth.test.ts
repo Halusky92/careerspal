@@ -8,6 +8,7 @@ import {
   isSourcedOrigin,
   shouldSkipLiveProbe,
 } from "./applyLinkHealth";
+import { shouldLeaveApplyLinkToSourcing } from "./sweepDeadApplyLinks";
 
 test("apply urls must be a real page or mailto", () => {
   assert.equal(applyUrlLooksUsable(""), false);
@@ -21,6 +22,22 @@ test("apply urls must be a real page or mailto", () => {
 test("closed job pages are detected from copy", () => {
   assert.equal(isClosedApplyCopy("This job is no longer available."), true);
   assert.equal(isClosedApplyCopy("Join our operations team."), false);
+});
+
+test("an empty price or owner does not make an employer apply link sourced", () => {
+  assert.equal(
+    isSourcedListing({ apply_url: "https://example.com/employer-role", plan_price: null }),
+    false,
+  );
+  assert.equal(
+    isSourcedListing({
+      id: "employer-job",
+      apply_url: "https://example.com/employer-role",
+      plan_price: null,
+      sourcedJobIds: new Set(["employer-job"]),
+    }),
+    false,
+  );
 });
 
 test("greenhouse and ashby origins count as sourced", () => {
@@ -37,4 +54,8 @@ test("greenhouse and ashby origins count as sourced", () => {
     isSourcedListing({ apply_url: "https://boards.greenhouse.io/acme/jobs/1", plan_price: 0 }),
     false,
   );
+  assert.equal(shouldLeaveApplyLinkToSourcing({ apply_url: "https://boards.greenhouse.io/acme/jobs/1", plan_price: 0 }), true);
+  assert.equal(shouldLeaveApplyLinkToSourcing({ origin: "ashby", apply_url: "https://example.com/role" }), true);
+  assert.equal(shouldLeaveApplyLinkToSourcing({ apply_url: "https://example.com/employer", plan_price: 0 }), false);
+  assert.equal(shouldLeaveApplyLinkToSourcing({ apply_url: "https://example.com/employer", plan_price: 49, stripe_payment_status: "paid" }), true);
 });
