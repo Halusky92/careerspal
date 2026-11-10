@@ -8,6 +8,7 @@ import {
   isSourcedOrigin,
   shouldSkipLiveProbe,
 } from "./applyLinkHealth";
+import { shouldLeaveApplyLinkToSourcing } from "./sweepDeadApplyLinks";
 
 test("apply urls must be a real page or mailto", () => {
   assert.equal(applyUrlLooksUsable(""), false);
@@ -37,4 +38,8 @@ test("greenhouse and ashby origins count as sourced", () => {
     isSourcedListing({ apply_url: "https://boards.greenhouse.io/acme/jobs/1", plan_price: 0 }),
     false,
   );
+  assert.equal(shouldLeaveApplyLinkToSourcing({ apply_url: "https://boards.greenhouse.io/acme/jobs/1", plan_price: 0 }), true);
+  assert.equal(shouldLeaveApplyLinkToSourcing({ origin: "ashby", apply_url: "https://example.com/role" }), true);
+  assert.equal(shouldLeaveApplyLinkToSourcing({ apply_url: "https://example.com/employer", plan_price: 0 }), false);
+  assert.equal(shouldLeaveApplyLinkToSourcing({ apply_url: "https://example.com/employer", plan_price: 49, stripe_payment_status: "paid" }), true);
 });

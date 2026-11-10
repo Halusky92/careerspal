@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isSourcedListing } from "./applyLinkHealth";
+import { shouldExpireSourcedByAge } from "../sourcing/freshness";
 
 /** Listing lifespan used by Indeed / most job boards. */
 export const STALE_JOB_DAYS = 30;
@@ -17,6 +18,7 @@ type StaleJobRow = {
   timestamp: number | null;
   created_at?: string | null;
   published_at?: string | null;
+  last_seen_at?: string | null;
 };
 
 export type ExpireStaleJobsResult = {
@@ -51,6 +53,11 @@ async function loadSourcedJobIds(sb: SupabaseClient<any, "public", any>) {
   return ids;
 }
 
+function isPaidEmployerListing(row: StaleJobRow) {
+  if (isSourcedListing(row)) return false;
+  return (typeof row.plan_price === "number" && row.plan_price > 0) || row.stripe_payment_status === "paid";
+}
+
 function ageMs(row: StaleJobRow, now: number): number | null {
   if (typeof row.timestamp === "number" && Number.isFinite(row.timestamp) && row.timestamp > 0) {
     const ts = row.timestamp < 1e12 ? row.timestamp * 1000 : row.timestamp;
@@ -82,7 +89,7 @@ export async function expireStaleJobs(
   while (true) {
     const first = await sb
       .from("jobs")
-      .select("id,status,origin,apply_url,plan_price,stripe_payment_status,timestamp,created_at,published_at")
+      .select("id,status,origin,apply_url,plan_price,stripe_payment_status,timestamp,created_at,published_at,last_seen_at")
       .in("status", ["draft", "published", "paused", "closed", "private", "invite_only", "archived"])
       .range(offset, offset + pageSize - 1);
     const page = first.error
@@ -110,10 +117,12 @@ export async function expireStaleJobs(
 
   const sourcedJobIds = await loadSourcedJobIds(sb);
   const sourcedStale = stale.filter((row) => isSourcedListing({ ...row, sourcedJobIds }));
-  const employerStale = stale.filter((row) => !isSourcedListing({ ...row, sourcedJobIds }));
+  const employerStale = stale.filter((row) => !isSourcedListing({ ...row, sourcedJobIds }) && !isPaidEmployerListing(row));
   const toArchive = employerStale.filter((row) => ARCHIVE_STATUSES.has(row.status || "")).map((row) => row.id);
   const toDeleteDrafts = employerStale.filter((row) => DELETE_STATUSES.has(row.status || "")).map((row) => row.id);
-  const toDeleteSourced = sourcedStale.map((row) => row.id);
+  const toDeleteSourced = sourcedStale
+    .filter((row) => shouldExpireSourcedByAge({ lastSeenAt: row.last_seen_at, confirmedRemoved: false }))
+    .map((row) => row.id);
 
   if (!dryRun) {
     for (let i = 0; i < toDeleteSourced.length; i += 100) {

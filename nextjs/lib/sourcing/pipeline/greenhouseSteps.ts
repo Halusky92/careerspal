@@ -1,12 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import {
-  fetchGreenhouseJobDetail,
-  fetchGreenhouseJobsList,
-  inferGreenhouseBoardTokenFromUrl,
-  mapLimit,
-  sha256Json,
-} from "../connectors/greenhouse";
+import { fetchGreenhouseBoardJobs, inferGreenhouseBoardTokenFromUrl, sha256Json } from "../connectors/greenhouse";
+import { countPublishOutcomes, shouldReopenUnpublishedCandidate, sliceExpired } from "./slice";
 import { normalizeGreenhouseRawPayload } from "../normalization/greenhouse";
 import { normalizeAshbyRawPayload } from "../normalization/ashby";
 import { normalizeLeverRawPayload } from "../normalization/lever";
@@ -28,6 +23,8 @@ import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
 import { isBoilerplateDescription } from "../../companyBoard";
 import { inferWorkMode } from "../../workMode";
 import { resolveCategoryHub } from "../../categories";
+import { upsertRawJobsByHash } from "./rawIngest";
+import { sourcedOriginFromSourceType } from "../origin";
 
 type AdminSb = SupabaseClient<any, "public", any>;
 
@@ -87,58 +84,35 @@ export async function ingestGreenhouseRawJobs(sb: AdminSb, args: { sourceId?: st
           })
           .eq("id", runId);
       }
-      results.push({ sourceId: s.id, status: "failed", error: "Missing board token." });
+      results.push({ sourceId: s.id, runId, status: "failed", error: "Missing board token.", fetchedCount: 0, externalIds: [] });
       continue;
     }
 
     try {
-      const list = await fetchGreenhouseJobsList(boardToken);
+      const list = await fetchGreenhouseBoardJobs(boardToken);
       const fetchedCount = list.length;
-
-      let detailFailures = 0;
-      const detailRows = await mapLimit(list, 3, async (job) => {
-        try {
-          const detail = await fetchGreenhouseJobDetail(boardToken, job.id);
-          const payloadHash = sha256Json(detail);
-          const jobUrl = (job.absolute_url || null) as string | null;
-          const title = (job.title || null) as string | null;
-          return {
-            ok: true as const,
-            row: {
-              source_id: s.id,
-              source_run_id: runId,
-              source_type: "greenhouse",
-              source_url: s.normalized_url,
-              external_job_id: String(job.id),
-              job_url: jobUrl,
-              title,
-              raw_payload: detail,
-              payload_hash: payloadHash,
-              fetched_at: new Date().toISOString(),
-            },
-          };
-        } catch (e) {
-          detailFailures += 1;
-          return { ok: false as const, error: e instanceof Error ? e.message : "Detail fetch failed" };
-        }
-      });
-
-      const rows = detailRows.filter((x) => x.ok).map((x) => (x as any).row);
+      const detailFailures = 0;
+      const fetchedAt = new Date().toISOString();
+      const rows = list.map((job) => ({
+        source_id: s.id,
+        source_run_id: runId,
+        source_type: "greenhouse",
+        source_url: s.normalized_url,
+        external_job_id: String(job.id),
+        job_url: (job.absolute_url || null) as string | null,
+        title: (job.title || null) as string | null,
+        raw_payload: job,
+        payload_hash: sha256Json(job),
+        fetched_at: fetchedAt,
+      }));
       const insertAttempted = rows.length;
 
-      let insertedCount = 0;
-      if (rows.length > 0) {
-        const { data: inserted, error: insErr } = await sb
-          .from("sourcing_sourced_jobs_raw")
-          .upsert(rows, { onConflict: "source_id,external_job_id", ignoreDuplicates: true })
-          .select("id");
-        if (insErr) {
-          throw new Error("Raw upsert failed.");
-        }
-        insertedCount = (inserted || []).length;
-      }
-
-      const skippedCount = Math.max(0, fetchedCount - insertedCount);
+      const hashWrite =
+        rows.length > 0
+          ? await upsertRawJobsByHash(sb, rows)
+          : { inserted: 0, updated: 0, unchanged: 0 };
+      const insertedCount = hashWrite.inserted + hashWrite.updated;
+      const skippedCount = hashWrite.unchanged;
       const finishedAt = new Date().toISOString();
       const status = detailFailures > 0 ? "partial" : "success";
 
@@ -173,6 +147,7 @@ export async function ingestGreenhouseRawJobs(sb: AdminSb, args: { sourceId?: st
         insertedCount,
         skippedCount,
         detailFailures,
+        externalIds: list.map((job) => String(job.id)),
       });
     } catch (e) {
       const finishedAt = new Date().toISOString();
@@ -190,7 +165,7 @@ export async function ingestGreenhouseRawJobs(sb: AdminSb, args: { sourceId?: st
           })
           .eq("id", runId);
       }
-      results.push({ sourceId: s.id, runId, status: "failed", error: msg });
+      results.push({ sourceId: s.id, runId, status: "failed", error: msg, fetchedCount: 0, externalIds: [] });
     }
   }
 
@@ -212,18 +187,25 @@ type RawRow = {
 
 export async function normalizeGreenhouseRawJobsToCandidates(
   sb: AdminSb,
-  args: { sourceId?: string | null; runId?: string | null; limit?: number },
+  args: {
+    sourceId?: string | null;
+    runId?: string | null;
+    limit?: number;
+    deadline?: number | null;
+    scanLimit?: number;
+  },
 ) {
   const sourceId = (args.sourceId || "").trim();
   const runId = (args.runId || "").trim();
   const limit = Math.min(500, Math.max(1, Number(args.limit) || 200));
+  const scanLimit = Math.min(500, Math.max(limit, Number(args.scanLimit) || limit));
 
   let q = sb
     .from("sourcing_sourced_jobs_raw")
     .select("id,source_id,source_run_id,source_type,source_url,external_job_id,job_url,title,raw_payload,payload_hash")
     .in("source_type", ["greenhouse", "ashby", "lever"])
-    .order("fetched_at", { ascending: false })
-    .limit(limit);
+    .order("external_job_id", { ascending: true })
+    .limit(scanLimit);
 
   if (sourceId) q = q.eq("source_id", sourceId);
   if (runId) q = q.eq("source_run_id", runId);
@@ -234,16 +216,29 @@ export async function normalizeGreenhouseRawJobsToCandidates(
   let inserted = 0;
   let updated = 0;
   let skipped = 0;
+  let stopped = false;
   const errors: Array<{ rawId: string; error: string }> = [];
+  const rawRows = (data as RawRow[] | null) || [];
+  const rawIds = rawRows.map((row) => row.id).filter(Boolean);
+  const existingByRaw = new Map<string, { id: string; payload_hash: string | null; published_job_id: string | null }>();
+  if (rawIds.length > 0) {
+    const { data: existingRows } = await sb
+      .from("sourcing_sourced_job_candidates")
+      .select("id,raw_job_id,payload_hash,published_job_id")
+      .in("raw_job_id", rawIds.slice(0, 500));
+    for (const existing of (existingRows as Array<{ id: string; raw_job_id: string; payload_hash: string | null; published_job_id: string | null }> | null) || []) {
+      existingByRaw.set(existing.raw_job_id, existing);
+    }
+  }
 
-  for (const row of (data as RawRow[] | null) || []) {
+  let writes = 0;
+  for (const row of rawRows) {
+    if (sliceExpired(args.deadline) || writes >= limit) {
+      stopped = true;
+      break;
+    }
     try {
-      // Idempotency: if candidate exists with same payload_hash, skip.
-      const { data: existing } = await sb
-        .from("sourcing_sourced_job_candidates")
-        .select("id,payload_hash")
-        .eq("raw_job_id", row.id)
-        .maybeSingle();
+      const existing = existingByRaw.get(row.id) || null;
 
       if (existing?.id && existing.payload_hash && row.payload_hash && existing.payload_hash === row.payload_hash) {
         skipped += 1;
@@ -293,7 +288,12 @@ export async function normalizeGreenhouseRawJobsToCandidates(
         continue;
       }
 
-      const upsertRow = {
+      const reopen = shouldReopenUnpublishedCandidate({
+        publishedJobId: existing?.published_job_id || null,
+        previousHash: existing?.payload_hash || null,
+        nextHash: row.payload_hash,
+      });
+      const upsertRow: Record<string, unknown> = {
         raw_job_id: row.id,
         source_id: row.source_id,
         source_run_id: row.source_run_id,
@@ -318,19 +318,35 @@ export async function normalizeGreenhouseRawJobsToCandidates(
         salary_confidence: normalized.salary_confidence,
         salary_detected_from: normalized.salary_detected_from,
         payload_hash: row.payload_hash,
+        last_seen_at: new Date().toISOString(),
         provenance: normalized.provenance,
       };
+      if (reopen) {
+        upsertRow.publish_status = "not_published";
+        upsertRow.publish_notes = "Reopened because the board listing changed.";
+      }
 
-      const { data: upserted, error: upErr } = await sb
+      let upsertedRes = await sb
         .from("sourcing_sourced_job_candidates")
         .upsert(upsertRow, { onConflict: "raw_job_id" })
         .select("id")
         .single();
+      if (upsertedRes.error && /last_seen_at/i.test(upsertedRes.error.message || "")) {
+        const { last_seen_at: _last, ...rest } = upsertRow;
+        upsertedRes = await sb
+          .from("sourcing_sourced_job_candidates")
+          .upsert(rest, { onConflict: "raw_job_id" })
+          .select("id")
+          .single();
+      }
+      const upserted = upsertedRes.data;
+      const upErr = upsertedRes.error;
 
       if (upErr || !upserted) throw new Error("Upsert failed.");
 
       if (existing?.id) updated += 1;
       else inserted += 1;
+      writes += 1;
     } catch (e) {
       errors.push({ rawId: row.id, error: e instanceof Error ? e.message : "Normalization failed" });
     }
@@ -346,7 +362,15 @@ export async function normalizeGreenhouseRawJobsToCandidates(
       .eq("id", runId);
   }
 
-  return { processed: (data || []).length, inserted, updated, skipped, errors: errors.slice(0, 20) };
+  return {
+    processed: rawRows.length,
+    inserted,
+    updated,
+    skipped,
+    stopped,
+    remaining: stopped ? Math.max(0, rawRows.length - skipped - inserted - updated) : 0,
+    errors: errors.slice(0, 20),
+  };
 }
 
 type CandidateRow = {
@@ -371,7 +395,7 @@ type SourceTrustRow = { id: string; validation_state: string; enabled: boolean; 
 
 export async function evaluateCandidates(
   sb: AdminSb,
-  args: { sourceId?: string | null; runId?: string | null; limit?: number },
+  args: { sourceId?: string | null; runId?: string | null; limit?: number; publishStatuses?: string[] | null },
 ) {
   const sourceId = (args.sourceId || "").trim();
   const runId = (args.runId || "").trim();
@@ -386,6 +410,7 @@ export async function evaluateCandidates(
     .limit(limit);
   if (sourceId) q = q.eq("source_id", sourceId);
   if (runId) q = q.eq("source_run_id", runId);
+  if (args.publishStatuses && args.publishStatuses.length > 0) q = q.in("publish_status", args.publishStatuses);
 
   const { data: candidates, error: candErr } = await q;
   if (candErr) throw new Error("Unable to load candidates.");
@@ -542,6 +567,7 @@ type AutoPublishCandidateRow = {
   salary_present: boolean;
   published_job_id: string | null;
   publish_status: string;
+  publish_notes: string | null;
 };
 
 type SourceRowForPublish = {
@@ -559,7 +585,14 @@ type SourceRowForPublish = {
 
 export async function autoPublishEligibleCandidates(
   sb: AdminSb,
-  args: { actorId: string | null; sourceId?: string | null; runId?: string | null; limit?: number },
+  args: {
+    actorId: string | null;
+    sourceId?: string | null;
+    runId?: string | null;
+    limit?: number;
+    publishStatuses?: string[] | null;
+    deadline?: number | null;
+  },
 ) {
   const AUTO_PUBLISH_MIN_SCORE = getSourcingAutoPublishMinScore();
   const SUPPORTED_SOURCE_TYPES = getSourcingAutoPublishSupportedSourceTypes();
@@ -572,15 +605,15 @@ export async function autoPublishEligibleCandidates(
   let q = sb
     .from("sourcing_sourced_job_candidates")
     .select(
-      "id,source_id,source_run_id,source_type,source_url,external_job_id,job_url,apply_url,title,company_name,location_text,remote_policy,posted_at,description_clean,salary_text_raw,salary_amount_min,salary_amount_max,salary_currency,salary_period,salary_present,published_job_id,publish_status," +
+      "id,source_id,source_run_id,source_type,source_url,external_job_id,job_url,apply_url,title,company_name,location_text,remote_policy,posted_at,description_clean,salary_text_raw,salary_amount_min,salary_amount_max,salary_currency,salary_period,salary_present,published_job_id,publish_status,publish_notes," +
         "sourcing_candidate_scores(score_total)," +
         // Disambiguate relationship: sourcing_candidate_dedupes has 2 FKs to candidates (candidate_id + duplicate_of_candidate_id)
         "sourcing_candidate_dedupes!sourcing_candidate_dedupes_candidate_id_fkey(confidence,duplicate_of_job_id)," +
         "sourcing_candidate_decisions(decision,blocking_reason_codes,warning_reason_codes)",
     )
     .is("published_job_id", null)
-    // Also reconsider candidates previously skipped for eligibility; conditions can change after enrichment (e.g. salary).
-    .in("publish_status", ["not_published", "skipped_not_eligible"])
+    // Skipped rows stay skipped until the board listing changes or salary enrichment reopens them.
+    .in("publish_status", args.publishStatuses && args.publishStatuses.length > 0 ? args.publishStatuses : ["not_published", "skipped_not_eligible"])
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -592,7 +625,7 @@ export async function autoPublishEligibleCandidates(
 
   const rows = (data as any[] | null) || [];
   if (rows.length === 0) {
-    return { processed: 0, published: 0, skipped: 0, failed: 0, minScore: AUTO_PUBLISH_MIN_SCORE };
+    return { processed: 0, published: 0, skipped: 0, failed: 0, minScore: AUTO_PUBLISH_MIN_SCORE, skipReasons: {} };
   }
 
   const sourceIds = Array.from(new Set(rows.map((r) => r.source_id)));
@@ -729,6 +762,10 @@ export async function autoPublishEligibleCandidates(
   };
 
   for (const r of rows) {
+    if (sliceExpired(args.deadline)) {
+      results.push({ status: "stopped" });
+      break;
+    }
     const candidate = r as AutoPublishCandidateRow & {
       sourcing_candidate_scores?: { score_total?: number } | null;
       sourcing_candidate_dedupes?: { confidence?: string; duplicate_of_job_id?: string | null } | null;
@@ -778,6 +815,21 @@ export async function autoPublishEligibleCandidates(
     }
 
     const eligible = ineligibleReasons.length === 0;
+
+    if (eligible) {
+      const claimNote = `claim:${candidate.id}:${Date.now()}`;
+      let claim = sb
+        .from("sourcing_sourced_job_candidates")
+        .update({ publish_notes: claimNote })
+        .eq("id", candidate.id)
+        .eq("publish_status", candidate.publish_status || "not_published");
+      claim = candidate.publish_notes ? claim.eq("publish_notes", candidate.publish_notes) : claim.is("publish_notes", null);
+      const { data: claimed, error: claimError } = await claim.select("id");
+      if (claimError || !claimed || claimed.length === 0) {
+        results.push({ candidateId: candidate.id, status: "skipped_duplicate" });
+        continue;
+      }
+    }
 
     if (!eligible) {
       skipped += 1;
@@ -1003,6 +1055,7 @@ export async function autoPublishEligibleCandidates(
       location: candidate.location_text || null,
       remote_policy:
         inferWorkMode({
+          title: candidate.title,
           remotePolicy: candidate.remote_policy,
           location: candidate.location_text,
           description: formattedDescription || cleanedDescription,
@@ -1038,12 +1091,22 @@ export async function autoPublishEligibleCandidates(
       status: "published",
       created_by: actorId,
       published_at: new Date().toISOString(),
+      origin: sourcedOriginFromSourceType(candidate.source_type),
     };
 
     try {
-      const { data: newJob, error: jErr } = await sb.from("jobs").insert(jobInsert).select("id").single();
+      let created = await sb.from("jobs").insert(jobInsert).select("id").single();
+      if (created.error && /origin/i.test(created.error.message || "")) {
+        const { origin: _origin, ...withoutOrigin } = jobInsert;
+        created = await sb.from("jobs").insert(withoutOrigin).select("id").single();
+      }
+      const newJob = created.data;
+      const jErr = created.error;
       if (jErr || !newJob?.id) throw new Error("job_insert_failed");
-      await sb.from("jobs").update({ origin: "greenhouse" }).eq("id", newJob.id);
+      await sb
+        .from("jobs")
+        .update({ origin: sourcedOriginFromSourceType(candidate.source_type) })
+        .eq("id", newJob.id);
 
       await sb
         .from("sourcing_sourced_job_candidates")
@@ -1088,6 +1151,7 @@ export async function autoPublishEligibleCandidates(
     failed,
     minScore: AUTO_PUBLISH_MIN_SCORE,
     supportedSources: Array.from(SUPPORTED_SOURCE_TYPES),
+    skipReasons: countPublishOutcomes(results),
     results: results.slice(0, 50),
   };
 }

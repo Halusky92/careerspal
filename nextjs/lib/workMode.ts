@@ -1,6 +1,7 @@
 export type WorkMode = "Remote" | "Hybrid" | "Onsite";
 
 type WorkModeInput = {
+  title?: string | null;
   remotePolicy?: string | null;
   location?: string | null;
   description?: string | null;
@@ -9,7 +10,8 @@ type WorkModeInput = {
 const officeSchedule =
   /\b(mondays?,\s*tuesdays?\s*and\s*thursdays?|anchor days|in-office days|office days|days in (the |our )?office)\b/i;
 const basedInOffice = /\bbased in (our |the )?[a-z0-9 .,'-]{2,40} office\b/i;
-const hybridCue = /\bhybrid\b|partially remote|3 days (in|on site|onsite)|in office [1-5]/i;
+const requiredHybrid =
+  /\bhybrid (role|schedule|position)\b|\bpartially remote\b|\b3 days (in|on site|onsite)\b|\bin office [1-5]\b|\bin-office\b|\b\d+\s+days\s+(a|per)\s+week\b|\bminimum of \d+\s+days\b/i;
 const onsiteCue = /\bonsite\b|\bon-site\b|\bin-office\b|this role is based in\b/i;
 const remoteCue = /\bfully remote\b|\bremote-first\b|\bremote \(global\)\b|\bwork from home\b|\bwfh\b/i;
 
@@ -17,9 +19,10 @@ export function inferWorkMode(job: WorkModeInput): WorkMode | "" {
   const policy = (job.remotePolicy || "").trim();
   const location = (job.location || "").trim();
   const description = (job.description || "").slice(0, 5000);
-  const blob = `${policy}\n${location}\n${description}`;
+  const blob = `${job.title || ""}\n${policy}\n${location}\n${description}`;
 
-  if (officeSchedule.test(blob) || hybridCue.test(blob) || (basedInOffice.test(blob) && /\bremote\b/i.test(blob))) {
+  if (/\bin-?person\b/i.test(job.title || "")) return "Onsite";
+  if (officeSchedule.test(blob) || requiredHybrid.test(blob) || (basedInOffice.test(blob) && /\bremote\b/i.test(blob))) {
     return "Hybrid";
   }
   if (basedInOffice.test(blob) || (onsiteCue.test(blob) && !remoteCue.test(blob) && !/\bremote\b/i.test(policy))) {

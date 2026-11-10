@@ -1,3 +1,5 @@
+import { isSourcedJobOrigin } from "../sourcing/origin";
+
 export const CLOSED_APPLY_PHRASES = [
   "job not found",
   "this job is no longer available",
@@ -99,8 +101,7 @@ export async function probeApplyUrl(raw: string, timeoutMs = 10000): Promise<App
 }
 
 export function isSourcedOrigin(origin?: string | null) {
-  const value = (origin || "").toLowerCase();
-  return value === "greenhouse" || value === "ashby" || value === "lever" || value === "sourced";
+  return isSourcedJobOrigin(origin);
 }
 
 export function applyUrlLooksSourcedAts(raw?: string | null) {

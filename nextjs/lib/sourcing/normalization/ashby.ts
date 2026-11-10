@@ -1,3 +1,4 @@
+import { inferWorkMode } from "../../workMode";
 import { stripHtmlToText } from "./text";
 import {
   detectAndParseSalaryForGreenhouse,
@@ -28,7 +29,13 @@ export function normalizeAshbyRawPayload(args: {
   const html = (job.descriptionHtml || "").trim() || null;
   const plain = (job.descriptionPlain || "").trim() || (html ? stripHtmlToText(html) : null);
   const location = (job.locationName || "").trim() || null;
-  const remote = job.isRemote || (location || "").toLowerCase().includes("remote") ? "Remote" : null;
+  const remote =
+    inferWorkMode({
+      title: job.title,
+      remotePolicy: job.isRemote || (location || "").toLowerCase().includes("remote") ? "Remote" : null,
+      location,
+      description: plain,
+    }) || null;
   const component = firstSalaryComponent(job);
   const summary = job.compensation?.compensationTierSummary || job.compensation?.scrapeableCompensationSalarySummary || null;
   let salary: ParsedSalary = parsedSalaryFromStructured({

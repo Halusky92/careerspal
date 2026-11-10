@@ -1,3 +1,4 @@
+import { sliceExpired } from "./slice";
 import { matchDenylistHost } from "../denylist";
 import { normalizeHost, normalizeUrlForRegistry } from "../domain";
 import { detectAndParseSalaryForGreenhouse, parseSalaryFromText, withRoundedSalaryAmounts } from "../normalization/salary";
@@ -26,6 +27,7 @@ export type SalaryEnrichmentArgs = {
   concurrency?: number;
   cooldownHours?: number;
   scanLimit?: number;
+  deadline?: number | null;
 };
 
 export type SalaryEnrichmentSummary = {
@@ -40,6 +42,7 @@ export type SalaryEnrichmentSummary = {
   limit: number;
   concurrency: number;
   cooldownHours: number;
+  stopped: boolean;
 };
 
 const clampInt = (n: unknown, min: number, max: number, fallback: number) => {
@@ -391,6 +394,7 @@ export async function enrichCandidatesSalaryBulk(sb: AdminSb, args: SalaryEnrich
   const skippedRecent = Math.max(0, rows.filter((c) => !!getLastAttemptAtIso((c as any).provenance)).length - toAttempt.length);
 
   const results = await asyncPool(concurrency, toAttempt, async (c) => {
+    if (sliceExpired(args.deadline)) return { id: (c as any).id as string, status: "stopped" as const };
     const id = (c as any).id as string;
     const urlToFetch = (((c as any).job_url || (c as any).apply_url) ?? "").toString().trim();
     const prevProv = (c as any).provenance;
@@ -478,11 +482,12 @@ export async function enrichCandidatesSalaryBulk(sb: AdminSb, args: SalaryEnrich
   const reopened = results.filter((r: any) => r.status === "updated" && r.reopened).length;
   const notFound = results.filter((r: any) => r.status === "not_found").length;
   const failed = results.filter((r: any) => r.status === "failed").length;
+  const stopped = results.some((r: any) => r.status === "stopped");
 
   return {
     ok: true,
     scanned: rows.length,
-    attempted: toAttempt.length,
+    attempted: results.filter((r: any) => r.status !== "stopped").length,
     skipped_recent: skippedRecent,
     updated,
     reopened,
@@ -491,6 +496,7 @@ export async function enrichCandidatesSalaryBulk(sb: AdminSb, args: SalaryEnrich
     limit,
     concurrency,
     cooldownHours,
+    stopped,
   };
 }
 

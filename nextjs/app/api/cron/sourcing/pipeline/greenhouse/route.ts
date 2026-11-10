@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSourcingCronSecret } from "@/lib/sourcing/config";
 import { runPipelineGreenhouse, writeSourcingCronHealth } from "@/lib/sourcing/runGreenhousePipeline";
+import { parseSliceMode } from "@/lib/sourcing/pipeline/slice";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -38,16 +39,18 @@ export async function GET(request: Request) {
     secretConfigured,
   }).catch(() => undefined);
 
+  const mode = parseSliceMode(new URL(request.url).searchParams.get("mode"));
   try {
     const summary = await runPipelineGreenhouse({
       actorId: null,
       trigger: "cron",
+      mode,
       maxSources: 1,
-      limitRaw: 80,
-      limitCandidates: 60,
-      includeSalaryEnrichment: false,
+      limitRaw: 25,
+      limitCandidates: 40,
+      includeSalaryEnrichment: mode === "salary",
       includeLogoBackfill: false,
-      timeBudgetMs: 50000,
+      timeBudgetMs: 45_000,
     });
     await writeSourcingCronHealth({
       status: summary.timed_out ? "partial" : "ok",
@@ -59,8 +62,9 @@ export async function GET(request: Request) {
       published: summary.auto_publish.published,
       rawInserted: summary.raw_inserted,
       timedOut: summary.timed_out,
+      failedStep: summary.failed_step,
     }).catch(() => undefined);
-    return NextResponse.json({ ok: true, mode: "cron-slice", summary });
+    return NextResponse.json({ ok: true, mode, done: summary.done, summary });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Pipeline failed";
     await writeSourcingCronHealth({

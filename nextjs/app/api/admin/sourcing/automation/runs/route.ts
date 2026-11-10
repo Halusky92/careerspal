@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../../../lib/supabaseAdmin";
 import { getSupabaseProfile } from "../../../../../../lib/supabaseServerAuth";
+import { automationRunView } from "../../../../../../lib/sourcing/automationRunView";
 
 export const runtime = "nodejs";
 
@@ -64,49 +65,14 @@ export async function GET(request: Request) {
   };
 
   // Normalize a small, UI-friendly shape (avoid coupling UI to raw metadata).
-  const runs = ((logs as AutomationRunRow[] | null) || []).map((row) => {
-    const m = (row.metadata || {}) as any;
-    const ap = (m.auto_publish || {}) as any;
-    const publishedJobIds: string[] = Array.isArray(ap.published_job_ids) ? ap.published_job_ids.filter(Boolean) : [];
-    const duplicateJobIds: string[] = Array.isArray(ap.duplicate_job_ids) ? ap.duplicate_job_ids.filter(Boolean) : [];
-    return {
+  const runs = ((logs as AutomationRunRow[] | null) || []).map((row) =>
+    automationRunView({
       id: row.id,
-      createdAt: row.created_at,
-      actorId: row.actor_id,
-      trigger: (m.trigger || (row.actor_id ? "manual" : "cron")).toString(),
-      timedOut: Boolean(m.timed_out),
-      sourcesProcessed: Number(m.sources_processed || 0) || 0,
-      ingestion: {
-        rawFetched: Number(m.raw_fetched || 0) || 0,
-        rawInserted: Number(m.raw_inserted || 0) || 0,
-        rawSkipped: Number(m.raw_skipped || 0) || 0,
-        runsCreated: Number(m.runs_created || 0) || 0,
-      },
-      normalization: {
-        processed: Number(m.normalization?.processed || 0) || 0,
-        inserted: Number(m.normalization?.inserted || 0) || 0,
-        updated: Number(m.normalization?.updated || 0) || 0,
-        skipped: Number(m.normalization?.skipped || 0) || 0,
-        errors: Number(m.normalization?.errors || 0) || 0,
-      },
-      evaluation: {
-        processed: Number(m.evaluation?.processed || 0) || 0,
-        evaluated: Number(m.evaluation?.evaluated || 0) || 0,
-        errors: Number(m.evaluation?.errors || 0) || 0,
-      },
-      autoPublish: {
-        minScore: typeof ap.minScore === "number" ? ap.minScore : null,
-        processed: Number(ap.processed || 0) || 0,
-        published: Number(ap.published || 0) || 0,
-        failed: Number(ap.failed || 0) || 0,
-        skippedTotal: Number(ap.skipped_total || 0) || 0,
-        skippedDuplicates: Number(ap.skipped_duplicates || 0) || 0,
-        skippedNotEligible: Number(ap.skipped_not_eligible || 0) || 0,
-        publishedJobIds,
-        duplicateJobIds,
-      },
-    };
-  });
+      actor_id: row.actor_id,
+      metadata: row.metadata,
+      created_at: row.created_at,
+    }),
+  );
 
   return NextResponse.json({ runs, cronHealth });
 }
