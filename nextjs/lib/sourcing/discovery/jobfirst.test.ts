@@ -14,6 +14,7 @@ import {
   runJobFirstDiscovery,
   seedBoardKeys,
   selectNewBoards,
+  assertProductionDatabaseUrl,
   assertStagingDatabaseUrl,
 } from "./jobfirst";
 
@@ -104,6 +105,50 @@ test("a full run covers all eight groups until the credit cap", async () => {
 test("staging writes refuse the production database", () => {
   assert.doesNotThrow(() => assertStagingDatabaseUrl("https://rpwutygkiiphqdphitdg.supabase.co"));
   assert.throws(() => assertStagingDatabaseUrl("https://uahdliiwhvviinujtyjj.supabase.co"));
+});
+
+test("production writes accept only the production project", () => {
+  assert.doesNotThrow(() => assertProductionDatabaseUrl("https://uahdliiwhvviinujtyjj.supabase.co"));
+  assert.throws(() => assertProductionDatabaseUrl("https://rpwutygkiiphqdphitdg.supabase.co"));
+  assert.throws(() => assertProductionDatabaseUrl("https://example.supabase.co"));
+});
+
+test("a capped run stops after four boards and eight searches", async () => {
+  let n = 0;
+  const result = await runJobFirstDiscovery({
+    now: new Date("2026-11-11T00:00:00.000Z"),
+    monthCount: 0,
+    phrases: {},
+    known: seedBoardKeys(),
+    maxSearches: 8,
+    maxBoards: 4,
+    search: async () => {
+      n += 1;
+      return [{ url: `https://boards.greenhouse.io/capco${n}`, title: "Cap" }];
+    },
+    review: async () => ({
+      companyName: "Cap",
+      website: "https://boards.greenhouse.io/capco",
+      atsProvider: "greenhouse",
+      atsIdentifier: "capco",
+      boardUrl: "https://boards.greenhouse.io/capco",
+      openJobCount: 1,
+      qualifyingJobCount: 1,
+      qualifyingTitles: [],
+      qualifyingJobs: [],
+      sampledNicheJobs: 1,
+      unsampledNicheJobs: 0,
+      rejectionCounts: {},
+      qualifyingApplyUrls: [],
+      decision: "pending_approval",
+      reason: "pending",
+      enabled: false,
+    }),
+  });
+  assert.equal(result.searches, 4);
+  assert.equal(result.pending.length, 4);
+  assert.equal(result.stopped, "board_cap");
+  assert.equal(result.pending.every((row) => row.enabled === false), true);
 });
 
 test("discovery leaves company logos, descriptions, and closing rules on the existing path", () => {

@@ -116,6 +116,19 @@ export function assertStagingDatabaseUrl(url: string) {
   }
 }
 
+/** Explicit production entry only. Staging and every other host are refused. */
+export function assertProductionDatabaseUrl(url: string) {
+  let host = "";
+  try {
+    host = new URL(url).host;
+  } catch {
+    host = "";
+  }
+  if (host !== `${PRODUCTION_REF}.supabase.co` || url.includes(STAGING_HOST)) {
+    throw new Error(`REFUSED database host ${host || "missing"}`);
+  }
+}
+
 export function claimSearchSlot(count: number, cap = MONTHLY_SEARCH_CAP) {
   if (count >= cap) return { ok: false as const, next: count };
   return { ok: true as const, next: count + 1 };
@@ -173,6 +186,8 @@ export async function runJobFirstDiscovery(args: {
   search: (query: string) => Promise<SearchHit[]>;
   review: (board: OfficialBoard) => Promise<DiscoveryReview>;
   cap?: number;
+  maxSearches?: number;
+  maxBoards?: number;
   claim?: () => Promise<boolean>;
   onGroup?: (groupId: string, update: PhraseState | null, info: { phrase: string | null; boards: number; qualifying: number; skipped: string }) => Promise<void>;
 }) {
@@ -182,9 +197,12 @@ export async function runJobFirstDiscovery(args: {
   const pending: DiscoveryReview[] = [];
   const groups: Array<{ id: string; phrase: string | null; boards: number; qualifying: number; skipped: string }> = [];
   let searches = 0;
+  let reviewed = 0;
   let stopped: string | null = null;
 
   for (const group of DISCOVERY_GROUPS) {
+    if (!stopped && typeof args.maxSearches === "number" && searches >= args.maxSearches) stopped = "search_cap";
+    if (!stopped && typeof args.maxBoards === "number" && reviewed >= args.maxBoards) stopped = "board_cap";
     if (stopped) {
       groups.push({ id: group.id, phrase: null, boards: 0, qualifying: 0, skipped: stopped });
       continue;
@@ -205,7 +223,9 @@ export async function runJobFirstDiscovery(args: {
     if (!args.claim) monthCount = claimSearchSlot(monthCount, cap).next;
     searches += 1;
     const hits = await args.search(picked.phrase);
-    const boards = selectNewBoards(hits, args.known, BOARDS_PER_GROUP);
+    const room = typeof args.maxBoards === "number" ? Math.min(BOARDS_PER_GROUP, args.maxBoards - reviewed) : BOARDS_PER_GROUP;
+    const boards = selectNewBoards(hits, args.known, room);
+    reviewed += boards.length;
     let qualifying = 0;
     for (const board of boards) {
       const review = await args.review(board);

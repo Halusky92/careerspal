@@ -4,14 +4,18 @@
  *
  *   npx tsx scripts/sourcing-discover-jobfirst.ts --jobfirst --read-only
  *   npx tsx scripts/sourcing-discover-jobfirst.ts --jobfirst --staging-candidates
+ *   npx tsx scripts/sourcing-discover-jobfirst.ts --jobfirst --production-candidates
  *
- * --staging-candidates writes only to the staging project. It does not publish jobs.
+ * --staging-candidates writes only to the staging project and refuses production.
+ * --production-candidates is the only production entry. It allows at most 8 searches
+ * and 4 new sources, inserts them disabled, and does not publish jobs.
  * The 3x weekly cadence is DISCOVERY_CADENCE and is not registered as a cron.
  */
 import fs from "fs";
 import path from "path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
+  assertProductionDatabaseUrl,
   assertStagingDatabaseUrl,
   DISCOVERY_DOMAINS,
   DISCOVERY_GROUPS,
@@ -25,9 +29,10 @@ const ATS_GAP_MS = 700;
 const TIMEOUT_MS = 25_000;
 const readOnly = process.argv.includes("--read-only");
 const staging = process.argv.includes("--staging-candidates");
+const production = process.argv.includes("--production-candidates");
 
-if (!process.argv.includes("--jobfirst") || (!readOnly && !staging) || (readOnly && staging)) {
-  console.error("REFUSED. Pass --jobfirst and exactly one of --read-only or --staging-candidates.");
+if (!process.argv.includes("--jobfirst") || [readOnly, staging, production].filter(Boolean).length !== 1) {
+  console.error("REFUSED. Pass --jobfirst and exactly one of --read-only, --staging-candidates, or --production-candidates.");
   process.exit(2);
 }
 
@@ -132,13 +137,22 @@ function stagingClient() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
+function productionClient() {
+  const env = loadEnv(path.join(process.cwd(), ".env.local"));
+  const url = env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL || "";
+  assertProductionDatabaseUrl(url);
+  const key = env.SUPABASE_SERVICE_ROLE_KEY || "";
+  if (!key) throw new Error("REFUSED missing production service role");
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
 async function main() {
   const key = tavilyKey();
   if (!key) {
     console.error("MISSING TAVILY_API_KEY in nextjs/.env.local");
     process.exit(2);
   }
-  const sb = staging ? stagingClient() : null;
+  const sb = staging ? stagingClient() : production ? productionClient() : null;
   const known = seedBoardKeys();
   const phrases: Record<string, PhraseState | undefined> = {};
   if (sb) {
@@ -175,6 +189,7 @@ async function main() {
     monthCount,
     phrases,
     known,
+    ...(production ? { maxSearches: 8, maxBoards: 4 } : {}),
     claim: sb
       ? async () => {
           const { data, error } = await sb.rpc("claim_discovery_search", { p_month: month, p_cap: 250 });
