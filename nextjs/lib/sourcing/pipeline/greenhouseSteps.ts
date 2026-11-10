@@ -22,6 +22,7 @@ import { formatSalaryForStorage } from "../../formatSalary";
 import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
 import { isBoilerplateDescription } from "../../companyBoard";
 import { inferWorkMode } from "../../workMode";
+import { discoveryMarketBlockers, discoverySourceKey } from "./discoveryPublishGate";
 import { resolveCategoryHub } from "../../categories";
 import { upsertRawJobsByHash } from "./rawIngest";
 import { sourcedOriginFromSourceType } from "../origin";
@@ -639,6 +640,17 @@ export async function autoPublishEligibleCandidates(
   const sourceMap = new Map<string, SourceRowForPublish>();
   ((sources as any[] | null) || []).forEach((s) => sourceMap.set(s.id, s as SourceRowForPublish));
 
+  const discoveryKeys = new Set<string>();
+  const { data: discoveredBoards, error: discoveryError } = await sb
+    .from("sourcing_discovery_boards")
+    .select("provider,identifier");
+  if (!discoveryError) {
+    for (const board of (discoveredBoards as Array<{ provider?: string; identifier?: string }> | null) || []) {
+      const key = discoverySourceKey(board.provider, board.identifier);
+      if (key) discoveryKeys.add(key);
+    }
+  }
+
   let published = 0;
   let skipped = 0;
   let failed = 0;
@@ -812,6 +824,10 @@ export async function autoPublishEligibleCandidates(
       })
     ) {
       ineligibleReasons.push("off_niche_title");
+    }
+    const discoveryKey = discoverySourceKey(src?.source_type, src?.ats_identifier);
+    if (discoveryKey && discoveryKeys.has(discoveryKey)) {
+      ineligibleReasons.push(...discoveryMarketBlockers(candidate));
     }
 
     const eligible = ineligibleReasons.length === 0;
