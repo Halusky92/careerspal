@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { useSupabaseAuth } from "./Providers";
 import { hasPendingPosting, postingOwnerKey } from "../lib/postingSession";
 import BrandMark from "./BrandMark";
-import { trackFunnel } from "../lib/funnelTrack";
 
 const Auth: React.FC = () => {
   const { signInWithGoogle, signInWithEmail } = useSupabaseAuth();
@@ -42,7 +41,6 @@ const Auth: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    trackFunnel("signup_started", { method: "google" });
     await signInWithGoogle({ role, from: desiredFrom });
   };
 
@@ -50,7 +48,6 @@ const Auth: React.FC = () => {
     event?.preventDefault();
     if (!email.trim()) return;
     setIsLoading(true);
-    trackFunnel("signup_started", { method: "email" });
     try {
       const result = await signInWithEmail(email.trim(), { role, from: desiredFrom });
       if (result.error) {
