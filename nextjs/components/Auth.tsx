@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSupabaseAuth } from "./Providers";
 import { hasPendingPosting, postingOwnerKey } from "../lib/postingSession";
+import BrandMark from "./BrandMark";
+import { trackFunnel } from "../lib/funnelTrack";
 
 const Auth: React.FC = () => {
   const { signInWithGoogle, signInWithEmail } = useSupabaseAuth();
@@ -40,6 +42,7 @@ const Auth: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
+    trackFunnel("signup_started", { method: "google" });
     await signInWithGoogle({ role, from: desiredFrom });
   };
 
@@ -47,6 +50,7 @@ const Auth: React.FC = () => {
     event?.preventDefault();
     if (!email.trim()) return;
     setIsLoading(true);
+    trackFunnel("signup_started", { method: "email" });
     try {
       const result = await signInWithEmail(email.trim(), { role, from: desiredFrom });
       if (result.error) {
@@ -65,9 +69,7 @@ const Auth: React.FC = () => {
     <div className="w-full max-w-[400px] mx-auto">
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="text-center mb-7">
-          <div className="w-10 h-10 rounded-lg bg-indigo-600 text-white text-sm font-semibold flex items-center justify-center mx-auto mb-4">
-            C
-          </div>
+          <BrandMark size={40} className="h-10 w-10 mx-auto mb-4" />
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">Sign in</h1>
         </div>
 
@@ -147,7 +149,7 @@ const Auth: React.FC = () => {
         ) : null}
 
         <p className="mt-6 text-center text-xs text-slate-500">
-          Apply and save need an account. By continuing you agree to our{" "}
+          Saving jobs and alerts need an account. By continuing you agree to our{" "}
           <a className="text-slate-700 hover:underline" href="/privacy">
             Privacy
           </a>{" "}

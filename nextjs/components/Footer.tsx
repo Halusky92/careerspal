@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BrandMark from "./BrandMark";
 
 const Footer = () => {
   return (
@@ -19,7 +20,10 @@ const Footer = () => {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
           <div className="col-span-2 md:col-span-1 space-y-2">
-            <div className="font-semibold text-slate-900">CareersPal</div>
+            <div className="flex items-center gap-2 font-semibold text-slate-900">
+              <BrandMark size={28} className="h-7 w-7" />
+              CareersPal
+            </div>
             <p className="text-slate-600">Ops, Systems, Automation, RevOps, Product Ops, Chief of Staff. Remote, hybrid, and onsite.</p>
           </div>
           <div>

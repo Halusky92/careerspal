@@ -2,31 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCategoryHub, jobMatchesHub } from "../../../lib/categories";
-import { createJobSlug } from "../../../lib/jobs";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
 import { isOnNicheJob } from "../../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../../lib/liveBoard";
-import { formatJobSalary } from "../../../lib/formatSalary";
+import BoardCappedJobs from "../../../components/BoardCappedJobs";
+import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-const getBaseUrl = () => {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  if (siteUrl) return siteUrl.replace(/\/+$/, "");
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) return `https://${vercelUrl}`;
-  return "http://localhost:3000";
-};
-
-const plainText = (value: string) =>
-  value
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+const getBaseUrl = () => getCanonicalSiteUrl();
 
 async function fetchPublishedJobsForHub(hubSlug: string): Promise<{ hubLabel: string; intro: string; jobs: Job[]; preference: string } | null> {
   const hub = getCategoryHub(hubSlug);
@@ -49,8 +37,7 @@ async function fetchPublishedJobsForHub(hubSlug: string): Promise<{ hubLabel: st
 
   const jobs = (data as SupabaseJobRow[] | null || [])
     .map(mapSupabaseJob)
-    .filter((job) => isOnNicheJob(job) && jobMatchesHub(job, hub))
-    .slice(0, 60);
+    .filter((job) => isOnNicheJob(job) && jobMatchesHub(job, hub));
   return { hubLabel: hub.label, intro: hub.intro, jobs, preference: hub.slug };
 }
 
@@ -154,64 +141,7 @@ export default async function CategoryPage({ params }: PageProps) {
                 </div>
               </div>
             ) : (
-              <ul className="mt-6 space-y-3">
-                {jobs.map((job) => {
-                  const href = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
-                  const desc = plainText(job.description || "");
-                  const snippet = desc.length > 140 ? `${desc.slice(0, 140).trim()}…` : desc;
-                  return (
-                    <li
-                      key={job.id}
-                      className="rounded-3xl border border-slate-200/60 bg-white px-5 py-5 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <Link href={href} className="block text-base sm:text-lg font-black text-slate-900 hover:text-indigo-700">
-                            {job.title}
-                          </Link>
-                          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-bold text-slate-600">
-                            <span className="truncate">{job.company}</span>
-                            <span className="text-slate-300">•</span>
-                            <span className="truncate">{job.location}</span>
-                            <span className="text-slate-300">•</span>
-                            <span className="truncate">{job.type}</span>
-                            {job.remotePolicy && (
-                              <>
-                                <span className="text-slate-300">•</span>
-                                <span className="truncate">{job.remotePolicy}</span>
-                              </>
-                            )}
-                            {job.postedAt && (
-                              <>
-                                <span className="text-slate-300">•</span>
-                                <span className="truncate">Posted {job.postedAt}</span>
-                              </>
-                            )}
-                          </div>
-                          {snippet && (
-                            <div className="mt-3 text-sm text-slate-600 font-medium leading-relaxed">
-                              {snippet}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-shrink-0 text-right">
-                          <div className="text-sm font-black text-slate-900 whitespace-nowrap">
-                            {formatJobSalary(job)}
-                          </div>
-                          <div className="mt-2">
-                            <Link
-                              href={href}
-                              className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
-                            >
-                              View role →
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+              <BoardCappedJobs jobs={jobs} variant="category" />
             )}
           </div>
         </div>

@@ -1,21 +1,20 @@
 import type { MetadataRoute } from "next";
-
-const getBaseUrl = () => {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  if (siteUrl) return siteUrl.replace(/\/+$/, "");
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) return `https://${vercelUrl}`;
-  return "http://localhost:3000";
-};
+import { getCanonicalSiteUrl } from "../lib/alerts/siteUrl";
+import { isNonProductionDeployment } from "../lib/siteIndexing";
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = getBaseUrl();
+  if (isNonProductionDeployment()) {
+    return {
+      rules: [{ userAgent: "*", disallow: "/" }],
+    };
+  }
+  const baseUrl = getCanonicalSiteUrl();
   return {
     rules: [
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/dashboard", "/checkout", "/apply", "/supabase-test"],
+        disallow: ["/dashboard", "/checkout", "/apply", "/account", "/auth", "/upgrade", "/supabase-test"],
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,
