@@ -1,17 +1,11 @@
 name: CareersPal - Greenhouse daily pipeline
 
-# 01:30 Europe/Bratislava refreshes Greenhouse, Ashby, and Lever, then evaluates and publishes.
-# 02:15 Europe/Bratislava enriches salaries, then evaluates and publishes.
-# 02:45 Europe/Bratislava closes stale jobs through the existing liveness route.
+# 01:30 Europe/Bratislava runs refresh, then salary enrichment, then stale-job closing.
+# One run keeps that order. queue: max keeps this run if discovery is still in the group.
 # A board already fetched today is not fetched again.
-# The shared nightly queue waits if discovery or an earlier sourcing run is still going.
 on:
   schedule:
     - cron: "30 1 * * *"
-      timezone: "Europe/Bratislava"
-    - cron: "15 2 * * *"
-      timezone: "Europe/Bratislava"
-    - cron: "45 2 * * *"
       timezone: "Europe/Bratislava"
   workflow_dispatch:
     inputs:
@@ -26,12 +20,12 @@ on:
 
 concurrency:
   group: careerspal-nightly-sourcing
-  cancel-in-progress: false
+  queue: max
 
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 60
     steps:
       - name: Run one-board pipeline slices
         env:
@@ -48,16 +42,31 @@ jobs:
             echo "Missing secret CAREERSPAL_CRON_SECRET (must match Vercel env SOURCING_CRON_SECRET)"
             exit 1
           fi
-          if [ -n "$MODE_INPUT" ]; then
-            MODE="$MODE_INPUT"
-          elif [ "$EVENT_SCHEDULE" = "15 2 * * *" ]; then
-            MODE="salary"
-          elif [ "$EVENT_SCHEDULE" = "45 2 * * *" ]; then
-            MODE="liveness"
-          else
-            MODE="refresh"
-          fi
-          if [ "$MODE" = "liveness" ]; then
+          run_slices() {
+            local mode="$1"
+            echo "Running $mode slices"
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+              echo "slice $i"
+              body=$(curl -sS -L \
+                --connect-timeout 15 \
+                --max-time 70 \
+                --retry 2 \
+                --retry-delay 2 \
+                --retry-all-errors \
+                --fail \
+                -G "$PIPELINE_URL" \
+                --data-urlencode "secret=$CRON_SECRET" \
+                --data-urlencode "mode=$mode")
+              echo "$body" | jq '{ok,mode,done,timed_out:.summary.timed_out,sources:.summary.sources_processed,published:.summary.auto_publish.published,salary:.summary.salary_enrichment}'
+              if echo "$body" | jq -e '.done == true' >/dev/null; then
+                echo "queue empty"
+                return 0
+              fi
+            done
+            echo "slice cap reached; queue not empty"
+            return 1
+          }
+          run_liveness() {
             origin=$(printf '%s\n' "$PIPELINE_URL" | sed -E 's#^(https?://[^/]+).*#\1#')
             echo "Running liveness"
             body=$(curl -sS -L \
@@ -71,26 +80,15 @@ jobs:
               --data-urlencode "secret=$CRON_SECRET")
             echo "$body"
             echo "$body" | jq -e '.ok == true' >/dev/null
-            exit 0
+          }
+          failed=0
+          if [ -n "$MODE_INPUT" ]; then
+            run_slices "$MODE_INPUT" || failed=1
+          elif [ -n "$EVENT_SCHEDULE" ]; then
+            run_slices refresh || failed=1
+            run_slices salary || failed=1
+            run_liveness || failed=1
+          else
+            run_slices refresh || failed=1
           fi
-          echo "Running $MODE slices"
-          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-            echo "slice $i"
-            body=$(curl -sS -L \
-              --connect-timeout 15 \
-              --max-time 70 \
-              --retry 2 \
-              --retry-delay 2 \
-              --retry-all-errors \
-              --fail \
-              -G "$PIPELINE_URL" \
-              --data-urlencode "secret=$CRON_SECRET" \
-              --data-urlencode "mode=$MODE")
-            echo "$body" | jq '{ok,mode,done,timed_out:.summary.timed_out,sources:.summary.sources_processed,published:.summary.auto_publish.published,salary:.summary.salary_enrichment}'
-            if echo "$body" | jq -e '.done == true' >/dev/null; then
-              echo "queue empty"
-              exit 0
-            fi
-          done
-          echo "slice cap reached; queue not empty"
-          exit 1
+          exit "$failed"

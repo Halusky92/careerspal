@@ -24,7 +24,7 @@ Pipeline endpoints:
 
 ### Production cron
 
-GitHub Actions runs the nightly sourcing window in Europe/Bratislava: discovery at 01:05, board refresh at 01:30, salary enrichment at 02:15, and stale-job closing at 02:45. Those runs share one queue, so a late run waits. Vercel does not schedule them. The Greenhouse route still accepts one board per direct call.
+GitHub Actions runs discovery at 01:05 Europe/Bratislava. At 01:30 the same queue starts board refresh, then salary enrichment, then stale-job closing, in that order inside one run. `queue: max` keeps a waiting run instead of replacing it. Vercel does not schedule them. The Greenhouse route still accepts one board per direct call.
 
 1) In Vercel project env (Production), set:
 - `SOURCING_CRON_SECRET` to a random string

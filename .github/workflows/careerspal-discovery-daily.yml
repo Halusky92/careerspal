@@ -10,7 +10,7 @@ on:
 
 concurrency:
   group: careerspal-nightly-sourcing
-  cancel-in-progress: false
+  queue: max
 
 jobs:
   discover:
