@@ -44,6 +44,7 @@ const Navbar: React.FC = () => {
   const hireHref = isEmployer ? "/post-a-job" : "/hire-talent";
   const hireLabel = isEmployer ? "Post a job" : "Employers";
 
+  const showPeopleNav = false;
   const accountLinks = [
     { label: "Profile", href: "/account" },
     { label: "Saved jobs", href: "/account?tab=saved" },
@@ -51,7 +52,7 @@ const Navbar: React.FC = () => {
     { label: "Settings", href: "/account?tab=settings" },
     ...(profile?.role === "employer"
       ? [
-          { label: "People", href: "/people" },
+          ...(showPeopleNav ? [{ label: "People", href: "/people" }] : []),
           { label: "Dashboard", href: "/dashboard/employer" },
         ]
       : []),
@@ -101,7 +102,7 @@ const Navbar: React.FC = () => {
               >
                 Companies
               </Link>
-              {isEmployer && (
+              {showPeopleNav && isEmployer && (
                 <Link
                   href="/people"
                   className={`hidden lg:inline text-sm ${pathname.startsWith("/people") || pathname.startsWith("/p/") ? "text-indigo-600 font-medium" : "text-slate-600 hover:text-slate-900"}`}
@@ -252,7 +253,7 @@ const Navbar: React.FC = () => {
           <Link href="/companies" onClick={closeMobile} className="block py-3 border-b border-slate-100">
             Companies
           </Link>
-          {isEmployer && (
+          {showPeopleNav && isEmployer && (
             <Link href="/people" onClick={closeMobile} className="block py-3 border-b border-slate-100">
               People
             </Link>
@@ -279,9 +280,11 @@ const Navbar: React.FC = () => {
               </Link>
               {profile.role === "employer" && (
                 <>
-                  <Link href="/people" onClick={closeMobile} className="block py-3 border-b border-slate-100">
-                    People
-                  </Link>
+                  {showPeopleNav && (
+                    <Link href="/people" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+                      People
+                    </Link>
+                  )}
                   <Link href="/dashboard/employer" onClick={closeMobile} className="block py-3 border-b border-slate-100">
                     Dashboard
                   </Link>

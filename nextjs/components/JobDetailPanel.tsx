@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Job } from "../types";
@@ -37,9 +37,14 @@ export default function JobDetailPanel({
   isSaved,
 }: JobDetailPanelProps) {
   const router = useRouter();
+  const detailScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (job?.id) trackJobView(job.id);
+  }, [job?.id]);
+
+  useEffect(() => {
+    detailScrollRef.current?.scrollTo({ top: 0 });
   }, [job?.id]);
 
   const rawSlug = (job?.companySlug || "").toString().trim();
@@ -87,10 +92,10 @@ export default function JobDetailPanel({
   const saved = isSaved ? isSaved(job.id) : false;
 
   return (
-    <div className="sticky top-16 max-h-[calc(100vh-5rem)] overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
-      <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-100">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0">
+    <div className="sticky top-16 flex max-h-[calc(100vh-5rem)] flex-col overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
+      <div className="flex shrink-0 items-start justify-between gap-3 px-6 py-4 border-b border-slate-100">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <div className="w-10 h-10 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 shrink-0">
             <CompanyLogo
               name={job.company}
               logoUrl={job.logo}
@@ -100,22 +105,22 @@ export default function JobDetailPanel({
               fallbackClassName="text-[10px]"
             />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1 overflow-hidden">
             <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
               Role details
             </div>
             <Link
               href={roleHref}
               onClick={(e) => e.stopPropagation()}
-              className="text-sm font-bold text-slate-900 truncate hover:text-indigo-700 hover:underline decoration-indigo-300 underline-offset-2"
-              title="Open role page"
+              className="block text-sm font-bold leading-snug text-slate-900 line-clamp-2 break-words hover:text-indigo-700 hover:underline decoration-indigo-300 underline-offset-2"
+              title={job.title}
             >
               {job.title}
             </Link>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {onToggleSave && isSaved && (
             <button
               onClick={() => onToggleSave(job.id)}
@@ -151,7 +156,7 @@ export default function JobDetailPanel({
         </div>
       </div>
 
-      <div className="overflow-y-auto max-h-[calc(100vh-7rem)] pb-28">
+      <div ref={detailScrollRef} className="min-h-0 flex-1 overflow-y-auto pb-28">
         <div className="px-6 pt-5">
           <div className="flex flex-wrap items-center gap-2">
             {job.type && job.type !== "Unknown" ? (
