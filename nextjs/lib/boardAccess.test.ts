@@ -10,6 +10,10 @@ import {
   paginateBoardJobs,
   premiumCheckoutAllowed,
   premiumCheckoutOpen,
+  premiumLiveBuyerAllowed,
+  premiumPriceIsMonthly799,
+  resolvePremiumStripeKey,
+  stripeKeyForEventMode,
   REGISTERED_VISIBLE_JOBS,
   resolveBoardTier,
 } from "./boardAccess";
@@ -75,7 +79,26 @@ test("search caps stay off until enabled, and Premium checkout rejects a live ke
   assert.equal(premiumCheckoutAllowed("sk_test_123"), true);
   assert.equal(premiumCheckoutAllowed("sk_live_123"), false);
   assert.equal(premiumCheckoutAllowed(""), false);
-  assert.equal(premiumCheckoutOpen(undefined, "sk_test_123"), false);
-  assert.equal(premiumCheckoutOpen("1", "sk_live_123"), false);
-  assert.equal(premiumCheckoutOpen("1", "sk_test_123"), true);
+  assert.equal(premiumCheckoutOpen(undefined, "sk_test_123", ""), false);
+  assert.equal(premiumCheckoutOpen("1", "sk_live_123", ""), false);
+  assert.equal(premiumCheckoutOpen("1", "sk_live_123", "1"), true);
+  assert.equal(premiumCheckoutOpen("1", "sk_test_123", ""), true);
+  assert.equal(premiumLiveBuyerAllowed("person@example.com", "sk_live_123", ""), false);
+  assert.equal(premiumLiveBuyerAllowed("other@example.com", "sk_live_123", "person@example.com"), false);
+  assert.equal(premiumLiveBuyerAllowed("Person@example.com", "sk_live_123", "person@example.com"), true);
+  assert.equal(premiumLiveBuyerAllowed("anyone@example.com", "sk_test_123", ""), true);
+  assert.equal(resolvePremiumStripeKey({ STRIPE_SECRET_KEY: "sk_live_employer", PREMIUM_LIVE: "" }), "");
+  assert.equal(resolvePremiumStripeKey({ STRIPE_SECRET_KEY: "sk_test_shared", PREMIUM_LIVE: "" }), "sk_test_shared");
+  assert.equal(
+    resolvePremiumStripeKey({
+      STRIPE_SECRET_KEY: "sk_live_employer",
+      STRIPE_PREMIUM_SECRET_KEY: "sk_live_premium",
+      PREMIUM_LIVE: "1",
+    }),
+    "sk_live_premium",
+  );
+  assert.equal(stripeKeyForEventMode(false, { STRIPE_SECRET_KEY: "sk_live_employer", STRIPE_PREMIUM_SECRET_KEY: "sk_live_premium" }), "sk_live_employer");
+  assert.equal(stripeKeyForEventMode(true, { STRIPE_SECRET_KEY: "sk_live_employer", STRIPE_PREMIUM_SECRET_KEY: "sk_live_premium" }), "sk_live_premium");
+  assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "usd", active: true, recurring: { interval: "month" } }), true);
+  assert.equal(premiumPriceIsMonthly799({ unit_amount: 800, currency: "usd", active: true, recurring: { interval: "month" } }), false);
 });

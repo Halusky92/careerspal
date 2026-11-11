@@ -5,9 +5,14 @@ const PROCESSING_SUFFIX = "#processing";
 const IN_PROGRESS_MS = 20_000;
 
 export function stripeWebhookSecrets(): string[] {
-  return [process.env.STRIPE_WEBHOOK_SECRET, process.env.STRIPE_WEBHOOK_SECRET_SECOND]
+  return [process.env.STRIPE_WEBHOOK_SECRET, process.env.STRIPE_WEBHOOK_SECRET_SECOND, process.env.STRIPE_PREMIUM_WEBHOOK_SECRET]
     .map((value) => (value || "").trim())
     .filter(Boolean);
+}
+
+export function stripeModeMismatch(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  return /similar object exists in (?:test|live) mode/i.test(message);
 }
 
 export function constructStripeEvent(args: {

@@ -3,20 +3,29 @@ import Stripe from "stripe";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
+import { premiumLiveBuyerAllowed, resolvePremiumStripeKey } from "../../../../lib/boardAccess";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
-  if (!stripeKey || !supabaseAdmin) {
+  const employerKey = process.env.STRIPE_SECRET_KEY || "";
+  const premiumKey = resolvePremiumStripeKey();
+  if (!supabaseAdmin || (!employerKey && !premiumKey)) {
     return NextResponse.json({ error: "Checkout is not configured." }, { status: 500 });
-  }
-  if (!stripeKey.startsWith("sk_test_")) {
-    return NextResponse.json({ error: "Premium billing is available in Stripe test mode." }, { status: 403 });
   }
   const auth = await getSupabaseProfile(request);
   if (!auth?.profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const stripeKey = premiumKey.startsWith("sk_live_") && premiumLiveBuyerAllowed(auth.profile.email, premiumKey)
+    ? premiumKey
+    : employerKey.startsWith("sk_test_")
+      ? employerKey
+      : premiumKey.startsWith("sk_test_")
+        ? premiumKey
+        : "";
+  if (!stripeKey) {
+    return NextResponse.json({ error: "Premium billing is available in Stripe test mode." }, { status: 403 });
   }
   const { data } = await supabaseAdmin
     .from("profiles")

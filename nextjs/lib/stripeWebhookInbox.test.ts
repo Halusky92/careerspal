@@ -8,6 +8,7 @@ import {
   resolveStripeEventAppEnv,
   runStripeEventOnce,
   stripeScopeMetadata,
+  stripeModeMismatch,
   stripeWebhookSecrets,
   type StripeScopeReader,
 } from "./stripeWebhookInbox";
@@ -80,16 +81,25 @@ function memoryInbox() {
   return { rows, sb: sb as unknown as SupabaseClient };
 }
 
-test("webhook secrets skip empty values", () => {
+test("webhook secrets skip empty values and include the Premium secret", () => {
   const prev = process.env.STRIPE_WEBHOOK_SECRET;
   const prev2 = process.env.STRIPE_WEBHOOK_SECRET_SECOND;
+  const prev3 = process.env.STRIPE_PREMIUM_WEBHOOK_SECRET;
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_a";
   process.env.STRIPE_WEBHOOK_SECRET_SECOND = "";
+  process.env.STRIPE_PREMIUM_WEBHOOK_SECRET = "";
   assert.deepEqual(stripeWebhookSecrets(), ["whsec_a"]);
   process.env.STRIPE_WEBHOOK_SECRET_SECOND = "whsec_b";
-  assert.deepEqual(stripeWebhookSecrets(), ["whsec_a", "whsec_b"]);
+  process.env.STRIPE_PREMIUM_WEBHOOK_SECRET = "whsec_live";
+  assert.deepEqual(stripeWebhookSecrets(), ["whsec_a", "whsec_b", "whsec_live"]);
   process.env.STRIPE_WEBHOOK_SECRET = prev;
   process.env.STRIPE_WEBHOOK_SECRET_SECOND = prev2;
+  process.env.STRIPE_PREMIUM_WEBHOOK_SECRET = prev3;
+});
+
+test("a Stripe object from the other mode is rejected before it can grant access", () => {
+  assert.equal(stripeModeMismatch(new Error("No such payment_intent: 'pi_123'; a similar object exists in test mode, but a test mode key was used")), true);
+  assert.equal(stripeModeMismatch(new Error("No such subscription: 'sub_missing'")), false);
 });
 
 test("a failed checkout or refund write can retry, then a duplicate does not repeat it", async () => {

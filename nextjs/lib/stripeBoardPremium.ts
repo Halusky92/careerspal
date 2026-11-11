@@ -33,6 +33,7 @@ export function premiumProfilePatch(args: {
   customerId?: string | null;
   refunded?: boolean;
   currentUntil?: string | null;
+  allowExtend?: boolean;
 }) {
   const raw = args.subscription;
   const until = periodEndIso(raw);
@@ -46,12 +47,28 @@ export function premiumProfilePatch(args: {
   if (!args.refunded && Number.isFinite(currentMs) && currentMs > 0 && untilMs > 0 && untilMs < currentMs) {
     boardUntil = args.currentUntil || null;
   }
+  const paidExtension = args.allowExtend === true && (raw.status === "active" || raw.status === "trialing");
+  if (!args.refunded && Number.isFinite(currentMs) && currentMs > 0 && untilMs > currentMs && !paidExtension) {
+    boardUntil = args.currentUntil || null;
+  }
   return {
     stripe_customer_id: customerIdOf(raw, args.customerId),
     stripe_subscription_id: raw.id,
     stripe_subscription_status: args.refunded ? "canceled" : raw.status,
     board_premium_until: boardUntil,
   };
+}
+
+/** A customer id alone never grants Premium. The subscription must be ours, or already stored. */
+export function subscriptionGrantsPremium(input: {
+  purpose?: string | null;
+  subscriptionId?: string | null;
+  storedSubscriptionId?: string | null;
+}) {
+  if ((input.purpose || "").trim() === "board_access") return true;
+  const stored = (input.storedSubscriptionId || "").trim();
+  const incoming = (input.subscriptionId || "").trim();
+  return Boolean(stored && incoming && stored === incoming);
 }
 
 export async function profileIdForSubscription(subscription: Stripe.Subscription): Promise<string | null> {
@@ -85,6 +102,7 @@ export async function applyBoardSubscription(
     subscription: Stripe.Subscription;
     customerId?: string | null;
     refunded?: boolean;
+    allowExtend?: boolean;
   },
   client: typeof supabaseAdmin = supabaseAdmin,
 ) {
@@ -103,6 +121,7 @@ export async function applyBoardSubscription(
     customerId: args.customerId,
     refunded: args.refunded,
     currentUntil,
+    allowExtend: args.allowExtend,
   });
   const updated = await client.from("profiles").update(patch).eq("id", args.profileId).select("id");
   if (updated.error) throw new Error(updated.error.message || "Premium profile update failed.");

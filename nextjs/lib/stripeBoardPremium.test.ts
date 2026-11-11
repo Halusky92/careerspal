@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { applyBoardSubscription, premiumProfilePatch } from "./stripeBoardPremium";
+import { applyBoardSubscription, premiumProfilePatch, subscriptionGrantsPremium } from "./stripeBoardPremium";
 import { resolveBoardTier } from "./boardAccess";
 import { runStripeEventOnce } from "./stripeWebhookInbox";
 
@@ -31,9 +31,36 @@ test("renewal / invoice.paid with active extends the same period_end field", () 
   assert.equal(patch.board_premium_until, new Date(later * 1000).toISOString());
 });
 
+test("an unknown subscription does not grant Premium", () => {
+  assert.equal(subscriptionGrantsPremium({ purpose: "board_access", subscriptionId: "sub_new" }), true);
+  assert.equal(subscriptionGrantsPremium({ purpose: "", subscriptionId: "sub_new", storedSubscriptionId: "sub_new" }), true);
+  assert.equal(subscriptionGrantsPremium({ purpose: "employer_listing", subscriptionId: "sub_other", storedSubscriptionId: "sub_new" }), false);
+  assert.equal(subscriptionGrantsPremium({ purpose: "", subscriptionId: "sub_other" }), false);
+});
+
 test("past_due unpaid invoice still keeps Premium (grace)", () => {
-  const patch = premiumProfilePatch({ subscription: sub("past_due") });
+  const patch = premiumProfilePatch({ subscription: sub("past_due"), currentUntil: untilIso });
   assert.equal(patch.board_premium_until, untilIso);
+});
+
+test("a failed renewal does not extend the already paid period", () => {
+  const later = periodEnd + 30 * 24 * 3600;
+  const failed = premiumProfilePatch({
+    subscription: sub("past_due", { current_period_end: later }),
+    currentUntil: untilIso,
+  });
+  assert.equal(failed.board_premium_until, untilIso);
+  const unpaidActive = premiumProfilePatch({
+    subscription: sub("active", { current_period_end: later }),
+    currentUntil: untilIso,
+  });
+  assert.equal(unpaidActive.board_premium_until, untilIso);
+  const paid = premiumProfilePatch({
+    subscription: sub("active", { current_period_end: later }),
+    currentUntil: untilIso,
+    allowExtend: true,
+  });
+  assert.equal(paid.board_premium_until, new Date(later * 1000).toISOString());
 });
 
 test("unpaid / incomplete strips Premium immediately", () => {

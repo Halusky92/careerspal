@@ -8,7 +8,13 @@ import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
 import { screenListingForBoard } from "../../../../lib/jobs/autoReviewListing";
 import { verifyScreenPass } from "../../../../lib/jobs/screenPass";
 import { canUseAdminTestPlan } from "../../../../lib/adminTestPlan";
-import { premiumCheckoutOpen } from "../../../../lib/boardAccess";
+import {
+  premiumCheckoutOpen,
+  premiumLiveBuyerAllowed,
+  premiumPriceIdForKey,
+  premiumPriceIsMonthly799,
+  resolvePremiumStripeKey,
+} from "../../../../lib/boardAccess";
 import { chargeForStoredJob } from "../../../../lib/employerPlans";
 import { stripeScopeMetadata } from "../../../../lib/stripeWebhookInbox";
 
@@ -33,8 +39,16 @@ type StripeJobRow = {
 
 export const runtime = "nodejs";
 
-export function GET() {
-  return NextResponse.json({ available: premiumCheckoutOpen() });
+export async function GET(request: Request) {
+  const premiumKey = resolvePremiumStripeKey();
+  if (!premiumCheckoutOpen(undefined, premiumKey)) {
+    return NextResponse.json({ available: false });
+  }
+  if (premiumKey.startsWith("sk_live_")) {
+    const auth = await getSupabaseProfile(request);
+    return NextResponse.json({ available: premiumLiveBuyerAllowed(auth?.profile?.email, premiumKey) });
+  }
+  return NextResponse.json({ available: true });
 }
 
 /** Premium returns to the site that started checkout. Production stays on the public URL. */
@@ -80,13 +94,23 @@ export async function POST(request: Request) {
     screenToken?: string;
   };
   if (body.purpose === "board_access") {
-    if (!premiumCheckoutOpen()) {
+    const premiumKey = resolvePremiumStripeKey();
+    if (!premiumCheckoutOpen(undefined, premiumKey) || !premiumLiveBuyerAllowed(auth.profile.email, premiumKey)) {
       return NextResponse.json({ error: "Premium checkout is not open." }, { status: 403 });
     }
     const origin = boardReturnOrigin(request);
     try {
-      const stripe = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });
-      const priceId = (process.env.STRIPE_BOARD_PRICE_ID || "").trim();
+      const stripe = new Stripe(premiumKey, { apiVersion: "2026-01-28.clover" });
+      const priceId = premiumPriceIdForKey(premiumKey);
+      if (premiumKey.startsWith("sk_live_")) {
+        if (!priceId) {
+          return NextResponse.json({ error: "Premium checkout is not open." }, { status: 403 });
+        }
+        const price = await stripe.prices.retrieve(priceId);
+        if (!premiumPriceIsMonthly799(price)) {
+          return NextResponse.json({ error: "Premium checkout is not open." }, { status: 403 });
+        }
+      }
       const { data: billing } = await supabaseAdmin
         .from("profiles")
         .select("stripe_customer_id")

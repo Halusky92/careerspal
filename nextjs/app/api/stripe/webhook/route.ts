@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import type { StripeScopeReader } from "../../../../lib/stripeWebhookInbox";
+import { stripeKeyForEventMode } from "../../../../lib/boardAccess";
 
 type StripeEmailJobRow = {
   id: string;
@@ -12,6 +13,34 @@ type StripeEmailJobRow = {
 };
 
 export const runtime = "nodejs";
+
+async function applyKnownPremiumSubscription(
+  db: NonNullable<typeof supabaseAdmin>,
+  subscription: Stripe.Subscription,
+  extra?: { refunded?: boolean; customerId?: string | null; allowExtend?: boolean },
+) {
+  const { applyBoardSubscription, profileIdForSubscription, subscriptionGrantsPremium } = await import("../../../../lib/stripeBoardPremium");
+  const profileId = await profileIdForSubscription(subscription);
+  if (!profileId) return null;
+  const { data, error } = await db.from("profiles").select("stripe_subscription_id").eq("id", profileId).maybeSingle();
+  if (error) throw new Error(error.message || "Unable to read Premium subscription.");
+  const stored = (data as { stripe_subscription_id?: string | null } | null)?.stripe_subscription_id;
+  if (!subscriptionGrantsPremium({
+    purpose: subscription.metadata?.purpose,
+    subscriptionId: subscription.id,
+    storedSubscriptionId: stored,
+  })) {
+    return null;
+  }
+  await applyBoardSubscription({
+    profileId,
+    subscription,
+    customerId: extra?.customerId,
+    refunded: extra?.refunded,
+    allowExtend: extra?.allowExtend,
+  });
+  return profileId;
+}
 
 async function employerListingIdFromCharge(stripe: Stripe, charge: Stripe.Charge): Promise<string | null> {
   if (charge.metadata?.purpose === "employer_listing" && charge.metadata.jobId) return charge.metadata.jobId;
@@ -46,7 +75,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
-  const { stripeWebhookSecrets, constructStripeEvent, runStripeEventOnce, acceptsResolvedAppEnv, resolveStripeEventAppEnv, stripeAppEnv } = await import("../../../../lib/stripeWebhookInbox");
+  const { stripeWebhookSecrets, constructStripeEvent, runStripeEventOnce, acceptsResolvedAppEnv, resolveStripeEventAppEnv, stripeAppEnv, stripeModeMismatch } = await import("../../../../lib/stripeWebhookInbox");
   const webhookSecrets = stripeWebhookSecrets();
   if (!stripeKey) {
     return NextResponse.json(
@@ -65,8 +94,9 @@ export async function POST(request: Request) {
   }
   const db = supabaseAdmin;
 
+  let eventId = "";
   try {
-    const stripe = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });
+    const verifyStripe = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });
     const signature = request.headers.get("stripe-signature");
     const payload = await request.text();
 
@@ -77,7 +107,7 @@ export async function POST(request: Request) {
     let event: Stripe.Event;
     try {
       event = constructStripeEvent({
-        stripe,
+        stripe: verifyStripe,
         payload,
         signature,
         secrets: webhookSecrets,
@@ -86,6 +116,11 @@ export async function POST(request: Request) {
       const message = err instanceof Error ? err.message : "Invalid signature.";
       return NextResponse.json({ error: message }, { status: 400 });
     }
+    eventId = event.id;
+    const eventKey = stripeKeyForEventMode(event.livemode);
+    const stripe = eventKey && eventKey !== stripeKey
+      ? new Stripe(eventKey, { apiVersion: "2026-01-28.clover" })
+      : verifyStripe;
 
     const eventAppEnv = await resolveStripeEventAppEnv(stripe as unknown as StripeScopeReader, event);
     if (!acceptsResolvedAppEnv(eventAppEnv, stripeAppEnv())) {
@@ -111,6 +146,7 @@ export async function POST(request: Request) {
             profileId,
             subscription,
             customerId,
+            allowExtend: true,
           });
           const { sendPremiumReceipt } = await import("../../../../lib/premiumReceipt");
           const periodSource = subscription as {
@@ -216,10 +252,8 @@ export async function POST(request: Request) {
 
     if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as Stripe.Subscription;
-      const { applyBoardSubscription, profileIdForSubscription } = await import("../../../../lib/stripeBoardPremium");
-      const profileId = await profileIdForSubscription(subscription);
+      const profileId = await applyKnownPremiumSubscription(db, subscription);
       if (profileId) {
-        await applyBoardSubscription({ profileId, subscription });
         await db.from("audit_logs").insert({
           action: event.type === "customer.subscription.deleted" ? "board_access_canceled" : "board_access_updated",
           metadata: { profileId, subscriptionId: subscription.id, status: subscription.status },
@@ -248,26 +282,29 @@ export async function POST(request: Request) {
             });
           }
         } else {
-        const { applyBoardSubscription, profileIdForStripeCustomer, profileIdForSubscription } = await import("../../../../lib/stripeBoardPremium");
-        const customerId = typeof charge.customer === "string" ? charge.customer : charge.customer || null;
-        let profileId = customerId ? await profileIdForStripeCustomer(String(customerId)) : null;
+        const customerId = typeof charge.customer === "string" ? charge.customer : charge.customer?.id || null;
+        let profileId: string | null = null;
         const subRef = (charge as Stripe.Charge & { invoice?: string | { subscription?: string | null } }).invoice;
-        if (!profileId && typeof subRef === "object" && subRef?.subscription) {
+        if (typeof subRef === "object" && subRef?.subscription) {
           const subscription = await stripe.subscriptions.retrieve(String(subRef.subscription));
-          profileId = await profileIdForSubscription(subscription);
-          if (profileId) {
-            await applyBoardSubscription({ profileId, subscription, refunded: true });
-          }
-        } else if (profileId && customerId) {
-          const { data } = await db
-            .from("profiles")
-            .select("stripe_subscription_id")
-            .eq("id", profileId)
-            .maybeSingle();
-          const subId = (data as { stripe_subscription_id?: string | null } | null)?.stripe_subscription_id;
-          if (subId) {
-            const subscription = await stripe.subscriptions.retrieve(subId);
-            await applyBoardSubscription({ profileId, subscription, customerId: String(customerId), refunded: true });
+          profileId = await applyKnownPremiumSubscription(db, subscription, { refunded: true, customerId });
+        } else if (customerId) {
+          const { profileIdForStripeCustomer } = await import("../../../../lib/stripeBoardPremium");
+          const owner = await profileIdForStripeCustomer(String(customerId));
+          if (owner) {
+            const { data } = await db
+              .from("profiles")
+              .select("stripe_subscription_id")
+              .eq("id", owner)
+              .maybeSingle();
+            const subId = (data as { stripe_subscription_id?: string | null } | null)?.stripe_subscription_id;
+            if (subId) {
+              const subscription = await stripe.subscriptions.retrieve(subId);
+              profileId = await applyKnownPremiumSubscription(db, subscription, {
+                refunded: true,
+                customerId: String(customerId),
+              });
+            }
           }
         }
         if (profileId) {
@@ -289,10 +326,8 @@ export async function POST(request: Request) {
       if (subRef) {
         const subId = typeof subRef === "string" ? subRef : subRef.id;
         const subscription = await stripe.subscriptions.retrieve(subId);
-        const { applyBoardSubscription, profileIdForSubscription } = await import("../../../../lib/stripeBoardPremium");
-        const profileId = await profileIdForSubscription(subscription);
+        const profileId = await applyKnownPremiumSubscription(db, subscription, { allowExtend: true });
         if (profileId) {
-          await applyBoardSubscription({ profileId, subscription });
           await db.from("audit_logs").insert({
             action: "board_access_renewed",
             metadata: {
@@ -317,10 +352,8 @@ export async function POST(request: Request) {
       if (subRef) {
         const subId = typeof subRef === "string" ? subRef : subRef.id;
         const subscription = await stripe.subscriptions.retrieve(subId);
-        const { applyBoardSubscription, profileIdForSubscription } = await import("../../../../lib/stripeBoardPremium");
-        const profileId = await profileIdForSubscription(subscription);
+        const profileId = await applyKnownPremiumSubscription(db, subscription);
         if (profileId) {
-          await applyBoardSubscription({ profileId, subscription });
           await db.from("audit_logs").insert({
             action: "board_access_payment_failed",
             metadata: { profileId, subscriptionId: subscription.id, invoiceId: invoice.id, status: subscription.status },
@@ -376,7 +409,11 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ received: true });
   } catch (error) {
+    if (stripeModeMismatch(error)) {
+      return NextResponse.json({ received: true, ignored: true });
+    }
     const message = error instanceof Error ? error.message : String(error);
+    console.error(`[stripe-webhook] ${eventId} ${message}`.slice(0, 240));
     return NextResponse.json({ error: `Webhook handler failed: ${message}` }, { status: 500 });
   }
 }
