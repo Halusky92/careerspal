@@ -66,3 +66,26 @@ test("expiration after canceled with no remaining period is registered", () => {
   });
   assert.equal(patch.board_premium_until, null);
 });
+
+test("a late older snapshot does not shorten a newer paid period", () => {
+  const newer = new Date((periodEnd + 30 * 24 * 3600) * 1000).toISOString();
+  const lateUnpaid = premiumProfilePatch({
+    subscription: sub("unpaid"),
+    currentUntil: newer,
+  });
+  assert.equal(lateUnpaid.board_premium_until, newer);
+  const lateActive = premiumProfilePatch({
+    subscription: sub("active"),
+    currentUntil: newer,
+  });
+  assert.equal(lateActive.board_premium_until, newer);
+});
+
+test("an unpaid invoice for the current period removes Premium", () => {
+  const patch = premiumProfilePatch({
+    subscription: sub("unpaid"),
+    currentUntil: untilIso,
+  });
+  assert.equal(patch.board_premium_until, null);
+  assert.equal(resolveBoardTier({ signedIn: true, premiumUntil: patch.board_premium_until }), "registered");
+});

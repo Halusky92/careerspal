@@ -126,3 +126,48 @@ export async function runStripeEventOnce(args: {
   await completeStripeEvent(args.sb, args.event);
   return "done";
 }
+
+export type StripeAppEnv = "production" | "staging";
+
+export function stripeAppEnv(staging = process.env.STAGING): StripeAppEnv {
+  return staging === "1" ? "staging" : "production";
+}
+
+export function stripeScopeMetadata(metadata: Record<string, string>, staging = process.env.STAGING) {
+  return { ...metadata, app_env: stripeAppEnv(staging) };
+}
+
+function metadataAppEnv(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const value = (metadata as { app_env?: unknown }).app_env;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/** Reads app_env from the event object, including an invoice's subscription snapshot. */
+export function stripeEventAppEnv(event: { data?: { object?: unknown } }): string | null {
+  const object = event.data?.object as {
+    metadata?: unknown;
+    parent?: { subscription_details?: { metadata?: unknown } | null } | null;
+    lines?: { data?: Array<{ metadata?: unknown }> } | null;
+  } | null;
+  if (!object) return null;
+  const direct = metadataAppEnv(object.metadata);
+  if (direct) return direct;
+  const parent = metadataAppEnv(object.parent?.subscription_details?.metadata);
+  if (parent) return parent;
+  for (const line of object.lines?.data || []) {
+    const fromLine = metadataAppEnv(line.metadata);
+    if (fromLine) return fromLine;
+  }
+  return null;
+}
+
+/** Production keeps untagged events. Staging handles only its own tagged events, before any database write. */
+export function acceptsStripeEvent(
+  event: { data?: { object?: unknown } },
+  appEnv: StripeAppEnv = stripeAppEnv(),
+) {
+  const tagged = stripeEventAppEnv(event);
+  if (appEnv === "staging") return tagged === "staging";
+  return tagged !== "staging";
+}

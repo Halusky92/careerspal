@@ -37,6 +37,7 @@ export async function GET() {
       "customer.subscription.updated",
       "customer.subscription.deleted",
       "invoice.paid",
+      "invoice.payment_failed",
       "charge.refunded",
     ],
   });
@@ -44,7 +45,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
-  const { stripeWebhookSecrets, constructStripeEvent, runStripeEventOnce } = await import("../../../../lib/stripeWebhookInbox");
+  const { stripeWebhookSecrets, constructStripeEvent, runStripeEventOnce, acceptsStripeEvent } = await import("../../../../lib/stripeWebhookInbox");
   const webhookSecrets = stripeWebhookSecrets();
   if (!stripeKey) {
     return NextResponse.json(
@@ -85,6 +86,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
+    if (!acceptsStripeEvent(event)) {
+      return NextResponse.json({ received: true, ignored: true });
+    }
+
     const outcome = await runStripeEventOnce({
       sb: db,
       event,
@@ -105,9 +110,26 @@ export async function POST(request: Request) {
             subscription,
             customerId,
           });
+          const { sendPremiumReceipt } = await import("../../../../lib/premiumReceipt");
+          const periodSource = subscription as {
+            current_period_end?: number;
+            items?: { data?: Array<{ current_period_end?: number }> };
+          };
+          const periodEnd = periodSource.current_period_end || periodSource.items?.data?.[0]?.current_period_end;
+          await sendPremiumReceipt({
+            to: session.customer_details?.email || session.customer_email || null,
+            until: typeof periodEnd === "number" ? new Date(periodEnd * 1000).toISOString() : null,
+          });
           await db.from("audit_logs").insert({
             action: "board_access_paid",
-            metadata: { profileId, stripeSessionId: session.id, subscriptionId: subId },
+            metadata: {
+              profileId,
+              stripeSessionId: session.id,
+              subscriptionId: subId,
+              amountTotal: session.amount_total,
+              currency: session.currency,
+              renews: true,
+            },
           });
         }
         return;
@@ -271,7 +293,35 @@ export async function POST(request: Request) {
           await applyBoardSubscription({ profileId, subscription });
           await db.from("audit_logs").insert({
             action: "board_access_renewed",
-            metadata: { profileId, subscriptionId: subscription.id, invoiceId: invoice.id },
+            metadata: {
+              profileId,
+              subscriptionId: subscription.id,
+              invoiceId: invoice.id,
+              amountPaid: invoice.amount_paid,
+              currency: invoice.currency,
+              renews: true,
+            },
+          });
+        }
+      }
+    }
+
+    if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object as Stripe.Invoice & {
+        subscription?: string | { id: string } | null;
+        parent?: { subscription_details?: { subscription?: string | null } | null } | null;
+      };
+      const subRef = invoice.subscription || invoice.parent?.subscription_details?.subscription;
+      if (subRef) {
+        const subId = typeof subRef === "string" ? subRef : subRef.id;
+        const subscription = await stripe.subscriptions.retrieve(subId);
+        const { applyBoardSubscription, profileIdForSubscription } = await import("../../../../lib/stripeBoardPremium");
+        const profileId = await profileIdForSubscription(subscription);
+        if (profileId) {
+          await applyBoardSubscription({ profileId, subscription });
+          await db.from("audit_logs").insert({
+            action: "board_access_payment_failed",
+            metadata: { profileId, subscriptionId: subscription.id, invoiceId: invoice.id, status: subscription.status },
           });
         }
       }

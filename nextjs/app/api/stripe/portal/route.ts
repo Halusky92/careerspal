@@ -11,6 +11,9 @@ export async function POST(request: Request) {
   if (!stripeKey || !supabaseAdmin) {
     return NextResponse.json({ error: "Checkout is not configured." }, { status: 500 });
   }
+  if (!stripeKey.startsWith("sk_test_")) {
+    return NextResponse.json({ error: "Premium billing is available in Stripe test mode." }, { status: 403 });
+  }
   const auth = await getSupabaseProfile(request);
   if (!auth?.profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

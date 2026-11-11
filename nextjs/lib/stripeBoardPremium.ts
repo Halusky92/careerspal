@@ -32,6 +32,7 @@ export function premiumProfilePatch(args: {
   subscription: PeriodSource;
   customerId?: string | null;
   refunded?: boolean;
+  currentUntil?: string | null;
 }) {
   const raw = args.subscription;
   const until = periodEndIso(raw);
@@ -40,11 +41,16 @@ export function premiumProfilePatch(args: {
   const keepActive = PREMIUM_KEEP_STATUSES.has(raw.status);
   const keepCanceledPaidPeriod = raw.status === "canceled" && paidWindowOpen && !args.refunded;
   const keep = !args.refunded && (keepActive || keepCanceledPaidPeriod);
+  let boardUntil = keep ? until : null;
+  const currentMs = args.currentUntil ? Date.parse(args.currentUntil) : 0;
+  if (!args.refunded && Number.isFinite(currentMs) && currentMs > 0 && untilMs > 0 && untilMs < currentMs) {
+    boardUntil = args.currentUntil || null;
+  }
   return {
     stripe_customer_id: customerIdOf(raw, args.customerId),
     stripe_subscription_id: raw.id,
     stripe_subscription_status: args.refunded ? "canceled" : raw.status,
-    board_premium_until: keep ? until : null,
+    board_premium_until: boardUntil,
   };
 }
 
@@ -80,12 +86,19 @@ export async function applyBoardSubscription(args: {
   refunded?: boolean;
 }) {
   if (!supabaseAdmin) return;
+  const existing = await supabaseAdmin
+    .from("profiles")
+    .select("board_premium_until")
+    .eq("id", args.profileId)
+    .maybeSingle();
+  const currentUntil = (existing.data as { board_premium_until?: string | null } | null)?.board_premium_until;
   const patch = premiumProfilePatch({
     subscription: args.subscription as Stripe.Subscription & {
       current_period_end?: number;
     },
     customerId: args.customerId,
     refunded: args.refunded,
+    currentUntil,
   });
   await supabaseAdmin.from("profiles").update(patch).eq("id", args.profileId);
 }

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { employerCheckoutPatch, employerRefundPatch } from "./employerPlans";
-import { runStripeEventOnce, stripeWebhookSecrets } from "./stripeWebhookInbox";
+import { acceptsStripeEvent, runStripeEventOnce, stripeScopeMetadata, stripeWebhookSecrets } from "./stripeWebhookInbox";
 
 type EventRow = { event_id: string; event_type: string; received_at: string };
 
@@ -153,4 +153,24 @@ test("a failed checkout or refund write can retry, then a duplicate does not rep
   assert.equal(await runStripeEventOnce({ sb: inbox.sb, event: refund, work: applyRefund }), "duplicate");
   assert.equal(refundApplies, refundAppliesAfterSuccess);
   assert.equal(refundJob.status, "archived");
+});
+
+test("staging events are ignored by production and production events are ignored by staging", () => {
+  const stagingCheckout = {
+    data: { object: { metadata: stripeScopeMetadata({ purpose: "board_access" }, "1") } },
+  };
+  const productionCheckout = {
+    data: { object: { metadata: stripeScopeMetadata({ purpose: "employer_listing" }, "0") } },
+  };
+  const untagged = { data: { object: { metadata: { purpose: "employer_listing" } } } };
+  const stagingInvoice = {
+    data: { object: { parent: { subscription_details: { metadata: { app_env: "staging" } } } } },
+  };
+  assert.equal(acceptsStripeEvent(stagingCheckout, "production"), false);
+  assert.equal(acceptsStripeEvent(stagingInvoice, "production"), false);
+  assert.equal(acceptsStripeEvent(productionCheckout, "production"), true);
+  assert.equal(acceptsStripeEvent(untagged, "production"), true);
+  assert.equal(acceptsStripeEvent(stagingCheckout, "staging"), true);
+  assert.equal(acceptsStripeEvent(productionCheckout, "staging"), false);
+  assert.equal(acceptsStripeEvent(untagged, "staging"), false);
 });
