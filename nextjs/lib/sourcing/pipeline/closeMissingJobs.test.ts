@@ -342,6 +342,35 @@ test("missing origin does not turn a duplicate or an employer listing into an AT
   assert.equal(boardCloseProtectsEmployer({ plan_price: null, stripe_payment_status: null }), true);
 });
 
+test("a returned US hybrid reopens, and a returned onsite role stays unpublished", async () => {
+  const hybridUpdates: UpdateCall[] = [];
+  const hybrid = await closeJobsMissingFromBoard(
+    fakeSb({
+      previousRuns: [{ id: "prev", fetched_count: 1 }],
+      candidates: [{ ...eligibleCandidate, id: "c-hybrid", location_text: "New York, NY", remote_policy: "Hybrid" }],
+      jobs: [{ id: "j1", status: "closed", origin: "ashby", plan_price: null, stripe_payment_status: null, apply_url: "mailto:jobs@example.com" }],
+      updates: hybridUpdates,
+    }) as never,
+    { sourceId: "src-1", status: "success", fetchedCount: 1, externalIds: ["101"] },
+  );
+  assert.equal(hybrid.reopened, 1);
+  assert.equal(hybridUpdates.find((u) => u.table === "jobs")?.payload.status, "published");
+
+  const onsiteUpdates: UpdateCall[] = [];
+  const onsite = await closeJobsMissingFromBoard(
+    fakeSb({
+      previousRuns: [{ id: "prev", fetched_count: 1 }],
+      candidates: [{ ...eligibleCandidate, id: "c-onsite", location_text: "New York, NY", remote_policy: "" }],
+      jobs: [{ id: "j1", status: "closed", origin: "ashby", plan_price: null, stripe_payment_status: null, apply_url: "mailto:jobs@example.com" }],
+      updates: onsiteUpdates,
+    }) as never,
+    { sourceId: "src-1", status: "success", fetchedCount: 1, externalIds: ["101"] },
+  );
+  assert.equal(onsite.reopened, 0);
+  assert.equal(onsite.held, 1);
+  assert.equal(onsiteUpdates.find((u) => u.table === "jobs")?.payload.status, "pending_review");
+});
+
 test("a returned role that fails salary-first stays unpublished", async () => {
   const updates: UpdateCall[] = [];
   const out = await closeJobsMissingFromBoard(

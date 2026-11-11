@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isPaidEmployerJob, sourcedPublishBlockers, applyUrlWouldDuplicate, type CandidateRow } from "./syncPublishedJobs";
+import { discoveryMarketBlockers } from "./discoveryPublishGate";
 import { assessBoardFetchHealth, boardHealthReason, planBoardClosures, type BoardListing } from "../boardHealth";
 import { isSourcedJobOrigin } from "../origin";
 import { applyUrlLooksSourcedAts, probeApplyUrl } from "../../jobs/applyLinkHealth";
@@ -261,6 +262,9 @@ async function reopenBlockers(sb: AdminSb, candidate: Partial<CandidateRow> & { 
   const scoreTotal = Number(candidate.sourcing_candidate_scores?.score_total ?? 0);
   const decision = candidate.sourcing_candidate_decisions?.decision || null;
   const blockers = sourcedPublishBlockers(candidate as CandidateRow, scoreTotal, decision);
+  for (const reason of discoveryMarketBlockers(candidate)) {
+    if (!blockers.includes(reason)) blockers.push(reason);
+  }
   const applyUrl = (candidate.apply_url || "").trim();
   const { data: job } = await sb.from("jobs").select("id,apply_url").eq("id", jobId).maybeSingle();
   const currentApply = ((job as { apply_url?: string | null } | null)?.apply_url || "").trim();

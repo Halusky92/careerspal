@@ -6,10 +6,9 @@ import { normalizeAshbyRawPayload } from "../normalization/ashby";
 import { normalizeGreenhouseRawPayload, type NormalizedCandidate } from "../normalization/greenhouse";
 import { normalizeLeverRawPayload } from "../normalization/lever";
 import { sourcedPublishBlockers } from "../pipeline/syncPublishedJobs";
+import { discoveryMarketBlockers } from "../pipeline/discoveryPublishGate";
 import { isOnNicheJob } from "../../nicheScope";
-import { inferWorkMode } from "../../workMode";
 import { extractOfficialBoards, isOfficialAtsHost, officialBoardUrl, type OfficialBoard } from "./atsLinks";
-import { usMarketEligibility } from "./usMarket";
 
 export const DISCOVERY_GREENHOUSE_DETAIL_CAP = 12;
 
@@ -170,15 +169,9 @@ function assessJob(
     scored.total,
     decision.decision,
   );
-  const geo = usMarketEligibility(job.location_text, job.remote_policy, job.description_clean);
-  if (geo !== "us") blockers.push(geo === "outside_us" ? "outside_us" : "geo_unconfirmed");
-  const mode = inferWorkMode({
-    title: job.title,
-    remotePolicy: job.remote_policy,
-    location: job.location_text,
-    description: job.description_clean,
-  });
-  if (mode === "Hybrid") blockers.push("hybrid_not_remote");
+  for (const reason of discoveryMarketBlockers(job)) {
+    if (!blockers.includes(reason)) blockers.push(reason);
+  }
   const min = job.salary_amount_min;
   const max = job.salary_amount_max;
   const amount = min != null && max != null ? `${min}–${max}` : min != null ? String(min) : max != null ? String(max) : "";
