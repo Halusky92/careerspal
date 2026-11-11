@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
@@ -11,6 +11,22 @@ export default function UpgradePage() {
   const { accessToken, loading } = useSupabaseAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [open, setOpen] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/stripe/checkout")
+      .then((response) => response.json())
+      .then((data: { available?: boolean }) => {
+        if (!cancelled) setOpen(data.available === true);
+      })
+      .catch(() => {
+        if (!cancelled) setOpen(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const startCheckout = async () => {
     if (!accessToken) {
@@ -71,6 +87,8 @@ export default function UpgradePage() {
       <p className="mt-2 text-sm text-slate-600">
         $7.99 per month. Unlimited search results, advanced filters, multiple saved searches, and daily alerts. Cancel in Stripe.
       </p>
+      {open === false ? <p className="mt-6 text-sm text-slate-600">Premium checkout is not open.</p> : null}
+      {open ? (
       <div className="mt-6 flex flex-wrap gap-2">
         <button
           type="button"
@@ -89,6 +107,7 @@ export default function UpgradePage() {
           Manage subscription
         </button>
       </div>
+      ) : null}
       {error ? <p className="mt-3 text-sm text-rose-600">{error}</p> : null}
     </div>
   );

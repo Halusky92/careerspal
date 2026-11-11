@@ -29,16 +29,18 @@ export default function JobsClient({
   initialTotal,
   initialQuery,
   initialLocation,
+  initialAccess = "guest",
 }: {
   initialJobs: Job[];
   initialTotal: number;
   initialQuery: string;
   initialLocation: string;
+  initialAccess?: "guest" | "registered" | "paid";
 }) {
   const router = useRouter();
   const { profile, accessToken, loading: authLoading } = useSupabaseAuth();
   const [jobs, setJobs] = useState<Job[]>(() => initialJobs || []);
-  const [boardAccess, setBoardAccess] = useState<"guest" | "registered" | "paid">("guest");
+  const [boardAccess, setBoardAccess] = useState<"guest" | "registered" | "paid">(initialAccess);
   const [boardTotal, setBoardTotal] = useState(initialTotal);
   const [loadingMore, setLoadingMore] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState<string[]>(() => getSaved());

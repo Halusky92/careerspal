@@ -149,13 +149,15 @@ export default async function JobsPage({ searchParams }: PageProps) {
   const initialQuery = getParam(params.query);
   const initialLocation = getParam(params.location);
   const { jobs, total } = await fetchPublishedJobs();
-  const guestSlice = jobs.slice(0, GUEST_VISIBLE_JOBS);
+  const capsOn = process.env.BOARD_PREMIUM_CAPS === "1";
+  const initialJobs = capsOn ? jobs.slice(0, GUEST_VISIBLE_JOBS) : jobs.slice(0, 50);
 
   return (
     <div className="pt-3">
-      <StaticJobsList jobs={guestSlice} total={total} />
+      <StaticJobsList jobs={initialJobs} total={total} />
       <JobsClient
-        initialJobs={guestSlice}
+        initialJobs={initialJobs}
+        initialAccess={capsOn ? "guest" : "paid"}
         initialTotal={total}
         initialQuery={initialQuery}
         initialLocation={initialLocation}

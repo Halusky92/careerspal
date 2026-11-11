@@ -6,6 +6,10 @@ export function premiumCheckoutAllowed(stripeKey?: string | null) {
   return (stripeKey || "").startsWith("sk_test_");
 }
 
+export function premiumCheckoutOpen(flag = process.env.PREMIUM_CHECKOUT, stripeKey = process.env.STRIPE_SECRET_KEY) {
+  return flag === "1" && premiumCheckoutAllowed(stripeKey);
+}
+
 export const GUEST_VISIBLE_JOBS = 4;
 export const REGISTERED_VISIBLE_JOBS = 14;
 export const REGISTERED_SAVED_SEARCHES = 1;

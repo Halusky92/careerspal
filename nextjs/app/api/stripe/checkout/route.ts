@@ -15,6 +15,7 @@ import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
 import { screenListingForBoard } from "../../../../lib/jobs/autoReviewListing";
 import { verifyScreenPass } from "../../../../lib/jobs/screenPass";
 import { canUseAdminTestPlan, isAdminTestPrice } from "../../../../lib/adminTestPlan";
+import { premiumCheckoutOpen } from "../../../../lib/boardAccess";
 
 type StripeJobRow = {
   id: string;
@@ -36,6 +37,10 @@ type StripeJobRow = {
 };
 
 export const runtime = "nodejs";
+
+export function GET() {
+  return NextResponse.json({ available: premiumCheckoutOpen() });
+}
 
 export async function POST(request: Request) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -65,9 +70,8 @@ export async function POST(request: Request) {
     screenToken?: string;
   };
   if (body.purpose === "board_access") {
-    const { premiumCheckoutAllowed } = await import("../../../../lib/boardAccess");
-    if (!premiumCheckoutAllowed(stripeKey)) {
-      return NextResponse.json({ error: "Premium checkout is available in Stripe test mode only." }, { status: 403 });
+    if (!premiumCheckoutOpen()) {
+      return NextResponse.json({ error: "Premium checkout is not open." }, { status: 403 });
     }
     const origin = getPublicSiteUrl();
     try {
