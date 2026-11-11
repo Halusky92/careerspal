@@ -45,10 +45,7 @@ export const PATCH = async (request: NextRequest, context: { params: Promise<{ i
   if (!auth?.profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const body = (await request.json()) as Partial<Job> & {
-    stripeSessionId?: string;
-    stripePaymentStatus?: string;
-  };
+  const body = (await request.json()) as Partial<Job>;
   const allowedStatuses = new Set(["draft", "published", "paused", "private", "invite_only", "pending_review", "closed", "archived"]);
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
@@ -68,11 +65,12 @@ export const PATCH = async (request: NextRequest, context: { params: Promise<{ i
   }
 
   const data: Record<string, unknown> = {};
+  if (body.status === "published" || body.status === "pending_review") {
+    return NextResponse.json({ error: "An admin approves listings. Payment status cannot be set here." }, { status: 403 });
+  }
   if (body.status && allowedStatuses.has(body.status)) data.status = body.status;
   if (typeof body.views === "number") data.views = body.views;
   if (typeof body.matches === "number") data.matches = body.matches;
-  if (body.stripeSessionId) data.stripe_session_id = body.stripeSessionId;
-  if (body.stripePaymentStatus) data.stripe_payment_status = body.stripePaymentStatus;
   if (body.postedAt) data.posted_at_text = body.postedAt;
   if (typeof body.timestamp === "number") data.timestamp = body.timestamp;
 

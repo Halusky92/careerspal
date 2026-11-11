@@ -14,6 +14,7 @@ import { formatEmployerSalaryForStorage } from "../../../../lib/formatSalary";
 import { recordStartPackLedger } from "../../../../lib/startPackLedger";
 import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../lib/nicheScope";
 import { canUseAdminTestPlan, isAdminTestPrice } from "../../../../lib/adminTestPlan";
+import { resolveStoredEmployerPlan } from "../../../../lib/employerPlans";
 import { COMPANY_OWNED_ELSEWHERE_MESSAGE } from "../../../../lib/listingLock";
 
 const MAX_LIVE_JOBS_PER_HOUR = 12;
@@ -125,28 +126,26 @@ export const POST = async (request: Request) => {
   }
   const timestamp = body.timestamp || (status === "published" ? Date.now() : null);
   const postedAt = body.postedAt || (status === "published" ? "Just now" : "Draft");
-  const rawPlanPrice =
-    typeof body.plan?.price === "number" ? body.plan.price : body.planPrice;
-  const isAdminTestPriceFlag = Boolean(body.adminInternalPlan) || isAdminTestPrice(rawPlanPrice);
-  if (isAdminTestPriceFlag && !canUseAdminTestPlan({ role: auth.role, email: auth.email })) {
+  const rawPlanPrice = typeof body.plan?.price === "number" ? body.plan.price : body.planPrice;
+  const requestedType = body.planType || body.plan?.type || "Standard";
+  const wantsAdminTest = Boolean(body.adminInternalPlan) || isAdminTestPrice(rawPlanPrice);
+  if (wantsAdminTest && !canUseAdminTestPlan({ role: auth.role, email: auth.email })) {
     return NextResponse.json({ error: "The $1 test plan is for admins." }, { status: 403 });
   }
-  const requestedType = body.planType || body.plan?.type || "Standard";
-  let storedPlanType = requestedType;
-  let storedPlanPrice =
-    typeof rawPlanPrice === "number" ? Math.max(0, Math.round(rawPlanPrice)) : null;
-  if (requestedType === "Standard" && !isAdminTestPriceFlag) {
-    const founding = await getFoundingStatus(auth.profileId, {
-      email: auth.email,
-      companyName: body.company || null,
-    });
-    if (founding.eligible) {
-      storedPlanType = "Standard";
-      storedPlanPrice = 0;
-    } else if (storedPlanPrice === 0) {
-      return NextResponse.json({ error: "Start pack is not available for this account." }, { status: 403 });
-    }
+  const founding =
+    requestedType === "Standard" && !wantsAdminTest
+      ? await getFoundingStatus(auth.profileId, { email: auth.email, companyName: body.company || null })
+      : null;
+  const storedPlan = resolveStoredEmployerPlan({
+    requestedType,
+    adminTest: wantsAdminTest,
+    startPack: Boolean(founding?.eligible),
+  });
+  if ("error" in storedPlan) {
+    return NextResponse.json({ error: storedPlan.error }, { status: 400 });
   }
+  const storedPlanType = storedPlan.planType;
+  const storedPlanPrice = storedPlan.planPrice;
 
   if (auth.role !== "admin") {
     const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -203,7 +202,7 @@ export const POST = async (request: Request) => {
     benefits: body.benefits || [],
     keywords: body.keywords || null,
     match_score: body.matchScore || null,
-    is_featured: storedPlanType === "Featured Pro" || storedPlanType === "Elite Managed",
+    is_featured: storedPlan.featured,
     status,
     plan_type: storedPlanType,
     plan_price: storedPlanPrice,

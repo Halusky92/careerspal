@@ -3,19 +3,13 @@ import Stripe from "stripe";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 import { checkRateLimit } from "../../../../lib/rateLimit";
-import { getFoundingStatus } from "../../../../lib/employer";
-import { FOUNDING_LAUNCH_PRICE } from "../../../../lib/founding";
-import { PLAN_PRICES } from "../../../../lib/plans";
-import {
-  canRenewUnpublished,
-  RENEW_PLAN_NAME,
-  RENEW_PRICE,
-} from "../../../../lib/jobs/unpublishedRetention";
+import { canRenewUnpublished, RENEW_PLAN_NAME } from "../../../../lib/jobs/unpublishedRetention";
 import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
 import { screenListingForBoard } from "../../../../lib/jobs/autoReviewListing";
 import { verifyScreenPass } from "../../../../lib/jobs/screenPass";
-import { canUseAdminTestPlan, isAdminTestPrice } from "../../../../lib/adminTestPlan";
+import { canUseAdminTestPlan } from "../../../../lib/adminTestPlan";
 import { premiumCheckoutOpen } from "../../../../lib/boardAccess";
+import { chargeForStoredJob } from "../../../../lib/employerPlans";
 
 type StripeJobRow = {
   id: string;
@@ -197,24 +191,21 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  const price = isRenew ? RENEW_PRICE : (body.price ?? jobRow.plan_price ?? PLAN_PRICES.standard);
-  const isLaunchDollar =
-    Number(price) === FOUNDING_LAUNCH_PRICE && (body.planName || jobRow.plan_type || "Standard") === "Standard";
-  if (isLaunchDollar) {
-    const founding = await getFoundingStatus(auth.profile.id, { email: auth.profile.email });
-    if (!founding.eligible) {
-      return NextResponse.json({ error: "The Start pack is no longer available for this account." }, { status: 403 });
-    }
-    if (Number(price) === 0) {
-      return NextResponse.json({ error: "Start pack listings skip checkout." }, { status: 400 });
-    }
-  } else {
-    const needsAdminApproval = Boolean(body.adminInternalPlan) || isAdminTestPrice(price) || price < 1 || price <= 5;
-    if (needsAdminApproval && !canUseAdminTestPlan({ role: auth.profile.role, email: auth.profile.email })) {
-      return NextResponse.json({ error: "The $1 test plan is for admins." }, { status: 403 });
-    }
+  const charge = chargeForStoredJob({
+    planType: jobRow.plan_type,
+    planPrice: jobRow.plan_price,
+    renew: isRenew,
+  });
+  if ("error" in charge) {
+    return NextResponse.json({ error: charge.error }, { status: 400 });
   }
-  const planName = isRenew ? RENEW_PLAN_NAME : body.planName || jobRow.plan_type || "Standard";
+  if (charge.adminTest && !canUseAdminTestPlan({ role: auth.profile.role, email: auth.profile.email })) {
+    return NextResponse.json({ error: "The $1 test plan is for admins." }, { status: 403 });
+  }
+  if (!stripeKey.startsWith("sk_test_")) {
+    return NextResponse.json({ error: "Employer checkout is available in Stripe test mode." }, { status: 403 });
+  }
+  const planName = isRenew ? RENEW_PLAN_NAME : charge.planType;
   const origin =
     (request.headers.get("origin") || "").replace(/\/+$/, "") || getPublicSiteUrl();
 
@@ -230,12 +221,12 @@ export async function POST(request: Request) {
             product_data: {
               name: isRenew
                 ? `${planName} listing renewal`
-                : isAdminTestPrice(price)
+                : charge.adminTest
                   ? "CareersPal admin Stripe test"
                   : `${planName} Job Listing`,
               description: `${jobRow.title} at ${companyName || "Company"}`,
             },
-            unit_amount: Math.round(price * 100),
+            unit_amount: charge.unitAmountCents,
           },
           quantity: 1,
         },
@@ -245,6 +236,17 @@ export async function POST(request: Request) {
       metadata: {
         jobId: jobRow.id,
         purpose: isRenew ? "republish" : "new",
+        planType: planName,
+        amountCents: String(charge.unitAmountCents),
+        currency: "usd",
+      },
+      payment_intent_data: {
+        metadata: {
+          jobId: jobRow.id,
+          purpose: "employer_listing",
+          planType: planName,
+          amountCents: String(charge.unitAmountCents),
+        },
       },
     });
 

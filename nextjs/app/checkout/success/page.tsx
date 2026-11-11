@@ -63,8 +63,8 @@ function CheckoutSuccessInner() {
               ? "Payment received. Premium search is on for this billing period. Cancel anytime in Stripe."
               : "Stripe will confirm this payment, then Premium search unlocks automatically."
             : paid
-              ? `${title ? `“${title}”` : "Your listing"} is paid. It waits for a last check, then it can go live. That is not a timed SLA.`
-              : "Stripe will confirm, then the listing waits for a last check. You also get an email. That is not a timed SLA."}
+              ? `${title ? `“${title}”` : "Your listing"} is paid. An admin approves it before it goes live. That is not a timed SLA.`
+              : "Stripe will confirm, then an admin approves the listing before it goes live. You also get an email. That is not a timed SLA."}
         </p>
         {payload?.planType ? (
           <p className="mt-2 text-sm text-slate-500">
