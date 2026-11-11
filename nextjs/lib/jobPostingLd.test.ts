@@ -50,6 +50,23 @@ test("emits JobPosting with salary, remote and apply URL without invented expiry
   assert.equal(ld.url, "https://www.careerspal.com/jobs/revenue-operations-manager-job-1");
 });
 
+test("JobPosting salary keeps both bounds and skips an OTE ceiling", () => {
+  const ld = buildJobPostingLd(
+    job({ salary: "$95k–$135k a year", description: "Senior Sales Operations Manager." }),
+    "https://www.careerspal.com/jobs/outreach",
+  );
+  const value = (ld?.baseSalary as { value: { minValue: number; maxValue: number; unitText: string }; currency: string });
+  assert.equal(value.currency, "USD");
+  assert.equal(value.value.minValue, 95000);
+  assert.equal(value.value.maxValue, 135000);
+  assert.equal(value.value.unitText, "YEAR");
+  const ote = buildJobPostingLd(
+    job({ salary: "From $255k a year", description: "The annual OTE is up to $255,000." }),
+    "https://www.careerspal.com/jobs/pandadoc",
+  );
+  assert.equal(ote?.baseSalary, undefined);
+});
+
 test("does not emit JobPosting for expired or unpublished jobs", () => {
   assert.equal(shouldEmitJobPosting(job({ status: "draft" })), false);
   assert.equal(shouldEmitJobPosting(job({ timestamp: Date.now() - 40 * 24 * 60 * 60 * 1000 })), false);

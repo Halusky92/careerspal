@@ -47,6 +47,16 @@ export function normalizeAshbyRawPayload(args: {
     }) || null;
   const component = firstSalaryComponent(job);
   const summary = job.compensation?.compensationTierSummary || job.compensation?.scrapeableCompensationSalarySummary || null;
+  const salaryBands = new Set(
+    (job.compensation?.compensationTiers || []).flatMap((tier) =>
+      (tier.components || [])
+        .filter((component) => {
+          const type = (component.compensationType || "").toLowerCase();
+          return (!type || type.includes("salary") || type.includes("base")) && (component.minValue != null || component.maxValue != null);
+        })
+        .map((component) => `${component.currencyCode || ""}:${component.minValue ?? ""}:${component.maxValue ?? ""}`),
+    ),
+  );
   let salary: ParsedSalary = parsedSalaryFromStructured({
     min: component?.minValue ?? null,
     max: component?.maxValue ?? null,
@@ -54,7 +64,17 @@ export function normalizeAshbyRawPayload(args: {
     period: component?.interval || summary,
     rawText: summary,
   });
-  if (!salary.salary_present && plain) {
+  if (salaryBands.size > 1) {
+    salary = {
+      ...salary,
+      salary_text_raw: null,
+      salary_amount_min: null,
+      salary_amount_max: null,
+      salary_present: false,
+      salary_confidence: "low",
+      salary_parse_notes: ["multiple_salary_bands"],
+    };
+  } else if (!salary.salary_present && plain) {
     const fromText = detectAndParseSalaryForGreenhouse(plain);
     if (fromText.salary_present) salary = fromText;
   }

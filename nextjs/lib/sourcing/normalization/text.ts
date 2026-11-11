@@ -6,17 +6,19 @@ export function stripHtmlToText(html: string): string {
   // Decode a few common HTML entities (minimal, safe).
   // NOTE: Some ATS payloads contain HTML that is itself escaped (e.g. "&lt;div&gt;...").
   // We decode first, then strip tags, then normalize whitespace.
-  const decoded = noScripts
-    .replace(/&nbsp;/g, " ")
-    // Normalize common dash entities so salary ranges like "$120k &mdash; $150k" can be parsed.
-    .replace(/&mdash;|&#8212;|&#x2014;/gi, "-")
-    .replace(/&ndash;|&#8211;|&#x2013;/gi, "-")
-    .replace(/&minus;|&#8722;|&#x2212;/gi, "-")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+  let decoded = noScripts;
+  for (let pass = 0; pass < 2; pass += 1) {
+    decoded = decoded
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&mdash;|&#8212;|&#x2014;/gi, "-")
+      .replace(/&ndash;|&#8211;|&#x2013;/gi, "-")
+      .replace(/&minus;|&#8722;|&#x2212;/gi, "-")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;|&apos;/gi, "'");
+  }
 
   // Replace tags with spaces (after decoding, to handle escaped HTML).
   const noTags = decoded.replace(/<[^>]+>/g, " ");

@@ -29,6 +29,26 @@ test("explicit Remote can publish with no country", () => {
   );
 });
 
+test("a bare Remote is not treated as a missing geographic restriction", () => {
+  assert.deepEqual(
+    discoveryMarketBlockers({
+      title: "Revenue Operations Manager",
+      location_text: "Remote",
+      remote_policy: "Remote",
+      description_clean: "This role is remote. No country is listed.",
+    }),
+    [],
+  );
+  const excluded = discoveryMarketBlockers({
+    title: "Revenue Operations Manager",
+    location_text: "Remote",
+    remote_policy: "Remote",
+    description_clean: "This role is remote, but is not eligible to be hired in CA, NY.",
+  });
+  assert.equal(excluded.includes("geo_restriction"), true);
+  assert.equal(excluded.includes("remote_unconfirmed"), false);
+});
+
 test("Remote - USA or Canada can publish when the United States is explicit", () => {
   assert.deepEqual(
     discoveryMarketBlockers({
@@ -114,6 +134,32 @@ test("onsite stays blocked and a named remote country can publish", () => {
       remote_policy: "Remote",
     }),
     [],
+  );
+});
+
+test("Toast hybrid policy is not labeled Remote, and Twilio exclusions are not dropped", () => {
+  const toast = discoveryMarketBlockers({
+    title: "Manager, Marketing Operations - Ad Tech Lead",
+    location_text: "Remote",
+    remote_policy: "Remote",
+    description_clean: "Our Approach to Hybrid Working. We embrace a hybrid work model and publish in-office expectations by region.",
+  });
+  assert.equal(toast.includes("work_mode_conflict") || toast.includes("geo_unconfirmed"), true);
+  assert.ok(
+    discoveryMarketBlockers({
+      title: "Revenue Operations Manager",
+      location_text: "Remote",
+      remote_policy: "Remote",
+      description_clean: "The company describes a hybrid work model for this role.",
+    }).includes("work_mode_conflict"),
+  );
+  assert.ok(
+    discoveryMarketBlockers({
+      title: "Marketing Operations Manager",
+      location_text: "Remote - US",
+      remote_policy: "Remote",
+      description_clean: "This role will be remote, but is not eligible to be hired in CA, CT, NJ, NY, PA, WA.",
+    }).includes("geo_restriction"),
   );
 });
 
