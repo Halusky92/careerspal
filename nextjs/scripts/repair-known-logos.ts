@@ -10,7 +10,7 @@ const notionLogo = chooseDisplayedLogo([], notionSite);
 if (!pomeloSite || !pomeloLogo || !notionLogo) throw new Error("missing logo");
 
 async function applyRepair() {
-const env = {};
+const env: Record<string, string> = {};
 for (const line of fs.readFileSync(new URL("../.env.local", import.meta.url), "utf8").split(/\r?\n/)) {
   const i = line.indexOf("=");
   if (i < 1 || line.startsWith("#")) continue;
