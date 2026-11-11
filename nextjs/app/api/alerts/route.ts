@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { getSupabaseProfile } from "../../../lib/supabaseServerAuth";
+import { REGISTERED_SAVED_SEARCHES } from "../../../lib/boardAccess";
+import { boardTierFromRequest } from "../../../lib/boardAccessServer";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -57,6 +59,19 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (existing) {
     return NextResponse.json({ alert: existing, existing: true });
+  }
+  const tier = await boardTierFromRequest(request);
+  if (tier !== "paid") {
+    const { count } = await supabaseAdmin
+      .from("alerts")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", profileId);
+    if ((count || 0) >= REGISTERED_SAVED_SEARCHES) {
+      return NextResponse.json(
+        { error: "Free accounts can save one search. Premium unlocks more.", cap: REGISTERED_SAVED_SEARCHES },
+        { status: 403 },
+      );
+    }
   }
   const { data } = await supabaseAdmin
     .from("alerts")

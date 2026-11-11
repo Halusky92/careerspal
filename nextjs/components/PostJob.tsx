@@ -125,7 +125,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const [logoFileName, setLogoFileName] = useState("");
   const [openInfoId, setOpenInfoId] = useState<("get" | "requirements" | "review") | null>("get");
   const [titleMenuOpen, setTitleMenuOpen] = useState(false);
-  const [liveTitles, setLiveTitles] = useState<string[]>([]);
+  const liveTitles: string[] = [];
   const [screenIssues, setScreenIssues] = useState<ListingScreenIssue[]>([]);
   const [screening, setScreening] = useState(false);
   const [screenToken, setScreenToken] = useState<string | null>(null);
@@ -179,20 +179,6 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     }, 250);
     return () => window.clearTimeout(timer);
   }, [step, formData, logoFileName, initialJob?.id, owner, authLoading, draftOwner]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/jobs?limit=50")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { jobs?: Array<{ title?: string }> } | null) => {
-        if (cancelled || !data?.jobs) return;
-        setLiveTitles(data.jobs.map((job) => job.title || "").filter(Boolean));
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {

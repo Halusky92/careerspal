@@ -14,11 +14,18 @@ export async function GET(request: Request) {
   }
 
   const profile = auth.profile;
-  const extraRes = await supabaseAdmin
+  let extraRes = await supabaseAdmin
     .from("profiles")
-    .select("headline, bio, hobbies, profile_visibility, profile_share_token")
+    .select("headline, bio, hobbies, profile_visibility, profile_share_token, newsletter_opt_in, stripe_subscription_status, stripe_customer_id, board_premium_until")
     .eq("id", profile.id)
     .maybeSingle();
+  if (extraRes.error) {
+    extraRes = await supabaseAdmin
+      .from("profiles")
+      .select("headline, bio, hobbies, profile_visibility, profile_share_token")
+      .eq("id", profile.id)
+      .maybeSingle();
+  }
   const extras = extraRes.error ? null : extraRes.data;
 
   const user = {
@@ -32,6 +39,10 @@ export async function GET(request: Request) {
     hobbies: (extras as { hobbies?: string | null } | null)?.hobbies || "",
     visibility: (extras as { profile_visibility?: string | null } | null)?.profile_visibility || "private",
     shareToken: (extras as { profile_share_token?: string | null } | null)?.profile_share_token || "",
+    newsletterOptIn: Boolean((extras as { newsletter_opt_in?: boolean | null } | null)?.newsletter_opt_in),
+    subscriptionStatus: (extras as { stripe_subscription_status?: string | null } | null)?.stripe_subscription_status || "",
+    hasStripeCustomer: Boolean((extras as { stripe_customer_id?: string | null } | null)?.stripe_customer_id),
+    premiumUntil: (extras as { board_premium_until?: string | null } | null)?.board_premium_until || "",
     createdAt: null,
   };
 
@@ -55,6 +66,7 @@ export async function PATCH(request: Request) {
     bio?: string;
     hobbies?: string;
     visibility?: string;
+    newsletterOptIn?: boolean;
   };
 
   const nextRole =
@@ -69,6 +81,7 @@ export async function PATCH(request: Request) {
   if (typeof body.headline === "string") updates.headline = body.headline.trim().slice(0, 120);
   if (typeof body.bio === "string") updates.bio = body.bio.trim().slice(0, 800);
   if (typeof body.hobbies === "string") updates.hobbies = body.hobbies.trim().slice(0, 200);
+  if (typeof body.newsletterOptIn === "boolean") updates.newsletter_opt_in = body.newsletterOptIn;
   if (body.visibility === "private" || body.visibility === "employers" || body.visibility === "link") {
     updates.profile_visibility = body.visibility;
     if (body.visibility !== "private") {

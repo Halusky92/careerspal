@@ -26,6 +26,26 @@ export async function GET(request: Request) {
   } catch {
     return NextResponse.json({ error: "Checkout session not found." }, { status: 404 });
   }
+  if (session.metadata?.purpose === "board_access") {
+    const paid = session.payment_status === "paid" || session.status === "complete";
+    if (paid && session.metadata.profileId === auth.profile.id && session.subscription) {
+      const { applyBoardSubscription } = await import("../../../../lib/stripeBoardPremium");
+      const subId = typeof session.subscription === "string" ? session.subscription : session.subscription.id;
+      const subscription = await stripe.subscriptions.retrieve(subId);
+      await applyBoardSubscription({
+        profileId: auth.profile.id,
+        subscription,
+        customerId: typeof session.customer === "string" ? session.customer : session.customer?.id,
+      });
+    }
+    return NextResponse.json({
+      paid,
+      paymentStatus: session.payment_status,
+      boardAccess: true,
+      title: "Premium",
+      amount: typeof session.amount_total === "number" ? session.amount_total / 100 : 7.99,
+    });
+  }
   const jobId = session.metadata?.jobId || "";
   if (!jobId) {
     return NextResponse.json({ error: "This checkout is not tied to a listing." }, { status: 404 });

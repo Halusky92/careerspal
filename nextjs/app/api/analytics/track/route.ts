@@ -25,6 +25,8 @@ export async function POST(request: Request) {
     referrer?: string;
     sessionId?: string;
     userAgent?: string;
+    event?: string;
+    extra?: Record<string, unknown> | null;
   };
 
   const ip = getClientIp(request);
@@ -34,14 +36,16 @@ export async function POST(request: Request) {
   }
   const ipHash = hashValue(`${ip}:${ua}`);
 
+  const action = (payload.event || "page_view").trim() || "page_view";
   await supabaseAdmin.from("audit_logs").insert({
-    action: "page_view",
+    action,
     metadata: {
       path: payload.path || "/",
       referrer: payload.referrer || "",
       sessionId: payload.sessionId || null,
       userAgent: ua,
       ipHash,
+      extra: payload.extra || null,
     },
   });
 

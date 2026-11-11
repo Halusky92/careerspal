@@ -5,6 +5,7 @@ import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { authFetch } from "@/lib/authFetch";
 import { bindPostingSessionOwner, clearUnscopedPostingSession, hasPendingPosting, postingOwnerKey } from "@/lib/postingSession";
+import { trackFunnel } from "../lib/funnelTrack";
 
 type Profile = {
   name?: string | null;
@@ -126,6 +127,15 @@ const Providers = ({ children }: ProvidersProps) => {
       await fetchProfile(session?.access_token ?? null);
       if (_event === "SIGNED_IN" && session?.access_token) {
         maybeContinuePendingAuthFlow(session.user?.id);
+        try {
+          const key = `cp_signup_${session.user?.id || "anon"}`;
+          if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
+            window.localStorage.setItem(key, "1");
+            trackFunnel("signup_completed");
+          }
+        } catch {
+          // ignore
+        }
       }
       if (!isActive) return;
       setLoading(false);

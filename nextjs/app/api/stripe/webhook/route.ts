@@ -17,20 +17,28 @@ export async function GET() {
     ok: true,
     endpoint: "/api/stripe/webhook",
     method: "POST",
-    events: ["checkout.session.completed", "checkout.session.expired"],
+    events: [
+      "checkout.session.completed",
+      "checkout.session.expired",
+      "customer.subscription.updated",
+      "customer.subscription.deleted",
+      "invoice.paid",
+      "charge.refunded",
+    ],
   });
 }
 
 export async function POST(request: Request) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const { stripeWebhookSecrets, constructStripeEvent, claimStripeEvent } = await import("../../../../lib/stripeWebhookInbox");
+  const webhookSecrets = stripeWebhookSecrets();
   if (!stripeKey) {
     return NextResponse.json(
       { error: "Missing STRIPE_SECRET_KEY (required for Stripe SDK initialization)." },
       { status: 500 },
     );
   }
-  if (!webhookSecret) {
+  if (webhookSecrets.length === 0) {
     return NextResponse.json({ error: "Missing STRIPE_WEBHOOK_SECRET." }, { status: 500 });
   }
   if (!supabaseAdmin) {
@@ -51,14 +59,45 @@ export async function POST(request: Request) {
 
     let event: Stripe.Event;
     try {
-      event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+      event = constructStripeEvent({
+        stripe,
+        payload,
+        signature,
+        secrets: webhookSecrets,
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Invalid signature.";
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
+    const claim = await claimStripeEvent(supabaseAdmin, event);
+    if (claim === "duplicate") {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
+      if (session.metadata?.purpose === "board_access") {
+        const { applyBoardSubscription, profileIdForStripeCustomer } = await import("../../../../lib/stripeBoardPremium");
+        const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
+        const profileId =
+          (session.metadata.profileId || "").trim() ||
+          (customerId ? await profileIdForStripeCustomer(customerId) : null);
+        if (profileId && session.subscription) {
+          const subId = typeof session.subscription === "string" ? session.subscription : session.subscription.id;
+          const subscription = await stripe.subscriptions.retrieve(subId);
+          await applyBoardSubscription({
+            profileId,
+            subscription,
+            customerId,
+          });
+          await supabaseAdmin.from("audit_logs").insert({
+            action: "board_access_paid",
+            metadata: { profileId, stripeSessionId: session.id, subscriptionId: subId },
+          });
+        }
+        return NextResponse.json({ received: true });
+      }
       const jobId = session.metadata?.jobId;
       if (jobId) {
         const isPaid = session.payment_status === "paid";
@@ -121,6 +160,74 @@ export async function POST(request: Request) {
             startPack: false,
             live: false,
             paid: true,
+          });
+        }
+      }
+    }
+
+    if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
+      const subscription = event.data.object as Stripe.Subscription;
+      const { applyBoardSubscription, profileIdForSubscription } = await import("../../../../lib/stripeBoardPremium");
+      const profileId = await profileIdForSubscription(subscription);
+      if (profileId) {
+        await applyBoardSubscription({ profileId, subscription });
+        await supabaseAdmin.from("audit_logs").insert({
+          action: event.type === "customer.subscription.deleted" ? "board_access_canceled" : "board_access_updated",
+          metadata: { profileId, subscriptionId: subscription.id, status: subscription.status },
+        });
+      }
+    }
+
+    if (event.type === "charge.refunded") {
+      const charge = event.data.object as Stripe.Charge;
+      if (charge.refunded) {
+        const { applyBoardSubscription, profileIdForStripeCustomer, profileIdForSubscription } = await import("../../../../lib/stripeBoardPremium");
+        const customerId = typeof charge.customer === "string" ? charge.customer : charge.customer || null;
+        let profileId = customerId ? await profileIdForStripeCustomer(String(customerId)) : null;
+        const subRef = (charge as Stripe.Charge & { invoice?: string | { subscription?: string | null } }).invoice;
+        if (!profileId && typeof subRef === "object" && subRef?.subscription) {
+          const subscription = await stripe.subscriptions.retrieve(String(subRef.subscription));
+          profileId = await profileIdForSubscription(subscription);
+          if (profileId) {
+            await applyBoardSubscription({ profileId, subscription, refunded: true });
+          }
+        } else if (profileId && customerId) {
+          const { data } = await supabaseAdmin
+            .from("profiles")
+            .select("stripe_subscription_id")
+            .eq("id", profileId)
+            .maybeSingle();
+          const subId = (data as { stripe_subscription_id?: string | null } | null)?.stripe_subscription_id;
+          if (subId) {
+            const subscription = await stripe.subscriptions.retrieve(subId);
+            await applyBoardSubscription({ profileId, subscription, customerId: String(customerId), refunded: true });
+          }
+        }
+        if (profileId) {
+          await supabaseAdmin.from("audit_logs").insert({
+            action: "board_access_refunded",
+            metadata: { profileId, chargeId: charge.id },
+          });
+        }
+      }
+    }
+
+    if (event.type === "invoice.paid") {
+      const invoice = event.data.object as Stripe.Invoice & {
+        subscription?: string | { id: string } | null;
+        parent?: { subscription_details?: { subscription?: string | null } | null } | null;
+      };
+      const subRef = invoice.subscription || invoice.parent?.subscription_details?.subscription;
+      if (subRef) {
+        const subId = typeof subRef === "string" ? subRef : subRef.id;
+        const subscription = await stripe.subscriptions.retrieve(subId);
+        const { applyBoardSubscription, profileIdForSubscription } = await import("../../../../lib/stripeBoardPremium");
+        const profileId = await profileIdForSubscription(subscription);
+        if (profileId) {
+          await applyBoardSubscription({ profileId, subscription });
+          await supabaseAdmin.from("audit_logs").insert({
+            action: "board_access_renewed",
+            metadata: { profileId, subscriptionId: subscription.id, invoiceId: invoice.id },
           });
         }
       }

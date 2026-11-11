@@ -16,6 +16,7 @@ import { getPublicSiteUrl } from "./siteUrl";
 import { getResendFrom } from "../resendFrom";
 import { ownerAdminEmails } from "../adminAccess";
 import { jobsForDigest } from "./digestJobs";
+import { resolveBoardTier } from "../boardAccess";
 
 type AlertRow = {
   id: string;
@@ -44,6 +45,7 @@ export type SendDigestOptions = {
   dryRun?: boolean;
   force?: boolean;
   trial?: boolean;
+  cadence?: "daily" | "weekly";
 };
 
 const getCompanyName = (job: JobRow) => {
@@ -65,6 +67,7 @@ export async function sendDigest(options: SendDigestOptions = {}) {
   const dryRun = Boolean(options.dryRun);
   const trial = Boolean(options.trial);
   const force = Boolean(options.force) || trial;
+  const cadence = options.cadence || (trial ? "weekly" : "weekly");
   if (!supabaseAdmin) {
     return { ok: false as const, error: "Supabase not configured." };
   }
@@ -88,9 +91,15 @@ export async function sendDigest(options: SendDigestOptions = {}) {
 
   const userIds = (alerts || []).map((alert) => alert.user_id).filter((id): id is string => Boolean(id));
   const { data: alertProfiles } = userIds.length
-    ? await supabaseAdmin.from("profiles").select("id,email").in("id", userIds)
+    ? await supabaseAdmin.from("profiles").select("id,email,role,board_premium_until").in("id", userIds)
     : { data: [] };
   const emailByUser = new Map((alertProfiles || []).map((row) => [row.id, row.email]));
+  const paidByUser = new Map(
+    (alertProfiles || []).map((row) => [
+      row.id,
+      resolveBoardTier({ signedIn: true, role: row.role, premiumUntil: row.board_premium_until }) === "paid",
+    ]),
+  );
 
   let jobQuery = supabaseAdmin
     .from("jobs")
@@ -110,6 +119,9 @@ export async function sendDigest(options: SendDigestOptions = {}) {
 
   for (const alert of (alerts || []) as AlertRow[]) {
     if (!alert.user_id || !alert.query) continue;
+    const paid = Boolean(paidByUser.get(alert.user_id));
+    if (cadence === "daily" && !paid && !trial) continue;
+    if (cadence === "weekly" && paid && !trial) continue;
     const toEmail = String(emailByUser.get(alert.user_id) || "").trim().toLowerCase();
     if (!toEmail || emailed.has(toEmail)) continue;
     const since = trial ? 0 : alert.last_run_at ? new Date(alert.last_run_at).getTime() : sinceDefault.getTime();
@@ -134,7 +146,7 @@ export async function sendDigest(options: SendDigestOptions = {}) {
           jobs: toDigestJobs(bundle, baseUrl),
           cta: { label: "Browse all jobs", href: `${baseUrl}/jobs` },
           unsubscribeUrl: `${baseUrl}/account?tab=alerts`,
-          footerNote: "Two emails a week. Change or stop this in your account.",
+          footerNote: cadence === "daily" ? "Daily Premium alert. Manage it in your account." : "Weekly alert. Change or stop this in your account.",
         }),
       });
       if (!sendResult.error) {
@@ -151,7 +163,7 @@ export async function sendDigest(options: SendDigestOptions = {}) {
   const { data: subscribers } = await supabaseAdmin.from("subscribers").select("email,preference");
   let subscriberSent = 0;
   let skippedUnconfirmed = 0;
-  for (const sub of subscribers || []) {
+  for (const sub of cadence === "weekly" || trial ? subscribers || [] : []) {
     const toEmail = String(sub.email || "").trim().toLowerCase();
     if (!toEmail || emailed.has(toEmail)) continue;
     const prefs = parseAlertPrefs(sub.preference);
@@ -203,6 +215,36 @@ export async function sendDigest(options: SendDigestOptions = {}) {
       .from("subscribers")
       .update({ preference: serializeAlertPrefs({ ...prefs, lastSentAt: now.toISOString() }) })
       .eq("email", toEmail);
+  }
+
+  if ((cadence === "weekly" || trial) && !dryRun) {
+    const { data: newsRows } = await supabaseAdmin
+      .from("profiles")
+      .select("email,newsletter_opt_in,role");
+    for (const row of newsRows || []) {
+      const toEmail = String(row.email || "").trim().toLowerCase();
+      if (!toEmail || emailed.has(toEmail) || !row.newsletter_opt_in) continue;
+      if (liveFallback.length === 0) continue;
+      const sendResult = await resend.emails.send({
+        from,
+        to: toEmail,
+        subject: "Weekly jobs on CareersPal",
+        html: renderAlertEmail({
+          title: "This week on the board",
+          preheader: "A weekly roundup of live Ops and Systems roles.",
+          introHtml: `<p style="margin:0 0 12px;">You opted in to the weekly newsletter. Each role opens on CareersPal first.</p>`,
+          jobs: toDigestJobs(liveFallback, baseUrl),
+          cta: { label: "Browse jobs", href: `${baseUrl}/jobs` },
+          unsubscribeUrl: `${baseUrl}/account?tab=alerts`,
+          footerNote: "Weekly newsletter. Turn it off in your account.",
+        }),
+      });
+      if (!sendResult.error) {
+        sent += 1;
+        emailed.add(toEmail);
+        recipients.push(toEmail);
+      }
+    }
   }
 
   if (trial) {

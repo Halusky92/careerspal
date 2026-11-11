@@ -82,11 +82,31 @@ export async function GET(request: Request) {
   const todayKey = utcDateKey(now);
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 29 * 24 * 60 * 60 * 1000);
 
-  const [monthLogs, applyLogs, matchLogs, subscribers] = await Promise.all([
-    fetchActionLogs("page_view", monthStart.toISOString()),
-    fetchActionLogs("apply_click", monthStart.toISOString()),
-    fetchActionLogs("match", monthStart.toISOString()),
+  const fromIso = monthStart.toISOString();
+  const [
+    monthLogs,
+    applyLogs,
+    matchLogs,
+    subscribers,
+    signupStarted,
+    signupCompleted,
+    searchLimit,
+    premiumClick,
+    checkoutStarted,
+    checkoutPaid,
+    boardPaid,
+  ] = await Promise.all([
+    fetchActionLogs("page_view", fromIso),
+    fetchActionLogs("apply_click", fromIso),
+    fetchActionLogs("match", fromIso),
     countConfirmedAlertRecipients(),
+    fetchActionLogs("signup_started", fromIso),
+    fetchActionLogs("signup_completed", fromIso),
+    fetchActionLogs("search_limit_reached", fromIso),
+    fetchActionLogs("premium_click", fromIso),
+    fetchActionLogs("checkout_started", fromIso),
+    fetchActionLogs("checkout_paid", fromIso),
+    fetchActionLogs("board_access_paid", fromIso),
   ]);
   const applyCombined = [...applyLogs, ...matchLogs];
   const weekDays = buildDailySiteTraffic(monthLogs, applyCombined, 7, now);
@@ -131,6 +151,15 @@ export async function GET(request: Request) {
     periods,
     weekDays,
     subscribers,
+    funnel: {
+      signupStarted: signupStarted.length,
+      signupCompleted: signupCompleted.length,
+      searchLimitReached: searchLimit.length,
+      premiumClick: premiumClick.length,
+      checkoutStarted: checkoutStarted.length,
+      checkoutPaid: checkoutPaid.length,
+      boardAccessPaid: boardPaid.length,
+    },
     pages: {
       today: countPages(todayLogs),
       week: countPages(weekLogs),

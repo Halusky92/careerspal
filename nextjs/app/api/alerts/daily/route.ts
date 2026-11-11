@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isTwiceWeeklySendDay } from "../../../../lib/alertPrefs";
+import { isWeeklySendDay } from "../../../../lib/alertPrefs";
 import { sendDigest } from "../../../../lib/alerts/sendDigest";
 
 export const runtime = "nodejs";
@@ -28,12 +28,16 @@ export async function GET(request: Request) {
   const force = url.searchParams.get("force") === "1";
   const trial = url.searchParams.get("trial") === "1";
   const now = new Date();
-  if (!force && !trial && !isTwiceWeeklySendDay(now)) {
-    return NextResponse.json({ ok: true, skipped: "not_send_day", dayUtc: now.getUTCDay() });
+  const daily = await sendDigest({ dryRun, force, trial, cadence: "daily" });
+  if (!daily.ok) {
+    return NextResponse.json({ error: daily.error }, { status: 500 });
   }
-  const result = await sendDigest({ dryRun, force, trial });
-  if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 500 });
+  if (!force && !trial && !isWeeklySendDay(now)) {
+    return NextResponse.json({ ok: true, cadence: "daily", daily });
   }
-  return NextResponse.json(result);
+  const weekly = await sendDigest({ dryRun, force, trial, cadence: "weekly" });
+  if (!weekly.ok) {
+    return NextResponse.json({ error: weekly.error, daily }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, cadence: "daily+weekly", daily, weekly });
 }

@@ -15,6 +15,7 @@ import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
 import { screenListingForBoard } from "../../../../lib/jobs/autoReviewListing";
 import { verifyScreenPass } from "../../../../lib/jobs/screenPass";
 import { canUseAdminTestPlan, isAdminTestPrice } from "../../../../lib/adminTestPlan";
+import { premiumCheckoutOpen } from "../../../../lib/boardAccess";
 
 type StripeJobRow = {
   id: string;
@@ -36,6 +37,25 @@ type StripeJobRow = {
 };
 
 export const runtime = "nodejs";
+
+export function GET() {
+  return NextResponse.json({ available: premiumCheckoutOpen() });
+}
+
+/** Premium returns to the site that started checkout. Production stays on the public URL. */
+function boardReturnOrigin(request: Request) {
+  const raw = request.headers.get("origin") || "";
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1" || host === "careerspal-staging.vercel.app") {
+      return `${url.protocol}//${url.host}`;
+    }
+  } catch {
+    /* fall through to the public site */
+  }
+  return getPublicSiteUrl();
+}
 
 export async function POST(request: Request) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -64,6 +84,61 @@ export async function POST(request: Request) {
     purpose?: string;
     screenToken?: string;
   };
+  if (body.purpose === "board_access") {
+    if (!premiumCheckoutOpen()) {
+      return NextResponse.json({ error: "Premium checkout is not open." }, { status: 403 });
+    }
+    const origin = boardReturnOrigin(request);
+    try {
+      const stripe = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });
+      const priceId = (process.env.STRIPE_BOARD_PRICE_ID || "").trim();
+      const { data: billing } = await supabaseAdmin
+        .from("profiles")
+        .select("stripe_customer_id")
+        .eq("id", auth.profile.id)
+        .maybeSingle();
+      const existingCustomer = (billing as { stripe_customer_id?: string | null } | null)?.stripe_customer_id || undefined;
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        payment_method_types: ["card"],
+        line_items: [
+          priceId
+            ? { price: priceId, quantity: 1 }
+            : {
+                price_data: {
+                  currency: "usd",
+                  product_data: {
+                    name: "CareersPal Premium",
+                    description: "Unlimited search results, advanced filters, and daily alerts",
+                  },
+                  unit_amount: 799,
+                  recurring: { interval: "month" },
+                },
+                quantity: 1,
+              },
+        ],
+        success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/upgrade`,
+        client_reference_id: auth.profile.id,
+        customer: existingCustomer,
+        customer_email: existingCustomer ? undefined : auth.profile.email || undefined,
+        metadata: {
+          purpose: "board_access",
+          profileId: auth.profile.id,
+        },
+        subscription_data: {
+          metadata: {
+            purpose: "board_access",
+            profileId: auth.profile.id,
+          },
+        },
+      });
+      return NextResponse.json({ url: session.url });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Stripe checkout failed.";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }
   if (!body?.jobId) {
     return NextResponse.json({ error: "Missing jobId." }, { status: 400 });
   }

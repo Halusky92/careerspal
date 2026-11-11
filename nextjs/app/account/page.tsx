@@ -13,6 +13,7 @@ import AlertCategoryPicker from "../../components/AlertCategoryPicker";
 import { ALERT_MIN_SALARIES, ALERT_REGIONS, alertPrefsLabel, parseAlertPrefs, type AlertRegion } from "../../lib/alertPrefs";
 import ProfileVisibilitySelect from "../../components/ProfileVisibilitySelect";
 import AdminDeskBar from "../../components/AdminDeskBar";
+import { trackFunnel } from "../../lib/funnelTrack";
 
 type AccountUser = {
   name?: string;
@@ -25,6 +26,10 @@ type AccountUser = {
   hobbies?: string;
   visibility?: string;
   shareToken?: string;
+  newsletterOptIn?: boolean;
+  subscriptionStatus?: string;
+  hasStripeCustomer?: boolean;
+  premiumUntil?: string;
 };
 
 type UserFile = {
@@ -75,6 +80,8 @@ const AccountPageInner = () => {
   const [alertRegion, setAlertRegion] = useState<AlertRegion>("anywhere");
   const [alertBusy, setAlertBusy] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
+  const [billingBusy, setBillingBusy] = useState(false);
 
   const tab = (searchParams.get("tab") as Tab) || "profile";
   const setTab = (next: Tab) => {
@@ -110,6 +117,7 @@ const AccountPageInner = () => {
             setVisibility(data.user.visibility);
           }
           setShareToken(data.user.shareToken || "");
+          setNewsletterOptIn(Boolean(data.user.newsletterOptIn));
         }
         const filesRes = await authFetch("/api/files", {}, accessToken);
         const filesData = (await filesRes.json()) as { files?: UserFile[] };
@@ -117,9 +125,21 @@ const AccountPageInner = () => {
         const savedRes = await authFetch("/api/saved-jobs", {}, accessToken);
         const savedData = (await savedRes.json()) as { savedJobs?: { jobId: string }[] };
         setSavedJobs(savedData.savedJobs?.map((item) => item.jobId) || []);
-        const jobsRes = await fetch("/api/jobs");
-        const jobsData = (await jobsRes.json()) as { jobs?: Job[] };
-        setAllJobs(jobsData.jobs || []);
+        const savedDetails = await Promise.all(
+          (savedData.savedJobs || []).slice(0, 30).map(async (item) => {
+            const res = await fetch(`/api/jobs/${encodeURIComponent(item.jobId)}`);
+            if (!res.ok) return null;
+            const body = (await res.json()) as { job?: Job };
+            return body.job || null;
+          }),
+        );
+        const boardRes = await authFetch("/api/jobs?limit=50", {}, accessToken);
+        const boardData = (await boardRes.json()) as { jobs?: Job[] };
+        const merged = new Map<string, Job>();
+        for (const job of [...savedDetails.filter((job): job is Job => Boolean(job)), ...(boardData.jobs || [])]) {
+          merged.set(job.id, job);
+        }
+        setAllJobs(Array.from(merged.values()));
         const alertsRes = await authFetch("/api/alerts", {}, accessToken);
         const alertsData = (await alertsRes.json()) as { alerts?: AlertRow[] };
         setAlerts(alertsData.alerts || []);
@@ -499,6 +519,54 @@ const AccountPageInner = () => {
                       </div>
                     </div>
                   )}
+                  <div className="rounded-xl border border-slate-200 p-4">
+                    <p className="text-sm font-medium text-slate-900">Your plan</p>
+                    {(() => {
+                      const status = user?.subscriptionStatus || "";
+                      const until = user?.premiumUntil ? Date.parse(user.premiumUntil) : 0;
+                      const premium =
+                        status === "active" ||
+                        status === "trialing" ||
+                        status === "past_due" ||
+                        (Number.isFinite(until) && until > Date.now());
+                      return (
+                        <>
+                          <p className="mt-1 text-sm text-slate-600">
+                            {premium
+                              ? "Premium — unlimited search, advanced filters, and daily alerts for this billing period."
+                              : "Free Account — 14 matching search results and one weekly job alert."}
+                          </p>
+                          {premium && user?.premiumUntil ? (
+                            <p className="mt-1 text-xs text-slate-500">
+                              Current period through {new Date(user.premiumUntil).toLocaleDateString()}.
+                            </p>
+                          ) : null}
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {!premium ? (
+                              <Link
+                                href="/upgrade"
+                                onClick={() => trackFunnel("premium_click", { from: "account_plan" })}
+                                className="inline-flex h-9 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700"
+                              >
+                                Unlock Premium — $7.99/month
+                              </Link>
+                            ) : user?.hasStripeCustomer ? (
+                              <Link
+                                href="/account?tab=settings"
+                                className="inline-flex h-9 items-center rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:border-indigo-300"
+                              >
+                                Manage subscription
+                              </Link>
+                            ) : null}
+                            <Link href="/account?tab=alerts" className="inline-flex h-9 items-center rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:border-indigo-300">
+                              Alert preferences
+                            </Link>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { label: "Saved", value: String(savedJobs.length), href: "/account?tab=saved" },
@@ -723,6 +791,27 @@ const AccountPageInner = () => {
                         </button>
                       )}
                     </div>
+                    <label className="flex items-start gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        className="mt-1"
+                        checked={newsletterOptIn}
+                        onChange={async (event) => {
+                          const next = event.target.checked;
+                          setNewsletterOptIn(next);
+                          await authFetch(
+                            "/api/account",
+                            {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ newsletterOptIn: next }),
+                            },
+                            accessToken,
+                          );
+                        }}
+                      />
+                      <span>Weekly newsletter of live roles. Off until you tick this.</span>
+                    </label>
                     {alertMsg && <p className="text-sm text-slate-600">{alertMsg}</p>}
                     {subscriber && (
                       <p className="text-xs text-slate-500">
@@ -786,6 +875,40 @@ const AccountPageInner = () => {
               {tab === "settings" && (
                 <div className="space-y-4">
                   {user?.role === "admin" ? <AdminDeskBar /> : null}
+                  <div className="rounded-xl border border-slate-200 p-4 space-y-2">
+                    <p className="text-sm font-medium text-slate-900">Premium</p>
+                    <p className="text-sm text-slate-600">
+                      {user?.subscriptionStatus
+                        ? `Stripe status: ${user.subscriptionStatus.replace(/_/g, " ")}.`
+                        : "Unlimited search is $7.99 a month. Cancel anytime in Stripe."}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {user?.subscriptionStatus !== "active" && user?.subscriptionStatus !== "trialing" ? (
+                      <Link href="/upgrade" className="inline-flex h-9 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white">
+                        Get Premium
+                      </Link>
+                      ) : null}
+                      {user?.hasStripeCustomer ? (
+                        <button
+                          type="button"
+                          disabled={billingBusy}
+                          onClick={async () => {
+                            setBillingBusy(true);
+                            try {
+                              const response = await authFetch("/api/stripe/portal", { method: "POST" }, accessToken);
+                              const data = (await response.json()) as { url?: string };
+                              if (data.url) window.location.href = data.url;
+                            } finally {
+                              setBillingBusy(false);
+                            }
+                          }}
+                          className="h-9 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-700"
+                        >
+                          {billingBusy ? "Opening…" : "Manage in Stripe"}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
                   <div className="rounded-xl border border-slate-200 p-4 space-y-2">
                     <p className="text-sm font-medium text-slate-900">Photo</p>
                     <p className="text-sm text-slate-500">Change it with the + on your avatar. No URL needed.</p>

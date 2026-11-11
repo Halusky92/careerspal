@@ -18,6 +18,8 @@ import { inferWorkMode } from "../lib/workMode";
 import FeaturedBoardZone from "./FeaturedBoardZone";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
 import { jobMatchesLocationQuery, locationLabelsForJobs } from "../lib/locationFilter";
+import { boardCap } from "../lib/boardAccess";
+import { trackFunnel, trackFunnelOnce } from "../lib/funnelTrack";
 
 interface FindJobsProps {
   jobs: Job[];
@@ -26,6 +28,10 @@ interface FindJobsProps {
   initialQuery?: string;
   initialLocationQuery?: string;
   user?: UserSession | null;
+  boardAccess?: "guest" | "registered" | "paid";
+  boardTotal?: number;
+  canLoadMore?: boolean;
+  onLoadMore?: () => void;
   onToggleBookmark: (jobId: string) => void;
 }
 
@@ -84,10 +90,16 @@ const FindJobs: React.FC<FindJobsProps> = ({
   initialQuery = '',
   initialLocationQuery = '',
   user,
+  boardAccess,
+  boardTotal,
+  canLoadMore = false,
+  onLoadMore,
   onToggleBookmark,
 }) => {
   const router = useRouter();
   const { accessToken } = useSupabaseAuth();
+  const advancedOk = !boardAccess || boardAccess === "paid";
+  const searchCap = boardAccess ? boardCap(boardAccess) : null;
   const goCompany = (companyName: string) => {
     const href = `/companies/${createCompanySlug({ name: companyName })}`;
     if (typeof window !== "undefined" && window.location.hostname === "careerspal.com") {
@@ -421,22 +433,28 @@ const FindJobs: React.FC<FindJobsProps> = ({
       const matchesEmployment = employmentType === 'All' || j.type === employmentType;
       const salaryRange = parseSalaryRange(j.salary);
       const matchesSaved = !showSavedOnly || savedIds.has(j.id);
-      const matchesSalaryMin = salaryMin === 0 || salaryRange.max >= salaryMin;
-      const matchesSalaryMax = salaryMax === 0 || salaryRange.min <= salaryMax;
+      const useSalaryMin = advancedOk ? salaryMin : 0;
+      const useSalaryMax = advancedOk ? salaryMax : 0;
+      const useTools = advancedOk ? selectedTools : [];
+      const useTz = advancedOk ? timezone : "any";
+      const useSeniority = advancedOk ? seniority : "any";
+      const useVerified = advancedOk && verifiedOnly;
+      const matchesSalaryMin = useSalaryMin === 0 || salaryRange.max >= useSalaryMin;
+      const matchesSalaryMax = useSalaryMax === 0 || salaryRange.min <= useSalaryMax;
       const toolSignals = getToolSignals(j);
       const matchesTools =
-        selectedTools.length === 0 ||
-        selectedTools.some((tool) => {
+        useTools.length === 0 ||
+        useTools.some((tool) => {
           const low = tool.toLowerCase();
           if (low === "make") return toolSignals.has("make") || toolSignals.has("make.com");
           return toolSignals.has(low);
         });
       const bucket = inferTimezoneBucket(j);
-      const matchesTz = timezone === "any" ? true : bucket === timezone || bucket === "unknown";
+      const matchesTz = useTz === "any" ? true : bucket === useTz || bucket === "unknown";
       const inferredSeniority = inferSeniority(j);
       const matchesSeniority =
-        seniority === "any" ? true : inferredSeniority === seniority || inferredSeniority === "unknown";
-      const matchesVerified = !verifiedOnly || Boolean(j.companyVerified);
+        useSeniority === "any" ? true : inferredSeniority === useSeniority || inferredSeniority === "unknown";
+      const matchesVerified = !useVerified || Boolean(j.companyVerified);
 
       return (
         matchesQuery &&
@@ -502,17 +520,30 @@ const FindJobs: React.FC<FindJobsProps> = ({
     seniority,
     verifiedOnly,
     showSavedOnly,
+    advancedOk,
   ]);
 
   const FEATURED_ZONE_CAP = 4;
+  const listedJobs = useMemo(() => {
+    if (searchCap == null) return filteredAndSorted;
+    return filteredAndSorted.slice(0, searchCap);
+  }, [filteredAndSorted, searchCap]);
   const featuredJobs = useMemo(
-    () => sortFeaturedJobs(filteredAndSorted.filter(isPaidFeaturedListing)),
-    [filteredAndSorted],
+    () => sortFeaturedJobs(listedJobs.filter(isPaidFeaturedListing)),
+    [listedJobs],
   );
   const boardJobs = useMemo(
-    () => filteredAndSorted.filter((job) => !isPaidFeaturedListing(job)),
-    [filteredAndSorted],
+    () => listedJobs.filter((job) => !isPaidFeaturedListing(job)),
+    [listedJobs],
   );
+  const showSearchLimitCta =
+    searchCap != null &&
+    ((typeof boardTotal === "number" && boardTotal > searchCap) || filteredAndSorted.length > listedJobs.length) &&
+    boardJobs.length <= visibleCount;
+  useEffect(() => {
+    if (!showSearchLimitCta) return;
+    trackFunnelOnce("search_limit_reached", { access: boardAccess || "none", matching: filteredAndSorted.length });
+  }, [showSearchLimitCta, boardAccess, filteredAndSorted.length]);
   const visibleFeatured = featuredOpen ? featuredJobs : featuredJobs.slice(0, FEATURED_ZONE_CAP);
 
   const suggestions = useMemo(() => {
@@ -535,7 +566,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
   }, [locationQuery, jobs]);
 
   const handleLoadMore = () => {
-    setVisibleCount(prev => prev + JOBS_PER_PAGE);
+    const next = visibleCount + JOBS_PER_PAGE;
+    if (canLoadMore && next > boardJobs.length) onLoadMore?.();
+    setVisibleCount(next);
   };
 
   const handleApply = async (job: Job) => {
@@ -584,6 +617,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
           accessToken,
         );
         setSavedNotice(payload.existing ? 'Alert already saved' : 'Alert saved');
+      } else if (response.status === 403) {
+        setSavedNotice('Free accounts can save one search. Upgrade for more.');
       } else {
         setSavedNotice('Sign in to save alerts');
       }
@@ -985,8 +1020,17 @@ const FindJobs: React.FC<FindJobsProps> = ({
             )}
           </div>
 
+          {!advancedOk ? (
+            <p className="text-xs text-slate-500">
+              Salary, skills, and other advanced filters are on Premium.{" "}
+              <Link href="/upgrade" className="font-medium text-indigo-700">
+                Upgrade
+              </Link>
+            </p>
+          ) : null}
+
           {/* Salary range */}
-          <div className="relative" data-wwr-filter>
+          <div className={`relative ${advancedOk ? "" : "pointer-events-none opacity-50"}`} data-wwr-filter>
             <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
               <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-3 0-5 1.343-5 3s2 3 5 3 5 1.343 5 3-2 3-5 3m0-15v2m0 12v2" />
@@ -1028,7 +1072,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </div>
 
           {/* Skills */}
-          <div className="relative" data-wwr-filter>
+          <div className={`relative ${advancedOk ? "" : "pointer-events-none opacity-50"}`} data-wwr-filter>
             <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
               <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-7 4h8m2 5H6a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v14a2 2 0 01-2 2z" />
@@ -1188,7 +1232,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
             <div className="mt-2 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-[11px] font-medium text-slate-500" aria-live="polite">
-                  {filteredAndSorted.length} roles
+                  {listedJobs.length} matching
+                  {searchCap != null && filteredAndSorted.length > listedJobs.length
+                    ? ` of ${filteredAndSorted.length}`
+                    : ""}
                 </span>
                 {(query.trim() || locationQuery.trim()) && (
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
@@ -1324,7 +1371,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               );
             })}
 
-            {boardJobs.length > visibleCount && (
+            {(boardJobs.length > visibleCount || canLoadMore) && (
               <div className="pt-4 pb-2 text-center">
                 <button
                   onClick={handleLoadMore}
@@ -1334,6 +1381,25 @@ const FindJobs: React.FC<FindJobsProps> = ({
                 </button>
               </div>
             )}
+
+            {showSearchLimitCta ? (
+              <div className="mt-2 rounded-xl border border-slate-200 bg-white px-4 py-4">
+                <p className="text-sm text-slate-700 leading-relaxed">
+                  {boardAccess === "guest"
+                    ? "Want to explore more? Create a free account to see 10 additional matching jobs."
+                    : "You've reached your free search limit. Unlock all matching jobs for $7.99/month."}
+                </p>
+                <Link
+                  href={boardAccess === "guest" ? "/auth?from=%2Fjobs" : "/upgrade"}
+                  onClick={() =>
+                    trackFunnel(boardAccess === "guest" ? "signup_started" : "premium_click", { from: "search_limit" })
+                  }
+                  className="mt-3 inline-flex h-10 items-center rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700"
+                >
+                  {boardAccess === "guest" ? "Create a free account" : "Unlock all matching jobs"}
+                </Link>
+              </div>
+            ) : null}
 
             {filteredAndSorted.length === 0 && (
               <div className="bg-white py-8 rounded-xl text-center border border-dashed border-slate-200">

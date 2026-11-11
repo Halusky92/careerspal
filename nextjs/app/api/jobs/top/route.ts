@@ -3,11 +3,14 @@ import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../../lib/supabaseJobs";
 import { isOnNicheJob } from "../../../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../../../lib/liveBoard";
+import { boardTierFromRequest } from "../../../../lib/boardAccessServer";
+import { cappedListTake } from "../../../../lib/publicJobBoard";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const limitParam = Number(searchParams.get("limit") || "5");
-  const take = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 20) : 5;
+  const requested = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 20) : 5;
+  const take = cappedListTake(await boardTierFromRequest(request), requested);
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }
@@ -23,6 +26,6 @@ export async function GET(request: Request) {
     .limit(take);
   return NextResponse.json(
     { jobs: ((data as SupabaseJobRow[]) || []).map(mapSupabaseJob).filter((job) => isOnNicheJob(job)) },
-    { headers: { "Cache-Control": "s-maxage=60, stale-while-revalidate=300" } },
+    { headers: { "Cache-Control": "private, no-store" } },
   );
 }

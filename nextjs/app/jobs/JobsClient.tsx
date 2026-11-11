@@ -26,18 +26,23 @@ const setSaved = (ids: string[]) => {
 
 export default function JobsClient({
   initialJobs,
-  initialTotal: _initialTotal,
+  initialTotal,
   initialQuery,
   initialLocation,
+  initialAccess = "guest",
 }: {
   initialJobs: Job[];
   initialTotal: number;
   initialQuery: string;
   initialLocation: string;
+  initialAccess?: "guest" | "registered" | "paid";
 }) {
   const router = useRouter();
   const { profile, accessToken, loading: authLoading } = useSupabaseAuth();
-  const [jobs] = useState<Job[]>(() => initialJobs || []);
+  const [jobs, setJobs] = useState<Job[]>(() => initialJobs || []);
+  const [boardAccess, setBoardAccess] = useState<"guest" | "registered" | "paid">(initialAccess);
+  const [boardTotal, setBoardTotal] = useState(initialTotal);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState<string[]>(() => getSaved());
 
   useEffect(() => {
@@ -101,6 +106,53 @@ export default function JobsClient({
     }
   };
 
+  useEffect(() => {
+    if (authLoading) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const response = accessToken
+          ? await authFetch("/api/jobs?limit=50", {}, accessToken)
+          : await fetch("/api/jobs?limit=50");
+        const data = (await response.json()) as {
+          jobs?: Job[];
+          total?: number;
+          access?: "guest" | "registered" | "paid";
+        };
+        if (cancelled) return;
+        if (Array.isArray(data.jobs)) setJobs(data.jobs);
+        if (typeof data.total === "number") setBoardTotal(data.total);
+        if (data.access) setBoardAccess(data.access);
+      } catch {
+        // keep the guest slice from the server
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, authLoading]);
+
+  const loadMore = async () => {
+    if (boardAccess !== "paid" || loadingMore || jobs.length >= boardTotal) return;
+    setLoadingMore(true);
+    try {
+      const response = accessToken
+        ? await authFetch(`/api/jobs?limit=50&skip=${jobs.length}`, {}, accessToken)
+        : await fetch(`/api/jobs?limit=50&skip=${jobs.length}`);
+      const data = (await response.json()) as { jobs?: Job[] };
+      const next = Array.isArray(data.jobs) ? data.jobs : [];
+      setJobs((prev) => {
+        const seen = new Set(prev.map((job) => job.id));
+        return [...prev, ...next.filter((job) => !seen.has(job.id))];
+      });
+    } catch {
+      // keep the page already loaded
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const handleToggleBookmark = (jobId: string) => {
     setSavedJobIds((prev) => {
       const isSaved = prev.includes(jobId);
@@ -121,6 +173,10 @@ export default function JobsClient({
         initialQuery={initialQuery}
         initialLocationQuery={initialLocation}
         user={user}
+        boardAccess={boardAccess}
+        boardTotal={boardTotal}
+        canLoadMore={boardAccess === "paid" && jobs.length < boardTotal}
+        onLoadMore={loadMore}
         onToggleBookmark={handleToggleBookmark}
       />
     </>

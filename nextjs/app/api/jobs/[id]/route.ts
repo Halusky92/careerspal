@@ -34,6 +34,7 @@ export const GET = async (_request: NextRequest, context: { params: Promise<{ id
     if (!isOwner && auth.profile.role !== "admin") {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
+    return NextResponse.json({ job: mapped });
   }
   return NextResponse.json({ job: mapped });
 };
