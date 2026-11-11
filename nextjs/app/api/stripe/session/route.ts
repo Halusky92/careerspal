@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
+import { stripeKeyForCheckoutSession } from "../../../../lib/boardAccess";
 
 export const runtime = "nodejs";
 
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
   if (!sessionId.startsWith("cs_")) {
     return NextResponse.json({ error: "Missing checkout session." }, { status: 400 });
   }
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  const stripeKey = stripeKeyForCheckoutSession(sessionId);
   if (!stripeKey || !supabaseAdmin) {
     return NextResponse.json({ error: "Checkout is not configured." }, { status: 500 });
   }
@@ -36,6 +37,7 @@ export async function GET(request: Request) {
         profileId: auth.profile.id,
         subscription,
         customerId: typeof session.customer === "string" ? session.customer : session.customer?.id,
+        allowExtend: true,
       });
     }
     return NextResponse.json({

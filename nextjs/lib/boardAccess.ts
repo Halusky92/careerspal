@@ -6,8 +6,91 @@ export function premiumCheckoutAllowed(stripeKey?: string | null) {
   return (stripeKey || "").startsWith("sk_test_");
 }
 
-export function premiumCheckoutOpen(flag = process.env.PREMIUM_CHECKOUT, stripeKey = process.env.STRIPE_SECRET_KEY) {
-  return flag === "1" && premiumCheckoutAllowed(stripeKey);
+type PremiumEnv = {
+  STRIPE_PREMIUM_SECRET_KEY?: string;
+  STRIPE_SECRET_KEY?: string;
+  PREMIUM_LIVE?: string;
+  PREMIUM_CHECKOUT?: string;
+  PREMIUM_LIVE_EMAIL?: string;
+  STRIPE_PREMIUM_PRICE_ID?: string;
+  STRIPE_BOARD_PRICE_ID?: string;
+};
+
+function premiumEnv(env?: PremiumEnv): PremiumEnv {
+  if (env) return env;
+  return {
+    STRIPE_PREMIUM_SECRET_KEY: process.env.STRIPE_PREMIUM_SECRET_KEY,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    PREMIUM_LIVE: process.env.PREMIUM_LIVE,
+    PREMIUM_CHECKOUT: process.env.PREMIUM_CHECKOUT,
+    PREMIUM_LIVE_EMAIL: process.env.PREMIUM_LIVE_EMAIL,
+    STRIPE_PREMIUM_PRICE_ID: process.env.STRIPE_PREMIUM_PRICE_ID,
+    STRIPE_BOARD_PRICE_ID: process.env.STRIPE_BOARD_PRICE_ID,
+  };
+}
+
+/** Live Premium uses its own key. The shared employer key is used only while it is still a test key. */
+export function resolvePremiumStripeKey(env?: PremiumEnv) {
+  env = premiumEnv(env);
+  const dedicated = (env.STRIPE_PREMIUM_SECRET_KEY || "").trim();
+  const shared = (env.STRIPE_SECRET_KEY || "").trim();
+  if (dedicated.startsWith("sk_live_") && env.PREMIUM_LIVE === "1") return dedicated;
+  if (dedicated.startsWith("sk_test_")) return dedicated;
+  if (shared.startsWith("sk_test_")) return shared;
+  return "";
+}
+
+export function premiumCheckoutOpen(
+  flag = process.env.PREMIUM_CHECKOUT,
+  stripeKey = process.env.STRIPE_SECRET_KEY,
+  liveFlag = process.env.PREMIUM_LIVE,
+) {
+  if (flag !== "1") return false;
+  if ((stripeKey || "").startsWith("sk_test_")) return true;
+  return (stripeKey || "").startsWith("sk_live_") && liveFlag === "1";
+}
+
+/** An empty allowlist blocks every live buyer. Test checkout stays open for the staging board. */
+export function premiumLiveBuyerAllowed(
+  email: string | null | undefined,
+  stripeKey: string | null | undefined,
+  allowlist = process.env.PREMIUM_LIVE_EMAIL,
+) {
+  if (!(stripeKey || "").startsWith("sk_live_")) return true;
+  const allowed = (allowlist || "").trim().toLowerCase();
+  const buyer = (email || "").trim().toLowerCase();
+  return Boolean(allowed) && buyer === allowed;
+}
+
+export function premiumPriceIdForKey(stripeKey: string, env?: PremiumEnv) {
+  env = premiumEnv(env);
+  if (stripeKey.startsWith("sk_live_")) return (env.STRIPE_PREMIUM_PRICE_ID || "").trim();
+  return (env.STRIPE_BOARD_PRICE_ID || "").trim();
+}
+
+export function premiumPriceIsMonthly799(price: {
+  unit_amount?: number | null;
+  currency?: string | null;
+  active?: boolean | null;
+  recurring?: { interval?: string | null } | null;
+}) {
+  return price.unit_amount === 799 && price.currency === "usd" && price.recurring?.interval === "month" && price.active !== false;
+}
+
+export function stripeKeyForEventMode(livemode: boolean, env?: PremiumEnv) {
+  env = premiumEnv(env);
+  const premium = (env.STRIPE_PREMIUM_SECRET_KEY || "").trim();
+  const shared = (env.STRIPE_SECRET_KEY || "").trim();
+  if (livemode && premium.startsWith("sk_live_")) return premium;
+  return shared;
+}
+
+export function stripeKeyForCheckoutSession(sessionId: string, env?: PremiumEnv) {
+  env = premiumEnv(env);
+  const premium = (env.STRIPE_PREMIUM_SECRET_KEY || "").trim();
+  const shared = (env.STRIPE_SECRET_KEY || "").trim();
+  if (sessionId.startsWith("cs_live_") && premium.startsWith("sk_live_")) return premium;
+  return shared;
 }
 
 export const GUEST_VISIBLE_JOBS = 4;
