@@ -4,7 +4,7 @@ import { validateSourceUrl } from "../validator";
 import type { DiscoveryReview } from "./review";
 
 /** Prepared daily cadence. It is not registered until this branch is approved. */
-export const DISCOVERY_CADENCE = "0 9 * * *";
+export const DISCOVERY_CADENCE = "17 9 * * *";
 export const DAILY_SEARCH_CAP = 8;
 export const MONTHLY_SEARCH_CAP = 250;
 export const BOARDS_PER_GROUP = 4;
