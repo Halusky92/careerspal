@@ -2,7 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { employerCheckoutPatch, employerRefundPatch } from "./employerPlans";
-import { acceptsStripeEvent, runStripeEventOnce, stripeScopeMetadata, stripeWebhookSecrets } from "./stripeWebhookInbox";
+import {
+  acceptsResolvedAppEnv,
+  acceptsStripeEvent,
+  resolveStripeEventAppEnv,
+  runStripeEventOnce,
+  stripeScopeMetadata,
+  stripeWebhookSecrets,
+  type StripeScopeReader,
+} from "./stripeWebhookInbox";
 
 type EventRow = { event_id: string; event_type: string; received_at: string };
 
@@ -173,4 +181,58 @@ test("staging events are ignored by production and production events are ignored
   assert.equal(acceptsStripeEvent(stagingCheckout, "staging"), true);
   assert.equal(acceptsStripeEvent(productionCheckout, "staging"), false);
   assert.equal(acceptsStripeEvent(untagged, "staging"), false);
+});
+
+test("premium events without metadata still resolve staging from the related subscription", async () => {
+  const stagingSub = async () => ({ metadata: { app_env: "staging", purpose: "board_access" } });
+  const reader: StripeScopeReader = {
+    subscriptions: { retrieve: stagingSub },
+    paymentIntents: { retrieve: async () => ({ metadata: {} }) },
+    invoices: {
+      retrieve: async () => ({ parent: { subscription_details: { subscription: "sub_staging" } } }),
+    },
+    invoicePayments: { list: async () => ({ data: [{ invoice: "in_staging" }] }) },
+  };
+  const cases = [
+    { type: "checkout.session.completed", data: { object: { subscription: "sub_staging" } } },
+    { type: "customer.subscription.updated", data: { object: { metadata: { app_env: "staging" } } } },
+    { type: "customer.subscription.deleted", data: { object: { metadata: { app_env: "staging" } } } },
+    { type: "invoice.paid", data: { object: { subscription: "sub_staging" } } },
+    { type: "invoice.payment_failed", data: { object: { parent: { subscription_details: { subscription: "sub_staging" } } } } },
+    { type: "charge.refunded", data: { object: { payment_intent: "pi_staging" } } },
+  ];
+  for (const event of cases) {
+    const tagged = await resolveStripeEventAppEnv(reader, event);
+    assert.equal(tagged, "staging", event.type);
+    assert.equal(acceptsResolvedAppEnv(tagged, "production"), false);
+    assert.equal(acceptsResolvedAppEnv(tagged, "staging"), true);
+  }
+
+  const legacyEmployer = await resolveStripeEventAppEnv(
+    {
+      ...reader,
+      paymentIntents: { retrieve: async () => ({ metadata: { purpose: "employer_listing" } }) },
+      invoicePayments: { list: async () => ({ data: [] }) },
+    },
+    { type: "charge.refunded", data: { object: { payment_intent: "pi_employer" } } },
+  );
+  assert.equal(legacyEmployer, null);
+  assert.equal(acceptsResolvedAppEnv(legacyEmployer, "production"), true);
+
+  const legacySubscription = await resolveStripeEventAppEnv(reader, {
+    type: "customer.subscription.updated",
+    data: { object: { metadata: {} } },
+  });
+  assert.equal(legacySubscription, null);
+  assert.equal(acceptsResolvedAppEnv(legacySubscription, "production"), true);
+  assert.equal(acceptsResolvedAppEnv(legacySubscription, "staging"), false);
+
+  await assert.rejects(
+    () =>
+      resolveStripeEventAppEnv(
+        { ...reader, subscriptions: { retrieve: async () => { throw new Error("subscription lookup failed"); } } },
+        { type: "invoice.paid", data: { object: { subscription: "sub_staging" } } },
+      ),
+    /subscription lookup failed/,
+  );
 });

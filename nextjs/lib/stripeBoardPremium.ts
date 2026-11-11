@@ -79,18 +79,22 @@ export async function profileIdForStripeCustomer(customerId: string): Promise<st
   return (data as { id?: string } | null)?.id || null;
 }
 
-export async function applyBoardSubscription(args: {
-  profileId: string;
-  subscription: Stripe.Subscription;
-  customerId?: string | null;
-  refunded?: boolean;
-}) {
-  if (!supabaseAdmin) return;
-  const existing = await supabaseAdmin
+export async function applyBoardSubscription(
+  args: {
+    profileId: string;
+    subscription: Stripe.Subscription;
+    customerId?: string | null;
+    refunded?: boolean;
+  },
+  client: typeof supabaseAdmin = supabaseAdmin,
+) {
+  if (!client) throw new Error("Supabase admin not configured.");
+  const existing = await client
     .from("profiles")
     .select("board_premium_until")
     .eq("id", args.profileId)
     .maybeSingle();
+  if (existing.error) throw new Error(existing.error.message || "Premium profile read failed.");
   const currentUntil = (existing.data as { board_premium_until?: string | null } | null)?.board_premium_until;
   const patch = premiumProfilePatch({
     subscription: args.subscription as Stripe.Subscription & {
@@ -100,5 +104,7 @@ export async function applyBoardSubscription(args: {
     refunded: args.refunded,
     currentUntil,
   });
-  await supabaseAdmin.from("profiles").update(patch).eq("id", args.profileId);
+  const updated = await client.from("profiles").update(patch).eq("id", args.profileId).select("id");
+  if (updated.error) throw new Error(updated.error.message || "Premium profile update failed.");
+  if (!updated.data?.length) throw new Error("Premium profile update did not apply.");
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
+import type { StripeScopeReader } from "../../../../lib/stripeWebhookInbox";
 
 type StripeEmailJobRow = {
   id: string;
@@ -45,7 +46,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
-  const { stripeWebhookSecrets, constructStripeEvent, runStripeEventOnce, acceptsStripeEvent } = await import("../../../../lib/stripeWebhookInbox");
+  const { stripeWebhookSecrets, constructStripeEvent, runStripeEventOnce, acceptsResolvedAppEnv, resolveStripeEventAppEnv, stripeAppEnv } = await import("../../../../lib/stripeWebhookInbox");
   const webhookSecrets = stripeWebhookSecrets();
   if (!stripeKey) {
     return NextResponse.json(
@@ -86,7 +87,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    if (!acceptsStripeEvent(event)) {
+    const eventAppEnv = await resolveStripeEventAppEnv(stripe as unknown as StripeScopeReader, event);
+    if (!acceptsResolvedAppEnv(eventAppEnv, stripeAppEnv())) {
       return NextResponse.json({ received: true, ignored: true });
     }
 

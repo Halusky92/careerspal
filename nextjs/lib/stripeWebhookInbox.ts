@@ -162,12 +162,109 @@ export function stripeEventAppEnv(event: { data?: { object?: unknown } }): strin
   return null;
 }
 
-/** Production keeps untagged events. Staging handles only its own tagged events, before any database write. */
+/** Production keeps untagged legacy events. Staging handles only events proven to be staging. */
+export function acceptsResolvedAppEnv(tagged: string | null, appEnv: StripeAppEnv = stripeAppEnv()) {
+  if (appEnv === "staging") return tagged === "staging";
+  return tagged !== "staging";
+}
+
 export function acceptsStripeEvent(
   event: { data?: { object?: unknown } },
   appEnv: StripeAppEnv = stripeAppEnv(),
 ) {
-  const tagged = stripeEventAppEnv(event);
-  if (appEnv === "staging") return tagged === "staging";
-  return tagged !== "staging";
+  return acceptsResolvedAppEnv(stripeEventAppEnv(event), appEnv);
+}
+
+type ScopeObject = {
+  metadata?: unknown;
+  subscription?: unknown;
+  payment_intent?: unknown;
+  invoice?: unknown;
+  parent?: { subscription_details?: { metadata?: unknown; subscription?: unknown } | null } | null;
+  lines?: { data?: Array<{ metadata?: unknown }> } | null;
+};
+
+export type StripeScopeReader = {
+  subscriptions: { retrieve: (id: string) => Promise<unknown> };
+  paymentIntents: { retrieve: (id: string) => Promise<unknown> };
+  invoices: { retrieve: (id: string) => Promise<unknown> };
+  invoicePayments?: {
+    list: (params: { payment?: { type?: string; payment_intent?: string }; limit?: number }) => Promise<unknown>;
+  };
+};
+
+function idOf(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) return value;
+  if (value && typeof value === "object" && typeof (value as { id?: unknown }).id === "string") {
+    const id = (value as { id: string }).id.trim();
+    return id || null;
+  }
+  return null;
+}
+
+async function appEnvFromSubscription(reader: StripeScopeReader, subscriptionId: string) {
+  const subscription = (await reader.subscriptions.retrieve(subscriptionId)) as { metadata?: unknown };
+  return metadataAppEnv(subscription?.metadata);
+}
+
+async function appEnvFromInvoice(reader: StripeScopeReader, invoiceId: string): Promise<string | null> {
+  const invoice = (await reader.invoices.retrieve(invoiceId)) as ScopeObject;
+  const direct = stripeEventAppEnv({ data: { object: invoice } });
+  if (direct) return direct;
+  const subscriptionId =
+    idOf(invoice?.subscription) || idOf(invoice?.parent?.subscription_details?.subscription);
+  return subscriptionId ? appEnvFromSubscription(reader, subscriptionId) : null;
+}
+
+async function invoiceIdForPaymentIntent(reader: StripeScopeReader, paymentIntentId: string) {
+  if (!reader.invoicePayments) return null;
+  const list = (await reader.invoicePayments.list({
+    payment: { type: "payment_intent", payment_intent: paymentIntentId },
+    limit: 1,
+  })) as { data?: Array<{ invoice?: unknown }> };
+  return idOf(list?.data?.[0]?.invoice);
+}
+
+/**
+ * app_env on the event wins. Invoice and refund events often omit it, so the related
+ * subscription or payment is the source of truth. A failed lookup throws instead of
+ * treating the event as production.
+ */
+export async function resolveStripeEventAppEnv(
+  reader: StripeScopeReader,
+  event: { type?: string; data?: { object?: unknown } },
+): Promise<string | null> {
+  const direct = stripeEventAppEnv(event);
+  if (direct) return direct;
+  const object = (event.data?.object || null) as ScopeObject | null;
+  if (!object) return null;
+
+  if (event.type === "checkout.session.completed") {
+    const subscriptionId = idOf(object.subscription);
+    return subscriptionId ? appEnvFromSubscription(reader, subscriptionId) : null;
+  }
+  if (event.type === "invoice.paid" || event.type === "invoice.payment_failed") {
+    const subscriptionId = idOf(object.subscription) || idOf(object.parent?.subscription_details?.subscription);
+    return subscriptionId ? appEnvFromSubscription(reader, subscriptionId) : null;
+  }
+  if (event.type === "charge.refunded") {
+    const expandedIntent = typeof object.payment_intent === "object" ? object.payment_intent : null;
+    const fromExpanded = metadataAppEnv((expandedIntent as { metadata?: unknown } | null)?.metadata);
+    if (fromExpanded) return fromExpanded;
+    const paymentIntentId = idOf(object.payment_intent);
+    let invoiceId = idOf((expandedIntent as { invoice?: unknown } | null)?.invoice) || idOf(object.invoice);
+    if (paymentIntentId && !expandedIntent) {
+      const intent = (await reader.paymentIntents.retrieve(paymentIntentId)) as {
+        metadata?: unknown;
+        invoice?: unknown;
+      };
+      const fromIntent = metadataAppEnv(intent?.metadata);
+      if (fromIntent) return fromIntent;
+      invoiceId = invoiceId || idOf(intent?.invoice) || (await invoiceIdForPaymentIntent(reader, paymentIntentId));
+    } else if (paymentIntentId && !invoiceId) {
+      invoiceId = await invoiceIdForPaymentIntent(reader, paymentIntentId);
+    }
+    if (invoiceId) return appEnvFromInvoice(reader, invoiceId);
+  }
+  return null;
 }
