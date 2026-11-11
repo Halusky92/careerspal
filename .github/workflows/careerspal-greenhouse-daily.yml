@@ -1,13 +1,18 @@
 name: CareersPal - Greenhouse daily pipeline
 
-# Local schedule only. Do not merge until the post-midnight refresh is approved.
-# 06:15 UTC refreshes boards, then evaluates and publishes.
-# 07:15 UTC enriches salaries, then evaluates and publishes.
+# 01:30 Europe/Bratislava refreshes Greenhouse, Ashby, and Lever, then evaluates and publishes.
+# 02:15 Europe/Bratislava enriches salaries, then evaluates and publishes.
+# 02:45 Europe/Bratislava closes stale jobs through the existing liveness route.
 # A board already fetched today is not fetched again.
+# The shared nightly queue waits if discovery or an earlier sourcing run is still going.
 on:
   schedule:
-    - cron: "15 6 * * *"
-    - cron: "15 7 * * *"
+    - cron: "30 1 * * *"
+      timezone: "Europe/Bratislava"
+    - cron: "15 2 * * *"
+      timezone: "Europe/Bratislava"
+    - cron: "45 2 * * *"
+      timezone: "Europe/Bratislava"
   workflow_dispatch:
     inputs:
       mode:
@@ -20,7 +25,7 @@ on:
           - salary
 
 concurrency:
-  group: careerspal-greenhouse-pipeline
+  group: careerspal-nightly-sourcing
   cancel-in-progress: false
 
 jobs:
@@ -45,10 +50,28 @@ jobs:
           fi
           if [ -n "$MODE_INPUT" ]; then
             MODE="$MODE_INPUT"
-          elif [ "$EVENT_SCHEDULE" = "15 7 * * *" ]; then
+          elif [ "$EVENT_SCHEDULE" = "15 2 * * *" ]; then
             MODE="salary"
+          elif [ "$EVENT_SCHEDULE" = "45 2 * * *" ]; then
+            MODE="liveness"
           else
             MODE="refresh"
+          fi
+          if [ "$MODE" = "liveness" ]; then
+            origin=$(printf '%s\n' "$PIPELINE_URL" | sed -E 's#^(https?://[^/]+).*#\1#')
+            echo "Running liveness"
+            body=$(curl -sS -L \
+              --connect-timeout 15 \
+              --max-time 70 \
+              --retry 2 \
+              --retry-delay 2 \
+              --retry-all-errors \
+              --fail \
+              -G "$origin/api/cron/stale-jobs" \
+              --data-urlencode "secret=$CRON_SECRET")
+            echo "$body"
+            echo "$body" | jq -e '.ok == true' >/dev/null
+            exit 0
           fi
           echo "Running $MODE slices"
           for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
