@@ -17,15 +17,15 @@ test("an empty location still qualifies when the description confirms US remote"
   );
 });
 
-test("remote without a US location or description stays unpublished", () => {
+test("explicit Remote can publish with no country", () => {
   assert.deepEqual(
     discoveryMarketBlockers({
       title: "Revenue Operations Manager",
-      location_text: "",
+      location_text: "Remote",
       remote_policy: "Remote",
       description_clean: "This role is remote.",
     }),
-    ["geo_unconfirmed"],
+    [],
   );
 });
 
@@ -102,17 +102,18 @@ test("hybrid outside the US, or hybrid without a country, stays unpublished", ()
   );
 });
 
-test("onsite and non-US remote roles are blocked", () => {
+test("onsite stays blocked and a named remote country can publish", () => {
   assert.deepEqual(
     discoveryMarketBlockers({ title: "Revenue Operations Manager", location_text: "New York, NY", remote_policy: "" }),
     ["onsite_only"],
   );
-  assert.ok(
+  assert.deepEqual(
     discoveryMarketBlockers({
       title: "Revenue Operations Manager",
-      location_text: "London",
+      location_text: "Remote - United Kingdom",
       remote_policy: "Remote",
-    }).includes("outside_us"),
+    }),
+    [],
   );
 });
 

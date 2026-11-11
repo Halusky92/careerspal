@@ -50,3 +50,18 @@ export function publicLocationLabel(job: WorkModeInput): string {
   if (location) return location;
   return inferWorkMode(job) === "Remote" ? "Remote" : "";
 }
+
+/** Known geographic limit. Unspecified remote geography stays Not specified. */
+export function geographyLabel(job: WorkModeInput): string {
+  const raw = `${job.location || ""} ${job.remotePolicy || ""}`.replace(/\s+/g, " ").trim();
+  if (/\bworldwide\b/i.test(raw)) return "Worldwide";
+  const place = raw
+    .replace(/\b(fully remote|remote-first|remote|hybrid|onsite|on-site|in-office|global)\b/gi, " ")
+    .replace(/[()]/g, " ")
+    .replace(/[-–—]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (place) return place;
+  const mode = inferWorkMode(job);
+  return mode === "Remote" || mode === "Hybrid" ? "Not specified" : "";
+}

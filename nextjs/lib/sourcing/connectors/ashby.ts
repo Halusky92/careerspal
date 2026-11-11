@@ -4,6 +4,8 @@ export type AshbyJob = {
   departmentName?: string | null;
   teamName?: string | null;
   locationName?: string | null;
+  location?: string | null;
+  workplaceType?: string | null;
   employmentType?: string | null;
   isRemote?: boolean;
   publishedDate?: string | null;

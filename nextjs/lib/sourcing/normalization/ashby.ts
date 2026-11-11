@@ -28,11 +28,20 @@ export function normalizeAshbyRawPayload(args: {
   const job = (args.rawPayload || {}) as AshbyJob;
   const html = (job.descriptionHtml || "").trim() || null;
   const plain = (job.descriptionPlain || "").trim() || (html ? stripHtmlToText(html) : null);
-  const location = (job.locationName || "").trim() || null;
+  const namedLocation = (job.locationName || "").trim();
+  const postedLocation = typeof job.location === "string" ? job.location.trim() : "";
+  const location = namedLocation || postedLocation || null;
+  const workplace = String(job.workplaceType || "");
   const remote =
     inferWorkMode({
       title: job.title,
-      remotePolicy: job.isRemote || (location || "").toLowerCase().includes("remote") ? "Remote" : null,
+      remotePolicy: /hybrid/i.test(workplace)
+        ? "Hybrid"
+        : /onsite|office/i.test(workplace)
+          ? "Onsite"
+          : job.isRemote || (location || "").toLowerCase().includes("remote")
+            ? "Remote"
+            : null,
       location,
       description: plain,
     }) || null;
