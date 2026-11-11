@@ -1,8 +1,9 @@
 import { getSupabaseProfile } from "./supabaseServerAuth";
 import { supabaseAdmin } from "./supabaseAdmin";
-import { resolveBoardTier, type BoardTier } from "./boardAccess";
+import { boardCapsEnabled, resolveBoardTier, type BoardTier } from "./boardAccess";
 
 export async function boardTierFromRequest(request: Request): Promise<BoardTier> {
+  if (!boardCapsEnabled()) return "paid";
   const auth = await getSupabaseProfile(request);
   if (!auth?.profile) return "guest";
   if (auth.profile.role === "admin") return "paid";

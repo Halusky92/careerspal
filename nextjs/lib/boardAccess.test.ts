@@ -3,10 +3,12 @@ import test from "node:test";
 import {
   applyBoardVisibility,
   boardCap,
+  boardCapsEnabled,
   GUEST_VISIBLE_JOBS,
   jobVisibleAtRank,
   boardPageForTier,
   paginateBoardJobs,
+  premiumCheckoutAllowed,
   REGISTERED_VISIBLE_JOBS,
   resolveBoardTier,
 } from "./boardAccess";
@@ -63,4 +65,13 @@ test("API pagination never leaks past guest/member caps even with skip", () => {
     unlimited.jobs.map((job) => job.id),
     ["14", "15", "16"],
   );
+});
+
+test("search caps stay off until enabled, and Premium checkout rejects a live key", () => {
+  assert.equal(boardCapsEnabled(undefined), false);
+  assert.equal(boardCapsEnabled(""), false);
+  assert.equal(boardCapsEnabled("1"), true);
+  assert.equal(premiumCheckoutAllowed("sk_test_123"), true);
+  assert.equal(premiumCheckoutAllowed("sk_live_123"), false);
+  assert.equal(premiumCheckoutAllowed(""), false);
 });

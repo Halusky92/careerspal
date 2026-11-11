@@ -5,6 +5,7 @@ import {
   currentReturnTo,
   notifyApplyBlocked,
   openCompanyApply,
+  stashPendingApply,
 } from "./applyGate";
 
 export function startApply(args: {
@@ -22,6 +23,10 @@ export function startApply(args: {
     return { ok: false as const, href: null, missing: true };
   }
   const applyUrl = String(args.applyUrl).trim();
+  if (!args.accessToken) {
+    stashPendingApply({ jobId: args.jobId, applyUrl, returnTo });
+    return { ok: false as const, href: authHrefForApply(returnTo) };
+  }
   trackJobApply(args.jobId);
   const opened = openCompanyApply(applyUrl);
   if (!opened) {

@@ -65,6 +65,10 @@ export async function POST(request: Request) {
     screenToken?: string;
   };
   if (body.purpose === "board_access") {
+    const { premiumCheckoutAllowed } = await import("../../../../lib/boardAccess");
+    if (!premiumCheckoutAllowed(stripeKey)) {
+      return NextResponse.json({ error: "Premium checkout is available in Stripe test mode only." }, { status: 403 });
+    }
     const origin = getPublicSiteUrl();
     try {
       const stripe = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });

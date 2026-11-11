@@ -1,3 +1,11 @@
+export function boardCapsEnabled(flag = process.env.BOARD_PREMIUM_CAPS) {
+  return flag === "1";
+}
+
+export function premiumCheckoutAllowed(stripeKey?: string | null) {
+  return (stripeKey || "").startsWith("sk_test_");
+}
+
 export const GUEST_VISIBLE_JOBS = 4;
 export const REGISTERED_VISIBLE_JOBS = 14;
 export const REGISTERED_SAVED_SEARCHES = 1;

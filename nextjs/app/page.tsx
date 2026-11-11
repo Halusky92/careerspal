@@ -71,7 +71,7 @@ export default async function HomePage() {
   return (
     <>
       <StaticHomeJobs jobs={jobs} />
-      <HomeClient initialJobs={jobs.slice(0, 4)} subscriberCount={subscriberCount} />
+      <HomeClient initialJobs={process.env.BOARD_PREMIUM_CAPS === "1" ? jobs.slice(0, 4) : jobs} subscriberCount={subscriberCount} />
     </>
   );
 }
