@@ -213,7 +213,7 @@ test("different Greenhouse boards are not treated as the same company", async ()
 const LONG =
   "Revenue Operations Manager. Compensation is $140,000 to $170,000 per year. You will run the operating cadence, document the process, improve handoffs, and keep the weekly review useful for the revenue team. ".repeat(2);
 
-test("in-person, required hybrid, and a pronoun us do not qualify as US remote", async () => {
+test("in-person and unconfirmed remote stay out, while explicit US hybrid qualifies", async () => {
   const jobs = [
     {
       id: 1,
@@ -249,11 +249,13 @@ test("in-person, required hybrid, and a pronoun us do not qualify as US remote",
     async () => ({ status: 200, body: JSON.stringify({ jobs }) }),
     { greenhouseUseContent: true },
   );
-  assert.equal(reviews[0].qualifyingTitles.length, 1);
-  assert.equal(reviews[0].qualifyingTitles[0], "Research Operations Lead");
+  assert.deepEqual(reviews[0].qualifyingTitles, [
+    "RevOps Strategic Initiatives Manager",
+    "Research Operations Lead",
+  ]);
   assert.equal(reviews[0].rejectionCounts.onsite_only, 1);
-  assert.equal(reviews[0].rejectionCounts.hybrid_not_remote, 1);
   assert.equal(reviews[0].rejectionCounts.geo_unconfirmed, 1);
+  assert.equal(reviews[0].rejectionCounts.hybrid_not_remote, undefined);
 });
 
 test("job-board Greenhouse hosts canonicalize to the official board", () => {
