@@ -42,6 +42,21 @@ export function GET() {
   return NextResponse.json({ available: premiumCheckoutOpen() });
 }
 
+/** Premium returns to the site that started checkout. Production stays on the public URL. */
+function boardReturnOrigin(request: Request) {
+  const raw = request.headers.get("origin") || "";
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1" || host === "careerspal-staging.vercel.app") {
+      return `${url.protocol}//${url.host}`;
+    }
+  } catch {
+    /* fall through to the public site */
+  }
+  return getPublicSiteUrl();
+}
+
 export async function POST(request: Request) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   if (!stripeKey) {
@@ -73,7 +88,7 @@ export async function POST(request: Request) {
     if (!premiumCheckoutOpen()) {
       return NextResponse.json({ error: "Premium checkout is not open." }, { status: 403 });
     }
-    const origin = getPublicSiteUrl();
+    const origin = boardReturnOrigin(request);
     try {
       const stripe = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });
       const priceId = (process.env.STRIPE_BOARD_PRICE_ID || "").trim();
