@@ -27,6 +27,7 @@ import {
   seedBoardKeys,
   type PhraseState,
 } from "../lib/sourcing/discovery/jobfirst";
+import { chooseDisplayedLogo, officialWebsiteUrl } from "../lib/companyLogoUrl";
 import { reviewDiscoveryLead, toPendingSourceRow, type DiscoveryFetcher, type DiscoveryReview } from "../lib/sourcing/discovery/review";
 import { autoApprovalForNewSource, discoveryAutoApproveEnabled } from "../lib/sourcing/discovery/autoApprove";
 
@@ -245,7 +246,7 @@ async function main() {
       console.log(`JOB ${companyName} | ${job.title} | ${job.salary || "-"} | ${job.location || "-"} | ${job.remote || "-"} | ${job.score} | ${job.applyUrl}`);
     }
     if (sb) {
-      const companyId = name ? await ensureCompany(sb, name) : null;
+      const companyId = name ? await ensureCompany(sb, name, review.website) : null;
       const wrote = await ensureSource(sb, { ...review, companyName }, companyId, (production || productionDaily) && discoveryAutoApproveEnabled());
       if (wrote) savedSources += 1;
     }
@@ -278,11 +279,16 @@ async function rememberBoard(sb: SupabaseClient, review: DiscoveryReview, foundU
   if (error) throw new Error(error.message);
 }
 
-async function ensureCompany(sb: SupabaseClient, name: string) {
-  const { data: existing, error: readError } = await sb.from("companies").select("id,verified").eq("name", name).maybeSingle();
+async function ensureCompany(sb: SupabaseClient, name: string, website?: string | null) {
+  const { data: existing, error: readError } = await sb.from("companies").select("id").eq("name", name).maybeSingle();
   if (readError) throw new Error(readError.message);
   if (existing?.id) return existing.id as string;
-  const { data, error } = await sb.from("companies").insert({ name, verified: false }).select("id").single();
+  const site = officialWebsiteUrl(website);
+  const { data, error } = await sb
+    .from("companies")
+    .insert({ name, verified: false, website: site, logo_url: chooseDisplayedLogo([], site) })
+    .select("id")
+    .single();
   if (error) throw new Error(error.message);
   return data.id as string;
 }
