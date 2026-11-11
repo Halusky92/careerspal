@@ -1,7 +1,7 @@
 /**
- * Discovery-only US check. A role counts only when the location or remote
- * policy itself names the United States, or a remote location is confirmed
- * in the description. This does not change publishing rules.
+ * US check for the shared auto-publish gate. A role counts only when the
+ * location or remote policy itself names the United States, or a remote
+ * location is confirmed in the description.
  */
 const US_STATE =
   "alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|georgia|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming|district of columbia";

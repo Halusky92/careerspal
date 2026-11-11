@@ -8,7 +8,7 @@ type DiscoveryJob = {
   description_clean?: string | null;
 };
 
-/** US-remote gate for sources saved by Discovery. Existing boards are unchanged. */
+/** US-remote gate for every new Greenhouse, Ashby, and Lever auto-publish. */
 export function discoveryMarketBlockers(job: DiscoveryJob): string[] {
   const mode = inferWorkMode({
     title: job.title,
