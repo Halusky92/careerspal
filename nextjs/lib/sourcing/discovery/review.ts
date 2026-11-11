@@ -390,7 +390,7 @@ export async function reviewDiscoveryLead(
     if (measured.openJobCount === 0) reason = "no_open_jobs";
     else if (qualifying > 0) {
       decision = "pending_approval";
-      reason = `pending_approval: ${qualifying} of ${measured.openJobCount} open jobs meet salary, remote, US, and niche rules`;
+      reason = `pending_approval: ${qualifying} of ${measured.openJobCount} open jobs meet salary, work mode, and niche rules`;
     } else if (measured.unsampledNicheJobs > 0) {
       decision = "held";
       reason = "sample_inconclusive";

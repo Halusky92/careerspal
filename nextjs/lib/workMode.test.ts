@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { inferWorkMode } from "./workMode";
+import { geographyLabel, inferWorkMode } from "./workMode";
 
 test("office anchor days are Hybrid even if the ATS says Remote", () => {
   assert.equal(
@@ -76,4 +76,13 @@ test("a fully remote sentence can fill work mode when location is blank", () => 
     }),
     "Remote",
   );
+});
+
+test("unspecified remote geography is Not specified and a named country is kept", () => {
+  assert.equal(geographyLabel({ location: "Remote", remotePolicy: "Remote" }), "Not specified");
+  assert.equal(geographyLabel({ location: "Remote (Global)", remotePolicy: "Remote" }), "Not specified");
+  assert.equal(geographyLabel({ location: "Remote - United Kingdom", remotePolicy: "Remote" }), "United Kingdom");
+  assert.equal(geographyLabel({ location: "Remote - USA or Canada", remotePolicy: "Remote" }), "USA or Canada");
+  assert.equal(geographyLabel({ location: "Worldwide", remotePolicy: "Remote" }), "Worldwide");
+  assert.equal(geographyLabel({ location: "New York, NY", remotePolicy: "Hybrid" }), "New York, NY");
 });

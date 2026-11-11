@@ -100,7 +100,7 @@ test("aggregators and duplicate boards are rejected without a qualifying row", a
   assert.equal(toPendingSourceRow(reviews[2]), null);
 });
 
-test("a United Kingdom remote role and an unavailable board do not qualify", async () => {
+test("a United Kingdom remote role can qualify and an unavailable board does not", async () => {
   const reviews = await reviewDiscoveryBatch(
     [
       { companyName: "UK Fixture", website: "https://uk-fixture.example", atsUrl: "https://jobs.ashbyhq.com/ukfixture" },
@@ -127,10 +127,9 @@ test("a United Kingdom remote role and an unavailable board do not qualify", asy
       "https://api.lever.co/v0/postings/downfixture?mode=json": { status: 404, body: "" },
     }),
   );
-  assert.equal(reviews[0].decision, "rejected");
-  assert.equal(reviews[0].qualifyingJobCount, 0);
+  assert.equal(reviews[0].decision, "pending_approval");
+  assert.equal(reviews[0].qualifyingJobCount, 1);
   assert.equal(reviews[0].openJobCount, 1);
-  assert.equal(reviews[0].reason, "no_qualifying_jobs");
   assert.equal(reviews[1].reason, "ats_unavailable");
   assert.equal(reviews[1].enabled, false);
 });
@@ -213,7 +212,7 @@ test("different Greenhouse boards are not treated as the same company", async ()
 const LONG =
   "Revenue Operations Manager. Compensation is $140,000 to $170,000 per year. You will run the operating cadence, document the process, improve handoffs, and keep the weekly review useful for the revenue team. ".repeat(2);
 
-test("in-person and unconfirmed remote stay out, while explicit US hybrid qualifies", async () => {
+test("in-person stays out, while explicit remote and US hybrid qualify", async () => {
   const jobs = [
     {
       id: 1,
@@ -251,11 +250,11 @@ test("in-person and unconfirmed remote stay out, while explicit US hybrid qualif
   );
   assert.deepEqual(reviews[0].qualifyingTitles, [
     "RevOps Strategic Initiatives Manager",
+    "Revenue Operations Manager",
     "Research Operations Lead",
   ]);
   assert.equal(reviews[0].rejectionCounts.onsite_only, 1);
-  assert.equal(reviews[0].rejectionCounts.geo_unconfirmed, 1);
-  assert.equal(reviews[0].rejectionCounts.hybrid_not_remote, undefined);
+  assert.equal(reviews[0].rejectionCounts.geo_unconfirmed, undefined);
 });
 
 test("job-board Greenhouse hosts canonicalize to the official board", () => {

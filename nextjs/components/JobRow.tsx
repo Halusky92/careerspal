@@ -8,7 +8,7 @@ import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import { stripHtmlToText } from "../lib/sourcing/normalization/text";
 import { formatJobSalary } from "../lib/formatSalary";
-import { inferWorkMode, publicLocationLabel } from "../lib/workMode";
+import { geographyLabel, inferWorkMode, publicLocationLabel } from "../lib/workMode";
 import { publicCategoryLabel } from "../lib/categories";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
@@ -38,30 +38,11 @@ const getWorkMode = (job: Job) => inferWorkMode(job);
 const formatTimeAgo = (job: Job) => formatRelativePosted(job.timestamp, job.postedAt || "");
 
 const getRemoteMeta = (job: Job, workMode: string) => {
-  const loc = publicLocationLabel(job);
-  const lower = loc.toLowerCase();
-  const looksRemote = lower.includes("remote");
-  const clean = loc
-    .replace(/remote/gi, "")
-    .replace(/[()]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const region =
-    lower.includes("world") || lower.includes("global")
-      ? "Worldwide"
-      : lower.includes("europe") || lower.includes("emea") || lower.includes("eu")
-        ? "Europe"
-        : lower.includes("us") || lower.includes("usa") || lower.includes("united states")
-          ? "US"
-          : clean && clean.toLowerCase() !== "remote" && !looksRemote
-            ? clean
-            : "";
-
-  if (!workMode) return loc || "";
-  if (workMode === "Remote") return region ? `Remote • ${region}` : "Remote";
-  if (workMode === "Hybrid") return region ? `Hybrid • ${region}` : "Hybrid";
-  return region ? `Onsite • ${region}` : loc || "Onsite";
+  const place = geographyLabel(job);
+  if (workMode === "Remote") return `Remote • ${place || "Not specified"}`;
+  if (workMode === "Hybrid") return `Hybrid • ${place || "Not specified"}`;
+  if (!workMode) return publicLocationLabel(job) || "";
+  return place ? `Onsite • ${place}` : publicLocationLabel(job) || "Onsite";
 };
 
 export default function JobRow({
