@@ -11,7 +11,6 @@ import {
 } from "../../../../../lib/employer";
 import { formatEmployerSalaryForStorage } from "../../../../../lib/formatSalary";
 import { canRenewUnpublished, RENEW_PLAN_NAME, RENEW_PRICE } from "../../../../../lib/jobs/unpublishedRetention";
-import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../../lib/nicheScope";
 import {
   COMPANY_OWNED_ELSEWHERE_MESSAGE,
   employerCanEditListingContent,
@@ -91,22 +90,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     updateData.status = "paused";
     updateData.unpublished_at = new Date().toISOString();
   } else if (body.action === "publish") {
-    if (current === "draft") {
-      return NextResponse.json({ error: "Submit the listing first.", submitRequired: true }, { status: 409 });
-    }
-    if (current !== "pending_review") {
-      return NextResponse.json({ error: "Only listings in review can be published from here." }, { status: 400 });
-    }
-    if (!isOnNicheJob({ title: owned.job.title, category: null, description: owned.job.description })) {
-      return NextResponse.json({ error: NICHE_REJECT_MESSAGE }, { status: 400 });
-    }
-    const paymentStatus = String(owned.job.stripe_payment_status || "");
-    const isPaid = paymentStatus === "paid" || paymentStatus === "founding";
-    const isFree = owned.job.plan_price === 0;
-    if (!isPaid && !isFree && auth.role !== "admin") {
-      return NextResponse.json({ error: "Payment not confirmed." }, { status: 400 });
-    }
-    updateData.status = "published";
+    return NextResponse.json(
+      { error: "An admin approves this listing after payment. Employers cannot publish it." },
+      { status: 403 },
+    );
   } else if (body.action === "close") {
     if (!["published", "paused", "pending_review"].includes(current)) {
       return NextResponse.json({ error: "This listing cannot be closed." }, { status: 400 });

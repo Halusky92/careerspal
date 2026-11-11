@@ -343,7 +343,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
 
   const renderJobCard = (job: Job) => {
     const busy = busyId === job.id;
-    const canPublish = job.status === "pending_review" || job.status === "draft";
+    const canSubmit = job.status === "draft";
     const canEdit = job.status === "draft" || job.status === "pending_review";
     const canClose = job.status === "published" || job.status === "paused" || job.status === "pending_review";
     const btn = "h-9 px-3 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 disabled:opacity-50";
@@ -372,15 +372,20 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
           </span>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {canPublish ? (
+          {canSubmit ? (
             <button
               type="button"
               disabled={busy}
               onClick={() => runAction(job, "publish")}
               className="h-9 px-3 rounded-lg bg-emerald-600 text-white text-xs font-medium disabled:opacity-50"
             >
-              Publish
+              Submit for review
             </button>
+          ) : null}
+          {job.status === "pending_review" ? (
+            <span className="h-9 px-3 inline-flex items-center text-xs font-medium text-indigo-700">
+              Waiting for admin approval
+            </span>
           ) : null}
           {canEdit ? (
             <a

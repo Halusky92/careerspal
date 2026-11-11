@@ -4,6 +4,7 @@ import { mapSupabaseJob, SupabaseJobRow } from "../../../../../lib/supabaseJobs"
 import { getSupabaseProfile } from "../../../../../lib/supabaseServerAuth";
 import { formatEmployerSalaryForStorage } from "../../../../../lib/formatSalary";
 import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../../lib/nicheScope";
+import { adminCanApproveListing, featuredForPaidPlan } from "../../../../../lib/employerPlans";
 
 export const runtime = "nodejs";
 
@@ -32,7 +33,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   const { data: existing } = await supabaseAdmin
     .from("jobs")
-    .select("id,status,title,category,description,stripe_payment_status,plan_price,plan_type,created_by")
+    .select("id,status,title,category,description,stripe_payment_status,plan_price,plan_type,created_by,published_at")
     .eq("id", id)
     .single();
   if (!existing) {
@@ -70,27 +71,28 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         return NextResponse.json({ error: NICHE_REJECT_MESSAGE }, { status: 400 });
       }
       const paymentStatus = String((existing as { stripe_payment_status?: string | null }).stripe_payment_status || "");
-      const isPaid = paymentStatus === "paid" || paymentStatus === "founding";
       const planPrice = typeof (existing as { plan_price?: unknown }).plan_price === "number" ? (existing as { plan_price: number }).plan_price : null;
-      const isFree = planPrice === 0;
       const createdBy = (existing as { created_by?: string | null }).created_by || null;
-      const isAdminCreated = Boolean(createdBy && auth.profile.id && createdBy === auth.profile.id);
-
-      if (!isPaid && !isFree && !isAdminCreated) {
+      const ownUnpaidDraft = Boolean(createdBy && createdBy === auth.profile.id && planPrice === 0 && paymentStatus !== "paid");
+      const row = existing as { stripe_payment_status?: string | null; plan_type?: string | null; plan_price?: number | null };
+      if (!adminCanApproveListing(row) && !ownUnpaidDraft) {
         return NextResponse.json({ error: "Payment not confirmed." }, { status: 400 });
       }
     }
     updateData.status = body.status;
     const now = new Date();
-    if (body.status === "published") {
-      updateData.published_at = now.toISOString();
-      updateData.posted_at_text = "Just now";
-      updateData.timestamp = Date.now();
+    if (body.status === "published" && existing.status !== "published") {
+      const alreadyPublishedAt = (existing as { published_at?: string | null }).published_at;
+      if (!alreadyPublishedAt) {
+        updateData.published_at = now.toISOString();
+        updateData.posted_at_text = "Just now";
+        updateData.timestamp = Date.now();
+      }
       const planType = String((existing as { plan_type?: string | null }).plan_type || "");
-      updateData.is_featured = planType === "Featured Pro" || planType === "Elite Managed";
-    }
-    if (existing.status === "published" && body.status !== "published") {
-      updateData.published_at = null;
+      const cents = typeof (existing as { plan_price?: unknown }).plan_price === "number"
+        ? Math.round((existing as { plan_price: number }).plan_price * 100)
+        : 0;
+      updateData.is_featured = featuredForPaidPlan(planType, cents);
     }
   }
 

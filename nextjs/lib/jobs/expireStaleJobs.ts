@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isSourcedListing } from "./applyLinkHealth";
 import { shouldExpireSourcedByAge } from "../sourcing/freshness";
+import { paidListingReadyToExpire } from "../employerPlans";
 
 /** Listing lifespan used by Indeed / most job boards. */
 export const STALE_JOB_DAYS = 30;
@@ -84,6 +85,7 @@ export async function expireStaleJobs(
   const pageSize = 200;
   let offset = 0;
   const stale: StaleJobRow[] = [];
+  const paidExpired: StaleJobRow[] = [];
   let scanned = 0;
   let skipped = 0;
 
@@ -105,6 +107,7 @@ export async function expireStaleJobs(
     if (rows.length === 0) break;
     scanned += rows.length;
     for (const row of rows) {
+      if (paidListingReadyToExpire(row, now, days)) paidExpired.push(row);
       const age = ageMs(row, now);
       if (age == null || age < cutoffMs) {
         skipped += 1;
@@ -117,9 +120,15 @@ export async function expireStaleJobs(
   }
 
   const sourcedJobIds = await loadSourcedJobIds(sb);
+  const paidExpiredIds = paidExpired
+    .filter((row) => !isSourcedListing({ ...row, sourcedJobIds }))
+    .map((row) => row.id);
   const sourcedStale = stale.filter((row) => isSourcedListing({ ...row, sourcedJobIds }));
   const employerStale = stale.filter((row) => !isSourcedListing({ ...row, sourcedJobIds }) && !isPaidEmployerListing(row));
-  const toArchive = employerStale.filter((row) => ARCHIVE_STATUSES.has(row.status || "")).map((row) => row.id);
+  const paidExpiredSet = new Set(paidExpiredIds);
+  const toArchive = employerStale
+    .filter((row) => ARCHIVE_STATUSES.has(row.status || "") && !paidExpiredSet.has(row.id))
+    .map((row) => row.id);
   const toDeleteDrafts = employerStale.filter((row) => DELETE_STATUSES.has(row.status || "")).map((row) => row.id);
   const toDeleteSourced = sourcedStale
     .filter((row) => shouldExpireSourcedByAge({ lastSeenAt: row.last_seen_at, confirmedRemoved: false }))
@@ -144,6 +153,24 @@ export async function expireStaleJobs(
     for (let i = 0; i < toDeleteDrafts.length; i += 100) {
       const chunk = toDeleteDrafts.slice(i, i + 100);
       const { error } = await sb.from("jobs").delete().eq("status", "draft").in("id", chunk);
+      if (error) throw new Error(error.message);
+    }
+    for (let i = 0; i < paidExpiredIds.length; i += 100) {
+      const chunk = paidExpiredIds.slice(i, i + 100);
+      const payload: Record<string, unknown> = {
+        status: "archived",
+        posted_at_text: "Expired",
+        unpublished_at: new Date().toISOString(),
+      };
+      let { error } = await sb.from("jobs").update(payload).in("id", chunk).eq("status", "published");
+      if (error) {
+        const closed = await sb
+          .from("jobs")
+          .update({ status: "closed", posted_at_text: "Expired", unpublished_at: new Date().toISOString() })
+          .in("id", chunk)
+          .eq("status", "published");
+        error = closed.error;
+      }
       if (error) throw new Error(error.message);
     }
     for (let i = 0; i < toArchive.length; i += 100) {
@@ -171,7 +198,7 @@ export async function expireStaleJobs(
 
   return {
     scanned,
-    archived: toArchive.length,
+    archived: toArchive.length + paidExpiredIds.length,
     deletedDrafts: toDeleteDrafts.length,
     deletedSourced: toDeleteSourced.length,
     skipped,

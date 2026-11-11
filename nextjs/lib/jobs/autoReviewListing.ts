@@ -6,6 +6,7 @@ import {
   type ListingFields,
   type ScreenIssue,
 } from "./listingFieldChecks";
+import { adminCanApproveListing, featuredForPaidPlan } from "../employerPlans";
 
 export type { ScreenIssue };
 
@@ -147,7 +148,7 @@ export async function maybeAutoPublishListing(
 ): Promise<{ status: "published" | "pending_review"; reasons: string[]; issues: ScreenIssue[]; aiNote?: string }> {
   const { data } = await sb
     .from("jobs")
-    .select("id,title,description,category,salary,apply_url,location,remote_policy,stripe_payment_status,plan_price,created_by,plan_type,status,companies(name)")
+    .select("id,title,description,category,salary,apply_url,location,remote_policy,stripe_payment_status,plan_price,created_by,plan_type,status,published_at,companies(name)")
     .eq("id", jobId)
     .maybeSingle();
   if (!data) {
@@ -156,10 +157,7 @@ export async function maybeAutoPublishListing(
 
   const row = data as ListingReviewInput & { companies?: { name?: string | null } | Array<{ name?: string | null }> | null };
   const company = Array.isArray(row.companies) ? row.companies[0]?.name : row.companies?.name;
-  const paymentStatus = String(row.stripe_payment_status || "");
-  const isPaid = paymentStatus === "paid" || paymentStatus === "founding";
-  const isFree = row.plan_price === 0;
-  if (!isPaid && !isFree) {
+  if (!adminCanApproveListing(row)) {
     return { status: "pending_review", reasons: ["Payment not confirmed."], issues: [] };
   }
 
@@ -176,15 +174,17 @@ export async function maybeAutoPublishListing(
   }
 
   const planType = String(row.plan_type || "");
+  const cents = typeof row.plan_price === "number" ? Math.round(row.plan_price * 100) : 0;
   const previous = String(row.status || "draft");
+  const firstApproval = !(row as { published_at?: string | null }).published_at;
   await sb
     .from("jobs")
     .update({
       status: "published",
-      published_at: new Date().toISOString(),
-      posted_at_text: "Just now",
-      timestamp: Date.now(),
-      is_featured: planType === "Featured Pro" || planType === "Elite Managed",
+      ...(firstApproval
+        ? { published_at: new Date().toISOString(), posted_at_text: "Just now", timestamp: Date.now() }
+        : {}),
+      is_featured: featuredForPaidPlan(planType, cents),
     })
     .eq("id", jobId);
 

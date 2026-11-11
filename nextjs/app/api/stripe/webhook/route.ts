@@ -12,6 +12,19 @@ type StripeEmailJobRow = {
 
 export const runtime = "nodejs";
 
+async function employerListingIdFromCharge(stripe: Stripe, charge: Stripe.Charge): Promise<string | null> {
+  if (charge.metadata?.purpose === "employer_listing" && charge.metadata.jobId) return charge.metadata.jobId;
+  const paymentIntent = charge.payment_intent;
+  const paymentIntentId = typeof paymentIntent === "string" ? paymentIntent : paymentIntent?.id;
+  if (!paymentIntentId) return null;
+  const intent =
+    typeof paymentIntent === "object" && paymentIntent?.metadata
+      ? paymentIntent
+      : await stripe.paymentIntents.retrieve(paymentIntentId);
+  if (intent.metadata?.purpose === "employer_listing" && intent.metadata.jobId) return intent.metadata.jobId;
+  return null;
+}
+
 export async function GET() {
   return NextResponse.json({
     ok: true,
@@ -19,6 +32,7 @@ export async function GET() {
     method: "POST",
     events: [
       "checkout.session.completed",
+      "checkout.session.async_payment_failed",
       "checkout.session.expired",
       "customer.subscription.updated",
       "customer.subscription.deleted",
@@ -100,40 +114,50 @@ export async function POST(request: Request) {
       }
       const jobId = session.metadata?.jobId;
       if (jobId) {
-        const isPaid = session.payment_status === "paid";
+        const { employerCheckoutPatch } = await import("../../../../lib/employerPlans");
         const { data: paidJob } = await supabaseAdmin
           .from("jobs")
-          .select("plan_type")
+          .select("status,plan_type,plan_price,stripe_payment_status,stripe_session_id")
           .eq("id", jobId)
           .maybeSingle();
-        const paidPlan = (paidJob as { plan_type?: string | null } | null)?.plan_type;
-        const featuredPlan = paidPlan === "Featured Pro" || paidPlan === "Elite Managed";
-        const paidUpdate: Record<string, unknown> = {
-          status: isPaid ? "pending_review" : "draft",
-          stripe_payment_status: session.payment_status || (isPaid ? "paid" : "unpaid"),
-          stripe_session_id: session.id,
-          posted_at_text: isPaid ? "Pending review" : undefined,
-          timestamp: isPaid ? Date.now() : undefined,
-          is_featured: isPaid ? featuredPlan : false,
-          unpublished_at: isPaid ? null : undefined,
+        const jobRow = (paidJob || {}) as {
+          status?: string | null;
+          plan_type?: string | null;
+          plan_price?: number | null;
+          stripe_payment_status?: string | null;
+          stripe_session_id?: string | null;
         };
-        const paidWrite = await supabaseAdmin.from("jobs").update(paidUpdate).eq("id", jobId);
-        if (paidWrite.error) {
-          const { unpublished_at: _unpublished, ...withoutUnpublished } = paidUpdate;
-          await supabaseAdmin.from("jobs").update(withoutUnpublished).eq("id", jobId);
-        }
-        await supabaseAdmin.from("audit_logs").insert({
-          action: isPaid ? "payment_received" : "payment_incomplete",
-          job_id: jobId,
-          metadata: {
-            stripeSessionId: session.id,
-            amountTotal: session.amount_total,
-            currency: session.currency,
-            paymentStatus: session.payment_status,
-          },
+        const expectedCents = Number(session.metadata?.amountCents || "");
+        const planType = session.metadata?.planType || jobRow.plan_type || "Standard";
+        const decision = employerCheckoutPatch({
+          job: jobRow,
+          sessionId: session.id,
+          paymentStatus: session.payment_status,
+          currency: session.currency,
+          amountTotal: session.amount_total,
+          expectedCents: Number.isFinite(expectedCents) ? expectedCents : -1,
+          planType,
         });
+        if (!("ignore" in decision)) {
+          const paidWrite = await supabaseAdmin.from("jobs").update(decision.update).eq("id", jobId);
+          if (paidWrite.error && "unpublished_at" in decision.update) {
+            const { unpublished_at: _unpublished, ...withoutUnpublished } = decision.update;
+            await supabaseAdmin.from("jobs").update(withoutUnpublished).eq("id", jobId);
+          }
+          await supabaseAdmin.from("audit_logs").insert({
+            action: decision.audit,
+            job_id: jobId,
+            metadata: {
+              stripeSessionId: session.id,
+              amountTotal: session.amount_total,
+              currency: session.currency,
+              paymentStatus: session.payment_status,
+              expectedCents,
+            },
+          });
+        }
 
-        if (isPaid) {
+        if (!("ignore" in decision) && decision.update.stripe_payment_status === "paid") {
           const { sendListingOutcomeEmails } = await import("../../../../lib/listingNotify");
           const { data: job } = await supabaseAdmin
             .from("jobs")
@@ -181,6 +205,23 @@ export async function POST(request: Request) {
     if (event.type === "charge.refunded") {
       const charge = event.data.object as Stripe.Charge;
       if (charge.refunded) {
+        const employerJobId = await employerListingIdFromCharge(stripe, charge);
+        if (employerJobId) {
+          const { employerRefundPatch } = await import("../../../../lib/employerPlans");
+          const { data: refundJob } = await supabaseAdmin
+            .from("jobs")
+            .select("status,stripe_payment_status")
+            .eq("id", employerJobId)
+            .maybeSingle();
+          if (refundJob) {
+            await supabaseAdmin.from("jobs").update(employerRefundPatch(refundJob)).eq("id", employerJobId);
+            await supabaseAdmin.from("audit_logs").insert({
+              action: "employer_listing_refunded",
+              job_id: employerJobId,
+              metadata: { chargeId: charge.id },
+            });
+          }
+        } else {
         const { applyBoardSubscription, profileIdForStripeCustomer, profileIdForSubscription } = await import("../../../../lib/stripeBoardPremium");
         const customerId = typeof charge.customer === "string" ? charge.customer : charge.customer || null;
         let profileId = customerId ? await profileIdForStripeCustomer(String(customerId)) : null;
@@ -209,6 +250,7 @@ export async function POST(request: Request) {
             metadata: { profileId, chargeId: charge.id },
           });
         }
+        }
       }
     }
 
@@ -233,6 +275,19 @@ export async function POST(request: Request) {
       }
     }
 
+    if (event.type === "checkout.session.async_payment_failed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const jobId = session.metadata?.jobId;
+      if (jobId) {
+        await supabaseAdmin
+          .from("jobs")
+          .update({ stripe_payment_status: "unpaid", stripe_session_id: session.id })
+          .eq("id", jobId)
+          .neq("stripe_payment_status", "paid")
+          .neq("status", "published");
+      }
+    }
+
     if (event.type === "checkout.session.expired") {
       const session = event.data.object as Stripe.Checkout.Session;
       const jobId = session.metadata?.jobId;
@@ -243,7 +298,10 @@ export async function POST(request: Request) {
             stripe_payment_status: "expired",
             stripe_session_id: session.id,
           })
-          .eq("id", jobId);
+          .eq("id", jobId)
+          .neq("stripe_payment_status", "paid")
+          .neq("status", "published")
+          .neq("status", "pending_review");
         await supabaseAdmin.from("audit_logs").insert({
           action: "payment_expired",
           job_id: jobId,
