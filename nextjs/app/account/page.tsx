@@ -538,7 +538,7 @@ const AccountPageInner = () => {
                           </p>
                           {premium && user?.premiumUntil ? (
                             <p className="mt-1 text-xs text-slate-500">
-                              Current period through {new Date(user.premiumUntil).toLocaleDateString()}.
+                              Current period through {new Date(user.premiumUntil).toLocaleDateString()}. It renews monthly until you cancel.
                             </p>
                           ) : null}
                           <div className="mt-3 flex flex-wrap gap-2">
@@ -879,8 +879,8 @@ const AccountPageInner = () => {
                     <p className="text-sm font-medium text-slate-900">Premium</p>
                     <p className="text-sm text-slate-600">
                       {user?.subscriptionStatus
-                        ? `Stripe status: ${user.subscriptionStatus.replace(/_/g, " ")}.`
-                        : "Unlimited search is $7.99 a month. Cancel anytime in Stripe."}
+                        ? `Stripe status: ${user.subscriptionStatus.replace(/_/g, " ")}. $7.99 renews each month until you cancel. Canceling keeps Premium until the end of the paid period.`
+                        : "Unlimited search is $7.99 a month and renews until you cancel. Canceling keeps access until the end of the paid period."}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {user?.subscriptionStatus !== "active" && user?.subscriptionStatus !== "trialing" ? (

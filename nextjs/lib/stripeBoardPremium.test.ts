@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { premiumProfilePatch } from "./stripeBoardPremium";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { applyBoardSubscription, premiumProfilePatch } from "./stripeBoardPremium";
 import { resolveBoardTier } from "./boardAccess";
+import { runStripeEventOnce } from "./stripeWebhookInbox";
 
 const periodEnd = 1_800_000_000; // 2027-01-15
 const untilIso = new Date(periodEnd * 1000).toISOString();
@@ -65,4 +67,138 @@ test("expiration after canceled with no remaining period is registered", () => {
     subscription: sub("canceled", { current_period_end: Math.floor(Date.now() / 1000) - 60 }),
   });
   assert.equal(patch.board_premium_until, null);
+});
+
+test("a late older snapshot does not shorten a newer paid period", () => {
+  const newer = new Date((periodEnd + 30 * 24 * 3600) * 1000).toISOString();
+  const lateUnpaid = premiumProfilePatch({
+    subscription: sub("unpaid"),
+    currentUntil: newer,
+  });
+  assert.equal(lateUnpaid.board_premium_until, newer);
+  const lateActive = premiumProfilePatch({
+    subscription: sub("active"),
+    currentUntil: newer,
+  });
+  assert.equal(lateActive.board_premium_until, newer);
+});
+
+test("an unpaid invoice for the current period removes Premium", () => {
+  const patch = premiumProfilePatch({
+    subscription: sub("unpaid"),
+    currentUntil: untilIso,
+  });
+  assert.equal(patch.board_premium_until, null);
+  assert.equal(resolveBoardTier({ signedIn: true, premiumUntil: patch.board_premium_until }), "registered");
+});
+
+test("a failed Premium write can retry, then a duplicate does not apply it again", async () => {
+  const rows: Array<{ event_id: string; event_type: string; received_at: string }> = [];
+  const match = (filters: Array<[string, string]>) =>
+    rows.filter((row) => filters.every(([key, value]) => row[key as keyof typeof row] === value));
+  const chain = (apply: (filters: Array<[string, string]>) => void) => {
+    const filters: Array<[string, string]> = [];
+    const builder = {
+      eq(column: string, value: string) {
+        filters.push([column, value]);
+        return builder;
+      },
+      then(resolve: (value: { error: null }) => unknown) {
+        apply(filters);
+        return Promise.resolve({ error: null }).then(resolve);
+      },
+    };
+    return builder;
+  };
+  const inbox = {
+    from() {
+      return {
+        insert(row: { event_id: string; event_type: string }) {
+          if (rows.some((item) => item.event_id === row.event_id)) {
+            return Promise.resolve({ error: { code: "23505", message: "duplicate key" } });
+          }
+          rows.push({ ...row, received_at: new Date().toISOString() });
+          return Promise.resolve({ error: null });
+        },
+        select() {
+          const filters: Array<[string, string]> = [];
+          return {
+            eq(column: string, value: string) {
+              filters.push([column, value]);
+              return this;
+            },
+            maybeSingle() {
+              return Promise.resolve({ data: match(filters)[0] || null, error: null });
+            },
+          };
+        },
+        update(patch: { event_type?: string }) {
+          return chain((filters) => {
+            for (const row of match(filters)) Object.assign(row, patch);
+          });
+        },
+        delete() {
+          return chain((filters) => {
+            for (let index = rows.length - 1; index >= 0; index -= 1) {
+              const row = rows[index];
+              if (filters.every(([key, value]) => row[key as keyof typeof row] === value)) rows.splice(index, 1);
+            }
+          });
+        },
+      };
+    },
+  };
+  const profile = { board_premium_until: null as string | null, writes: 0 };
+  let failWrite = true;
+  const profiles = {
+    from() {
+      return {
+        select() {
+          return {
+            eq() {
+              return {
+                maybeSingle: async () => ({ data: { board_premium_until: profile.board_premium_until }, error: null }),
+              };
+            },
+          };
+        },
+        update(patch: { board_premium_until?: string | null }) {
+          return {
+            eq() {
+              return {
+                select: async () => {
+                  profile.writes += 1;
+                  if (failWrite) return { data: null, error: { message: "premium update failed" } };
+                  profile.board_premium_until = patch.board_premium_until || null;
+                  return { data: [{ id: "profile_1" }], error: null };
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+  const event = { id: "evt_premium", type: "checkout.session.completed" };
+  const work = () =>
+    applyBoardSubscription(
+      { profileId: "profile_1", subscription: sub("active") as never },
+      profiles as never,
+    );
+
+  await assert.rejects(
+    () => runStripeEventOnce({ sb: inbox as unknown as SupabaseClient, event, work }),
+    /premium update failed/,
+  );
+  assert.equal(profile.board_premium_until, null);
+  assert.equal(rows.length, 0);
+
+  failWrite = false;
+  assert.equal(await runStripeEventOnce({ sb: inbox as unknown as SupabaseClient, event, work }), "done");
+  assert.equal(profile.board_premium_until, untilIso);
+  const writesAfterSuccess = profile.writes;
+
+  assert.equal(await runStripeEventOnce({ sb: inbox as unknown as SupabaseClient, event, work }), "duplicate");
+  assert.equal(profile.writes, writesAfterSuccess);
+  assert.equal(profile.board_premium_until, untilIso);
 });

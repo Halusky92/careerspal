@@ -10,6 +10,7 @@ import { verifyScreenPass } from "../../../../lib/jobs/screenPass";
 import { canUseAdminTestPlan } from "../../../../lib/adminTestPlan";
 import { premiumCheckoutOpen } from "../../../../lib/boardAccess";
 import { chargeForStoredJob } from "../../../../lib/employerPlans";
+import { stripeScopeMetadata } from "../../../../lib/stripeWebhookInbox";
 
 type StripeJobRow = {
   id: string;
@@ -116,15 +117,15 @@ export async function POST(request: Request) {
         client_reference_id: auth.profile.id,
         customer: existingCustomer,
         customer_email: existingCustomer ? undefined : auth.profile.email || undefined,
-        metadata: {
+        metadata: stripeScopeMetadata({
           purpose: "board_access",
           profileId: auth.profile.id,
-        },
+        }),
         subscription_data: {
-          metadata: {
+          metadata: stripeScopeMetadata({
             purpose: "board_access",
             profileId: auth.profile.id,
-          },
+          }),
         },
       });
       return NextResponse.json({ url: session.url });
@@ -233,20 +234,20 @@ export async function POST(request: Request) {
       ],
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/checkout?jobId=${jobRow.id}`,
-      metadata: {
+      metadata: stripeScopeMetadata({
         jobId: jobRow.id,
         purpose: isRenew ? "republish" : "new",
         planType: planName,
         amountCents: String(charge.unitAmountCents),
         currency: "usd",
-      },
+      }),
       payment_intent_data: {
-        metadata: {
+        metadata: stripeScopeMetadata({
           jobId: jobRow.id,
           purpose: "employer_listing",
           planType: planName,
           amountCents: String(charge.unitAmountCents),
-        },
+        }),
       },
     });
 

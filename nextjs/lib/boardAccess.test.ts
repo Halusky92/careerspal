@@ -9,6 +9,7 @@ import {
   boardPageForTier,
   paginateBoardJobs,
   premiumCheckoutAllowed,
+  premiumCheckoutOpen,
   REGISTERED_VISIBLE_JOBS,
   resolveBoardTier,
 } from "./boardAccess";
@@ -74,4 +75,7 @@ test("search caps stay off until enabled, and Premium checkout rejects a live ke
   assert.equal(premiumCheckoutAllowed("sk_test_123"), true);
   assert.equal(premiumCheckoutAllowed("sk_live_123"), false);
   assert.equal(premiumCheckoutAllowed(""), false);
+  assert.equal(premiumCheckoutOpen(undefined, "sk_test_123"), false);
+  assert.equal(premiumCheckoutOpen("1", "sk_live_123"), false);
+  assert.equal(premiumCheckoutOpen("1", "sk_test_123"), true);
 });
