@@ -117,6 +117,32 @@ test("onsite stays blocked and a named remote country can publish", () => {
   );
 });
 
+test("Toast hybrid policy is not labeled Remote, and Twilio exclusions are not dropped", () => {
+  const toast = discoveryMarketBlockers({
+    title: "Manager, Marketing Operations - Ad Tech Lead",
+    location_text: "Remote",
+    remote_policy: "Remote",
+    description_clean: "Our Approach to Hybrid Working. We embrace a hybrid work model and publish in-office expectations by region.",
+  });
+  assert.equal(toast.includes("work_mode_conflict") || toast.includes("geo_unconfirmed"), true);
+  assert.ok(
+    discoveryMarketBlockers({
+      title: "Revenue Operations Manager",
+      location_text: "Remote",
+      remote_policy: "Remote",
+      description_clean: "The company describes a hybrid work model for this role.",
+    }).includes("work_mode_conflict"),
+  );
+  assert.ok(
+    discoveryMarketBlockers({
+      title: "Marketing Operations Manager",
+      location_text: "Remote - US",
+      remote_policy: "Remote",
+      description_clean: "This role will be remote, but is not eligible to be hired in CA, CT, NJ, NY, PA, WA.",
+    }).includes("geo_restriction"),
+  );
+});
+
 test("only a provider and identifier mark a discovery source", () => {
   assert.equal(discoverySourceKey("Ashby", "Pomelo-Care"), "ashby:pomelo-care");
   assert.equal(discoverySourceKey("greenhouse", ""), "");

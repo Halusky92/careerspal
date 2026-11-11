@@ -1,5 +1,3 @@
-import { extractCompensationSnippet } from "./text";
-
 export type SalaryPeriod = "year" | "month" | "day" | "hour";
 export type SalaryConfidence = "high" | "medium" | "low" | "unknown";
 export type SalaryDetectedFrom = "ats_structured" | "official_json" | "text_comp_section" | "text_body" | "metadata" | "unknown";
@@ -94,6 +92,10 @@ function normalizeNumber(value: string): number | null {
     .trim()
     .toLowerCase();
   if (!raw) return null;
+  if (/^\d{1,3}(?:\.\d{3})+$/.test(raw)) {
+    const grouped = Number(raw.replace(/\./g, ""));
+    return Number.isFinite(grouped) ? grouped : null;
+  }
   const m = raw.match(/^(\d+(?:\.\d+)?|\d+)(k|m)?$/i);
   if (m) {
     const n = Number(m[1]);
@@ -141,9 +143,40 @@ function isNonExplicitSalary(text: string): boolean {
   );
 }
 
+function decodeSalaryEntities(text: string) {
+  let next = text || "";
+  for (let pass = 0; pass < 2; pass += 1) {
+    next = next
+      .replace(/&amp;/gi, "&")
+      .replace(/&mdash;|&#8212;|&#x2014;/gi, "-")
+      .replace(/&ndash;|&#8211;|&#x2013;/gi, "-")
+      .replace(/&minus;|&#8722;|&#x2212;/gi, "-");
+  }
+  return next;
+}
+
+function absentOfficialSalary(note: string): ParsedSalary {
+  return {
+    salary_text_raw: null,
+    salary_amount_min: null,
+    salary_amount_max: null,
+    salary_currency: null,
+    salary_period: null,
+    salary_present: false,
+    salary_confidence: "low",
+    salary_detected_from: "text_comp_section",
+    salary_parse_notes: [note],
+  };
+}
+
+function precedingIsNotBase(clean: string, index: number) {
+  const before = clean.slice(Math.max(0, index - 64), index).toLowerCase();
+  return /\b(ote|on-target earnings|on target earnings|up to)\b/.test(before);
+}
+
 export function parseSalaryFromText(text: string): ParsedSalary {
   const notes: string[] = [];
-  const clean = collapseThousandGroups(text || "")
+  const clean = collapseThousandGroups(decodeSalaryEntities(text || ""))
     .trim()
     // Normalize common dash variants to hyphen so ranges like "$221,000—$260,000" match reliably.
     .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-");
@@ -292,20 +325,53 @@ export function parsedSalaryFromStructured(args: {
   });
 }
 
-export function detectAndParseSalaryForGreenhouse(descriptionText: string): ParsedSalary {
-  const clean = (descriptionText || "").trim();
+/** One official base range. Several bands, or an OTE ceiling, stay unpublished. */
+export function chooseOfficialSalary(text: string): ParsedSalary {
+  const clean = collapseThousandGroups(decodeSalaryEntities(text || ""))
+    .trim()
+    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-");
   if (!clean) return parseSalaryFromText("");
-
-  const snippet = extractCompensationSnippet(clean);
-  if (snippet) {
-    const parsed = parseSalaryFromText(snippet);
-    if (parsed.salary_present) {
-      return { ...parsed, salary_detected_from: "text_comp_section" };
-    }
-    // If the snippet heuristic truncated important context (e.g., "Annual" before "Base Salary"),
-    // fall back to parsing the full description.
+  const salaryRe =
+    /(?:^|[\s(>])\s*(USD|EUR|GBP|CAD|AUD|CHF|SEK|NOK|DKK|PLN|CZK|JPY|[$€£¥])\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:(?:[-–]|to|through)\s*(?:\1\s*)?([0-9][0-9,]*(?:\.[0-9]+)?[km]?))?/gi;
+  const matches = [...clean.matchAll(salaryRe)];
+  const hits = matches.map((match, index) => {
+    const start = match.index || 0;
+    const next = matches[index + 1]?.index ?? clean.length;
+    const context = clean.slice(Math.max(0, start - 48), Math.min(next, start + match[0].length + 48));
+    const min = normalizeNumber(match[2]);
+    const max = normalizeNumber(match[3] || "");
+    const currency = normalizeCurrency(match[1] || null);
+    const period = periodAroundSalary(context, min, max);
+    const present = Boolean(currency && period && (min || max));
+    const implausible = present && isImplausibleSalary(period, min, max);
+    return {
+      ote: precedingIsNotBase(clean, start),
+      parsed: withRoundedSalaryAmounts({
+        salary_text_raw: match[0].trim().slice(0, 240),
+        salary_amount_min: min,
+        salary_amount_max: max,
+        salary_currency: currency,
+        salary_period: period,
+        salary_present: present && !implausible,
+        salary_confidence: (present && !implausible ? "medium" : "low") as SalaryConfidence,
+        salary_detected_from: "text_comp_section" as SalaryDetectedFrom,
+        salary_parse_notes: [implausible ? "implausible_salary_amount" : "rounded_for_storage"],
+      }),
+    };
+  });
+  const base = hits.filter((hit) => hit.parsed.salary_present && !hit.ote);
+  if (base.length === 0) {
+    if (hits.some((hit) => hit.ote)) return absentOfficialSalary("ote_not_base");
     return parseSalaryFromText(clean);
   }
-  return parseSalaryFromText(clean);
+  const keys = new Set(
+    base.map((hit) => `${hit.parsed.salary_currency}:${hit.parsed.salary_amount_min ?? ""}:${hit.parsed.salary_amount_max ?? ""}`),
+  );
+  if (keys.size > 1) return absentOfficialSalary("multiple_salary_bands");
+  return base[0].parsed;
+}
+
+export function detectAndParseSalaryForGreenhouse(descriptionText: string): ParsedSalary {
+  return chooseOfficialSalary(descriptionText || "");
 }
 

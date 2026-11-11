@@ -72,20 +72,22 @@ export function buildJobPostingLd(job: Job, canonicalUrl: string) {
   // Do not invent posted+30d — that is a board hygiene window, not a real expiry.
 
   const parsed = parseSalaryFromText(job.salary || "");
-  const period = (parsed.salary_period || "year") as SalaryPeriod;
+  const period = parsed.salary_period;
   const min = parsed.salary_amount_min;
   const max = parsed.salary_amount_max;
   const currency = (parsed.salary_currency || "").toUpperCase();
+  const oteFloor =
+    max == null && /\b(ote|on-target earnings|on target earnings)\b/i.test(`${job.salary || ""}\n${job.description || ""}`);
   const baseSalary =
-    parsed.salary_present && currency && (min != null || max != null)
+    !oteFloor && parsed.salary_present && currency && period && (min != null || max != null)
       ? {
           "@type": "MonetaryAmount",
           currency,
           value: {
             "@type": "QuantitativeValue",
-            minValue: min ?? max,
-            maxValue: max ?? min,
-            unitText: PERIOD_UNIT[period] || "YEAR",
+            ...(min != null ? { minValue: min } : {}),
+            ...(max != null ? { maxValue: max } : {}),
+            unitText: PERIOD_UNIT[period],
           },
         }
       : undefined;
