@@ -29,6 +29,26 @@ test("explicit Remote can publish with no country", () => {
   );
 });
 
+test("a bare Remote is not treated as a missing geographic restriction", () => {
+  assert.deepEqual(
+    discoveryMarketBlockers({
+      title: "Revenue Operations Manager",
+      location_text: "Remote",
+      remote_policy: "Remote",
+      description_clean: "This role is remote. No country is listed.",
+    }),
+    [],
+  );
+  const excluded = discoveryMarketBlockers({
+    title: "Revenue Operations Manager",
+    location_text: "Remote",
+    remote_policy: "Remote",
+    description_clean: "This role is remote, but is not eligible to be hired in CA, NY.",
+  });
+  assert.equal(excluded.includes("geo_restriction"), true);
+  assert.equal(excluded.includes("remote_unconfirmed"), false);
+});
+
 test("Remote - USA or Canada can publish when the United States is explicit", () => {
   assert.deepEqual(
     discoveryMarketBlockers({
