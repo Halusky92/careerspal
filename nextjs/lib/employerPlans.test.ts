@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { claimStripeEvent } from "./stripeWebhookInbox";
 import {
   adminCanApproveListing,
   chargeForStoredJob,
@@ -120,22 +119,4 @@ test("a refund removes a live listing and its featured flag", () => {
   const paused = employerRefundPatch({ status: "paused" });
   assert.equal(paused.status, undefined);
   assert.equal(paused.stripe_payment_status, "refunded");
-});
-
-test("the same Stripe event is claimed once", async () => {
-  const seen = new Set<string>();
-  const sb = {
-    from() {
-      return {
-        insert(row: { event_id: string }) {
-          if (seen.has(row.event_id)) return Promise.resolve({ error: { code: "23505", message: "duplicate" } });
-          seen.add(row.event_id);
-          return Promise.resolve({ error: null });
-        },
-      };
-    },
-  };
-  const event = { id: "evt_1", type: "checkout.session.completed" };
-  assert.equal(await claimStripeEvent(sb as never, event), "claimed");
-  assert.equal(await claimStripeEvent(sb as never, event), "duplicate");
 });

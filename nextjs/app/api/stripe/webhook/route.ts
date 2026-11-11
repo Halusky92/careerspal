@@ -44,7 +44,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
-  const { stripeWebhookSecrets, constructStripeEvent, claimStripeEvent } = await import("../../../../lib/stripeWebhookInbox");
+  const { stripeWebhookSecrets, constructStripeEvent, runStripeEventOnce } = await import("../../../../lib/stripeWebhookInbox");
   const webhookSecrets = stripeWebhookSecrets();
   if (!stripeKey) {
     return NextResponse.json(
@@ -61,6 +61,7 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+  const db = supabaseAdmin;
 
   try {
     const stripe = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });
@@ -84,11 +85,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const claim = await claimStripeEvent(supabaseAdmin, event);
-    if (claim === "duplicate") {
-      return NextResponse.json({ received: true, duplicate: true });
-    }
-
+    const outcome = await runStripeEventOnce({
+      sb: db,
+      event,
+      work: async () => {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.metadata?.purpose === "board_access") {
@@ -105,17 +105,17 @@ export async function POST(request: Request) {
             subscription,
             customerId,
           });
-          await supabaseAdmin.from("audit_logs").insert({
+          await db.from("audit_logs").insert({
             action: "board_access_paid",
             metadata: { profileId, stripeSessionId: session.id, subscriptionId: subId },
           });
         }
-        return NextResponse.json({ received: true });
+        return;
       }
       const jobId = session.metadata?.jobId;
       if (jobId) {
         const { employerCheckoutPatch } = await import("../../../../lib/employerPlans");
-        const { data: paidJob } = await supabaseAdmin
+        const { data: paidJob } = await db
           .from("jobs")
           .select("status,plan_type,plan_price,stripe_payment_status,stripe_session_id")
           .eq("id", jobId)
@@ -139,12 +139,13 @@ export async function POST(request: Request) {
           planType,
         });
         if (!("ignore" in decision)) {
-          const paidWrite = await supabaseAdmin.from("jobs").update(decision.update).eq("id", jobId);
+          let paidWrite = await db.from("jobs").update(decision.update).eq("id", jobId);
           if (paidWrite.error && "unpublished_at" in decision.update) {
             const { unpublished_at: _unpublished, ...withoutUnpublished } = decision.update;
-            await supabaseAdmin.from("jobs").update(withoutUnpublished).eq("id", jobId);
+            paidWrite = await db.from("jobs").update(withoutUnpublished).eq("id", jobId);
           }
-          await supabaseAdmin.from("audit_logs").insert({
+          if (paidWrite.error) throw new Error(paidWrite.error.message || "Employer payment update failed.");
+          await db.from("audit_logs").insert({
             action: decision.audit,
             job_id: jobId,
             metadata: {
@@ -159,7 +160,7 @@ export async function POST(request: Request) {
 
         if (!("ignore" in decision) && decision.update.stripe_payment_status === "paid") {
           const { sendListingOutcomeEmails } = await import("../../../../lib/listingNotify");
-          const { data: job } = await supabaseAdmin
+          const { data: job } = await db
             .from("jobs")
             .select("id,title,plan_type,plan_price,company_description,created_by,companies(name)")
             .eq("id", jobId)
@@ -171,7 +172,7 @@ export async function POST(request: Request) {
             null;
           let buyerEmail = session.customer_details?.email || session.customer_email || null;
           if (!buyerEmail && jobRow?.created_by) {
-            const { data: poster } = await supabaseAdmin.from("profiles").select("email").eq("id", jobRow.created_by).maybeSingle();
+            const { data: poster } = await db.from("profiles").select("email").eq("id", jobRow.created_by).maybeSingle();
             buyerEmail = poster?.email || null;
           }
           await sendListingOutcomeEmails({
@@ -195,7 +196,7 @@ export async function POST(request: Request) {
       const profileId = await profileIdForSubscription(subscription);
       if (profileId) {
         await applyBoardSubscription({ profileId, subscription });
-        await supabaseAdmin.from("audit_logs").insert({
+        await db.from("audit_logs").insert({
           action: event.type === "customer.subscription.deleted" ? "board_access_canceled" : "board_access_updated",
           metadata: { profileId, subscriptionId: subscription.id, status: subscription.status },
         });
@@ -208,14 +209,15 @@ export async function POST(request: Request) {
         const employerJobId = await employerListingIdFromCharge(stripe, charge);
         if (employerJobId) {
           const { employerRefundPatch } = await import("../../../../lib/employerPlans");
-          const { data: refundJob } = await supabaseAdmin
+          const { data: refundJob } = await db
             .from("jobs")
             .select("status,stripe_payment_status")
             .eq("id", employerJobId)
             .maybeSingle();
           if (refundJob) {
-            await supabaseAdmin.from("jobs").update(employerRefundPatch(refundJob)).eq("id", employerJobId);
-            await supabaseAdmin.from("audit_logs").insert({
+            const refundWrite = await db.from("jobs").update(employerRefundPatch(refundJob)).eq("id", employerJobId);
+            if (refundWrite.error) throw new Error(refundWrite.error.message || "Employer refund update failed.");
+            await db.from("audit_logs").insert({
               action: "employer_listing_refunded",
               job_id: employerJobId,
               metadata: { chargeId: charge.id },
@@ -233,7 +235,7 @@ export async function POST(request: Request) {
             await applyBoardSubscription({ profileId, subscription, refunded: true });
           }
         } else if (profileId && customerId) {
-          const { data } = await supabaseAdmin
+          const { data } = await db
             .from("profiles")
             .select("stripe_subscription_id")
             .eq("id", profileId)
@@ -245,7 +247,7 @@ export async function POST(request: Request) {
           }
         }
         if (profileId) {
-          await supabaseAdmin.from("audit_logs").insert({
+          await db.from("audit_logs").insert({
             action: "board_access_refunded",
             metadata: { profileId, chargeId: charge.id },
           });
@@ -267,7 +269,7 @@ export async function POST(request: Request) {
         const profileId = await profileIdForSubscription(subscription);
         if (profileId) {
           await applyBoardSubscription({ profileId, subscription });
-          await supabaseAdmin.from("audit_logs").insert({
+          await db.from("audit_logs").insert({
             action: "board_access_renewed",
             metadata: { profileId, subscriptionId: subscription.id, invoiceId: invoice.id },
           });
@@ -279,12 +281,13 @@ export async function POST(request: Request) {
       const session = event.data.object as Stripe.Checkout.Session;
       const jobId = session.metadata?.jobId;
       if (jobId) {
-        await supabaseAdmin
+        const failedWrite = await db
           .from("jobs")
           .update({ stripe_payment_status: "unpaid", stripe_session_id: session.id })
           .eq("id", jobId)
           .neq("stripe_payment_status", "paid")
           .neq("status", "published");
+        if (failedWrite.error) throw new Error(failedWrite.error.message || "Payment failure update failed.");
       }
     }
 
@@ -292,7 +295,7 @@ export async function POST(request: Request) {
       const session = event.data.object as Stripe.Checkout.Session;
       const jobId = session.metadata?.jobId;
       if (jobId) {
-        await supabaseAdmin
+        const expiredWrite = await db
           .from("jobs")
           .update({
             stripe_payment_status: "expired",
@@ -302,7 +305,8 @@ export async function POST(request: Request) {
           .neq("stripe_payment_status", "paid")
           .neq("status", "published")
           .neq("status", "pending_review");
-        await supabaseAdmin.from("audit_logs").insert({
+        if (expiredWrite.error) throw new Error(expiredWrite.error.message || "Expired checkout update failed.");
+        await db.from("audit_logs").insert({
           action: "payment_expired",
           job_id: jobId,
           metadata: {
@@ -313,7 +317,11 @@ export async function POST(request: Request) {
         });
       }
     }
-
+      },
+    });
+    if (outcome === "duplicate") {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
     return NextResponse.json({ received: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
