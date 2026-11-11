@@ -3,8 +3,8 @@ import { officialBoardUrl, type OfficialBoard } from "./atsLinks";
 import { validateSourceUrl } from "../validator";
 import type { DiscoveryReview } from "./review";
 
-/** Prepared daily cadence. It is not registered until this branch is approved. */
-export const DISCOVERY_CADENCE = "17 9 * * *";
+/** Daily discovery cron in Europe/Bratislava. The workflow owns the timezone. */
+export const DISCOVERY_CADENCE = "5 1 * * *";
 export const DAILY_SEARCH_CAP = 8;
 export const MONTHLY_SEARCH_CAP = 250;
 export const BOARDS_PER_GROUP = 4;

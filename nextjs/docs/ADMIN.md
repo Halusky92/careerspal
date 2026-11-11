@@ -24,7 +24,7 @@ Pipeline endpoints:
 
 ### Production cron
 
-Vercel Hobby cannot finish every board in one function. Morning slots in `vercel.json` hit `/api/cron/sourcing/pipeline/greenhouse` at 06:00 / 06:20 / 06:40 / 07:00 UTC (one stale board each, 60s budget). GitHub Actions still runs the full pipeline at 06:15 UTC.
+GitHub Actions runs discovery at 01:05 Europe/Bratislava. At 01:30 the same queue starts board refresh, then salary enrichment, then stale-job closing, in that order inside one run. `queue: max` keeps a waiting run instead of replacing it. Vercel does not schedule them. The Greenhouse route still accepts one board per direct call.
 
 1) In Vercel project env (Production), set:
 - `SOURCING_CRON_SECRET` to a random string
