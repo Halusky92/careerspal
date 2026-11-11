@@ -1,6 +1,6 @@
 import { matchDenylistHost } from "./sourcing/denylist";
 import { normalizeHost, normalizeUrlForRegistry } from "./sourcing/domain";
-import { publicLogoUrlForWebsite } from "./companyLogoUrl";
+import { chooseDisplayedLogo } from "./companyLogoUrl";
 
 export type CompanyWebsiteEnrichment = {
   website: string | null;
@@ -140,12 +140,11 @@ export async function enrichCompanyFromWebsite(args: {
     const base = (res.url || norm.normalizedUrl).toString();
     const desc =
       extractMeta(html, "og:description") || extractMeta(html, "twitter:description") || extractMeta(html, "description");
-    const img =
-      extractMeta(html, "og:logo") || extractMeta(html, "og:image") || extractMeta(html, "twitter:image");
+    const img = extractMeta(html, "og:logo");
     return {
       website: base,
       description: desc ? desc.slice(0, 280) : null,
-      logo_url: absolutizeUrl(base, img) || absolutizeUrl(base, "/favicon.ico"),
+      logo_url: chooseDisplayedLogo([absolutizeUrl(base, img), absolutizeUrl(base, "/favicon.ico")], base),
       notes,
     };
   }
@@ -186,8 +185,7 @@ export async function enrichCompanyFromWebsite(args: {
     jsonld.logo ||
     null;
   const website = jsonld.website ? jsonld.website : base;
-  const logoUrl =
-    absolutizeUrl(base, icon) || publicLogoUrlForWebsite(website);
+  const logoUrl = chooseDisplayedLogo([absolutizeUrl(base, icon)], website);
 
   if (!description) notes.push("no_description_meta");
   if (!logoUrl) notes.push("no_logo_meta");

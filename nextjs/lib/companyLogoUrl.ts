@@ -38,6 +38,30 @@ export function publicLogoUrlForWebsite(website?: string | null): string | null 
   return googleFaviconUrl(host);
 }
 
+export function officialWebsiteUrl(website?: string | null): string | null {
+  const host = hostnameFromWebsite(website);
+  if (!host) return null;
+  return `https://${host}`;
+}
+
+export function isSocialPreviewImage(url?: string | null): boolean {
+  const value = (url || "").toLowerCase();
+  return (
+    value.includes("custom-agents-og") ||
+    /(?:^|[/_.-])(?:og|opengraph|twitter|social)[-_](?:image|card)/.test(value) ||
+    /\/og\.(png|jpe?g|webp)(?:$|\?)/.test(value)
+  );
+}
+
+export function chooseDisplayedLogo(candidates: Array<string | null | undefined>, website?: string | null): string | null {
+  for (const item of candidates) {
+    const value = (item || "").trim();
+    if (!value || isSocialPreviewImage(value)) continue;
+    return value;
+  }
+  return publicLogoUrlForWebsite(website);
+}
+
 export function publicLogoFallbacks(website?: string | null): string[] {
   const host = hostnameFromWebsite(website);
   if (!host) return [];
