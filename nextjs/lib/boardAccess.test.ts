@@ -12,6 +12,7 @@ import {
   premiumCheckoutOpen,
   premiumLiveBuyerAllowed,
   premiumPriceIsMonthly799,
+  premiumSubscriptionBlocksNewCheckout,
   resolvePremiumStripeKey,
   stripeKeyForEventMode,
   REGISTERED_VISIBLE_JOBS,
@@ -83,10 +84,9 @@ test("search caps stay off until enabled, and Premium checkout rejects a live ke
   assert.equal(premiumCheckoutOpen("1", "sk_live_123", ""), false);
   assert.equal(premiumCheckoutOpen("1", "sk_live_123", "1"), true);
   assert.equal(premiumCheckoutOpen("1", "sk_test_123", ""), true);
-  assert.equal(premiumLiveBuyerAllowed("person@example.com", "sk_live_123", ""), false);
-  assert.equal(premiumLiveBuyerAllowed("other@example.com", "sk_live_123", "person@example.com"), false);
-  assert.equal(premiumLiveBuyerAllowed("Person@example.com", "sk_live_123", "person@example.com"), true);
-  assert.equal(premiumLiveBuyerAllowed("anyone@example.com", "sk_test_123", ""), true);
+  assert.equal(premiumLiveBuyerAllowed("", "sk_live_123"), false);
+  assert.equal(premiumLiveBuyerAllowed("person@example.com", "sk_live_123"), true);
+  assert.equal(premiumLiveBuyerAllowed("anyone@example.com", "sk_test_123"), true);
   assert.equal(resolvePremiumStripeKey({ STRIPE_SECRET_KEY: "sk_live_employer", PREMIUM_LIVE: "" }), "");
   assert.equal(resolvePremiumStripeKey({ STRIPE_SECRET_KEY: "sk_test_shared", PREMIUM_LIVE: "" }), "sk_test_shared");
   assert.equal(
@@ -103,15 +103,19 @@ test("search caps stay off until enabled, and Premium checkout rejects a live ke
   assert.equal(premiumPriceIsMonthly799({ unit_amount: 800, currency: "usd", active: true, recurring: { interval: "month" } }), false);
 });
 
-test("live Premium checkout allows only the verified allowlisted account", () => {
-  const allow = "mb.bilek@gmail.com";
+test("live Premium checkout is open to every signed-in account and blocks a second subscription", () => {
   const key = "sk_live_premium";
   assert.equal(premiumCheckoutOpen("1", key, "1"), true);
-  assert.equal(premiumLiveBuyerAllowed(null, key, allow), false);
-  assert.equal(premiumLiveBuyerAllowed(undefined, key, allow), false);
-  assert.equal(premiumLiveBuyerAllowed("other@example.com", key, allow), false);
-  assert.equal(premiumLiveBuyerAllowed(allow, key, allow), true);
-  assert.equal(premiumLiveBuyerAllowed("MB.Bilek@gmail.com", key, allow), true);
+  assert.equal(premiumLiveBuyerAllowed(null, key), false);
+  assert.equal(premiumLiveBuyerAllowed(undefined, key), false);
+  assert.equal(premiumLiveBuyerAllowed("   ", key), false);
+  assert.equal(premiumLiveBuyerAllowed("other@example.com", key), true);
+  assert.equal(premiumLiveBuyerAllowed("MB.Bilek@gmail.com", key), true);
+  assert.equal(premiumSubscriptionBlocksNewCheckout(["canceled"]), false);
+  assert.equal(premiumSubscriptionBlocksNewCheckout([null, "incomplete"]), false);
+  assert.equal(premiumSubscriptionBlocksNewCheckout(["active"]), true);
+  assert.equal(premiumSubscriptionBlocksNewCheckout(["trialing"]), true);
+  assert.equal(premiumSubscriptionBlocksNewCheckout(["past_due"]), true);
   assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "usd", active: true, recurring: { interval: "month" } }), true);
   assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "eur", active: true, recurring: { interval: "month" } }), false);
   assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "usd", active: true, recurring: { interval: "year" } }), false);

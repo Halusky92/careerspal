@@ -80,6 +80,12 @@ function CheckoutSuccessInner() {
             >
               Open the board
             </Link>
+            <Link
+              href="/account?tab=settings"
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-800 hover:bg-slate-50"
+            >
+              Manage subscription
+            </Link>
           ) : (
             <>
           <Link
