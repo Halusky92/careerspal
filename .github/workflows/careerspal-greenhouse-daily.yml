@@ -1,6 +1,7 @@
 name: CareersPal - Greenhouse daily pipeline
 
 # 01:30, 03:00 and 04:30 Europe/Bratislava. Each run refreshes at most 20 unfinished boards, then salary.
+# After that, logos are copied from a company website already on file. Names are not turned into domains.
 # A board already fetched on this Bratislava day is not fetched again. An empty queue returns immediately.
 # Liveness runs from every scheduled start, and the server keeps only the first successful cleanup that day.
 # queue: max waits behind discovery instead of overlapping it. Discovery does not start from this workflow.
@@ -97,6 +98,19 @@ jobs:
             run_slices refresh || failed=1
             run_slices salary || failed=1
             run_liveness || failed=1
+            echo "Running logos"
+            body=$(curl -sS -L \
+              --connect-timeout 15 \
+              --max-time 70 \
+              --retry 2 \
+              --retry-delay 2 \
+              --retry-all-errors \
+              --fail \
+              -G "$PIPELINE_URL" \
+              --data-urlencode "secret=$CRON_SECRET" \
+              --data-urlencode "mode=logos")
+            echo "$body" | jq '{ok,mode,updated:.summary.updated,jobs:.summary.jobsUpdated,skipped:.summary.skipped}'
+            echo "$body" | jq -e '.ok == true' >/dev/null || failed=1
           else
             run_slices refresh || failed=1
           fi

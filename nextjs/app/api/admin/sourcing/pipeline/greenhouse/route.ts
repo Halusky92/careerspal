@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getSupabaseProfile } from "../../../../../../lib/supabaseServerAuth";
 import { getSourcingCronSecret } from "../../../../../../lib/sourcing/config";
 import { runPipelineGreenhouse } from "../../../../../../lib/sourcing/runGreenhousePipeline";
+import { backfillMissingCompanyLogos } from "../../../../../../lib/sourcing/backfillCompanyLogos";
+import { supabaseAdmin } from "../../../../../../lib/supabaseAdmin";
 import { parseSliceMode, sliceBudgetMs } from "../../../../../../lib/sourcing/pipeline/slice";
 
 export const runtime = "nodejs";
@@ -63,6 +65,15 @@ export async function GET(request: Request) {
   const gate = await requireAdminOrCronSecret(request);
   if (!gate.ok) return gate.res;
   const url = new URL(request.url);
+  if (url.searchParams.get("mode") === "logos") {
+    if (!supabaseAdmin) return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
+    try {
+      const summary = await backfillMissingCompanyLogos(supabaseAdmin, 8);
+      return NextResponse.json({ ok: true, mode: "logos", done: true, summary });
+    } catch (e) {
+      return NextResponse.json({ error: e instanceof Error ? e.message : "Logo fill failed" }, { status: 500 });
+    }
+  }
   const sourceId = (url.searchParams.get("sourceId") || "").trim() || null;
   const mode = sourceId ? "full" : parseSliceMode(url.searchParams.get("mode"));
   try {
