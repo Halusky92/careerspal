@@ -567,6 +567,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
   }, [lockedJobs, searchCap, query, locationQuery, category]);
   const lockedShown = matchingLocked.slice(0, 2);
   const lockedMore = matchingLocked.length - lockedShown.length;
+  const hiddenJobCount =
+    boardAccess && boardAccess !== "paid" && typeof boardTotal === "number" && searchCap != null
+      ? Math.max(0, boardTotal - Math.min(searchCap, boardTotal))
+      : 0;
   const accessHeadline = boardAccessHeadline(
     boardAccess,
     typeof boardTotal === "number" ? boardTotal : listedJobs.length,
@@ -1073,31 +1077,18 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </div>
 
           {!advancedOk ? (
-            <div className="space-y-2">
-              {[
-                "Salary range",
-                "Skills",
-                "Seniority",
-                "Time zone",
-                "Verified companies",
-              ].map((label) => (
-                <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-medium text-slate-600">{label}</span>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400">
-                      <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <rect x="5" y="11" width="14" height="9" rx="2" strokeWidth="2" />
-                        <path strokeLinecap="round" strokeWidth="2" d="M8 11V8a4 4 0 018 0v3" />
-                      </svg>
-                      Locked
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <div>
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-800">
+                <svg className="h-3.5 w-3.5 text-amber-500" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M3.2 8.2 7.4 12 12 4.8 16.6 12l4.2-3.8L19.2 18H4.8L3.2 8.2Z" />
+                </svg>
+                Premium filters
+              </div>
+              <p className="mt-1 text-[12px] leading-5 text-slate-500">More filters are locked here.</p>
               <Link
                 href="/upgrade"
                 onClick={() => trackFunnel("premium_click", { from: "locked_filters" })}
-                className="flex w-full items-center justify-center rounded-lg bg-indigo-600 px-3 py-2.5 text-center text-sm font-medium leading-5 text-white hover:bg-indigo-700"
+                className="mt-3 flex w-full items-center justify-center rounded-lg bg-indigo-600 px-3 py-2.5 text-center text-sm font-medium leading-5 text-white hover:bg-indigo-700"
               >
                 {typeof boardTotal === "number" && boardTotal > 0
                   ? `Unlock all filters and all ${boardTotal} live jobs`
@@ -1213,16 +1204,18 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </>
           ) : null}
 
-          <button
-            type="button"
-            onClick={() => {
-              setOpenWwrDropdown(null);
-              if (variant === "sheet") setIsFilterOpen(false);
-            }}
-            className="mt-2 w-full h-9 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-black"
-          >
-            Apply filters
-          </button>
+          {activeFilterChips.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setOpenWwrDropdown(null);
+                if (variant === "sheet") setIsFilterOpen(false);
+              }}
+              className="mt-2 w-full h-9 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-black"
+            >
+              Apply filters
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
@@ -1309,16 +1302,27 @@ const FindJobs: React.FC<FindJobsProps> = ({
               </div>
             </div>
 
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[13px] font-medium text-slate-700" aria-live="polite">
-                  {accessHeadline}
-                </span>
-                {(query.trim() || locationQuery.trim()) && (
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
-                    Showing {query.trim() || "all roles"}{locationQuery.trim() ? ` in ${locationQuery.trim()}` : ""}
+            <div className="mt-2 flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[13px] font-medium text-slate-700" aria-live="polite">
+                    {accessHeadline}
                   </span>
-                )}
+                  {(query.trim() || locationQuery.trim()) && (
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                      Showing {query.trim() || "all roles"}{locationQuery.trim() ? ` in ${locationQuery.trim()}` : ""}
+                    </span>
+                  )}
+                </div>
+                {hiddenJobCount > 0 ? (
+                  <Link
+                    href="/upgrade"
+                    onClick={() => trackFunnel("premium_click", { from: "hidden_jobs" })}
+                    className="mt-0.5 block w-fit text-[12px] font-medium text-slate-500 hover:text-indigo-700"
+                  >
+                    {hiddenJobCount} more {hiddenJobCount === 1 ? "job" : "jobs"} available with Premium
+                  </Link>
+                ) : null}
               </div>
               <div className="hidden sm:flex items-center gap-3">
                 <Link
