@@ -6,6 +6,7 @@ import { purgeUnpublishedJobs } from "../../../../lib/jobs/purgeUnpublishedJobs"
 import { UNPUBLISHED_RETENTION_DAYS } from "../../../../lib/jobs/unpublishedRetention";
 import { sweepDeadApplyLinks } from "../../../../lib/jobs/sweepDeadApplyLinks";
 import { purgeSourcingDebris } from "../../../../lib/jobs/purgeSourcingDebris";
+import { claimDailyLiveness, finishDailyLiveness } from "../../../../lib/sourcing/livenessDay";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -36,7 +37,15 @@ export async function GET(request: Request) {
   const dryRun = url.searchParams.get("dryRun") === "1";
   const forcePurge = url.searchParams.get("purge") === "1";
   const isWeeklyPurgeDay = new Date().getUTCDay() === 0;
+  let claimId: string | null = null;
   try {
+    if (!dryRun) {
+      const claim = await claimDailyLiveness(supabaseAdmin);
+      if (claim.action === "skip") {
+        return NextResponse.json({ ok: true, skipped: true, reason: "already_ran_today" });
+      }
+      claimId = claim.id;
+    }
     const expired = await expireStaleJobs(supabaseAdmin, { dryRun, days: STALE_JOB_DAYS });
     const deadLinks = await sweepDeadApplyLinks(supabaseAdmin, { dryRun, limit: 16, timeoutMs: 6000 });
     const debris = await purgeSourcingDebris(supabaseAdmin, { dryRun, days: STALE_JOB_DAYS });
@@ -44,8 +53,16 @@ export async function GET(request: Request) {
     const purged = shouldPurge
       ? await purgeUnpublishedJobs(supabaseAdmin, { dryRun, days: UNPUBLISHED_RETENTION_DAYS })
       : { skipped: true, reason: "weekly Sunday UTC only" };
+    if (claimId) await finishDailyLiveness(supabaseAdmin, claimId, "done");
     return NextResponse.json({ ok: true, expired, deadLinks, debris, purged });
   } catch (error) {
+    if (claimId) {
+      try {
+        await finishDailyLiveness(supabaseAdmin, claimId, "failed");
+      } catch {
+        /* The next scheduled run can claim the day. */
+      }
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Stale job cleanup failed" },
       { status: 500 },
