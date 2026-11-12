@@ -2,95 +2,77 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { enrichCompanyFromWebsite } from "../companyEnrichment";
 import { hostnameFromWebsite, publicLogoUrlForWebsite } from "../companyLogoUrl";
 
-const KNOWN_SITES: Record<string, string> = {
-  linear: "https://linear.app",
-  checkr: "https://www.checkr.com",
-  pendo: "https://www.pendo.io",
-};
-
 type AdminSb = SupabaseClient<any, "public", any>;
 
-async function guessWebsiteFromName(name: string): Promise<string | null> {
-  const slug = (name || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
-  if (KNOWN_SITES[slug]) return KNOWN_SITES[slug];
-  if (slug.length < 3) return null;
-  const candidates = [
-    `https://www.${slug}.com`,
-    `https://www.${slug}.io`,
-    `https://www.${slug}.app`,
-    `https://${slug}.com`,
-    `https://${slug}.io`,
-    `https://${slug}.app`,
-  ];
-  for (const url of candidates) {
-    try {
-      const res = await fetch(url, {
-        method: "GET",
-        redirect: "follow",
-        signal: AbortSignal.timeout(4500),
-        headers: { "user-agent": "CareersPalLogoBot/1.0" },
-      });
-      if (!res.ok) continue;
-      const host = new URL(res.url).hostname.replace(/^www\./i, "").toLowerCase();
-      if (!host || !hostnameFromWebsite(`https://${host}`)) continue;
-      if (host.includes("godaddy") || host.includes("sedo.com")) continue;
-      return `https://${host}`;
-    } catch {
-      // try next candidate
-    }
-  }
-  return null;
-}
+type LogoCompany = {
+  id: string;
+  website?: string | null;
+  logo_url?: string | null;
+};
 
-export async function backfillMissingCompanyLogos(sb: AdminSb, limit = 80) {
+type LogoEnrichment = {
+  logo_url?: string | null;
+};
+
+/**
+ * Fills a missing logo only from a website already stored for that company.
+ * A name is never turned into a domain, and an ATS board address is not a company site.
+ */
+export async function backfillMissingCompanyLogos(
+  sb: AdminSb,
+  limit = 80,
+  enrich: (input: { websiteUrl: string }) => Promise<LogoEnrichment> = enrichCompanyFromWebsite,
+) {
   const { data: companies, error } = await sb
     .from("companies")
-    .select("id,name,website,logo_url")
+    .select("id,website,logo_url")
     .order("id", { ascending: false })
-    .limit(limit);
+    .limit(500);
 
   if (error) throw error;
 
-  const missing = (companies || []).filter((c) => {
-    const hasLogo = Boolean((c.logo_url || "").toString().trim());
-    const officialSite = Boolean(hostnameFromWebsite(c.website));
-    return !hasLogo || !officialSite;
-  });
   let updated = 0;
-  let websitesGuessed = 0;
+  let jobsUpdated = 0;
+  let fetched = 0;
+  let skipped = 0;
 
-  for (const company of missing) {
-    const rawWebsite = ((company.website || "").toString().trim() || null) as string | null;
-    let website = hostnameFromWebsite(rawWebsite) ? rawWebsite : null;
-    if (!website) {
-      website = await guessWebsiteFromName((company.name || "").toString());
-      if (website) websitesGuessed += 1;
-    }
-    let logo: string | null = publicLogoUrlForWebsite(website);
-
-    if (website) {
-      try {
-        const enr = await enrichCompanyFromWebsite({ websiteUrl: website });
-        if (enr.logo_url) logo = enr.logo_url;
-        if (enr.website && !((company.website || "").toString().trim())) website = enr.website;
-      } catch {
-        // keep favicon fallback
+  for (const company of (companies || []) as LogoCompany[]) {
+    let logo = String(company.logo_url || "").trim();
+    if (!logo) {
+      const website = hostnameFromWebsite(company.website) ? String(company.website || "").trim() : "";
+      if (!website || fetched >= limit) {
+        skipped += 1;
+        continue;
       }
+      fetched += 1;
+      try {
+        const enriched = await enrich({ websiteUrl: website });
+        logo = String(enriched.logo_url || "").trim();
+      } catch {
+        logo = "";
+      }
+      if (!logo) logo = publicLogoUrlForWebsite(website) || "";
+      if (!logo) {
+        skipped += 1;
+        continue;
+      }
+      const write = await sb.from("companies").update({ logo_url: logo }).eq("id", company.id);
+      if (write.error) throw new Error(write.error.message || "Company logo update failed.");
+      updated += 1;
     }
 
-    if (!logo && !website) continue;
-
-    const patch: Record<string, unknown> = {};
-    if (logo) patch.logo_url = logo;
-    if (website && hostnameFromWebsite(website) && !hostnameFromWebsite(company.website)) patch.website = website;
-    if (Object.keys(patch).length === 0) continue;
-
-    await sb.from("companies").update(patch).eq("id", company.id);
-    if (logo) {
-      await sb.from("jobs").update({ logo_url: logo }).eq("company_id", company.id).is("logo_url", null);
-    }
-    updated += 1;
+    const jobs = await sb.from("jobs").update({ logo_url: logo }).eq("company_id", company.id).is("logo_url", null).select("id");
+    if (jobs.error) throw new Error(jobs.error.message || "Job logo update failed.");
+    jobsUpdated += Array.isArray(jobs.data) ? jobs.data.length : 0;
   }
 
-  return { scanned: companies?.length || 0, missing: missing.length, updated, websitesGuessed };
+  return {
+    scanned: companies?.length || 0,
+    missing: skipped,
+    updated,
+    jobsUpdated,
+    fetched,
+    skipped,
+    websitesGuessed: 0,
+  };
 }
