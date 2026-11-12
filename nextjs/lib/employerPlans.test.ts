@@ -4,8 +4,10 @@ import {
   adminCanApproveListing,
   chargeForStoredJob,
   employerCheckoutPatch,
+  employerRefundAction,
   employerRefundPatch,
   paidListingReadyToExpire,
+  resolveEmployerStripeKey,
   resolveStoredEmployerPlan,
 } from "./employerPlans";
 
@@ -108,6 +110,27 @@ test("a paid listing expires 30 days after the approval timestamp", () => {
   assert.equal(
     paidListingReadyToExpire({ status: "paused", stripe_payment_status: "paid", plan_price: 0, published_at: old }, now),
     false,
+  );
+});
+
+test("a partial refund is recorded without closing the listing", () => {
+  assert.equal(employerRefundAction({ amount: 7900, amountRefunded: 1000, refunded: false }), "partial");
+  assert.equal(employerRefundAction({ amount: 7900, amountRefunded: 7900, refunded: false }), "full");
+  assert.equal(employerRefundAction({ amount: 7900, amountRefunded: 0, refunded: true }), "full");
+  assert.equal(employerRefundAction({ amount: 7900, amountRefunded: 0, refunded: false }), "none");
+});
+
+test("employer live checkout stays closed unless its own flag is on", () => {
+  assert.equal(resolveEmployerStripeKey({ STRIPE_SECRET_KEY: "sk_test_employer" }), "sk_test_employer");
+  assert.equal(
+    resolveEmployerStripeKey({ STRIPE_EMPLOYER_SECRET_KEY: "sk_test_dedicated", STRIPE_SECRET_KEY: "sk_live_shared" }),
+    "sk_test_dedicated",
+  );
+  assert.equal(resolveEmployerStripeKey({ STRIPE_SECRET_KEY: "sk_live_shared" }), "");
+  assert.equal(resolveEmployerStripeKey({ STRIPE_EMPLOYER_SECRET_KEY: "sk_live_employer" }), "");
+  assert.equal(
+    resolveEmployerStripeKey({ STRIPE_EMPLOYER_SECRET_KEY: "sk_live_employer", EMPLOYER_LIVE: "1" }),
+    "sk_live_employer",
   );
 });
 

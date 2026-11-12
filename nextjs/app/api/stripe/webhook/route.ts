@@ -263,17 +263,33 @@ export async function POST(request: Request) {
 
     if (event.type === "charge.refunded") {
       const charge = event.data.object as Stripe.Charge;
-      if (charge.refunded) {
-        const employerJobId = await employerListingIdFromCharge(stripe, charge);
-        if (employerJobId) {
-          const { employerRefundPatch } = await import("../../../../lib/employerPlans");
+      const employerJobId = await employerListingIdFromCharge(stripe, charge);
+      if (employerJobId) {
+        const { employerRefundAction, employerRefundPatch } = await import("../../../../lib/employerPlans");
+        const refundAction = employerRefundAction({
+          amount: charge.amount,
+          amountRefunded: charge.amount_refunded,
+          refunded: charge.refunded,
+        });
+        if (refundAction === "partial") {
+          await db.from("audit_logs").insert({
+            action: "employer_listing_partial_refund",
+            job_id: employerJobId,
+            metadata: { chargeId: charge.id, amount: charge.amount, amountRefunded: charge.amount_refunded },
+          });
+        } else if (refundAction === "full") {
           const { data: refundJob } = await db
             .from("jobs")
             .select("status,stripe_payment_status")
             .eq("id", employerJobId)
             .maybeSingle();
           if (refundJob) {
-            const refundWrite = await db.from("jobs").update(employerRefundPatch(refundJob)).eq("id", employerJobId);
+            const refundPatch = employerRefundPatch(refundJob);
+            let refundWrite = await db.from("jobs").update(refundPatch).eq("id", employerJobId);
+            if (refundWrite.error && "unpublished_at" in refundPatch) {
+              const { unpublished_at: _unpublished, ...withoutUnpublished } = refundPatch;
+              refundWrite = await db.from("jobs").update(withoutUnpublished).eq("id", employerJobId);
+            }
             if (refundWrite.error) throw new Error(refundWrite.error.message || "Employer refund update failed.");
             await db.from("audit_logs").insert({
               action: "employer_listing_refunded",
@@ -281,7 +297,8 @@ export async function POST(request: Request) {
               metadata: { chargeId: charge.id },
             });
           }
-        } else {
+        }
+      } else if (charge.refunded) {
         const customerId = typeof charge.customer === "string" ? charge.customer : charge.customer?.id || null;
         let profileId: string | null = null;
         const subRef = (charge as Stripe.Charge & { invoice?: string | { subscription?: string | null } }).invoice;
@@ -312,7 +329,6 @@ export async function POST(request: Request) {
             action: "board_access_refunded",
             metadata: { profileId, chargeId: charge.id },
           });
-        }
         }
       }
     }

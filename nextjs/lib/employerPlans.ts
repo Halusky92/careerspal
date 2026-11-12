@@ -174,6 +174,39 @@ export function employerCheckoutPatch(input: {
   };
 }
 
+/**
+ * Employer checkout uses its own key. A live key stays closed until EMPLOYER_LIVE=1.
+ * The Premium key is never accepted here.
+ */
+export function resolveEmployerStripeKey(env?: {
+  STRIPE_EMPLOYER_SECRET_KEY?: string;
+  STRIPE_SECRET_KEY?: string;
+  EMPLOYER_LIVE?: string;
+}) {
+  const dedicated = (env?.STRIPE_EMPLOYER_SECRET_KEY ?? process.env.STRIPE_EMPLOYER_SECRET_KEY ?? "").trim();
+  const shared = (env?.STRIPE_SECRET_KEY ?? process.env.STRIPE_SECRET_KEY ?? "").trim();
+  const liveOn = (env?.EMPLOYER_LIVE ?? process.env.EMPLOYER_LIVE) === "1";
+  const usable = (key: string) => {
+    if (key.startsWith("sk_test_")) return key;
+    if (key.startsWith("sk_live_") && liveOn) return key;
+    return "";
+  };
+  return usable(dedicated) || usable(shared);
+}
+
+/** Full refund closes the listing. A partial refund is recorded and leaves the listing alone. */
+export function employerRefundAction(input: {
+  amount?: number | null;
+  amountRefunded?: number | null;
+  refunded?: boolean | null;
+}): "full" | "partial" | "none" {
+  const amount = typeof input.amount === "number" ? input.amount : 0;
+  const refundedAmount = typeof input.amountRefunded === "number" ? input.amountRefunded : 0;
+  if (input.refunded || (amount > 0 && refundedAmount >= amount)) return "full";
+  if (refundedAmount > 0) return "partial";
+  return "none";
+}
+
 export function employerRefundPatch(job: EmployerJobState): Record<string, unknown> {
   const live = job.status === "published" || job.status === "pending_review";
   const update: Record<string, unknown> = {
