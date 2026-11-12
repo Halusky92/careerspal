@@ -105,6 +105,6 @@ export async function middleware(_request: NextRequest) {
 export const config = {
   matcher: [
     // Apply to all pages + APIs, but skip Next assets.
-    "/((?!_next/static|_next/image|favicon.ico|favicon-16.png|favicon-32.png|favicon.svg|robots.txt|sitemap.xml|icon|apple-icon|logo.svg|logo.png|logo-512.png|apple-touch-icon.png).*)",
+    "/((?!_next/static|_next/image|favicon.ico|favicon-16.png|favicon-32.png|favicon-48.png|favicon-192.png|favicon.svg|robots.txt|sitemap.xml|icon|apple-icon|logo.svg|logo.png|logo-512.png|apple-touch-icon.png).*)",
   ],
 };
