@@ -38,6 +38,29 @@ test("the sourcing day follows Europe/Bratislava across the summer midnight", ()
   assert.equal(sourcingDayStart(new Date("2026-11-12T00:30:00.000Z")).toISOString(), "2026-11-11T23:00:00.000Z");
 });
 
+test("the three nightly runs stay on one Bratislava day across both clock changes", () => {
+  const spring = [
+    new Date("2026-03-29T00:30:00.000Z"),
+    new Date("2026-03-29T01:00:00.000Z"),
+    new Date("2026-03-29T02:30:00.000Z"),
+  ];
+  const autumn = [
+    new Date("2026-10-24T23:30:00.000Z"),
+    new Date("2026-10-25T02:00:00.000Z"),
+    new Date("2026-10-25T03:30:00.000Z"),
+  ];
+  assert.deepEqual(spring.map((time) => sourcingDayKey(time)), ["2026-03-29", "2026-03-29", "2026-03-29"]);
+  assert.deepEqual(autumn.map((time) => sourcingDayKey(time)), ["2026-10-25", "2026-10-25", "2026-10-25"]);
+  for (const runs of [spring, autumn]) {
+    const due = sourcesDueForRefresh(
+      [{ id: "done", startedAt: runs[0].toISOString(), status: "success" }],
+      runs[2],
+      5,
+    );
+    assert.deepEqual(due, []);
+  }
+});
+
 test("a finished board waits until tomorrow and a partial board is resumed", () => {
   const due = sourcesDueForRefresh(
     [
