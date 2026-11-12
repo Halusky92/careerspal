@@ -396,6 +396,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
     });
     return counts;
   }, [jobs]);
+  const lockedCategoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    CATEGORY_HUBS.forEach((hub) => {
+      counts[hub.slug] = lockedJobs.filter((job) => jobMatchesHub(job, hub)).length;
+    });
+    return counts;
+  }, [lockedJobs]);
 
   const typeCounts = useMemo(() => {
     return jobs.reduce<Record<string, number>>((acc, job) => {
@@ -558,7 +565,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
       return true;
     });
   }, [lockedJobs, searchCap, query, locationQuery, category]);
-  const lockedShown = matchingLocked.slice(0, 6);
+  const lockedShown = matchingLocked.slice(0, 2);
   const lockedMore = matchingLocked.length - lockedShown.length;
   const accessHeadline = boardAccessHeadline(
     boardAccess,
@@ -845,7 +852,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const FilterContent = ({ variant }: { variant: "sidebar" | "sheet" }) => (
     <div
       className={[
-        variant === "sidebar" ? "sticky top-16" : "",
+        variant === "sidebar" ? "sticky top-16 z-30" : "",
         "rounded-2xl border border-slate-200 bg-white shadow-sm",
       ].join(" ")}
     >
@@ -901,7 +908,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               </span>
             </button>
             {openWwrDropdown === "category" && (
-              <div className="mt-2 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+              <div className="absolute left-0 right-0 z-40 mt-2 rounded-xl border border-slate-200 bg-white shadow-lg">
                 <div className="py-1">
                   <button
                     type="button"
@@ -941,6 +948,26 @@ const FindJobs: React.FC<FindJobsProps> = ({
                         <span className="text-xs text-slate-400">{categoryCounts[c] || 0}</span>
                       </button>
                     ))}
+                  {!advancedOk
+                    ? categoryOptions
+                        .filter((c) => (categoryCounts[c] || 0) === 0 && (lockedCategoryCounts[c] || 0) > 0)
+                        .map((c) => (
+                          <Link
+                            key={c}
+                            href={boardAccess === "registered" ? "/upgrade" : "/auth?from=%2Fjobs"}
+                            className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-slate-400 hover:bg-slate-50"
+                          >
+                            <span>{getCategoryHub(c)?.label || c}</span>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium">
+                              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <rect x="5" y="11" width="14" height="9" rx="2" strokeWidth="2" />
+                                <path strokeLinecap="round" strokeWidth="2" d="M8 11V8a4 4 0 018 0v3" />
+                              </svg>
+                              Locked
+                            </span>
+                          </Link>
+                        ))
+                    : null}
                 </div>
               </div>
             )}
