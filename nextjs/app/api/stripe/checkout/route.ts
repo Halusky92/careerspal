@@ -46,7 +46,7 @@ export async function GET(request: Request) {
   }
   if (premiumKey.startsWith("sk_live_")) {
     const auth = await getSupabaseProfile(request);
-    return NextResponse.json({ available: premiumLiveBuyerAllowed(auth?.profile?.email, premiumKey) });
+    return NextResponse.json({ available: premiumLiveBuyerAllowed(auth?.user?.email, premiumKey) });
   }
   return NextResponse.json({ available: true });
 }
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
   };
   if (body.purpose === "board_access") {
     const premiumKey = resolvePremiumStripeKey();
-    if (!premiumCheckoutOpen(undefined, premiumKey) || !premiumLiveBuyerAllowed(auth.profile.email, premiumKey)) {
+    if (!premiumCheckoutOpen(undefined, premiumKey) || !premiumLiveBuyerAllowed(auth.user.email, premiumKey)) {
       return NextResponse.json({ error: "Premium checkout is not open." }, { status: 403 });
     }
     const origin = boardReturnOrigin(request);

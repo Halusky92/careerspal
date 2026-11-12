@@ -14,8 +14,9 @@ export default function UpgradePage() {
   const [open, setOpen] = useState<boolean | null>(null);
 
   useEffect(() => {
+    if (loading) return;
     let cancelled = false;
-    fetch("/api/stripe/checkout")
+    authFetch("/api/stripe/checkout", {}, accessToken)
       .then((response) => response.json())
       .then((data: { available?: boolean }) => {
         if (!cancelled) setOpen(data.available === true);
@@ -26,7 +27,7 @@ export default function UpgradePage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [accessToken, loading]);
 
   const startCheckout = async () => {
     if (!accessToken) {

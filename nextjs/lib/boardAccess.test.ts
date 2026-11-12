@@ -102,3 +102,17 @@ test("search caps stay off until enabled, and Premium checkout rejects a live ke
   assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "usd", active: true, recurring: { interval: "month" } }), true);
   assert.equal(premiumPriceIsMonthly799({ unit_amount: 800, currency: "usd", active: true, recurring: { interval: "month" } }), false);
 });
+
+test("live Premium checkout allows only the verified allowlisted account", () => {
+  const allow = "mb.bilek@gmail.com";
+  const key = "sk_live_premium";
+  assert.equal(premiumCheckoutOpen("1", key, "1"), true);
+  assert.equal(premiumLiveBuyerAllowed(null, key, allow), false);
+  assert.equal(premiumLiveBuyerAllowed(undefined, key, allow), false);
+  assert.equal(premiumLiveBuyerAllowed("other@example.com", key, allow), false);
+  assert.equal(premiumLiveBuyerAllowed(allow, key, allow), true);
+  assert.equal(premiumLiveBuyerAllowed("MB.Bilek@gmail.com", key, allow), true);
+  assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "usd", active: true, recurring: { interval: "month" } }), true);
+  assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "eur", active: true, recurring: { interval: "month" } }), false);
+  assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "usd", active: true, recurring: { interval: "year" } }), false);
+});
