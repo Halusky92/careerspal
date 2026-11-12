@@ -43,7 +43,9 @@ async function applyKnownPremiumSubscription(
 }
 
 async function employerListingIdFromCharge(stripe: Stripe, charge: Stripe.Charge): Promise<string | null> {
-  if (charge.metadata?.purpose === "employer_listing" && charge.metadata.jobId) return charge.metadata.jobId;
+  const { employerJobIdFromMetadata } = await import("../../../../lib/employerPlans");
+  const fromCharge = employerJobIdFromMetadata(charge.metadata);
+  if (fromCharge) return fromCharge;
   const paymentIntent = charge.payment_intent;
   const paymentIntentId = typeof paymentIntent === "string" ? paymentIntent : paymentIntent?.id;
   if (!paymentIntentId) return null;
@@ -51,8 +53,7 @@ async function employerListingIdFromCharge(stripe: Stripe, charge: Stripe.Charge
     typeof paymentIntent === "object" && paymentIntent?.metadata
       ? paymentIntent
       : await stripe.paymentIntents.retrieve(paymentIntentId);
-  if (intent.metadata?.purpose === "employer_listing" && intent.metadata.jobId) return intent.metadata.jobId;
-  return null;
+  return employerJobIdFromMetadata(intent.metadata);
 }
 
 export async function GET() {
@@ -265,38 +266,26 @@ export async function POST(request: Request) {
       const charge = event.data.object as Stripe.Charge;
       const employerJobId = await employerListingIdFromCharge(stripe, charge);
       if (employerJobId) {
-        const { employerRefundAction, employerRefundPatch } = await import("../../../../lib/employerPlans");
+        const { employerRefundAction, writeEmployerRefund } = await import("../../../../lib/employerPlans");
         const refundAction = employerRefundAction({
           amount: charge.amount,
           amountRefunded: charge.amount_refunded,
           refunded: charge.refunded,
         });
-        if (refundAction === "partial") {
-          await db.from("audit_logs").insert({
-            action: "employer_listing_partial_refund",
-            job_id: employerJobId,
-            metadata: { chargeId: charge.id, amount: charge.amount, amountRefunded: charge.amount_refunded },
+        if (refundAction === "partial" || refundAction === "full") {
+          const { data: refundJob } = refundAction === "full"
+            ? await db.from("jobs").select("status,stripe_payment_status").eq("id", employerJobId).maybeSingle()
+            : { data: null };
+          const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id || null;
+          await writeEmployerRefund(db, {
+            action: refundAction,
+            jobId: employerJobId,
+            chargeId: charge.id,
+            paymentIntentId,
+            amount: charge.amount,
+            amountRefunded: charge.amount_refunded,
+            job: refundJob,
           });
-        } else if (refundAction === "full") {
-          const { data: refundJob } = await db
-            .from("jobs")
-            .select("status,stripe_payment_status")
-            .eq("id", employerJobId)
-            .maybeSingle();
-          if (refundJob) {
-            const refundPatch = employerRefundPatch(refundJob);
-            let refundWrite = await db.from("jobs").update(refundPatch).eq("id", employerJobId);
-            if (refundWrite.error && "unpublished_at" in refundPatch) {
-              const { unpublished_at: _unpublished, ...withoutUnpublished } = refundPatch;
-              refundWrite = await db.from("jobs").update(withoutUnpublished).eq("id", employerJobId);
-            }
-            if (refundWrite.error) throw new Error(refundWrite.error.message || "Employer refund update failed.");
-            await db.from("audit_logs").insert({
-              action: "employer_listing_refunded",
-              job_id: employerJobId,
-              metadata: { chargeId: charge.id },
-            });
-          }
         }
       } else if (charge.refunded) {
         const customerId = typeof charge.customer === "string" ? charge.customer : charge.customer?.id || null;

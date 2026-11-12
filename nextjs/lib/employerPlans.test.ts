@@ -4,11 +4,14 @@ import {
   adminCanApproveListing,
   chargeForStoredJob,
   employerCheckoutPatch,
+  employerJobIdFromMetadata,
   employerRefundAction,
   employerRefundPatch,
+  missingJobsUnpublishedColumn,
   paidListingReadyToExpire,
   resolveEmployerStripeKey,
   resolveStoredEmployerPlan,
+  writeEmployerRefund,
 } from "./employerPlans";
 
 test("client price cannot choose the catalog amount", () => {
@@ -22,10 +25,15 @@ test("client price cannot choose the catalog amount", () => {
 });
 
 test("catalog charges are 79, 149, and 249", () => {
-  assert.equal(chargeForStoredJob({ planType: "Standard", planPrice: 79 }).unitAmountCents, 7900);
-  assert.equal(chargeForStoredJob({ planType: "Featured Pro", planPrice: 149 }).unitAmountCents, 14900);
-  assert.equal(chargeForStoredJob({ planType: "Elite Managed", planPrice: 249 }).unitAmountCents, 24900);
-  assert.equal(chargeForStoredJob({ planType: "Elite Managed", planPrice: 249, renew: true }).unitAmountCents, 7900);
+  const charge = (planType: string, planPrice: number, renew = false) => {
+    const result = chargeForStoredJob({ planType, planPrice, renew });
+    if ("error" in result) throw new Error(result.error);
+    return result.unitAmountCents;
+  };
+  assert.equal(charge("Standard", 79), 7900);
+  assert.equal(charge("Featured Pro", 149), 14900);
+  assert.equal(charge("Elite Managed", 249), 24900);
+  assert.equal(charge("Elite Managed", 249, true), 7900);
 });
 
 test("a paid webhook waits for admin and does not publish", () => {
@@ -120,18 +128,28 @@ test("a partial refund is recorded without closing the listing", () => {
   assert.equal(employerRefundAction({ amount: 7900, amountRefunded: 0, refunded: false }), "none");
 });
 
-test("employer live checkout stays closed unless its own flag is on", () => {
+test("employer live checkout stays closed without its own live key", () => {
   assert.equal(resolveEmployerStripeKey({ STRIPE_SECRET_KEY: "sk_test_employer" }), "sk_test_employer");
   assert.equal(
     resolveEmployerStripeKey({ STRIPE_EMPLOYER_SECRET_KEY: "sk_test_dedicated", STRIPE_SECRET_KEY: "sk_live_shared" }),
     "sk_test_dedicated",
   );
   assert.equal(resolveEmployerStripeKey({ STRIPE_SECRET_KEY: "sk_live_shared" }), "");
+  assert.equal(resolveEmployerStripeKey({ STRIPE_SECRET_KEY: "sk_live_shared", EMPLOYER_LIVE: "1" }), "");
   assert.equal(resolveEmployerStripeKey({ STRIPE_EMPLOYER_SECRET_KEY: "sk_live_employer" }), "");
   assert.equal(
-    resolveEmployerStripeKey({ STRIPE_EMPLOYER_SECRET_KEY: "sk_live_employer", EMPLOYER_LIVE: "1" }),
+    resolveEmployerStripeKey({ STRIPE_EMPLOYER_SECRET_KEY: "sk_test_dedicated", EMPLOYER_LIVE: "1" }),
+    "sk_test_dedicated",
+  );
+  assert.equal(
+    resolveEmployerStripeKey({ STRIPE_EMPLOYER_SECRET_KEY: "sk_live_employer", STRIPE_SECRET_KEY: "sk_live_shared", EMPLOYER_LIVE: "1" }),
     "sk_live_employer",
   );
+  assert.equal(employerJobIdFromMetadata({ purpose: "employer_listing", jobId: "job_1" }), "job_1");
+  assert.equal(employerJobIdFromMetadata({ purpose: "board_access", jobId: "job_1" }), null);
+  assert.equal(employerJobIdFromMetadata({ purpose: "employer_listing", jobId: " " }), null);
+  assert.equal(missingJobsUnpublishedColumn("Could not find the 'unpublished_at' column of 'jobs' in the schema cache"), true);
+  assert.equal(missingJobsUnpublishedColumn("connection reset"), false);
 });
 
 test("a refund removes a live listing and its featured flag", () => {
@@ -142,4 +160,95 @@ test("a refund removes a live listing and its featured flag", () => {
   const paused = employerRefundPatch({ status: "paused" });
   assert.equal(paused.status, undefined);
   assert.equal(paused.stripe_payment_status, "refunded");
+});
+
+test("a partial refund records the original charge and leaves the listing up", async () => {
+  const audits: Array<Record<string, unknown>> = [];
+  const db = {
+    from(table: string) {
+      assert.equal(table, "audit_logs");
+      return {
+        async insert(values: Record<string, unknown>) {
+          audits.push(values);
+          return { error: null };
+        },
+      };
+    },
+  };
+  await writeEmployerRefund(db, {
+    action: "partial",
+    jobId: "job_1",
+    chargeId: "ch_1",
+    paymentIntentId: "pi_1",
+    amount: 7900,
+    amountRefunded: 1000,
+    job: { status: "published", stripe_payment_status: "paid" },
+  });
+  assert.equal(audits.length, 1);
+  assert.equal(audits[0].action, "employer_listing_partial_refund");
+  assert.equal(audits[0].job_id, "job_1");
+  assert.deepEqual(audits[0].metadata, {
+    chargeId: "ch_1",
+    paymentIntentId: "pi_1",
+    jobId: "job_1",
+    amount: 7900,
+    amountRefunded: 1000,
+  });
+});
+
+test("a full refund drops unpublished_at only when that column is missing", async () => {
+  const updates: Array<Record<string, unknown>> = [];
+  const db = {
+    from(table: string) {
+      if (table === "audit_logs") return { async insert() { return { error: null }; } };
+      return {
+        update(values: Record<string, unknown>) {
+          updates.push(values);
+          return {
+            async eq() {
+              if (updates.length === 1) {
+                return { error: { message: "Could not find the 'unpublished_at' column of 'jobs' in the schema cache" } };
+              }
+              return { error: null };
+            },
+          };
+        },
+      };
+    },
+  };
+  await writeEmployerRefund(db, {
+    action: "full",
+    jobId: "job_1",
+    chargeId: "ch_1",
+    paymentIntentId: "pi_1",
+    amount: 7900,
+    amountRefunded: 7900,
+    job: { status: "published", stripe_payment_status: "paid" },
+  });
+  assert.equal("unpublished_at" in updates[0], true);
+  assert.equal(updates[0].status, "archived");
+  assert.equal("unpublished_at" in updates[1], false);
+  assert.equal(updates[1].status, "archived");
+
+  const other = {
+    from() {
+      return {
+        update(values: Record<string, unknown>) {
+          return { async eq() { return { error: { message: "connection reset" } }; } };
+        },
+      };
+    },
+  };
+  await assert.rejects(
+    () => writeEmployerRefund(other, {
+      action: "full",
+      jobId: "job_1",
+      chargeId: "ch_1",
+      paymentIntentId: "pi_1",
+      amount: 7900,
+      amountRefunded: 7900,
+      job: { status: "published" },
+    }),
+    /connection reset/,
+  );
 });

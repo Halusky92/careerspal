@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { employerCheckoutPatch, employerRefundPatch } from "./employerPlans";
+import { employerCheckoutPatch, employerRefundPatch, writeEmployerRefund } from "./employerPlans";
 import {
   acceptsResolvedAppEnv,
   acceptsStripeEvent,
@@ -171,6 +171,47 @@ test("a failed checkout or refund write can retry, then a duplicate does not rep
   assert.equal(await runStripeEventOnce({ sb: inbox.sb, event: refund, work: applyRefund }), "duplicate");
   assert.equal(refundApplies, refundAppliesAfterSuccess);
   assert.equal(refundJob.status, "archived");
+});
+
+test("a failed partial refund audit can retry once and a duplicate does not write it again", async () => {
+  const inbox = memoryInbox();
+  const audits: Array<Record<string, unknown>> = [];
+  let failAudit = true;
+  const event = { id: "evt_partial", type: "charge.refunded" };
+  const db = {
+    from() {
+      return {
+        async insert(values: Record<string, unknown>) {
+          if (failAudit) return { error: { message: "audit insert failed" } };
+          audits.push(values);
+          return { error: null };
+        },
+      };
+    },
+  };
+  const work = () => writeEmployerRefund(db, {
+    action: "partial",
+    jobId: "job_1",
+    chargeId: "ch_partial",
+    paymentIntentId: "pi_partial",
+    amount: 14900,
+    amountRefunded: 500,
+    job: { status: "published", stripe_payment_status: "paid" },
+  });
+
+  await assert.rejects(() => runStripeEventOnce({ sb: inbox.sb, event, work }), /audit insert failed/);
+  assert.equal(audits.length, 0);
+  assert.equal(inbox.rows.length, 0);
+
+  failAudit = false;
+  assert.equal(await runStripeEventOnce({ sb: inbox.sb, event, work }), "done");
+  assert.equal(audits.length, 1);
+  assert.equal(audits[0].job_id, "job_1");
+  assert.equal((audits[0].metadata as { chargeId?: string }).chargeId, "ch_partial");
+  assert.equal((audits[0].metadata as { paymentIntentId?: string }).paymentIntentId, "pi_partial");
+
+  assert.equal(await runStripeEventOnce({ sb: inbox.sb, event, work }), "duplicate");
+  assert.equal(audits.length, 1);
 });
 
 test("staging events are ignored by production and production events are ignored by staging", () => {
