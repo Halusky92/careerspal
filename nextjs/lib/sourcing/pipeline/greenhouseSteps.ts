@@ -23,6 +23,7 @@ import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
 import { isBoilerplateDescription } from "../../companyBoard";
 import { inferWorkMode } from "../../workMode";
 import { discoveryMarketBlockers } from "./discoveryPublishGate";
+import { isRawAtsSlug } from "../discovery/boardName";
 import { resolveCategoryHub } from "../../categories";
 import { upsertRawJobsByHash } from "./rawIngest";
 import { sourcedOriginFromSourceType } from "../origin";
@@ -646,25 +647,12 @@ export async function autoPublishEligibleCandidates(
   const results: any[] = [];
 
   const deriveCompanyName = (candidate: AutoPublishCandidateRow, src?: SourceRowForPublish) => {
-    const fromCandidate = (candidate.company_name || "").trim();
-    if (fromCandidate) return fromCandidate;
-
-    const fromDisplay = (src?.display_name || "").trim();
-    if (fromDisplay) return fromDisplay;
-
-    // Greenhouse canonical board token is often a good fallback, e.g. "samsara" -> "Samsara".
-    const token = (src?.ats_identifier || "").trim();
-    if (token) return token.charAt(0).toUpperCase() + token.slice(1);
-
-    const url = (src?.normalized_url || src?.base_url || candidate.source_url || "").toString();
-    if (url) {
-      const m = url.match(/boards\.greenhouse\.io\/([^/?#]+)/i);
-      if (m?.[1]) {
-        const t = m[1].trim();
-        if (t) return t.charAt(0).toUpperCase() + t.slice(1);
-      }
+    const identifier = (src?.ats_identifier || "").trim();
+    const linked = (src?.companies?.name || "").trim();
+    const candidates = [(candidate.company_name || "").trim(), (src?.display_name || "").trim(), linked];
+    for (const name of candidates) {
+      if (name && !isRawAtsSlug(name, identifier)) return name;
     }
-
     return "";
   };
 

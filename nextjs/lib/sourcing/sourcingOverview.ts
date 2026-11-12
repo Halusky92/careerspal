@@ -1,4 +1,4 @@
-export const SOURCING_OVERVIEW_CAP = 250;
+export const SOURCING_OVERVIEW_CAP = 620;
 
 export type OverviewSource = {
   sourceType: string;

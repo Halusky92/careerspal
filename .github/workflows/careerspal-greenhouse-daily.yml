@@ -58,13 +58,17 @@ jobs:
                 --data-urlencode "secret=$CRON_SECRET" \
                 --data-urlencode "mode=$mode")
               echo "$body" | jq '{ok,mode,done,timed_out:.summary.timed_out,sources:.summary.sources_processed,published:.summary.auto_publish.published,salary:.summary.salary_enrichment}'
+              if ! echo "$body" | jq -e '.ok == true' >/dev/null; then
+                echo "slice failed"
+                return 1
+              fi
               if echo "$body" | jq -e '.done == true' >/dev/null; then
                 echo "queue empty"
                 return 0
               fi
             done
-            echo "slice cap reached; queue not empty"
-            return 1
+            echo "slice cap reached; remaining boards continue on the next scheduled run"
+            return 0
           }
           run_liveness() {
             origin=$(printf '%s\n' "$PIPELINE_URL" | sed -E 's#^(https?://[^/]+).*#\1#')

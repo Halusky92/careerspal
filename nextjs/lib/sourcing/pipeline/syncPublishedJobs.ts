@@ -6,6 +6,7 @@ import { detectEmploymentType } from "../normalization/employmentType";
 import { formatSalaryForStorage } from "../../formatSalary";
 import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
 import { isOnNicheJob } from "../../nicheScope";
+import { discoveryMarketBlockers } from "./discoveryPublishGate";
 import { inferWorkMode } from "../../workMode";
 import { resolveCategoryHub } from "../../categories";
 import { applyUrlLooksSourcedAts, probeApplyUrl } from "../../jobs/applyLinkHealth";
@@ -242,6 +243,9 @@ export async function syncPublishedSourcedJobs(
     const scoreTotal = Number(candidate.sourcing_candidate_scores?.score_total ?? 0);
     const decision = candidate.sourcing_candidate_decisions?.decision || null;
     const blockers = sourcedPublishBlockers(candidate, scoreTotal, decision);
+    for (const reason of discoveryMarketBlockers(candidate)) {
+      if (!blockers.includes(reason)) blockers.push(reason);
+    }
     const applyUrl = (candidate.apply_url || "").trim();
     if (applyUrl && applyUrl !== (jobRow.apply_url || "").trim()) {
       const { data: other } = await sb.from("jobs").select("id").eq("apply_url", applyUrl).neq("id", jobRow.id).maybeSingle();

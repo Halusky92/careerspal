@@ -8,10 +8,10 @@
  *   npx tsx scripts/sourcing-discover-jobfirst.ts --jobfirst --production-candidates
  *
  * --staging-candidates writes only to the staging project and refuses production.
- * --production-candidates is the one-shot production entry. It allows at most 8 searches
+ * --production-candidates is the one-shot production entry. It allows at most 20 searches
  * and 4 new sources, inserts them disabled, and does not publish jobs.
- * --production-daily is the daily entry. It rotates all 8 groups, allows at most 8
- * searches, and stops when the monthly ledger reaches 250. It is not scheduled yet.
+ * --production-daily is the daily entry. It rotates all 8 groups, allows at most 20
+ * basic searches, and stops when the monthly ledger reaches 620.
  */
 import fs from "fs";
 import path from "path";
@@ -20,6 +20,7 @@ import {
   assertProductionDatabaseUrl,
   assertStagingDatabaseUrl,
   DAILY_SEARCH_CAP,
+  MONTHLY_SEARCH_CAP,
   DISCOVERY_DOMAINS,
   DISCOVERY_GROUPS,
   rotateDiscoveryGroups,
@@ -28,6 +29,7 @@ import {
   type PhraseState,
 } from "../lib/sourcing/discovery/jobfirst";
 import { chooseDisplayedLogo, officialWebsiteUrl } from "../lib/companyLogoUrl";
+import { companyNameFromBoardTitle, isRawAtsSlug } from "../lib/sourcing/discovery/boardName";
 import { reviewDiscoveryLead, toPendingSourceRow, type DiscoveryFetcher, type DiscoveryReview } from "../lib/sourcing/discovery/review";
 import { autoApprovalForNewSource, discoveryAutoApproveEnabled } from "../lib/sourcing/discovery/autoApprove";
 
@@ -122,6 +124,28 @@ function atsFetcher(): DiscoveryFetcher {
   };
 }
 
+async function officialCompanyName(provider: string, identifier: string) {
+  if (provider === "greenhouse") {
+    const name = await greenhouseName(identifier);
+    return isRawAtsSlug(name, identifier) ? "" : name;
+  }
+  const url =
+    provider === "ashby"
+      ? `https://jobs.ashbyhq.com/${encodeURIComponent(identifier)}`
+      : provider === "lever"
+        ? `https://jobs.lever.co/${encodeURIComponent(identifier)}`
+        : "";
+  if (!url) return "";
+  const response = await fetch(url, {
+    headers: { Accept: "text/html", "User-Agent": "CareersPalSourcing/1.0" },
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  const html = await response.text();
+  const title = html.match(/<title>([^<]+)<\/title>/i)?.[1] || "";
+  const name = companyNameFromBoardTitle(title);
+  return isRawAtsSlug(name, identifier) ? "" : name;
+}
+
 async function greenhouseName(token: string) {
   const response = await fetch(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(token)}`, {
     headers: { Accept: "application/json", "User-Agent": "CareersPalSourcing/1.0" },
@@ -198,13 +222,13 @@ async function main() {
     monthCount,
     phrases,
     known,
-    ...(production ? { maxSearches: 8, maxBoards: 4 } : {}),
+    ...(production ? { maxSearches: DAILY_SEARCH_CAP, maxBoards: 4 } : {}),
     ...(productionDaily
       ? { maxSearches: DAILY_SEARCH_CAP, groups: rotateDiscoveryGroups(DISCOVERY_GROUPS, now), oncePerDay: true }
       : {}),
     claim: sb
       ? async () => {
-          const { data, error } = await sb.rpc("claim_discovery_search", { p_month: month, p_cap: 250 });
+          const { data, error } = await sb.rpc("claim_discovery_search", { p_month: month, p_cap: MONTHLY_SEARCH_CAP });
           if (error) throw new Error(error.message);
           if (data == null || data === "") return false;
           return Number.isFinite(Number(data));
@@ -212,8 +236,33 @@ async function main() {
       : undefined,
     search: (query) => searchTavily(key, query),
     review: async (board) => {
+      const official = await officialCompanyName(board.provider, board.identifier);
+      if (!official) {
+        const skipped: DiscoveryReview = {
+          companyName: board.identifier,
+          website: board.boardUrl,
+          atsProvider: board.provider,
+          atsIdentifier: board.identifier,
+          boardUrl: board.boardUrl,
+          openJobCount: null,
+          qualifyingJobCount: 0,
+          qualifyingTitles: [],
+          qualifyingJobs: [],
+          sampledNicheJobs: 0,
+          unsampledNicheJobs: 0,
+          rejectionCounts: {},
+          qualifyingApplyUrls: [],
+          decision: "rejected",
+          reason: "missing_official_name",
+          enabled: false,
+        };
+        console.log(`SKIP ${board.provider}:${board.identifier} missing official name`);
+        reviews.push(skipped);
+        if (sb) await rememberBoard(sb, skipped, board.boardUrl);
+        return skipped;
+      }
       const review = await reviewDiscoveryLead(
-        { companyName: board.identifier, website: board.boardUrl, atsUrl: board.boardUrl },
+        { companyName: official, website: board.boardUrl, atsUrl: board.boardUrl },
         fetcher,
         [],
         { greenhouseUseContent: true },
@@ -239,14 +288,13 @@ async function main() {
   });
   let savedSources = 0;
   for (const review of result.pending) {
-    const name = review.atsProvider === "greenhouse" && review.atsIdentifier ? await greenhouseName(review.atsIdentifier) : "";
-    const companyName = name || review.companyName;
-    console.log(`PENDING ${companyName} ${review.atsProvider} qualifying=${review.qualifyingJobCount}`);
+    const companyName = isRawAtsSlug(review.companyName, review.atsIdentifier) ? "" : review.companyName;
+    console.log(`PENDING ${companyName || review.atsIdentifier} ${review.atsProvider} qualifying=${review.qualifyingJobCount}`);
     for (const job of review.qualifyingJobs) {
-      console.log(`JOB ${companyName} | ${job.title} | ${job.salary || "-"} | ${job.location || "-"} | ${job.remote || "-"} | ${job.score} | ${job.applyUrl}`);
+      console.log(`JOB ${companyName || review.atsIdentifier} | ${job.title} | ${job.salary || "-"} | ${job.location || "-"} | ${job.remote || "-"} | ${job.score} | ${job.applyUrl}`);
     }
-    if (sb) {
-      const companyId = name ? await ensureCompany(sb, name, review.website) : null;
+    if (sb && companyName) {
+      const companyId = await ensureCompany(sb, companyName, review.website);
       const wrote = await ensureSource(sb, { ...review, companyName }, companyId, (production || productionDaily) && discoveryAutoApproveEnabled());
       if (wrote) savedSources += 1;
     }
