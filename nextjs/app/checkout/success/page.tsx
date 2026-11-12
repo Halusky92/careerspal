@@ -74,6 +74,7 @@ function CheckoutSuccessInner() {
         ) : null}
         <div className="mt-6 flex flex-col sm:flex-row gap-2">
           {payload?.boardAccess ? (
+            <>
             <Link
               href="/jobs"
               className="inline-flex h-11 items-center justify-center rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-700"
@@ -86,6 +87,7 @@ function CheckoutSuccessInner() {
             >
               Manage subscription
             </Link>
+            </>
           ) : (
             <>
           <Link
