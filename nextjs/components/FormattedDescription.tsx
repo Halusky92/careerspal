@@ -115,7 +115,7 @@ export default function FormattedDescription({
       {blocks.map((b, idx) => {
         if (b.kind === "heading") {
           return (
-            <div key={`${b.kind}-${idx}`} className="pt-2">
+            <div key={`${b.kind}-${idx}`} className={idx === 0 ? "" : "pt-2"}>
               <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">{b.text}</div>
             </div>
           );
