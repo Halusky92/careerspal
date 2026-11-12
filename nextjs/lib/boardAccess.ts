@@ -165,3 +165,54 @@ export function jobVisibleAtRank(rank: number, cap: number | null): boolean {
   if (cap == null) return true;
   return rank < cap;
 }
+
+/** Titles shown behind the lock. Apply links and descriptions stay on the open rows only. */
+export type LockedBoardPreview = {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  category: string;
+  remotePolicy: string;
+};
+
+export function lockedBoardPreviews<
+  T extends {
+    id: string;
+    title?: string | null;
+    company?: string | null;
+    location?: string | null;
+    category?: string | null;
+    remotePolicy?: string | null;
+    timestamp?: number | null;
+  },
+>(jobs: T[], cap: number | null): LockedBoardPreview[] {
+  if (cap == null) return [];
+  return applyBoardVisibility(jobs, null)
+    .slice(Math.max(0, cap))
+    .map((job) => ({
+      id: job.id,
+      title: (job.title || "").trim() || "Role",
+      company: (job.company || "").trim() || "Company",
+      location: (job.location || "").trim() || "Remote",
+      category: (job.category || "").trim(),
+      remotePolicy: (job.remotePolicy || "").trim(),
+    }));
+}
+
+export function boardCompanyCount(jobs: Array<{ company?: string | null }>) {
+  return new Set(jobs.map((job) => (job.company || "").trim()).filter(Boolean)).size;
+}
+
+export function boardAccessHeadline(
+  tier: BoardTier | null | undefined,
+  total: number,
+  companies = 0,
+) {
+  const live = Number.isFinite(total) ? Math.max(0, Math.floor(total)) : 0;
+  const companyLabel =
+    companies > 0 ? ` from ${companies} ${companies === 1 ? "company" : "companies"}` : "";
+  const cap = tier ? boardCap(tier) : null;
+  if (cap == null || live <= cap) return `You're viewing all ${live} live jobs${companyLabel}`;
+  return `You're viewing ${Math.min(cap, live)} of ${live} live jobs${companyLabel}`;
+}

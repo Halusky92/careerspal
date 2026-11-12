@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import FindJobs from "../../components/FindJobs";
 import { Job, UserSession } from "../../types";
+import type { LockedBoardPreview } from "../../lib/boardAccess";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 
@@ -26,12 +27,16 @@ const setSaved = (ids: string[]) => {
 
 export default function JobsClient({
   initialJobs,
+  initialLocked = [],
+  initialCompanies = 0,
   initialTotal,
   initialQuery,
   initialLocation,
   initialAccess = "guest",
 }: {
   initialJobs: Job[];
+  initialLocked?: LockedBoardPreview[];
+  initialCompanies?: number;
   initialTotal: number;
   initialQuery: string;
   initialLocation: string;
@@ -40,6 +45,8 @@ export default function JobsClient({
   const router = useRouter();
   const { profile, accessToken, loading: authLoading } = useSupabaseAuth();
   const [jobs, setJobs] = useState<Job[]>(() => initialJobs || []);
+  const [lockedJobs, setLockedJobs] = useState<LockedBoardPreview[]>(() => initialLocked);
+  const [companyCount, setCompanyCount] = useState(initialCompanies);
   const [boardAccess, setBoardAccess] = useState<"guest" | "registered" | "paid">(initialAccess);
   const [boardTotal, setBoardTotal] = useState(initialTotal);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -118,9 +125,13 @@ export default function JobsClient({
           jobs?: Job[];
           total?: number;
           access?: "guest" | "registered" | "paid";
+          locked?: LockedBoardPreview[];
+          companies?: number;
         };
         if (cancelled) return;
         if (Array.isArray(data.jobs)) setJobs(data.jobs);
+        if (Array.isArray(data.locked)) setLockedJobs(data.locked);
+        if (typeof data.companies === "number") setCompanyCount(data.companies);
         if (typeof data.total === "number") setBoardTotal(data.total);
         if (data.access) setBoardAccess(data.access);
       } catch {
@@ -175,6 +186,8 @@ export default function JobsClient({
         user={user}
         boardAccess={boardAccess}
         boardTotal={boardTotal}
+        lockedJobs={lockedJobs}
+        companyCount={companyCount}
         canLoadMore={boardAccess === "paid" && jobs.length < boardTotal}
         onLoadMore={loadMore}
         onToggleBookmark={handleToggleBookmark}

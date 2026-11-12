@@ -106,7 +106,8 @@ export default function JobRow({
   return (
     <div
       className={[
-        "group relative rounded-xl border transition-all overflow-hidden",
+        "group relative rounded-xl border transition-all",
+        menuOpen ? "z-30 overflow-visible" : "overflow-hidden",
         isBoosted
           ? isElite
             ? "bg-white border-slate-900/20 shadow-sm"
@@ -271,12 +272,12 @@ export default function JobRow({
                 {menuOpen && (
                   <div
                     role="menu"
-                    className="absolute right-0 mt-2 w-44 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden z-30"
+                    className="absolute right-0 top-full z-40 mt-1.5 w-44 rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
                       role="menuitem"
-                      className="w-full text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 border-b border-slate-100"
+                      className="w-full px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                       onClick={async () => {
                         setMenuOpen(false);
                         if (onAction) onAction("copy_link");
@@ -291,7 +292,7 @@ export default function JobRow({
                     </button>
                     <button
                       role="menuitem"
-                      className="w-full text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-600 hover:bg-indigo-50 hover:text-indigo-700"
+                      className="w-full px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                       onClick={() => {
                         setMenuOpen(false);
                         if (onAction) onAction("open_new_tab");
