@@ -10,7 +10,7 @@ import { isOnNicheJob } from "../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../lib/liveBoard";
 import { formatJobSalary } from "../../lib/formatSalary";
 import { ApplyClickLink } from "../../components/JobAnalytics";
-import { GUEST_VISIBLE_JOBS } from "../../lib/boardAccess";
+import { applyBoardVisibility, boardCompanyCount, GUEST_VISIBLE_JOBS, lockedBoardPreviews } from "../../lib/boardAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -150,13 +150,17 @@ export default async function JobsPage({ searchParams }: PageProps) {
   const initialLocation = getParam(params.location);
   const { jobs, total } = await fetchPublishedJobs();
   const capsOn = process.env.BOARD_PREMIUM_CAPS === "1";
-  const initialJobs = capsOn ? jobs.slice(0, GUEST_VISIBLE_JOBS) : jobs.slice(0, 50);
+  const ranked = applyBoardVisibility(jobs, null);
+  const initialJobs = capsOn ? ranked.slice(0, GUEST_VISIBLE_JOBS) : ranked.slice(0, 50);
+  const initialLocked = lockedBoardPreviews(ranked, capsOn ? GUEST_VISIBLE_JOBS : null);
 
   return (
     <div className="pt-3">
       <StaticJobsList jobs={initialJobs} total={total} />
       <JobsClient
         initialJobs={initialJobs}
+        initialLocked={initialLocked}
+        initialCompanies={boardCompanyCount(ranked)}
         initialAccess={capsOn ? "guest" : "paid"}
         initialTotal={total}
         initialQuery={initialQuery}

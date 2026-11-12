@@ -18,7 +18,7 @@ import { inferWorkMode } from "../lib/workMode";
 import FeaturedBoardZone from "./FeaturedBoardZone";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
 import { jobMatchesLocationQuery, locationLabelsForJobs } from "../lib/locationFilter";
-import { boardCap } from "../lib/boardAccess";
+import { boardAccessHeadline, boardCap, type LockedBoardPreview } from "../lib/boardAccess";
 import { trackFunnel, trackFunnelOnce } from "../lib/funnelTrack";
 
 interface FindJobsProps {
@@ -30,6 +30,8 @@ interface FindJobsProps {
   user?: UserSession | null;
   boardAccess?: "guest" | "registered" | "paid";
   boardTotal?: number;
+  lockedJobs?: LockedBoardPreview[];
+  companyCount?: number;
   canLoadMore?: boolean;
   onLoadMore?: () => void;
   onToggleBookmark: (jobId: string) => void;
@@ -92,6 +94,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
   user,
   boardAccess,
   boardTotal,
+  lockedJobs = [],
+  companyCount = 0,
   canLoadMore = false,
   onLoadMore,
   onToggleBookmark,
@@ -540,6 +544,27 @@ const FindJobs: React.FC<FindJobsProps> = ({
     searchCap != null &&
     ((typeof boardTotal === "number" && boardTotal > searchCap) || filteredAndSorted.length > listedJobs.length) &&
     boardJobs.length <= visibleCount;
+  const matchingLocked = useMemo(() => {
+    if (searchCap == null) return [];
+    const q = query.trim().toLowerCase();
+    const hub = category !== "All Roles" ? getCategoryHub(category) : null;
+    return lockedJobs.filter((job) => {
+      if (q) {
+        const hay = `${job.title} ${job.company} ${job.category}`.toLowerCase();
+        if (!q.split(/\s+/).filter(Boolean).every((token) => hay.includes(token))) return false;
+      }
+      if (locationQuery.trim() && !jobMatchesLocationQuery(job, locationQuery)) return false;
+      if (hub && !jobMatchesHub(job, hub)) return false;
+      return true;
+    });
+  }, [lockedJobs, searchCap, query, locationQuery, category]);
+  const lockedShown = matchingLocked.slice(0, 6);
+  const lockedMore = matchingLocked.length - lockedShown.length;
+  const accessHeadline = boardAccessHeadline(
+    boardAccess,
+    typeof boardTotal === "number" ? boardTotal : listedJobs.length,
+    companyCount,
+  );
   useEffect(() => {
     if (!showSearchLimitCta) return;
     trackFunnelOnce("search_limit_reached", { access: boardAccess || "none", matching: filteredAndSorted.length });
@@ -1021,16 +1046,42 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </div>
 
           {!advancedOk ? (
-            <p className="text-xs text-slate-500">
-              Salary, skills, and other advanced filters are on Premium.{" "}
-              <Link href="/upgrade" className="font-medium text-indigo-700">
-                Upgrade
+            <div className="space-y-2">
+              {[
+                "Salary range",
+                "Skills",
+                "Seniority",
+                "Time zone",
+                "Verified companies",
+              ].map((label) => (
+                <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-medium text-slate-600">{label}</span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400">
+                      <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <rect x="5" y="11" width="14" height="9" rx="2" strokeWidth="2" />
+                        <path strokeLinecap="round" strokeWidth="2" d="M8 11V8a4 4 0 018 0v3" />
+                      </svg>
+                      Locked
+                    </span>
+                  </div>
+                </div>
+              ))}
+              <Link
+                href="/upgrade"
+                onClick={() => trackFunnel("premium_click", { from: "locked_filters" })}
+                className="flex w-full items-center justify-center rounded-lg bg-indigo-600 px-3 py-2.5 text-center text-sm font-medium leading-5 text-white hover:bg-indigo-700"
+              >
+                {typeof boardTotal === "number" && boardTotal > 0
+                  ? `Unlock all filters and all ${boardTotal} live jobs`
+                  : "Unlock all filters and all live jobs"}
               </Link>
-            </p>
+            </div>
           ) : null}
 
-          {/* Salary range */}
-          <div className={`relative ${advancedOk ? "" : "pointer-events-none opacity-50"}`} data-wwr-filter>
+          {advancedOk ? (
+          <>
+          <div className="relative" data-wwr-filter>
             <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
               <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-3 0-5 1.343-5 3s2 3 5 3 5 1.343 5 3-2 3-5 3m0-15v2m0 12v2" />
@@ -1072,7 +1123,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </div>
 
           {/* Skills */}
-          <div className={`relative ${advancedOk ? "" : "pointer-events-none opacity-50"}`} data-wwr-filter>
+          <div className="relative" data-wwr-filter>
             <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
               <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-7 4h8m2 5H6a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v14a2 2 0 01-2 2z" />
@@ -1132,6 +1183,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
               </div>
             )}
           </div>
+          </>
+          ) : null}
 
           <button
             type="button"
@@ -1231,11 +1284,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
             <div className="mt-2 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[11px] font-medium text-slate-500" aria-live="polite">
-                  {listedJobs.length} matching
-                  {searchCap != null && filteredAndSorted.length > listedJobs.length
-                    ? ` of ${filteredAndSorted.length}`
-                    : ""}
+                <span className="text-[13px] font-medium text-slate-700" aria-live="polite">
+                  {accessHeadline}
                 </span>
                 {(query.trim() || locationQuery.trim()) && (
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
@@ -1382,12 +1432,64 @@ const FindJobs: React.FC<FindJobsProps> = ({
               </div>
             )}
 
-            {showSearchLimitCta ? (
+            {lockedShown.length > 0 ? (
+              <div className="space-y-3">
+                {lockedShown.map((job) => {
+                  const href = boardAccess === "guest" ? "/auth?from=%2Fjobs" : "/upgrade";
+                  const label = boardAccess === "guest"
+                    ? "Create a free account to unlock more jobs"
+                    : "Upgrade to Premium to unlock all jobs";
+                  return (
+                    <div key={job.id} className="relative overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      <div className="pointer-events-none select-none px-4 py-4 opacity-60 blur-[1.5px]" aria-hidden="true">
+                        <div className="text-[15px] font-bold text-slate-900">{job.title}</div>
+                        <div className="mt-1 text-sm text-slate-600">
+                          {job.company}
+                          <span className="text-slate-300"> · </span>
+                          {job.location}
+                        </div>
+                      </div>
+                      <Link
+                        href={href}
+                        onClick={() =>
+                          trackFunnel(boardAccess === "guest" ? "signup_started" : "premium_click", { from: "locked_job" })
+                        }
+                        aria-label={label}
+                        className="absolute inset-0 flex items-center justify-center bg-white/50"
+                      >
+                        <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 shadow-sm">
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                            <rect x="5" y="11" width="14" height="9" rx="2" strokeWidth="2" />
+                            <path strokeLinecap="round" strokeWidth="2" d="M8 11V8a4 4 0 018 0v3" />
+                          </svg>
+                          Locked
+                        </span>
+                      </Link>
+                    </div>
+                  );
+                })}
+                <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4 text-center">
+                  <p className="text-sm font-medium text-slate-800">
+                    {lockedMore > 0 ? `And ${lockedMore} more jobs` : "More live jobs available with Premium"}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">Unlock more roles on the full board.</p>
+                  <Link
+                    href={boardAccess === "guest" ? "/auth?from=%2Fjobs" : "/upgrade"}
+                    onClick={() =>
+                      trackFunnel(boardAccess === "guest" ? "signup_started" : "premium_click", { from: "search_limit" })
+                    }
+                    className="mt-3 inline-flex h-10 items-center rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700"
+                  >
+                    {boardAccess === "guest" ? "Create a free account" : "Unlock all live jobs"}
+                  </Link>
+                </div>
+              </div>
+            ) : showSearchLimitCta ? (
               <div className="mt-2 rounded-xl border border-slate-200 bg-white px-4 py-4">
                 <p className="text-sm text-slate-700 leading-relaxed">
                   {boardAccess === "guest"
-                    ? "Want to explore more? Create a free account to see 10 additional matching jobs."
-                    : "You've reached your free search limit. Unlock all matching jobs for $7.99/month."}
+                    ? "More live jobs are on the board. Create a free account to unlock more roles."
+                    : "More live jobs are available with Premium."}
                 </p>
                 <Link
                   href={boardAccess === "guest" ? "/auth?from=%2Fjobs" : "/upgrade"}
@@ -1396,7 +1498,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   }
                   className="mt-3 inline-flex h-10 items-center rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700"
                 >
-                  {boardAccess === "guest" ? "Create a free account" : "Unlock all matching jobs"}
+                  {boardAccess === "guest" ? "Create a free account" : "Unlock all live jobs"}
                 </Link>
               </div>
             ) : null}

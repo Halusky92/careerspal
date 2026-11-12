@@ -6,6 +6,9 @@ import {
   boardCapsEnabled,
   GUEST_VISIBLE_JOBS,
   jobVisibleAtRank,
+  lockedBoardPreviews,
+  boardCompanyCount,
+  boardAccessHeadline,
   boardPageForTier,
   paginateBoardJobs,
   premiumCheckoutAllowed,
@@ -119,4 +122,29 @@ test("live Premium checkout is open to every signed-in account and blocks a seco
   assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "usd", active: true, recurring: { interval: "month" } }), true);
   assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "eur", active: true, recurring: { interval: "month" } }), false);
   assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "usd", active: true, recurring: { interval: "year" } }), false);
+});
+
+test("locked previews keep titles and drop everything past the cap", () => {
+  const jobs = Array.from({ length: 6 }, (_, i) => ({
+    id: String(i),
+    title: `Role ${i}`,
+    company: i < 2 ? "Acme" : `Co ${i}`,
+    location: "Remote",
+    category: "Operations",
+    remotePolicy: "Remote",
+    applyUrl: "https://example.com/apply",
+    description: "secret",
+    timestamp: 10 - i,
+  }));
+  const locked = lockedBoardPreviews(jobs, 4);
+  assert.equal(locked.length, 2);
+  assert.deepEqual(locked.map((job) => job.id), ["4", "5"]);
+  assert.equal("applyUrl" in locked[0], false);
+  assert.equal("description" in locked[0], false);
+  assert.equal(lockedBoardPreviews(jobs, null).length, 0);
+  assert.equal(boardCompanyCount(jobs), 5);
+  assert.equal(boardAccessHeadline("guest", 48, 20), "You're viewing 4 of 48 live jobs from 20 companies");
+  assert.equal(boardAccessHeadline("registered", 48, 1), "You're viewing 14 of 48 live jobs from 1 company");
+  assert.equal(boardAccessHeadline("paid", 48, 20), "You're viewing all 48 live jobs from 20 companies");
+  assert.equal(boardAccessHeadline("guest", 3, 2), "You're viewing all 3 live jobs from 2 companies");
 });

@@ -7,7 +7,7 @@ import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../lib/nicheScope";
 import { formatSalaryForStorage } from "../../../lib/formatSalary";
 import { boardTierFromRequest } from "../../../lib/boardAccessServer";
 import { loadPublishedBoardJobs, pagePublishedBoard } from "../../../lib/publicJobBoard";
-import { PAID_JOBS_PAGE_MAX } from "../../../lib/boardAccess";
+import { boardCap, boardCompanyCount, lockedBoardPreviews, PAID_JOBS_PAGE_MAX } from "../../../lib/boardAccess";
 
 const isValidApplyUrl = (value: string) => {
   if (value === "#" || value.startsWith("/")) return true;
@@ -41,7 +41,14 @@ export const GET = async (request: Request) => {
     const jobs = await loadPublishedBoardJobs(supabaseAdmin, { company, category, type, planType, remote });
     const page = pagePublishedBoard(jobs, tier, { skip, limit });
     return NextResponse.json(
-      { jobs: page.jobs, total: page.total, visible: page.visible, access: page.access },
+      {
+        jobs: page.jobs,
+        total: page.total,
+        visible: page.visible,
+        access: page.access,
+        locked: lockedBoardPreviews(jobs, boardCap(tier)),
+        companies: boardCompanyCount(jobs),
+      },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   }
