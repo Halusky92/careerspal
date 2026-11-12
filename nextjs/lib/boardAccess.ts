@@ -50,16 +50,20 @@ export function premiumCheckoutOpen(
   return (stripeKey || "").startsWith("sk_live_") && liveFlag === "1";
 }
 
-/** An empty allowlist blocks every live buyer. Test checkout stays open for the staging board. */
+/** Live checkout requires the server-verified signed-in email. Test checkout stays open for staging. */
 export function premiumLiveBuyerAllowed(
   email: string | null | undefined,
   stripeKey: string | null | undefined,
-  allowlist = process.env.PREMIUM_LIVE_EMAIL,
 ) {
   if (!(stripeKey || "").startsWith("sk_live_")) return true;
-  const allowed = (allowlist || "").trim().toLowerCase();
-  const buyer = (email || "").trim().toLowerCase();
-  return Boolean(allowed) && buyer === allowed;
+  return Boolean((email || "").trim());
+}
+
+const ACTIVE_PREMIUM_SUBSCRIPTION = new Set(["active", "trialing", "past_due"]);
+
+/** A second checkout must not open while this account already has a live Premium subscription. */
+export function premiumSubscriptionBlocksNewCheckout(statuses: Array<string | null | undefined>) {
+  return statuses.some((status) => ACTIVE_PREMIUM_SUBSCRIPTION.has((status || "").trim()));
 }
 
 export function premiumPriceIdForKey(stripeKey: string, env?: PremiumEnv) {

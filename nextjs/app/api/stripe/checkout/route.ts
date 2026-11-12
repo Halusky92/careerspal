@@ -13,6 +13,7 @@ import {
   premiumLiveBuyerAllowed,
   premiumPriceIdForKey,
   premiumPriceIsMonthly799,
+  premiumSubscriptionBlocksNewCheckout,
   resolvePremiumStripeKey,
 } from "../../../../lib/boardAccess";
 import { chargeForStoredJob } from "../../../../lib/employerPlans";
@@ -39,16 +40,9 @@ type StripeJobRow = {
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+export async function GET() {
   const premiumKey = resolvePremiumStripeKey();
-  if (!premiumCheckoutOpen(undefined, premiumKey)) {
-    return NextResponse.json({ available: false });
-  }
-  if (premiumKey.startsWith("sk_live_")) {
-    const auth = await getSupabaseProfile(request);
-    return NextResponse.json({ available: premiumLiveBuyerAllowed(auth?.user?.email, premiumKey) });
-  }
-  return NextResponse.json({ available: true });
+  return NextResponse.json({ available: premiumCheckoutOpen(undefined, premiumKey) });
 }
 
 /** Premium returns to the site that started checkout. Production stays on the public URL. */
@@ -113,10 +107,20 @@ export async function POST(request: Request) {
       }
       const { data: billing } = await supabaseAdmin
         .from("profiles")
-        .select("stripe_customer_id")
+        .select("stripe_customer_id,stripe_subscription_status")
         .eq("id", auth.profile.id)
         .maybeSingle();
-      const existingCustomer = (billing as { stripe_customer_id?: string | null } | null)?.stripe_customer_id || undefined;
+      const billingRow = billing as { stripe_customer_id?: string | null; stripe_subscription_status?: string | null } | null;
+      const existingCustomer = billingRow?.stripe_customer_id || undefined;
+      if (premiumSubscriptionBlocksNewCheckout([billingRow?.stripe_subscription_status])) {
+        return NextResponse.json({ error: "Premium is already active on this account." }, { status: 409 });
+      }
+      if (existingCustomer) {
+        const existing = await stripe.subscriptions.list({ customer: existingCustomer, status: "all", limit: 20 });
+        if (premiumSubscriptionBlocksNewCheckout(existing.data.map((subscription) => subscription.status))) {
+          return NextResponse.json({ error: "Premium is already active on this account." }, { status: 409 });
+        }
+      }
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         payment_method_types: ["card"],

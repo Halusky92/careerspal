@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
-import { premiumLiveBuyerAllowed, resolvePremiumStripeKey } from "../../../../lib/boardAccess";
+import { resolvePremiumStripeKey } from "../../../../lib/boardAccess";
 
 export const runtime = "nodejs";
 
@@ -17,13 +17,11 @@ export async function POST(request: Request) {
   if (!auth?.profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const stripeKey = premiumKey.startsWith("sk_live_") && premiumLiveBuyerAllowed(auth.profile.email, premiumKey)
+  const stripeKey = premiumKey.startsWith("sk_live_") || premiumKey.startsWith("sk_test_")
     ? premiumKey
     : employerKey.startsWith("sk_test_")
       ? employerKey
-      : premiumKey.startsWith("sk_test_")
-        ? premiumKey
-        : "";
+      : "";
   if (!stripeKey) {
     return NextResponse.json({ error: "Premium billing is available in Stripe test mode." }, { status: 403 });
   }
