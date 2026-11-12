@@ -7,6 +7,8 @@ import {
   shouldReopenUnpublishedCandidate,
   sliceBudgetMs,
   sliceExpired,
+  sourcingDayKey,
+  sourcingDayStart,
   sourcesDueForRefresh,
 } from "./slice";
 
@@ -23,6 +25,17 @@ test("refresh and salary slices stay inside the platform limit", () => {
   assert.equal(sliceExpired(NOW, NOW), true);
   assert.equal(sliceExpired(NOW + 1, NOW), false);
   assert.equal(sliceExpired(null, NOW), false);
+});
+
+test("the sourcing day follows Europe/Bratislava across the summer midnight", () => {
+  const beforeUtcMidnight = new Date("2026-07-15T23:30:00.000Z");
+  const afterUtcMidnight = new Date("2026-07-16T01:00:00.000Z");
+  assert.equal(sourcingDayKey(beforeUtcMidnight), "2026-07-16");
+  assert.equal(sourcingDayKey(afterUtcMidnight), "2026-07-16");
+  assert.equal(sourcingDayStart(beforeUtcMidnight).toISOString(), "2026-07-15T22:00:00.000Z");
+  assert.equal(sourcingDayStart(afterUtcMidnight).toISOString(), "2026-07-15T22:00:00.000Z");
+  assert.equal(sourcingDayKey(new Date("2026-11-12T00:30:00.000Z")), "2026-11-12");
+  assert.equal(sourcingDayStart(new Date("2026-11-12T00:30:00.000Z")).toISOString(), "2026-11-11T23:00:00.000Z");
 });
 
 test("a finished board waits until tomorrow and a partial board is resumed", () => {
@@ -45,6 +58,21 @@ test("an empty refresh queue does not fall back to boards already done today", (
   assert.deepEqual(due, []);
 });
 
+test("a board finished before the UTC date changes stays finished for the Bratislava day", () => {
+  const now = new Date("2026-07-16T01:00:00.000Z");
+  const due = sourcesDueForRefresh(
+    [
+      { id: "done", startedAt: "2026-07-15T23:30:00.000Z", status: "success" },
+      { id: "failed", startedAt: "2026-07-15T23:40:00.000Z", status: "failed" },
+      { id: "partial", startedAt: "2026-07-15T23:45:00.000Z", status: "partial" },
+      { id: "yesterday", startedAt: "2026-07-15T20:00:00.000Z", status: "success" },
+    ],
+    now,
+    10,
+  );
+  assert.deepEqual(due, ["yesterday", "partial"]);
+});
+
 test("salary slice picks one company and stops after eight lookups that day", () => {
   const rows = [
     ...Array.from({ length: 8 }, () => ({
@@ -65,6 +93,22 @@ test("salary slice picks one company and stops after eight lookups that day", ()
     ),
     null,
   );
+});
+
+test("salary does not repeat a company after UTC midnight on the same Bratislava day", () => {
+  const attempted = "2026-07-15T23:30:00.000Z";
+  const now = Date.parse("2026-07-16T01:00:00.000Z");
+  assert.equal(
+    chooseSalarySource(
+      [{ sourceId: "checked", provenance: { salary_enrichment_attempt: { attempted_at: attempted } } }],
+      ["checked"],
+      now,
+      0,
+      1,
+    ),
+    null,
+  );
+  assert.equal(chooseSalarySource([{ sourceId: "fresh", provenance: {} }], ["fresh"], now, 0, 1), "fresh");
 });
 
 test("each skipped job is counted once even when several rules fail", () => {

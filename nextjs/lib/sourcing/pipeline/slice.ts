@@ -2,6 +2,7 @@ export const SLICE_BUDGET_MS = 45_000;
 export const FULL_BUDGET_MS = 240_000;
 export const SALARY_DAILY_CAP = 8;
 export const SALARY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+export const SOURCING_DAY_TIME_ZONE = "Europe/Bratislava";
 
 export type SliceMode = "refresh" | "salary" | "full";
 
@@ -25,13 +26,45 @@ export type SourceAttempt = {
   status: string | null;
 };
 
-/** A board is due until today's fetch finished, or until a partial slice is resumed. */
+/** Local calendar day in Europe/Bratislava, including the summer offset. */
+export function sourcingDayKey(now: Date, timeZone = SOURCING_DAY_TIME_ZONE) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const value = (type: string) => parts.find((part) => part.type === type)?.value || "";
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
+function zonedOffsetMs(now: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(now);
+  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value || "0");
+  const hour = value("hour") === 24 ? 0 : value("hour");
+  const asUtc = Date.UTC(value("year"), value("month") - 1, value("day"), hour, value("minute"), value("second"));
+  return asUtc - now.getTime();
+}
+
+/** UTC instant when the current Bratislava calendar day began. */
+export function sourcingDayStart(now: Date, timeZone = SOURCING_DAY_TIME_ZONE) {
+  const offset = zonedOffsetMs(now, timeZone);
+  const local = new Date(now.getTime() + offset);
+  const midnightUtc = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
+  const guess = new Date(midnightUtc - offset);
+  return new Date(midnightUtc - zonedOffsetMs(guess, timeZone));
+}
+
+/** A board is due until this Bratislava day's fetch finished, or until a partial slice is resumed. */
 export function sourcesDueForRefresh(sources: SourceAttempt[], now: Date, limit: number): string[] {
-  const day = new Date(now);
-  day.setUTCHours(0, 0, 0, 0);
-  const dayIso = day.toISOString();
+  const dayMs = sourcingDayStart(now).getTime();
   const pending = sources.filter((source) => {
-    if (!source.startedAt || source.startedAt < dayIso) return true;
+    const startedMs = source.startedAt ? Date.parse(source.startedAt) : NaN;
+    if (!Number.isFinite(startedMs) || startedMs < dayMs) return true;
     return source.status === "partial";
   });
   pending.sort((a, b) => (a.startedAt || "").localeCompare(b.startedAt || ""));
@@ -62,7 +95,7 @@ export function salaryLookupDue(provenance: unknown, nowMs: number, cooldownMs =
 
 export type SalaryCandidateRef = { sourceId: string; provenance: unknown };
 
-/** One company per slice, at most SALARY_DAILY_CAP page lookups per company per UTC day. */
+/** One company per slice, at most SALARY_DAILY_CAP page lookups per company per Bratislava day. */
 export function chooseSalarySource(
   rows: SalaryCandidateRef[],
   enabledIds: string[],
@@ -71,15 +104,14 @@ export function chooseSalarySource(
   dailyCap = SALARY_DAILY_CAP,
 ): string | null {
   const enabled = new Set(enabledIds);
-  const day = new Date(nowMs);
-  day.setUTCHours(0, 0, 0, 0);
-  const dayIso = day.toISOString();
+  const dayMs = sourcingDayStart(new Date(nowMs)).getTime();
   const attemptsToday = new Map<string, number>();
   const due: string[] = [];
   for (const row of rows) {
     if (!enabled.has(row.sourceId)) continue;
     const iso = salaryAttemptIso(row.provenance);
-    if (iso && iso >= dayIso) attemptsToday.set(row.sourceId, (attemptsToday.get(row.sourceId) || 0) + 1);
+    const at = iso ? Date.parse(iso) : NaN;
+    if (Number.isFinite(at) && at >= dayMs) attemptsToday.set(row.sourceId, (attemptsToday.get(row.sourceId) || 0) + 1);
     if (!salaryLookupDue(row.provenance, nowMs, cooldownMs)) continue;
     if (!due.includes(row.sourceId)) due.push(row.sourceId);
   }
