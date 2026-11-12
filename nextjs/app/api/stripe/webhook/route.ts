@@ -43,7 +43,9 @@ async function applyKnownPremiumSubscription(
 }
 
 async function employerListingIdFromCharge(stripe: Stripe, charge: Stripe.Charge): Promise<string | null> {
-  if (charge.metadata?.purpose === "employer_listing" && charge.metadata.jobId) return charge.metadata.jobId;
+  const { employerJobIdFromMetadata } = await import("../../../../lib/employerPlans");
+  const fromCharge = employerJobIdFromMetadata(charge.metadata);
+  if (fromCharge) return fromCharge;
   const paymentIntent = charge.payment_intent;
   const paymentIntentId = typeof paymentIntent === "string" ? paymentIntent : paymentIntent?.id;
   if (!paymentIntentId) return null;
@@ -51,8 +53,7 @@ async function employerListingIdFromCharge(stripe: Stripe, charge: Stripe.Charge
     typeof paymentIntent === "object" && paymentIntent?.metadata
       ? paymentIntent
       : await stripe.paymentIntents.retrieve(paymentIntentId);
-  if (intent.metadata?.purpose === "employer_listing" && intent.metadata.jobId) return intent.metadata.jobId;
-  return null;
+  return employerJobIdFromMetadata(intent.metadata);
 }
 
 export async function GET() {
@@ -263,25 +264,30 @@ export async function POST(request: Request) {
 
     if (event.type === "charge.refunded") {
       const charge = event.data.object as Stripe.Charge;
-      if (charge.refunded) {
-        const employerJobId = await employerListingIdFromCharge(stripe, charge);
-        if (employerJobId) {
-          const { employerRefundPatch } = await import("../../../../lib/employerPlans");
-          const { data: refundJob } = await db
-            .from("jobs")
-            .select("status,stripe_payment_status")
-            .eq("id", employerJobId)
-            .maybeSingle();
-          if (refundJob) {
-            const refundWrite = await db.from("jobs").update(employerRefundPatch(refundJob)).eq("id", employerJobId);
-            if (refundWrite.error) throw new Error(refundWrite.error.message || "Employer refund update failed.");
-            await db.from("audit_logs").insert({
-              action: "employer_listing_refunded",
-              job_id: employerJobId,
-              metadata: { chargeId: charge.id },
-            });
-          }
-        } else {
+      const employerJobId = await employerListingIdFromCharge(stripe, charge);
+      if (employerJobId) {
+        const { employerRefundAction, writeEmployerRefund } = await import("../../../../lib/employerPlans");
+        const refundAction = employerRefundAction({
+          amount: charge.amount,
+          amountRefunded: charge.amount_refunded,
+          refunded: charge.refunded,
+        });
+        if (refundAction === "partial" || refundAction === "full") {
+          const { data: refundJob } = refundAction === "full"
+            ? await db.from("jobs").select("status,stripe_payment_status").eq("id", employerJobId).maybeSingle()
+            : { data: null };
+          const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id || null;
+          await writeEmployerRefund(db, {
+            action: refundAction,
+            jobId: employerJobId,
+            chargeId: charge.id,
+            paymentIntentId,
+            amount: charge.amount,
+            amountRefunded: charge.amount_refunded,
+            job: refundJob,
+          });
+        }
+      } else if (charge.refunded) {
         const customerId = typeof charge.customer === "string" ? charge.customer : charge.customer?.id || null;
         let profileId: string | null = null;
         const subRef = (charge as Stripe.Charge & { invoice?: string | { subscription?: string | null } }).invoice;
@@ -312,7 +318,6 @@ export async function POST(request: Request) {
             action: "board_access_refunded",
             metadata: { profileId, chargeId: charge.id },
           });
-        }
         }
       }
     }

@@ -16,7 +16,7 @@ import {
   premiumSubscriptionBlocksNewCheckout,
   resolvePremiumStripeKey,
 } from "../../../../lib/boardAccess";
-import { chargeForStoredJob } from "../../../../lib/employerPlans";
+import { chargeForStoredJob, resolveEmployerStripeKey } from "../../../../lib/employerPlans";
 import { stripeScopeMetadata } from "../../../../lib/stripeWebhookInbox";
 
 type StripeJobRow = {
@@ -231,7 +231,8 @@ export async function POST(request: Request) {
   if (charge.adminTest && !canUseAdminTestPlan({ role: auth.profile.role, email: auth.profile.email })) {
     return NextResponse.json({ error: "The $1 test plan is for admins." }, { status: 403 });
   }
-  if (!stripeKey.startsWith("sk_test_")) {
+  const employerKey = resolveEmployerStripeKey();
+  if (!employerKey) {
     return NextResponse.json({ error: "Employer checkout is available in Stripe test mode." }, { status: 403 });
   }
   const planName = isRenew ? RENEW_PLAN_NAME : charge.planType;
@@ -239,7 +240,7 @@ export async function POST(request: Request) {
     (request.headers.get("origin") || "").replace(/\/+$/, "") || getPublicSiteUrl();
 
   try {
-    const stripe = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });
+    const stripe = new Stripe(employerKey, { apiVersion: "2026-01-28.clover" });
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],

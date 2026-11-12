@@ -174,6 +174,97 @@ export function employerCheckoutPatch(input: {
   };
 }
 
+/**
+ * Test checkout may use the employer test key, or the shared test key when no employer key is set.
+ * Live checkout requires EMPLOYER_LIVE=1 and a dedicated sk_live_ employer key. The shared key is never used live.
+ */
+export function resolveEmployerStripeKey(env?: {
+  STRIPE_EMPLOYER_SECRET_KEY?: string;
+  STRIPE_SECRET_KEY?: string;
+  EMPLOYER_LIVE?: string;
+}) {
+  const dedicated = (env?.STRIPE_EMPLOYER_SECRET_KEY ?? process.env.STRIPE_EMPLOYER_SECRET_KEY ?? "").trim();
+  const shared = (env?.STRIPE_SECRET_KEY ?? process.env.STRIPE_SECRET_KEY ?? "").trim();
+  const liveOn = (env?.EMPLOYER_LIVE ?? process.env.EMPLOYER_LIVE) === "1";
+  if (liveOn && dedicated.startsWith("sk_live_")) return dedicated;
+  if (dedicated.startsWith("sk_test_")) return dedicated;
+  if (!dedicated.startsWith("sk_live_") && shared.startsWith("sk_test_")) return shared;
+  return "";
+}
+
+export function employerJobIdFromMetadata(metadata?: { purpose?: string | null; jobId?: string | null } | null) {
+  if (metadata?.purpose !== "employer_listing") return null;
+  const jobId = (metadata.jobId || "").trim();
+  return jobId || null;
+}
+
+export function missingJobsUnpublishedColumn(message?: string | null) {
+  const text = message || "";
+  return /unpublished_at/i.test(text) && /(schema cache|could not find|does not exist)/i.test(text);
+}
+
+/** Full refund closes the listing. A partial refund is recorded and leaves the listing alone. */
+export function employerRefundAction(input: {
+  amount?: number | null;
+  amountRefunded?: number | null;
+  refunded?: boolean | null;
+}): "full" | "partial" | "none" {
+  const amount = typeof input.amount === "number" ? input.amount : 0;
+  const refundedAmount = typeof input.amountRefunded === "number" ? input.amountRefunded : 0;
+  if (input.refunded || (amount > 0 && refundedAmount >= amount)) return "full";
+  if (refundedAmount > 0) return "partial";
+  return "none";
+}
+
+type RefundDb = {
+  from(table: string): any;
+};
+
+/** Writes the refund outcome. A failed audit or job update throws so the webhook can retry. */
+export async function writeEmployerRefund(
+  db: RefundDb,
+  input: {
+    action: "partial" | "full";
+    jobId: string;
+    chargeId: string;
+    paymentIntentId?: string | null;
+    amount?: number | null;
+    amountRefunded?: number | null;
+    job: EmployerJobState | null;
+  },
+) {
+  const metadata = {
+    chargeId: input.chargeId,
+    paymentIntentId: input.paymentIntentId || null,
+    jobId: input.jobId,
+    amount: input.amount ?? null,
+    amountRefunded: input.amountRefunded ?? null,
+  };
+  if (input.action === "partial") {
+    const audit = await db.from("audit_logs").insert({
+      action: "employer_listing_partial_refund",
+      job_id: input.jobId,
+      metadata,
+    });
+    if (audit.error) throw new Error(audit.error.message || "Partial refund audit failed.");
+    return;
+  }
+  if (!input.job) throw new Error("Employer refund is not linked to a listing.");
+  const patch = employerRefundPatch(input.job);
+  let write = await db.from("jobs").update(patch).eq("id", input.jobId);
+  if (write.error && "unpublished_at" in patch && missingJobsUnpublishedColumn(write.error.message)) {
+    const { unpublished_at: _unpublished, ...withoutUnpublished } = patch;
+    write = await db.from("jobs").update(withoutUnpublished).eq("id", input.jobId);
+  }
+  if (write.error) throw new Error(write.error.message || "Employer refund update failed.");
+  const audit = await db.from("audit_logs").insert({
+    action: "employer_listing_refunded",
+    job_id: input.jobId,
+    metadata,
+  });
+  if (audit.error) throw new Error(audit.error.message || "Refund audit failed.");
+}
+
 export function employerRefundPatch(job: EmployerJobState): Record<string, unknown> {
   const live = job.status === "published" || job.status === "pending_review";
   const update: Record<string, unknown> = {
