@@ -15,6 +15,13 @@ test("trading and recruiting operations do not pass on the word operations", () 
   assert.equal(isOnNicheJob({ title: "Business Operations, Senior Associate" }), true);
 });
 
+test("an executive assistant or permit operations role does not pass on the word operations", () => {
+  assert.equal(isOnNicheJob({ title: "Executive Operations Partner - EPD (Executive Assistant)" }), false);
+  assert.equal(isOnNicheJob({ title: "Permit Operations Lead (Fully Remote)" }), false);
+  assert.equal(isOnNicheJob({ title: "Permit Operations Lead (Bilingual - French/English)" }), false);
+  assert.equal(isOnNicheJob({ title: "Administrative Assistant, Operations" }), false);
+});
+
 test("revenue, sales, product and GTM operations stay in the niche", () => {
   assert.equal(isOnNicheJob({ title: "Revenue Operations Manager" }), true);
   assert.equal(isOnNicheJob({ title: "Senior Manager, Sales Operations" }), true);

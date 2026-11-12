@@ -5,8 +5,8 @@ import type { DiscoveryReview } from "./review";
 
 /** Daily discovery cron in Europe/Bratislava. The workflow owns the timezone. */
 export const DISCOVERY_CADENCE = "5 1 * * *";
-export const DAILY_SEARCH_CAP = 8;
-export const MONTHLY_SEARCH_CAP = 250;
+export const DAILY_SEARCH_CAP = 20;
+export const MONTHLY_SEARCH_CAP = 620;
 export const BOARDS_PER_GROUP = 4;
 export const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
 export const ZERO_STREAK_TO_COOL = 2;
@@ -215,48 +215,71 @@ export async function runJobFirstDiscovery(args: {
   let searches = 0;
   let reviewed = 0;
   let stopped: string | null = null;
+  const livePhrases: Record<string, PhraseState | undefined> = { ...args.phrases };
+  const usedPhrases = new Set<string>();
+  const notedSkips = new Set<string>();
+  const groupList = args.groups ?? DISCOVERY_GROUPS;
 
-  for (const group of args.groups ?? DISCOVERY_GROUPS) {
-    if (!stopped && typeof args.maxSearches === "number" && searches >= args.maxSearches) stopped = "search_cap";
-    if (!stopped && typeof args.maxBoards === "number" && reviewed >= args.maxBoards) stopped = "board_cap";
-    if (stopped) {
-      groups.push({ id: group.id, phrase: null, boards: 0, qualifying: 0, skipped: stopped });
-      continue;
-    }
-    if (args.oncePerDay && sameUtcDay(args.phrases[group.id]?.updatedAt, args.now)) {
-      groups.push({ id: group.id, phrase: null, boards: 0, qualifying: 0, skipped: "already_today" });
-      continue;
-    }
-    const picked = phraseForGroup(group.phrases, args.phrases[group.id], args.now);
-    if (!picked) {
-      const info = { id: group.id, phrase: null, boards: 0, qualifying: 0, skipped: "cooled" };
+  for (let pass = 0; pass < 8 && !stopped && !(typeof args.maxSearches === "number" && searches >= args.maxSearches); pass += 1) {
+    let addedSearch = false;
+    for (const group of groupList) {
+      if (!stopped && typeof args.maxSearches === "number" && searches >= args.maxSearches) stopped = "search_cap";
+      if (!stopped && typeof args.maxBoards === "number" && reviewed >= args.maxBoards) stopped = "board_cap";
+      if (stopped) {
+        if (!notedSkips.has(`${group.id}:${stopped}`)) {
+          groups.push({ id: group.id, phrase: null, boards: 0, qualifying: 0, skipped: stopped });
+          notedSkips.add(`${group.id}:${stopped}`);
+        }
+        continue;
+      }
+      if (args.oncePerDay && sameUtcDay(args.phrases[group.id]?.updatedAt, args.now)) {
+        if (!notedSkips.has(`${group.id}:already_today`)) {
+          groups.push({ id: group.id, phrase: null, boards: 0, qualifying: 0, skipped: "already_today" });
+          notedSkips.add(`${group.id}:already_today`);
+        }
+        continue;
+      }
+      const picked = phraseForGroup(group.phrases, livePhrases[group.id], args.now);
+      if (!picked) {
+        if (!notedSkips.has(`${group.id}:cooled`)) {
+          const info = { id: group.id, phrase: null, boards: 0, qualifying: 0, skipped: "cooled" };
+          groups.push(info);
+          notedSkips.add(`${group.id}:cooled`);
+          await args.onGroup?.(group.id, null, info);
+        }
+        continue;
+      }
+      const phraseKey = `${group.id}:${picked.phrase}`;
+      if (usedPhrases.has(phraseKey)) continue;
+      const claimed = args.claim ? await args.claim() : claimSearchSlot(monthCount, cap).ok;
+      if (!claimed) {
+        stopped = "monthly_cap";
+        groups.push({ id: group.id, phrase: picked.phrase, boards: 0, qualifying: 0, skipped: "monthly_cap" });
+        notedSkips.add(`${group.id}:monthly_cap`);
+        continue;
+      }
+      if (!args.claim) monthCount = claimSearchSlot(monthCount, cap).next;
+      usedPhrases.add(phraseKey);
+      searches += 1;
+      addedSearch = true;
+      const hits = await args.search(picked.phrase);
+      const room = typeof args.maxBoards === "number" ? Math.min(BOARDS_PER_GROUP, args.maxBoards - reviewed) : BOARDS_PER_GROUP;
+      const boards = selectNewBoards(hits, args.known, room);
+      reviewed += boards.length;
+      let qualifying = 0;
+      for (const board of boards) {
+        const review = await args.review(board);
+        qualifying += review.qualifyingJobCount;
+        if (review.decision === "pending_approval") pending.push(review);
+      }
+      const update = nextPhraseState(livePhrases[group.id], picked.variantIndex, group.phrases.length, boards.length, args.now);
+      livePhrases[group.id] = { ...update, updatedAt: args.now.toISOString() };
+      phraseUpdates[group.id] = update;
+      const info = { id: group.id, phrase: picked.phrase, boards: boards.length, qualifying, skipped: "" };
       groups.push(info);
-      await args.onGroup?.(group.id, null, info);
-      continue;
+      await args.onGroup?.(group.id, update, info);
     }
-    const claimed = args.claim ? await args.claim() : claimSearchSlot(monthCount, cap).ok;
-    if (!claimed) {
-      stopped = "monthly_cap";
-      groups.push({ id: group.id, phrase: picked.phrase, boards: 0, qualifying: 0, skipped: "monthly_cap" });
-      continue;
-    }
-    if (!args.claim) monthCount = claimSearchSlot(monthCount, cap).next;
-    searches += 1;
-    const hits = await args.search(picked.phrase);
-    const room = typeof args.maxBoards === "number" ? Math.min(BOARDS_PER_GROUP, args.maxBoards - reviewed) : BOARDS_PER_GROUP;
-    const boards = selectNewBoards(hits, args.known, room);
-    reviewed += boards.length;
-    let qualifying = 0;
-    for (const board of boards) {
-      const review = await args.review(board);
-      qualifying += review.qualifyingJobCount;
-      if (review.decision === "pending_approval") pending.push(review);
-    }
-    const update = nextPhraseState(args.phrases[group.id], picked.variantIndex, group.phrases.length, boards.length, args.now);
-    phraseUpdates[group.id] = update;
-    const info = { id: group.id, phrase: picked.phrase, boards: boards.length, qualifying, skipped: "" };
-    groups.push(info);
-    await args.onGroup?.(group.id, update, info);
+    if (!addedSearch) break;
   }
 
   return { searches, stopped, groups, pending, phraseUpdates, endingCount: monthCount };

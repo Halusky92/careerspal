@@ -61,6 +61,6 @@ test("overview counts saved discovery sources and leaves unknown history empty",
   assert.equal(view.autoApproved, 1);
   assert.equal(view.approvals[0]?.title, "Revenue Operations Manager");
   assert.equal(view.tavily.used, 1);
-  assert.equal(view.tavily.cap, 250);
+  assert.equal(view.tavily.cap, 620);
   assert.equal(view.runs[1]?.error, "ingest");
 });

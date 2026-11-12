@@ -1,7 +1,7 @@
 name: CareersPal - Discovery daily
 
-# 01:05 Europe/Bratislava searches one rotated pass of all 8 categories.
-# At most 8 searches per day. The ledger stops the run at 250 for the month.
+# 01:05 Europe/Bratislava. At most 20 basic searches per day.
+# The ledger stops the run at 620 for the month. A phrase is not repeated in the same run.
 # Qualifying new employer boards are enabled. Set repository variable DISCOVERY_AUTO_APPROVE to 0 to stop that without deleting history.
 on:
   schedule:

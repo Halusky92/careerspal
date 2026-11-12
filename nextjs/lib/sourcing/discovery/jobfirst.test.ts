@@ -22,7 +22,7 @@ test("every full run keeps one slot for each niche group", () => {
   assert.equal(DISCOVERY_GROUPS.length, 8);
   assert.equal(new Set(DISCOVERY_GROUPS.map((group) => group.id)).size, 8);
   assert.equal(BOARDS_PER_GROUP, 4);
-  assert.equal(MONTHLY_SEARCH_CAP, 250);
+  assert.equal(MONTHLY_SEARCH_CAP, 620);
 });
 
 test("a cooled phrase spends no search and the next variant rotates", () => {
@@ -36,11 +36,11 @@ test("a cooled phrase spends no search and the next variant rotates", () => {
   assert.ok(again.cooledUntil);
 });
 
-test("the monthly counter stops at 250 and does not wrap", () => {
-  assert.equal(claimSearchSlot(249).ok, true);
-  assert.equal(claimSearchSlot(249).next, 250);
-  assert.equal(claimSearchSlot(250).ok, false);
-  assert.equal(claimSearchSlot(250).next, 250);
+test("the monthly counter stops at 620 and does not wrap", () => {
+  assert.equal(claimSearchSlot(619).ok, true);
+  assert.equal(claimSearchSlot(619).next, 620);
+  assert.equal(claimSearchSlot(620).ok, false);
+  assert.equal(claimSearchSlot(620).next, 620);
 });
 
 test("new boards exclude seeds, aggregators, and duplicates, and stop at four", () => {
@@ -66,6 +66,7 @@ test("a full run covers all eight groups until the credit cap", async () => {
   const result = await runJobFirstDiscovery({
     now: new Date("2026-11-10T12:00:00.000Z"),
     monthCount: 247,
+    cap: 250,
     phrases: {},
     known: seedBoardKeys(),
     search: async (query) => {
