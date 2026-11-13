@@ -6,7 +6,7 @@ import { getSupabaseProfile } from "../../../lib/supabaseServerAuth";
 import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../lib/nicheScope";
 import { formatSalaryForStorage } from "../../../lib/formatSalary";
 import { boardTierFromRequest } from "../../../lib/boardAccessServer";
-import { loadPublishedBoardJobs, pagePublishedBoard } from "../../../lib/publicJobBoard";
+import { countLivePublishedJobs, loadPublishedBoardJobs, pagePublishedBoard } from "../../../lib/publicJobBoard";
 import { boardCap, boardCompanyCount, lockedBoardPreviews, PAID_JOBS_PAGE_MAX } from "../../../lib/boardAccess";
 
 const isValidApplyUrl = (value: string) => {
@@ -38,12 +38,16 @@ export const GET = async (request: Request) => {
   const remote = searchParams.get("remote");
   if (status === "published") {
     const tier = await boardTierFromRequest(request);
-    const jobs = await loadPublishedBoardJobs(supabaseAdmin, { company, category, type, planType, remote });
+    const filters = { company, category, type, planType, remote };
+    const [jobs, counted] = await Promise.all([
+      loadPublishedBoardJobs(supabaseAdmin, filters),
+      countLivePublishedJobs(supabaseAdmin, filters),
+    ]);
     const page = pagePublishedBoard(jobs, tier, { skip, limit });
     return NextResponse.json(
       {
         jobs: page.jobs,
-        total: page.total,
+        total: counted,
         visible: page.visible,
         access: page.access,
         locked: lockedBoardPreviews(jobs, boardCap(tier)),

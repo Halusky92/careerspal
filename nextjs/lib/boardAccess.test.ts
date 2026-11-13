@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { countLivePublishedRows, totalFromCountPages } from "./publicJobBoard";
 import {
   applyBoardVisibility,
   boardCap,
@@ -9,6 +10,7 @@ import {
   lockedBoardPreviews,
   boardCompanyCount,
   boardAccessHeadline,
+  homeSeeAllLabel,
   boardPageForTier,
   paginateBoardJobs,
   premiumCheckoutAllowed,
@@ -147,4 +149,71 @@ test("locked previews keep titles and drop everything past the cap", () => {
   assert.equal(boardAccessHeadline("registered", 48, 1), "You're viewing 14 of 48 live jobs from 1 company");
   assert.equal(boardAccessHeadline("paid", 48, 20), "You're viewing all 48 live jobs from 20 companies");
   assert.equal(boardAccessHeadline("guest", 3, 2), "You're viewing all 3 live jobs from 2 companies");
+  assert.equal(homeSeeAllLabel(false, 62), "Browse jobs");
+  assert.equal(homeSeeAllLabel(true, null), "See all jobs");
+  assert.equal(homeSeeAllLabel(true, undefined), "See all jobs");
+  assert.equal(homeSeeAllLabel(true, Number.NaN), "See all jobs");
+  assert.equal(homeSeeAllLabel(true, 1), "See all 1 job");
+  assert.equal(homeSeeAllLabel(true, 50), "See all 50 jobs");
+  assert.equal(homeSeeAllLabel(true, 62), "See all 62 jobs");
+  assert.equal(homeSeeAllLabel(true, 200), "See all 200 jobs");
+  assert.equal(homeSeeAllLabel(true, 501), "See all 501 jobs");
+  const pageLength = 50;
+  assert.equal(homeSeeAllLabel(true, 62), "See all 62 jobs");
+  assert.notEqual(homeSeeAllLabel(true, 62), `See all ${pageLength} jobs`);
+  assert.equal(boardAccessHeadline("guest", null, 4), "You're viewing live jobs from 4 companies");
+});
+
+test("live published count ignores one page and hidden statuses", () => {
+  const now = Date.parse("2026-11-13T12:00:00Z");
+  const live = (title = "Operations Manager") => ({
+    status: "published" as const,
+    title,
+    category: "Operations",
+    timestamp: now,
+  });
+  const hidden = ["draft", "paused", "rejected", "pending_review"].map((status) => ({
+    status,
+    title: "Operations Manager",
+    category: "Operations",
+    timestamp: now,
+  }));
+  const expired = {
+    status: "published" as const,
+    title: "Operations Manager",
+    category: "Operations",
+    timestamp: now - 40 * 24 * 60 * 60 * 1000,
+    published_at: "2020-01-01T00:00:00.000Z",
+    created_at: "2020-01-01T00:00:00.000Z",
+  };
+  const offNiche = live("Account Executive");
+  for (const size of [50, 62, 200, 501]) {
+    const rows = [...Array.from({ length: size }, () => live()), ...hidden, expired, offNiche];
+    assert.equal(countLivePublishedRows(rows, now), size);
+  }
+  assert.equal(totalFromCountPages([{ fetched: 50, counted: 50 }], 200), 50);
+  assert.equal(totalFromCountPages([{ fetched: 62, counted: 62 }], 200), 62);
+  assert.equal(
+    totalFromCountPages(
+      [
+        { fetched: 200, counted: 200 },
+        { fetched: 0, counted: 0 },
+      ],
+      200,
+    ),
+    200,
+  );
+  assert.equal(
+    totalFromCountPages(
+      [
+        { fetched: 200, counted: 200 },
+        { fetched: 200, counted: 200 },
+        { fetched: 101, counted: 101 },
+      ],
+      200,
+    ),
+    501,
+  );
+  assert.equal(totalFromCountPages([{ fetched: 200, counted: 200 }], 200), null);
+  assert.equal(homeSeeAllLabel(true, totalFromCountPages([{ fetched: 200, counted: 200 }], 200)), "See all jobs");
 });

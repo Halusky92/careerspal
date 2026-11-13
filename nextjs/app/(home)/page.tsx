@@ -8,6 +8,7 @@ import { isOnNicheJob } from "../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../lib/liveBoard";
 import { formatJobSalary } from "../../lib/formatSalary";
 import { getPublicSubscriberCount } from "../../lib/countAlertSubscribers";
+import { countLivePublishedJobs } from "../../lib/publicJobBoard";
 
 export const dynamic = "force-dynamic";
 
@@ -68,10 +69,15 @@ function StaticHomeJobs({ jobs }: { jobs: Job[] }) {
 export default async function HomePage() {
   const jobs = await fetchPublishedJobs();
   const subscriberCount = await getPublicSubscriberCount();
+  const liveTotal = supabaseAdmin ? await countLivePublishedJobs(supabaseAdmin) : null;
   return (
     <>
       <StaticHomeJobs jobs={jobs} />
-      <HomeClient initialJobs={process.env.BOARD_PREMIUM_CAPS === "1" ? jobs.slice(0, 4) : jobs} subscriberCount={subscriberCount} />
+      <HomeClient
+        initialJobs={jobs.slice(0, 4)}
+        initialLiveTotal={liveTotal}
+        subscriberCount={subscriberCount}
+      />
     </>
   );
 }
