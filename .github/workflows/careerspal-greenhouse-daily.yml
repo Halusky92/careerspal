@@ -102,12 +102,12 @@ jobs:
               --retry-delay 2 \
               --retry-all-errors \
               --fail \
+              -H "Authorization: Bearer $CRON_SECRET" \
               -G "$origin/api/cron/google-indexing" \
-              --data-urlencode "secret=$CRON_SECRET" \
               --data-urlencode "dryRun=1" \
               --data-urlencode "dailyQuota=$quota")
             echo "$body" | jq '{ok,dryRun,liveSending,aborted,totalUpdated,totalDeleted,batchUpdated,batchDeleted,deferred,skippedUnchanged,sentToday,dailyQuota,remainingQuota}'
-            echo "$body" | jq -e '.dryRun == true and .liveSending == false' >/dev/null
+            echo "$body" | jq -e '.ok == true and .dryRun == true and .liveSending == false and .aborted == null' >/dev/null
           }
           failed=0
           if [ -n "$MODE_INPUT" ]; then
@@ -115,11 +115,14 @@ jobs:
           elif [ -n "$EVENT_SCHEDULE" ]; then
             run_slices refresh || failed=1
             run_slices salary || failed=1
-            if run_liveness; then
+            # Liveness changes job state. Call it once, then dry-run only if that call succeeded.
+            liveness_status=0
+            run_liveness || liveness_status=$?
+            if [ "$liveness_status" -eq 0 ]; then
               run_indexing_dry_run || failed=1
             else
               failed=1
-              echo "Liveness failed. Google Indexing was not called, so no removal notices were planned."
+              echo "Liveness failed. Google Indexing was not called."
             fi
             echo "Running logos"
             body=$(curl -sS -L \

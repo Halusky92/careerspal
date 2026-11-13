@@ -147,6 +147,9 @@ export function planIndexNotifications(input: {
   if (!input.jobsReadOk || !input.jobs || !input.scanComplete) {
     return { ...empty, aborted: "jobs_unreadable" };
   }
+  if (!input.historyReadOk) {
+    return { ...empty, aborted: "notifications_unavailable" };
+  }
   if (input.jobs.length === 0 && (input.history || []).some((notice) => notice.type === "URL_UPDATED")) {
     return { ...empty, aborted: "empty_job_scan" };
   }

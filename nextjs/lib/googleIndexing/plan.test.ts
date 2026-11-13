@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   canonicalJobUrl,
@@ -58,6 +59,19 @@ test("visibility follows the public job page", () => {
 test("live sending stays off in this release", () => {
   assert.equal(LIVE_SENDING_RELEASED, false);
   assert.equal(googleIndexingLiveEnabled(), false);
+  const route = readFileSync(new URL("../../app/api/cron/google-indexing/route.ts", import.meta.url), "utf8");
+  assert.equal(route.includes(".insert("), false);
+  assert.equal(route.includes(".update("), false);
+  assert.equal(route.includes(".delete("), false);
+  assert.equal(route.includes("indexing.googleapis"), false);
+  assert.equal(route.includes("searchParams.get(\"secret\")"), false);
+  assert.match(route, /Bearer /);
+  const workflow = readFileSync(new URL("../../../.github/workflows/careerspal-greenhouse-daily.yml", import.meta.url), "utf8");
+  const indexing = workflow.slice(workflow.indexOf("run_indexing_dry_run()"), workflow.indexOf("failed=0"));
+  assert.equal((workflow.match(/run_liveness \|\|/g) || []).length, 1);
+  assert.match(indexing, /Authorization: Bearer \$CRON_SECRET/);
+  assert.equal(indexing.includes("secret="), false);
+  assert.match(workflow, /api\/cron\/stale-jobs/);
 });
 
 test("canonical job URLs use www", () => {
@@ -220,7 +234,7 @@ test("a failed or empty read never queues a deletion", () => {
   }
 });
 
-test("history cannot be read, so deletions stay empty while the backfill remains", () => {
+test("missing notification history is not a successful backfill", () => {
   const plan = planIndexNotifications({
     jobs: [job()],
     jobsReadOk: true,
@@ -229,8 +243,10 @@ test("history cannot be read, so deletions stay empty while the backfill remains
     historyReadOk: false,
     sentToday: 0,
   });
-  assert.equal(plan.totalUpdated, 1);
+  assert.equal(plan.aborted, "notifications_unavailable");
+  assert.equal(plan.totalUpdated, 0);
   assert.equal(plan.totalDeleted, 0);
+  assert.equal(plan.liveSending, false);
 });
 
 test("the batch stays inside the daily quota and the per-run cap", () => {

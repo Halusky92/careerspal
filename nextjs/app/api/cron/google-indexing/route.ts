@@ -14,12 +14,13 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 function isAuthorized(request: Request): boolean {
-  const secret = new URL(request.url).searchParams.get("secret") || "";
   const sourcing = getSourcingCronSecret();
   const cron = (process.env.CRON_SECRET || "").trim();
   const auth = request.headers.get("authorization") || "";
-  if (cron && auth === `Bearer ${cron}`) return true;
-  if (sourcing && secret === sourcing) return true;
+  const bearer = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() : "";
+  if (!bearer) return false;
+  if (cron && bearer === cron) return true;
+  if (sourcing && bearer === sourcing) return true;
   return false;
 }
 
@@ -42,8 +43,8 @@ async function loadJobs(): Promise<{ rows: IndexJobRow[] | null; complete: boole
   return { rows: null, complete: false };
 }
 
-async function loadHistory(): Promise<{ notices: SentNotice[] | null; sentToday: number; ok: boolean }> {
-  if (!supabaseAdmin) return { notices: null, sentToday: 0, ok: false };
+async function loadHistory(): Promise<{ notices: SentNotice[] | null; sentToday: number; ok: boolean; reason: string | null }> {
+  if (!supabaseAdmin) return { notices: null, sentToday: 0, ok: false, reason: "notifications_unreadable" };
   const pageSize = 500;
   const notices: SentNotice[] = [];
   let offset = 0;
@@ -54,7 +55,17 @@ async function loadHistory(): Promise<{ notices: SentNotice[] | null; sentToday:
       .eq("state", "sent")
       .order("sent_at", { ascending: true })
       .range(offset, offset + pageSize - 1);
-    if (page.error) return { notices: null, sentToday: 0, ok: false };
+    if (page.error) {
+      const code = page.error.code || "";
+      const message = page.error.message || "";
+      const missing = code === "42P01" || code === "PGRST205" || /google_index_notifications|schema cache/i.test(message);
+      return {
+        notices: null,
+        sentToday: 0,
+        ok: false,
+        reason: missing ? "notifications_table_missing" : "notifications_unreadable",
+      };
+    }
     const chunk = page.data || [];
     for (const row of chunk) {
       if (!row.url || (row.notice_type !== "URL_UPDATED" && row.notice_type !== "URL_DELETED")) continue;
@@ -72,7 +83,7 @@ async function loadHistory(): Promise<{ notices: SentNotice[] | null; sentToday:
   const start = new Date();
   start.setUTCHours(0, 0, 0, 0);
   const sentToday = notices.filter((notice) => notice.sentAt >= start.toISOString()).length;
-  return { notices, sentToday, ok: true };
+  return { notices, sentToday, ok: true, reason: null };
 }
 
 function quotaFrom(request: Request): number {
@@ -86,7 +97,31 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const loaded = await loadJobs();
-  const history = loaded.complete ? await loadHistory() : { notices: null, sentToday: 0, ok: false };
+  const history = loaded.complete
+    ? await loadHistory()
+    : { notices: null, sentToday: 0, ok: false, reason: "jobs_unreadable" as string | null };
+  if (!history.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        dryRun: true,
+        liveSending: false,
+        aborted: history.reason,
+        totalUpdated: 0,
+        totalDeleted: 0,
+        batchUpdated: 0,
+        batchDeleted: 0,
+        deferred: 0,
+        skippedUnchanged: 0,
+        sentToday: 0,
+        dailyQuota: quotaFrom(request),
+        remainingQuota: 0,
+        updated: [],
+        deleted: [],
+      },
+      { status: 503 },
+    );
+  }
   const plan = planIndexNotifications({
     jobs: loaded.rows ? loaded.rows.map(toIndexSnapshot) : null,
     jobsReadOk: loaded.complete,
