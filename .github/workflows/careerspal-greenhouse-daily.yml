@@ -91,13 +91,36 @@ jobs:
             echo "$body"
             echo "$body" | jq -e '.ok == true' >/dev/null
           }
+          run_indexing_dry_run() {
+            origin=$(printf '%s\n' "$PIPELINE_URL" | sed -E 's#^(https?://[^/]+).*#\1#')
+            quota="${GOOGLE_INDEXING_DAILY_QUOTA:-200}"
+            echo "Google Indexing dry-run. Live sending is off."
+            body=$(curl -sS -L \
+              --connect-timeout 15 \
+              --max-time 70 \
+              --retry 2 \
+              --retry-delay 2 \
+              --retry-all-errors \
+              --fail \
+              -G "$origin/api/cron/google-indexing" \
+              --data-urlencode "secret=$CRON_SECRET" \
+              --data-urlencode "dryRun=1" \
+              --data-urlencode "dailyQuota=$quota")
+            echo "$body" | jq '{ok,dryRun,liveSending,aborted,totalUpdated,totalDeleted,batchUpdated,batchDeleted,deferred,skippedUnchanged,sentToday,dailyQuota,remainingQuota}'
+            echo "$body" | jq -e '.dryRun == true and .liveSending == false' >/dev/null
+          }
           failed=0
           if [ -n "$MODE_INPUT" ]; then
             run_slices "$MODE_INPUT" || failed=1
           elif [ -n "$EVENT_SCHEDULE" ]; then
             run_slices refresh || failed=1
             run_slices salary || failed=1
-            run_liveness || failed=1
+            if run_liveness; then
+              run_indexing_dry_run || failed=1
+            else
+              failed=1
+              echo "Liveness failed. Google Indexing was not called, so no removal notices were planned."
+            fi
             echo "Running logos"
             body=$(curl -sS -L \
               --connect-timeout 15 \
