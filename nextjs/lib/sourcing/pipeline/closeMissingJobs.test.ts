@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { boardCloseProtectsEmployer, closeJobsMissingFromBoard } from "./closeMissingJobs";
+import { boardCloseProtectsEmployer, closeJobsMissingFromBoard, SOURCED_REOPEN_STATUSES } from "./closeMissingJobs";
 
 type UpdateCall = { table: string; payload: Record<string, unknown> };
 
@@ -391,4 +391,11 @@ test("a returned role that fails salary-first stays unpublished", async () => {
   assert.equal(out.reopened, 0);
   assert.equal(out.held, 1);
   assert.equal(updates.find((u) => u.table === "jobs")?.payload.status, "pending_review");
+});
+
+test("a nightly refresh cannot publish pending_review or rejected listings again", () => {
+  const allowed = new Set<string>(SOURCED_REOPEN_STATUSES);
+  assert.equal(allowed.has("pending_review"), false);
+  assert.equal(allowed.has("rejected"), false);
+  assert.equal(allowed.has("closed"), true);
 });

@@ -36,9 +36,60 @@ export const isBoilerplateDescription = (value?: string | null) => {
     t.includes("talent operating system") ||
     /\bgreenhouse software\b/.test(t) ||
     /\bgreenhouse\.io\b/.test(t) ||
-    t.includes("coming soon")
+    t.includes("coming soon") ||
+    isStorefrontPromo(t)
   );
 };
+
+/** A retail homepage blurb, whatever the brand is. */
+export function isStorefrontPromo(value?: string | null) {
+  const text = (value || "").toLowerCase();
+  const shop = /\b(?:shop|visit|welcome to|join)\s+(?:www\.)?[a-z0-9-]+\.(?:com|co|io|ai|org)\b/.test(text);
+  const promo = /\b(free shipping|free delivery|low prices|start your free|no order minimum)\b/.test(text);
+  return shop && promo;
+}
+
+const PROMO_BRAND = /\b(?:shop|visit|welcome to|join)\s+(?:www\.)?([a-z0-9-]+)\.(?:com|co|io|ai|org)\b/i;
+
+function brandKey(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function siteHost(pageUrl?: string | null) {
+  try {
+    return new URL(pageUrl || "").hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function hostKey(pageUrl?: string | null) {
+  return siteHost(pageUrl).split(".")[0] || "";
+}
+
+/** A homepage blurb that sells a different company's storefront. */
+export function isForeignCompanyBlurb(description?: string | null, companyName?: string | null, pageUrl?: string | null) {
+  const brand = brandKey((description || "").match(PROMO_BRAND)?.[1] || "");
+  if (!brand) return false;
+  const name = brandKey(companyName || "");
+  const host = brandKey(hostKey(pageUrl));
+  if (name && (name.includes(brand) || brand.includes(name))) return false;
+  if (host && (host === brand || host.includes(brand) || brand.includes(host))) return false;
+  return true;
+}
+
+/** The fetched page landed on a different site than the company URL. */
+export function landedOnAnotherHost(requestedUrl?: string | null, landedUrl?: string | null) {
+  const requested = siteHost(requestedUrl);
+  const landed = siteHost(landedUrl);
+  if (!requested || !landed) return false;
+  return requested !== landed && !requested.endsWith(`.${landed}`) && !landed.endsWith(`.${requested}`);
+}
+
+/** "Shop walmart.com" copied from a different site than the one we fetched. */
+export function blurbConflictsWithHost(description?: string | null, pageUrl?: string | null) {
+  return isForeignCompanyBlurb(description, "", pageUrl) || isStorefrontPromo(description);
+}
 
 export const publicCompanyHost = (value?: string | null) => {
   const host = companyHost(value);

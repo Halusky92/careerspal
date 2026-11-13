@@ -17,7 +17,7 @@ async function fetchCompaniesWithLiveRoles(): Promise<BoardCompany[]> {
     supabaseAdmin
       .from("jobs")
       .select(
-        "company_id,title,category,description,timestamp,location,remote_policy,companies(id,name,slug,logo_url,website,description,location,verified)",
+        "company_id,title,category,description,timestamp,published_at,created_at,location,remote_policy,companies(id,name,slug,logo_url,website,description,location,verified)",
       )
       .eq("status", "published")
       .not("company_id", "is", null)
@@ -29,7 +29,7 @@ async function fetchCompaniesWithLiveRoles(): Promise<BoardCompany[]> {
 
   (data as any[] | null || []).forEach((row) => {
     if (!isOnNicheJob({ title: row?.title, category: row?.category, description: row?.description })) return;
-    if (!isLiveBoardJob({ timestamp: row?.timestamp })) return;
+    if (!isLiveBoardJob(row)) return;
     const c = row?.companies;
     const id = (c?.id || row?.company_id || "").toString();
     const name = (c?.name || "").toString().trim();

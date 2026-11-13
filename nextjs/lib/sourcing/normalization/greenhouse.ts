@@ -1,6 +1,7 @@
 import { stripHtmlToText } from "./text";
 import { detectAndParseSalaryForGreenhouse, type ParsedSalary } from "./salary";
 import { inferWorkMode } from "../../workMode";
+import { atsEmploymentLabel } from "./atsEmployment";
 
 type GreenhouseJobDetail = {
   id?: number;
@@ -91,6 +92,27 @@ function extractTeamText(payload: GreenhouseJobDetail): { teamText: string | nul
   return { teamText, sources: Array.from(new Set(sources)) };
 }
 
+function greenhouseEmployment(payload: GreenhouseJobDetail): string | null {
+  const found: string[] = [];
+  const meta = payload.metadata;
+  if (Array.isArray(meta)) {
+    for (const item of meta) {
+      const name = String((item as { name?: string })?.name || "");
+      const value = (item as { value?: unknown })?.value;
+      if (/employ|commitment/i.test(name) && value != null) found.push(String(value));
+    }
+  } else if (meta && typeof meta === "object") {
+    for (const [key, value] of Object.entries(meta)) {
+      if (/employ|commitment/i.test(key) && value != null) found.push(String(value));
+    }
+  }
+  for (const value of found) {
+    const label = atsEmploymentLabel(value);
+    if (label) return label;
+  }
+  return null;
+}
+
 export function normalizeGreenhouseRawPayload(args: {
   sourceUrl: string;
   externalJobId: string;
@@ -139,6 +161,7 @@ export function normalizeGreenhouseRawPayload(args: {
       team_text: team.teamText,
       team_text_sources: team.sources,
       salary: salary.salary_detected_from,
+      ...(greenhouseEmployment(payload) ? { employment_type: greenhouseEmployment(payload) } : {}),
     },
   };
 }

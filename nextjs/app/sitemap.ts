@@ -55,12 +55,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { data: jobs } = await applyLiveBoardFilter(
       supabaseAdmin
         .from("jobs")
-        .select("id,title,category,description,timestamp,updated_at,companies(name,slug)")
+        .select("id,title,category,description,timestamp,published_at,created_at,updated_at,companies(name,slug)")
         .eq("status", "published"),
     );
 
     const live = (jobs || []).filter(
-      (job) => isLiveBoardJob({ timestamp: job.timestamp }) && isOnNicheJob(job),
+      (job) => isLiveBoardJob(job) && isOnNicheJob(job),
     );
 
     for (const job of live) {

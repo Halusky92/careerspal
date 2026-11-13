@@ -5,12 +5,10 @@ import { getCanonicalSiteUrl } from "../../lib/alerts/siteUrl";
 import { Job } from "../../types";
 import { createJobSlug } from "../../lib/jobs";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
-import { mapSupabaseJob, SupabaseJobRow } from "../../lib/supabaseJobs";
-import { isOnNicheJob } from "../../lib/nicheScope";
-import { applyLiveBoardFilter } from "../../lib/liveBoard";
 import { formatJobSalary } from "../../lib/formatSalary";
 import { ApplyClickLink } from "../../components/JobAnalytics";
-import { applyBoardVisibility, boardCompanyCount, GUEST_VISIBLE_JOBS, lockedBoardPreviews } from "../../lib/boardAccess";
+import { applyBoardVisibility, boardAccessHeadline, boardCompanyCount, GUEST_VISIBLE_JOBS, lockedBoardPreviews } from "../../lib/boardAccess";
+import { loadPublishedBoardJobs } from "../../lib/publicJobBoard";
 
 export const dynamic = "force-dynamic";
 
@@ -36,28 +34,15 @@ const getParam = (value: string | string[] | undefined) => (typeof value === "st
 
 async function fetchPublishedJobs(): Promise<{ jobs: Job[]; total: number }> {
   if (!supabaseAdmin) return { jobs: [], total: 0 };
-
-  const query = applyLiveBoardFilter(
-    supabaseAdmin
-      .from("jobs")
-      .select(
-        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
-        { count: "exact" },
-      )
-      .eq("status", "published"),
-  )
-    .order("timestamp", { ascending: false })
-    .range(0, 499);
-
-  const { data, count } = await query;
-  const mapped = (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob).filter((job) => isOnNicheJob(job));
-  return { jobs: mapped, total: mapped.length };
+  const jobs = await loadPublishedBoardJobs(supabaseAdmin);
+  return { jobs, total: jobs.length };
 }
 
-function StaticJobsList({ jobs, total }: { jobs: Job[]; total: number }) {
+function StaticJobsList({ jobs, total, companies }: { jobs: Job[]; total: number; companies: number }) {
   const preview = jobs.slice(0, 4);
+  const headline = boardAccessHeadline("guest", total, companies);
   return (
-    <section className="cp-static-jobs hidden">
+    <section className="cp-static-jobs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-3">
           <div className="text-xs font-black uppercase tracking-widest text-slate-500">Jobs</div>
@@ -134,9 +119,7 @@ function StaticJobsList({ jobs, total }: { jobs: Job[]; total: number }) {
 
         {total > preview.length && (
           <div className="mt-4">
-            <div className="text-xs font-bold text-slate-500">
-              Showing {preview.length} of {total}. Full board loads with JavaScript enabled.
-            </div>
+            <div className="text-xs font-bold text-slate-500">{headline}</div>
           </div>
         )}
       </div>
@@ -156,7 +139,9 @@ export default async function JobsPage({ searchParams }: PageProps) {
 
   return (
     <div className="pt-3">
-      <StaticJobsList jobs={initialJobs} total={total} />
+      <noscript>
+        <StaticJobsList jobs={initialJobs} total={total} companies={boardCompanyCount(ranked)} />
+      </noscript>
       <JobsClient
         initialJobs={initialJobs}
         initialLocked={initialLocked}

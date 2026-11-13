@@ -76,6 +76,70 @@ test("apply URL that already belongs to another job is a duplicate", () => {
   assert.equal(applyUrlWouldDuplicate("https://jobs.lever.co/acme/2", "https://jobs.ashbyhq.com/acme/1", false), false);
 });
 
+test("a refresh keeps a required office week as Hybrid and does not revert it to Remote", () => {
+  const patch = buildSourcedJobContentPatch(
+    {
+      ...base,
+      title: "Principal Business Operations Manager",
+      remote_policy: "Remote",
+      location_text: "United States (Remote)",
+      description_clean: `${desc} Employees are expected to work from an office hub at least two days per week.`,
+    },
+    { applyUrl: base.apply_url || "", lastSeenAt: "2026-11-13T12:00:00.000Z" },
+  );
+  assert.equal(patch.remote_policy, "Hybrid");
+  assert.equal("status" in patch, false);
+});
+
+test("a refresh keeps Ashby FullTime when the body only says contracting, and does not blank the type", () => {
+  const patch = buildSourcedJobContentPatch(
+    {
+      ...base,
+      title: "Senior Manager, Global Deal Desk",
+      description_clean: `${desc} True-up provisions are reviewed in the quoting and contracting process.`,
+      provenance: { employment_type: "Full-time" },
+    },
+    { applyUrl: base.apply_url || "", lastSeenAt: "2026-11-13T12:00:00.000Z" },
+  );
+  assert.equal(patch.type, "Full-time");
+  assert.equal(
+    sourcedPublishBlockers(
+      {
+        ...base,
+        title: "Senior Manager, Global Deal Desk",
+        description_clean: `${desc} True-up provisions are reviewed in the quoting and contracting process.`,
+        provenance: { employment_type: "Full-time" },
+      },
+      90,
+      "auto_publish_candidate",
+    ).includes("employment_type_conflict"),
+    false,
+  );
+});
+
+test("a refresh does not clear employment type when the posting never states one", () => {
+  const patch = buildSourcedJobContentPatch(base, {
+    applyUrl: base.apply_url || "",
+    lastSeenAt: "2026-11-13T12:00:00.000Z",
+  });
+  assert.equal("type" in patch, false);
+});
+
+test("ATS full-time against an explicit contract term is held, not rewritten", () => {
+  const candidate = {
+    ...base,
+    title: "Operations Manager",
+    description_clean: `${desc} This is a 6-month contract.`,
+    provenance: { employment_type: "Full-time" },
+  };
+  assert.equal(sourcedPublishBlockers(candidate, 90, "auto_publish_candidate").includes("employment_type_conflict"), true);
+  const patch = buildSourcedJobContentPatch(candidate, {
+    applyUrl: base.apply_url || "",
+    lastSeenAt: "2026-11-13T12:00:00.000Z",
+  });
+  assert.equal("type" in patch, false);
+});
+
 test("content patch updates salary, location, remote and apply without touching publish dates", () => {
   const patch = buildSourcedJobContentPatch(
     {

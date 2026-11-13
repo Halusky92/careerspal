@@ -46,6 +46,8 @@ export interface Job {
   benefits?: string[];
   matchScore?: number; // Simulované AI skóre
   timestamp?: number;
+  publishedAt?: string;
+  createdAt?: string;
   status?: string;
   views?: number;
   matches?: number;

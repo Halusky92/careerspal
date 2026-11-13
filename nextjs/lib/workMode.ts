@@ -11,7 +11,7 @@ const officeSchedule =
   /\b(mondays?,\s*tuesdays?\s*and\s*thursdays?|anchor days|in-office days|office days|days in (the |our )?office)\b/i;
 const basedInOffice = /\bbased in (our |the )?[a-z0-9 .,'-]{2,40} office\b/i;
 const requiredHybrid =
-  /\bhybrid (role|schedule|position)\b|\bpartially remote\b|\b3 days (in|on site|onsite)\b|\bin office [1-5]\b|\bin-office\b|\b\d+\s+days\s+(a|per)\s+week\b|\bminimum of \d+\s+days\b/i;
+  /\bhybrid (role|schedule|position)\b|\bpartially remote\b|\b3 days (in|on site|onsite)\b|\bin office [1-5]\b|\bin-office\b|\b(?:one|two|three|four|five|\d+)\s+days\s+(?:a|per)\s+week\b|\bminimum of \d+\s+days\b/i;
 const onsiteCue = /\bonsite\b|\bon-site\b|\bin-office\b|this role is based in\b/i;
 const remoteCue = /\bfully remote\b|\bremote-first\b|\bremote \(global\)\b|\bwork from home\b|\bwfh\b/i;
 

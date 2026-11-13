@@ -1,4 +1,5 @@
 import { Job, PlanType } from "../types";
+import { isBoilerplateDescription, isForeignCompanyBlurb } from "./companyBoard";
 
 export type SupabaseCompanyRow = {
   name?: string | null;
@@ -19,6 +20,8 @@ export type SupabaseJobRow = {
   salary: string | null;
   posted_at_text: string | null;
   timestamp: number | null;
+  published_at?: string | null;
+  created_at?: string | null;
   category: string | null;
   apply_url: string | null;
   company_description: string | null;
@@ -91,10 +94,19 @@ export const mapSupabaseJob = (row: SupabaseJobRow): Job => ({
       : undefined,
   remotePolicy: row.remote_policy || "",
   applyUrl: row.apply_url || "#",
-  companyDescription: row.company_description || row.companies?.description || undefined,
+  companyDescription: (() => {
+    const own = (row.company_description || "").trim();
+    const fromCompany = (row.companies?.description || "").trim();
+    const picked = own || fromCompany;
+    const name = row.companies?.name || "";
+    if (!picked || isBoilerplateDescription(picked) || isForeignCompanyBlurb(picked, name)) return undefined;
+    return picked;
+  })(),
   benefits: toStringArray(row.benefits),
   matchScore: row.match_score || undefined,
   timestamp: row.timestamp || undefined,
+  publishedAt: row.published_at || undefined,
+  createdAt: row.created_at || undefined,
   status: row.status || "draft",
   views: row.views || 0,
   matches: row.matches || 0,

@@ -107,7 +107,7 @@ async function fetchPublishedJobBySlug(slug: string): Promise<Job | null> {
     const { data, error } = await supabaseAdmin
       .from("jobs")
       .select(
-        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description,verified)",
+        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description,verified)",
       )
       .eq("id", jobId)
       .single();
@@ -219,7 +219,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const imageUrl = job.logo ? (job.logo.startsWith("http") ? job.logo : `${baseUrl}${job.logo}`) : undefined;
 
-  const live = isLiveBoardJob({ timestamp: job.timestamp });
+  const live = isLiveBoardJob(job);
   return {
     title,
     description,

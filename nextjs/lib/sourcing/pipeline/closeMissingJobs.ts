@@ -5,6 +5,9 @@ import { assessBoardFetchHealth, boardHealthReason, planBoardClosures, type Boar
 import { isSourcedJobOrigin } from "../origin";
 import { applyUrlLooksSourcedAts, probeApplyUrl } from "../../jobs/applyLinkHealth";
 
+/** Statuses a nightly ATS refresh may publish again. pending_review and rejected stay put. */
+export const SOURCED_REOPEN_STATUSES = ["closed", "archived", "paused"] as const;
+
 type AdminSb = SupabaseClient<any, "public", any>;
 
 type BoardJobRow = {
@@ -208,7 +211,7 @@ export async function closeJobsMissingFromBoard(sb: AdminSb, ingest: IngestClose
           .from("jobs")
           .update({ status: "pending_review", unpublished_at: now, last_seen_at: now })
           .eq("id", action.jobId)
-          .in("status", ["closed", "archived", "paused"]);
+          .in("status", [...SOURCED_REOPEN_STATUSES]);
         await sb
           .from("sourcing_sourced_job_candidates")
           .update({
@@ -226,7 +229,7 @@ export async function closeJobsMissingFromBoard(sb: AdminSb, ingest: IngestClose
         .from("jobs")
         .update({ status: "published", unpublished_at: null, last_seen_at: now })
         .eq("id", action.jobId)
-        .in("status", ["closed", "archived", "paused"]);
+        .in("status", [...SOURCED_REOPEN_STATUSES]);
       await sb
         .from("sourcing_sourced_job_candidates")
         .update({

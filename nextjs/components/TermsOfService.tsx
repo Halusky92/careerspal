@@ -47,8 +47,8 @@ const TermsOfService: React.FC = () => {
           <h2 className="text-base font-semibold text-slate-900">5. Fees and billing</h2>
           <p className="mt-2">
             The first Standard listing per employer is free (Start pack). After that: Standard $79 / 30 days,
-            Featured Pro $149, Elite Managed $249 (USD). Paid listings go through Stripe. The Stripe receipt or invoice
-            is the billing document.
+            Featured Pro $149, Elite Managed $249 (USD). Paid listings go through Stripe. Stripe emails the receipt
+            for that payment.
           </p>
           <p className="mt-2">
             Paused, closed, or archived listings can be renewed at the Standard price within 90 days. After that they
