@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import JobsClient from "./JobsClient";
-import { getCanonicalSiteUrl } from "../../lib/alerts/siteUrl";
-import { Job } from "../../types";
-import { createJobSlug } from "../../lib/jobs";
-import { supabaseAdmin } from "../../lib/supabaseAdmin";
-import { formatJobSalary } from "../../lib/formatSalary";
-import { ApplyClickLink } from "../../components/JobAnalytics";
-import { applyBoardVisibility, boardAccessHeadline, boardCompanyCount, GUEST_VISIBLE_JOBS, lockedBoardPreviews } from "../../lib/boardAccess";
-import { loadPublishedBoardJobs } from "../../lib/publicJobBoard";
+import JobsClient from "../JobsClient";
+import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
+import { Job } from "../../../types";
+import { createJobSlug } from "../../../lib/jobs";
+import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { formatJobSalary } from "../../../lib/formatSalary";
+import { ApplyClickLink } from "../../../components/JobAnalytics";
+import { applyBoardVisibility, boardAccessHeadline, boardCompanyCount, GUEST_VISIBLE_JOBS, lockedBoardPreviews } from "../../../lib/boardAccess";
+import { loadPublishedBoardJobs } from "../../../lib/publicJobBoard";
 
 export const dynamic = "force-dynamic";
 
