@@ -22,6 +22,7 @@ import {
   stripeKeyForEventMode,
   REGISTERED_VISIBLE_JOBS,
   resolveBoardTier,
+  tierForPublicList,
 } from "./boardAccess";
 
 test("guest sees 4, registered 14, paid unlimited", () => {
@@ -216,4 +217,30 @@ test("live published count ignores one page and hidden statuses", () => {
   );
   assert.equal(totalFromCountPages([{ fetched: 200, counted: 200 }], 200), null);
   assert.equal(homeSeeAllLabel(true, totalFromCountPages([{ fetched: 200, counted: 200 }], 200)), "See all jobs");
+});
+
+test("public lists stay capped when the board paywall switch is off", async () => {
+  const future = new Date(Date.now() + 86_400_000).toISOString();
+  const past = new Date(Date.now() - 86_400_000).toISOString();
+  assert.equal(tierForPublicList({ signedIn: false }), "guest");
+  assert.equal(tierForPublicList({ signedIn: true, role: "candidate" }), "registered");
+  assert.equal(tierForPublicList({ signedIn: true, role: "candidate", premiumUntil: future }), "paid");
+  assert.equal(tierForPublicList({ signedIn: true, role: "candidate", premiumUntil: past }), "registered");
+  assert.equal(
+    tierForPublicList({ signedIn: true, role: "candidate", premiumUntil: past, subscriptionStatus: "canceled" }),
+    "registered",
+  );
+  assert.equal(tierForPublicList({ signedIn: true, role: "admin", premiumUntil: past }), "paid");
+
+  const previous = process.env.BOARD_PREMIUM_CAPS;
+  const request = new Request("http://localhost/api/companies/stripe");
+  const { boardTierFromRequest, publicListTierFromRequest } = await import("./boardAccessServer");
+  delete process.env.BOARD_PREMIUM_CAPS;
+  assert.equal(await boardTierFromRequest(request), "paid");
+  assert.equal(await publicListTierFromRequest(request), "guest");
+  process.env.BOARD_PREMIUM_CAPS = "1";
+  assert.equal(await boardTierFromRequest(request), "guest");
+  assert.equal(await publicListTierFromRequest(request), "guest");
+  if (previous === undefined) delete process.env.BOARD_PREMIUM_CAPS;
+  else process.env.BOARD_PREMIUM_CAPS = previous;
 });

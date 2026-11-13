@@ -4,7 +4,7 @@ import { supabaseAdmin } from "../../../../../lib/supabaseAdmin";
 import { mapSupabaseJob, type SupabaseJobRow } from "../../../../../lib/supabaseJobs";
 import { isOnNicheJob } from "../../../../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../../../../lib/liveBoard";
-import { boardTierFromRequest } from "../../../../../lib/boardAccessServer";
+import { publicListTierFromRequest } from "../../../../../lib/boardAccessServer";
 import { buildPublicList, listCacheHeaders, PUBLIC_CATEGORY_JOB_LIMIT } from "../../../../../lib/publicListPreview";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +35,6 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   const jobs = ((data as unknown as SupabaseJobRow[] | null) || [])
     .map(mapSupabaseJob)
     .filter((job) => isOnNicheJob(job) && jobMatchesHub(job, hub));
-  const tier = await boardTierFromRequest(request);
+  const tier = await publicListTierFromRequest(request);
   return NextResponse.json(buildPublicList(jobs, tier, PUBLIC_CATEGORY_JOB_LIMIT), { headers: listCacheHeaders() });
 };

@@ -1,13 +1,13 @@
 import { getSupabaseProfile } from "./supabaseServerAuth";
 import { supabaseAdmin } from "./supabaseAdmin";
-import { boardCapsEnabled, resolveBoardTier, type BoardTier } from "./boardAccess";
+import { boardCapsEnabled, tierForPublicList, type BoardTier } from "./boardAccess";
 
-export async function boardTierFromRequest(request: Request): Promise<BoardTier> {
-  if (!boardCapsEnabled()) return "paid";
+async function viewerTierFromRequest(request: Request): Promise<BoardTier> {
   const auth = await getSupabaseProfile(request);
   if (!auth?.profile) return "guest";
-  if (auth.profile.role === "admin") return "paid";
-  if (!supabaseAdmin) return "registered";
+  if (!supabaseAdmin) {
+    return tierForPublicList({ signedIn: true, role: auth.profile.role });
+  }
   const first = await supabaseAdmin
     .from("profiles")
     .select("board_premium_until,stripe_subscription_status")
@@ -24,12 +24,20 @@ export async function boardTierFromRequest(request: Request): Promise<BoardTier>
     : first.data;
   const status = (row as { stripe_subscription_status?: string | null } | null)?.stripe_subscription_status;
   const premiumUntil = (row as { board_premium_until?: string | null } | null)?.board_premium_until;
-  const fromUntil = resolveBoardTier({
+  return tierForPublicList({
     signedIn: true,
     role: auth.profile.role,
     premiumUntil,
+    subscriptionStatus: status,
   });
-  if (fromUntil === "paid") return "paid";
-  if ((status === "active" || status === "trialing") && !premiumUntil) return "paid";
-  return fromUntil;
+}
+
+export async function boardTierFromRequest(request: Request): Promise<BoardTier> {
+  if (!boardCapsEnabled()) return "paid";
+  return viewerTierFromRequest(request);
+}
+
+/** Always checks the session. The board caps switch does not open these lists. */
+export async function publicListTierFromRequest(request: Request): Promise<BoardTier> {
+  return viewerTierFromRequest(request);
 }
