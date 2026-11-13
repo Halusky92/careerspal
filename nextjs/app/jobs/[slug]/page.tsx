@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import CompanyLogo from "../../../components/CompanyLogo";
@@ -21,6 +22,11 @@ import FeaturedBadge from "../../../components/FeaturedBadge";
 import { isPaidFeaturedListing } from "../../../lib/featuredListing";
 import PublicSubscriberNote from "../../../components/PublicSubscriberNote";
 import { getPublicSubscriberCount } from "../../../lib/countAlertSubscribers";
+import {
+  interpretApiFallback,
+  interpretDirectLookup,
+  JobLookupUnavailableError,
+} from "../../../lib/jobs/publicJobLookup";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,7 +38,7 @@ type PageProps = {
 
 const getBaseUrl = () => getCanonicalSiteUrl();
 
-async function fetchPublicJobViaApi(jobId: string): Promise<Job | null> {
+async function fetchPublicJobViaApi(jobId: string): Promise<{ status: number | null; job: Job | null }> {
   try {
     let baseUrl = getBaseUrl();
     try {
@@ -51,11 +57,11 @@ async function fetchPublicJobViaApi(jobId: string): Promise<Job | null> {
       headers: { accept: "application/json" },
       redirect: "follow",
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { status: res.status, job: null };
     const json = (await res.json()) as { job?: Job };
-    return json.job || null;
+    return { status: res.status, job: json.job || null };
   } catch {
-    return null;
+    return { status: null, job: null };
   }
 }
 
@@ -98,30 +104,53 @@ const makeDescription = (job: Job) => {
   return [base, clipped].filter(Boolean).join(" ").trim();
 };
 
-async function fetchPublishedJobBySlug(slug: string): Promise<Job | null> {
+async function fetchPublishedJobBySlug(slug: string): Promise<
+  { outcome: "found"; job: Job } | { outcome: "missing" } | { outcome: "unavailable" }
+> {
   const jobId = getJobIdFromSlug(slug);
-  if (!jobId) return null;
+  let row: Job | null = null;
+  let error: { code?: string | null } | null = null;
 
-  // Primary: direct Supabase query by id, then verify status (match /api/jobs/[id] behavior).
-  if (supabaseAdmin) {
-    const { data, error } = await supabaseAdmin
-      .from("jobs")
-      .select(
-        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description,verified)",
-      )
-      .eq("id", jobId)
-      .single();
-
-    if (data && !error) {
-      const mapped = mapSupabaseJob(data as SupabaseJobRow);
-      if (mapped.status === "published" && isOnNicheJob(mapped)) return mapped;
-      return null;
+  if (jobId && supabaseAdmin) {
+    try {
+      const result = await supabaseAdmin
+        .from("jobs")
+        .select(
+          "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description,verified)",
+        )
+        .eq("id", jobId)
+        .single();
+      error = result.error ? { code: result.error.code } : null;
+      if (result.data && !result.error) row = mapSupabaseJob(result.data as SupabaseJobRow);
+    } catch {
+      error = { code: "FETCH_FAILED" };
     }
   }
 
-  // Fallback: use the already-working public API handler (prevents false "not found").
-  return await fetchPublicJobViaApi(jobId);
+  const direct = interpretDirectLookup({
+    jobId,
+    configured: Boolean(jobId && supabaseAdmin),
+    row,
+    error,
+    isPublic: Boolean(row && row.status === "published" && isOnNicheJob(row)),
+  });
+  if (direct.outcome === "found") return direct;
+  if (direct.outcome === "missing") return { outcome: "missing" };
+  if (!jobId) return { outcome: "missing" };
+
+  const api = await fetchPublicJobViaApi(jobId);
+  const fallback = interpretApiFallback({
+    reason: direct.reason,
+    status: api.status,
+    job: api.job,
+    isPublic: Boolean(api.job && api.job.status === "published" && isOnNicheJob(api.job)),
+  });
+  if (fallback.outcome === "found") return fallback;
+  if (fallback.outcome === "missing") return { outcome: "missing" };
+  return { outcome: "unavailable" };
 }
+
+const loadPublicJob = cache(fetchPublishedJobBySlug);
 
 async function debugResolveJob(slug: string) {
   const jobId = getJobIdFromSlug(slug);
@@ -207,8 +236,11 @@ async function fetchSimilarPublishedJobs(job: Job): Promise<Job[]> {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const job = await fetchPublishedJobBySlug(slug);
-  if (!job) return {};
+  const loaded = await loadPublicJob(slug);
+  if (loaded.outcome !== "found") {
+    return { robots: { index: false, follow: false } };
+  }
+  const job = loaded.job;
 
   const baseUrl = getBaseUrl();
   const canonicalPath = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
@@ -243,7 +275,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function JobDetailPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const job = await fetchPublishedJobBySlug(slug);
+  const loaded = await loadPublicJob(slug);
+  if (loaded.outcome === "unavailable") throw new JobLookupUnavailableError();
+  const job = loaded.outcome === "found" ? loaded.job : null;
   let debug = "";
   let ua = "";
   try {

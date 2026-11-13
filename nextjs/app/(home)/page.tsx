@@ -1,13 +1,13 @@
 import Link from "next/link";
-import HomeClient from "./HomeClient";
-import { Job } from "../types";
-import { createJobSlug } from "../lib/jobs";
-import { supabaseAdmin } from "../lib/supabaseAdmin";
-import { mapSupabaseJob, SupabaseJobRow } from "../lib/supabaseJobs";
-import { isOnNicheJob } from "../lib/nicheScope";
-import { applyLiveBoardFilter } from "../lib/liveBoard";
-import { formatJobSalary } from "../lib/formatSalary";
-import { getPublicSubscriberCount } from "../lib/countAlertSubscribers";
+import HomeClient from "../HomeClient";
+import { Job } from "../../types";
+import { createJobSlug } from "../../lib/jobs";
+import { supabaseAdmin } from "../../lib/supabaseAdmin";
+import { mapSupabaseJob, SupabaseJobRow } from "../../lib/supabaseJobs";
+import { isOnNicheJob } from "../../lib/nicheScope";
+import { applyLiveBoardFilter } from "../../lib/liveBoard";
+import { formatJobSalary } from "../../lib/formatSalary";
+import { getPublicSubscriberCount } from "../../lib/countAlertSubscribers";
 
 export const dynamic = "force-dynamic";
 

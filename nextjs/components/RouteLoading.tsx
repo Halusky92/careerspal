@@ -1,4 +1,4 @@
-const Loading = () => {
+const RouteLoading = () => {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="flex items-center gap-4 text-slate-500 font-bold">
@@ -8,4 +8,4 @@ const Loading = () => {
   );
 };
 
-export default Loading;
+export default RouteLoading;
