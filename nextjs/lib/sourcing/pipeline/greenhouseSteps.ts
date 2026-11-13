@@ -20,6 +20,7 @@ import { publicLogoUrlForWebsite } from "../../companyLogoUrl";
 import { isOnNicheJob } from "../../nicheScope";
 import { probeApplyUrl } from "../../jobs/applyLinkHealth";
 import { formatSalaryForStorage } from "../../formatSalary";
+import { mentionedPostingTools } from "../../postingTools";
 import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
 import { isBoilerplateDescription, isForeignCompanyBlurb } from "../../companyBoard";
 import { inferWorkMode } from "../../workMode";
@@ -714,43 +715,7 @@ export async function autoPublishEligibleCandidates(
     return hub?.dbCategories[0] || "Other";
   };
 
-  const extractTools = (text: string) => {
-    const t = (text || "").toLowerCase();
-    if (!t) return [] as string[];
-    const tools = [
-      "Notion",
-      "Airtable",
-      "Zapier",
-      "Make",
-      "Make.com",
-      "n8n",
-      "Salesforce",
-      "HubSpot",
-      "NetSuite",
-      "Workday",
-      "Slack",
-      "Jira",
-      "Asana",
-      "Linear",
-      "SQL",
-      "Looker",
-      "Tableau",
-      "Google Sheets",
-      "Sheets",
-      "Excel",
-      "Snowflake",
-      "Segment",
-    ];
-    const hits = tools.filter((tool) => {
-      const needle = tool.toLowerCase();
-      if (needle === "make.com") return t.includes("make.com") || t.includes(" make ");
-      if (needle === "sheets") return t.includes("google sheets") || t.includes(" spreadsheets ") || t.includes("sheet");
-      return t.includes(needle);
-    });
-    // Normalize: keep unique + prefer canonical casing.
-    const normalized = hits.map((x) => (x === "Sheets" ? "Google Sheets" : x === "Make.com" ? "Make" : x));
-    return Array.from(new Set(normalized)).slice(0, 12);
-  };
+  const extractTools = (text: string) => mentionedPostingTools(text);
 
   for (const r of rows) {
     if (sliceExpired(args.deadline)) {
