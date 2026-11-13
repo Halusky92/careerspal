@@ -69,6 +69,29 @@ test("optional local hybrid stays Remote", () => {
   );
 });
 
+test("a required office minimum of two days per week is Hybrid", () => {
+  assert.equal(
+    inferWorkMode({
+      remotePolicy: "Remote",
+      location: "United States (Remote)",
+      description:
+        "Employees are expected to be available to work from one of our office hubs at least two days per week, or eight days per month.",
+    }),
+    "Hybrid",
+  );
+});
+
+test("three days each week in the office is Hybrid even when the ATS says Remote", () => {
+  assert.equal(
+    inferWorkMode({
+      remotePolicy: "Remote",
+      location: "Remote - US",
+      description: "This role is remote, but you must be in the office three days a week.",
+    }),
+    "Hybrid",
+  );
+});
+
 test("a fully remote sentence can fill work mode when location is blank", () => {
   assert.equal(
     inferWorkMode({

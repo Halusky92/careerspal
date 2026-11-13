@@ -1,4 +1,5 @@
 import { inferWorkMode } from "../../workMode";
+import { atsEmploymentLabel } from "./atsEmployment";
 import { stripHtmlToText } from "./text";
 import {
   detectAndParseSalaryForGreenhouse,
@@ -96,6 +97,7 @@ export function normalizeAshbyRawPayload(args: {
     provenance: {
       team_text: [job.departmentName, job.teamName].filter(Boolean).join(" / ") || null,
       salary: salary.salary_detected_from,
+      ...(atsEmploymentLabel(job.employmentType) ? { employment_type: atsEmploymentLabel(job.employmentType) } : {}),
     },
   };
 }

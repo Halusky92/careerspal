@@ -58,7 +58,7 @@ function isHttpApply(url?: string | null) {
 
 export function shouldEmitJobPosting(job: Job): boolean {
   if (job.status && job.status !== "published") return false;
-  if (!isLiveBoardJob({ timestamp: job.timestamp })) return false;
+  if (!isLiveBoardJob(job)) return false;
   if (!job.title?.trim() || !job.company?.trim()) return false;
   return isHttpApply(job.applyUrl);
 }

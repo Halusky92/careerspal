@@ -12,6 +12,7 @@ import { getSourcingAutoPublishMinScore, getSourcingAutoPublishSupportedSourceTy
 import { stripHtmlToText } from "../normalization/text";
 import { formatSourcedDescription } from "../normalization/description";
 import { detectEmploymentType } from "../normalization/employmentType";
+import { employmentTypeFromProvenance, employmentTypesConflict } from "../normalization/atsEmployment";
 import { detectNotionSignal } from "../signals/notion";
 import { createCompanySlug } from "../../jobs";
 import { enrichCompanyFromWebsite } from "../../companyEnrichment";
@@ -20,7 +21,7 @@ import { isOnNicheJob } from "../../nicheScope";
 import { probeApplyUrl } from "../../jobs/applyLinkHealth";
 import { formatSalaryForStorage } from "../../formatSalary";
 import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
-import { isBoilerplateDescription } from "../../companyBoard";
+import { isBoilerplateDescription, isForeignCompanyBlurb } from "../../companyBoard";
 import { inferWorkMode } from "../../workMode";
 import { discoveryMarketBlockers } from "./discoveryPublishGate";
 import { isRawAtsSlug } from "../discovery/boardName";
@@ -570,6 +571,7 @@ type AutoPublishCandidateRow = {
   published_job_id: string | null;
   publish_status: string;
   publish_notes: string | null;
+  provenance?: { employment_type?: string | null } | null;
 };
 
 type SourceRowForPublish = {
@@ -607,7 +609,7 @@ export async function autoPublishEligibleCandidates(
   let q = sb
     .from("sourcing_sourced_job_candidates")
     .select(
-      "id,source_id,source_run_id,source_type,source_url,external_job_id,job_url,apply_url,title,company_name,location_text,remote_policy,posted_at,description_clean,salary_text_raw,salary_amount_min,salary_amount_max,salary_currency,salary_period,salary_present,published_job_id,publish_status,publish_notes," +
+      "id,source_id,source_run_id,source_type,source_url,external_job_id,job_url,apply_url,title,company_name,location_text,remote_policy,posted_at,description_clean,salary_text_raw,salary_amount_min,salary_amount_max,salary_currency,salary_period,salary_present,published_job_id,publish_status,publish_notes,provenance," +
         "sourcing_candidate_scores(score_total)," +
         // Disambiguate relationship: sourcing_candidate_dedupes has 2 FKs to candidates (candidate_id + duplicate_of_candidate_id)
         "sourcing_candidate_dedupes!sourcing_candidate_dedupes_candidate_id_fkey(confidence,duplicate_of_job_id)," +
@@ -803,6 +805,14 @@ export async function autoPublishEligibleCandidates(
       ineligibleReasons.push("off_niche_title");
     }
     ineligibleReasons.push(...discoveryMarketBlockers(candidate));
+    const atsType = employmentTypeFromProvenance(candidate.provenance);
+    const textType = detectEmploymentType({
+      title: candidate.title,
+      description: candidate.description_clean,
+      locationText: candidate.location_text,
+      remotePolicy: candidate.remote_policy,
+    }).type;
+    if (employmentTypesConflict(atsType, textType)) ineligibleReasons.push("employment_type_conflict");
 
     const eligible = ineligibleReasons.length === 0;
 
@@ -1024,6 +1034,7 @@ export async function autoPublishEligibleCandidates(
       description: formattedDescription || cleanedDescription,
       locationText: candidate.location_text,
       remotePolicy: candidate.remote_policy,
+      headerText: atsType,
     });
     const notion = detectNotionSignal({ title: candidate.title, description: formattedDescription || cleanedDescription, tools: toolHits });
     const keywords = notion.notion_heavy ? "notion-heavy" : null;
@@ -1061,7 +1072,7 @@ export async function autoPublishEligibleCandidates(
       apply_url: applyUrl,
       company_description: (() => {
         const desc = (companyForJob?.description || "").toString().trim();
-        if (!desc || isBoilerplateDescription(desc)) return null;
+        if (!desc || isBoilerplateDescription(desc) || isForeignCompanyBlurb(desc, candidate.company_name)) return null;
         return desc;
       })(),
       company_website: (() => {

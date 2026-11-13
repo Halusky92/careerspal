@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSourcingAutoPublishMinScore, getSourcingAutoPublishSupportedSourceTypes } from "../config";
 import { formatSourcedDescription } from "../normalization/description";
 import { stripHtmlToText } from "../normalization/text";
+import { employmentTypeFromProvenance, employmentTypesConflict } from "../normalization/atsEmployment";
 import { detectEmploymentType } from "../normalization/employmentType";
 import { formatSalaryForStorage } from "../../formatSalary";
 import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
@@ -36,6 +37,7 @@ export type CandidateRow = {
   publish_status: string | null;
   sourcing_candidate_scores?: { score_total?: number } | null;
   sourcing_candidate_decisions?: { decision?: string; blocking_reason_codes?: string[] } | null;
+  provenance?: unknown;
 };
 
 export function isPaidEmployerJob(row: {
@@ -65,12 +67,23 @@ export function buildSourcedJobContentPatch(
     (candidate.description_raw || candidate.description_clean || "").toString(),
   ).trim();
   const formattedDescription = formatSourcedDescription((candidate.description_raw || candidate.description_clean || "").toString());
-  const emp = detectEmploymentType({
+  const atsType = employmentTypeFromProvenance(candidate.provenance);
+  const fromText = detectEmploymentType({
     title: candidate.title,
     description: formattedDescription || cleanedDescription,
     locationText: candidate.location_text,
     remotePolicy: candidate.remote_policy,
   });
+  const emp = atsType
+    ? detectEmploymentType({
+        title: candidate.title,
+        description: formattedDescription || cleanedDescription,
+        locationText: candidate.location_text,
+        remotePolicy: candidate.remote_policy,
+        headerText: atsType,
+      })
+    : fromText;
+  const employmentConflict = Boolean(atsType && fromText.type && atsType !== fromText.type);
   const salaryText = formatSalaryForStorage(
     (candidate.salary_text_raw || "").trim() ||
       (minAmt || maxAmt
@@ -88,7 +101,7 @@ export function buildSourcedJobContentPatch(
         location: candidate.location_text,
         description: formattedDescription || cleanedDescription,
       }) || candidate.remote_policy || null,
-    type: emp.type || null,
+    ...(emp.type && !employmentConflict ? { type: emp.type } : {}),
     salary: salaryText || null,
     salary_min: minAmt,
     salary_max: maxAmt,
@@ -121,6 +134,16 @@ export function sourcedPublishBlockers(candidate: CandidateRow, scoreTotal: numb
     description: candidate.description_clean,
   });
   if (workMode === "Onsite") reasons.push("onsite_only");
+  if (employmentTypeFromProvenance(candidate.provenance)) {
+    const atsType = employmentTypeFromProvenance(candidate.provenance);
+    const fromText = detectEmploymentType({
+      title: candidate.title,
+      description: candidate.description_clean,
+      locationText: candidate.location_text,
+      remotePolicy: candidate.remote_policy,
+    });
+    if (employmentTypesConflict(atsType, fromText.type)) reasons.push("employment_type_conflict");
+  }
   if (
     !isOnNicheJob({
       title: candidate.title,
@@ -145,10 +168,17 @@ export function omitMissingJobColumns(patch: Record<string, unknown>, message: s
   return removed ? next : null;
 }
 
-async function patchJob(sb: AdminSb, jobId: string, patch: Record<string, unknown>) {
+/** Admin review is final for the nightly refresh. Only a live published row can be revised. */
+export function nightlyRefreshLeavesAdminDecision(status?: string | null) {
+  return status === "rejected" || status === "pending_review";
+}
+
+async function patchJob(sb: AdminSb, jobId: string, patch: Record<string, unknown>, onlyStatus?: string) {
   let payload = { ...patch };
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const result = await sb.from("jobs").update(payload).eq("id", jobId);
+    let query = sb.from("jobs").update(payload).eq("id", jobId);
+    if (onlyStatus) query = query.eq("status", onlyStatus);
+    const result = await query;
     if (!result.error) return;
     const next = omitMissingJobColumns(payload, result.error.message || "");
     if (!next) throw new Error(result.error.message || "job_patch_failed");
@@ -192,7 +222,7 @@ export async function syncPublishedSourcedJobs(
     .select(
       "id,source_id,source_type,payload_hash,published_job_id,apply_url,title,location_text,remote_policy,posted_at,description_clean,description_raw,salary_text_raw,salary_amount_min,salary_amount_max,salary_currency,salary_period,salary_present,publish_status," +
         "sourcing_candidate_scores(score_total)," +
-        "sourcing_candidate_decisions(decision,blocking_reason_codes)",
+        "sourcing_candidate_decisions(decision,blocking_reason_codes),provenance",
     )
     .not("published_job_id", "is", null)
     .eq("publish_status", "auto_published")
@@ -232,9 +262,10 @@ export async function syncPublishedSourcedJobs(
       applyUrlLooksSourcedAts(jobRow.apply_url) ||
       applyUrlLooksSourcedAts(candidate.apply_url);
     if (!atsShape) continue;
+    if (nightlyRefreshLeavesAdminDecision(jobRow.status)) continue;
 
     if (jobRow.content_hash && candidate.payload_hash && jobRow.content_hash === candidate.payload_hash) {
-      await patchJob(sb, jobRow.id, { last_seen_at: now });
+      await patchJob(sb, jobRow.id, { last_seen_at: now }, "published");
       await sb.from("sourcing_sourced_job_candidates").update({ last_seen_at: now }).eq("id", candidate.id);
       unchanged += 1;
       continue;
@@ -259,12 +290,17 @@ export async function syncPublishedSourcedJobs(
     }
 
     if (blockers.length > 0) {
-      await patchJob(sb, jobRow.id, {
-        status: "pending_review",
-        unpublished_at: now,
-        content_hash: candidate.payload_hash,
-        last_seen_at: now,
-      });
+      await patchJob(
+        sb,
+        jobRow.id,
+        {
+          status: "pending_review",
+          unpublished_at: now,
+          content_hash: candidate.payload_hash,
+          last_seen_at: now,
+        },
+        "published",
+      );
       await sb
         .from("sourcing_sourced_job_candidates")
         .update({
@@ -277,7 +313,7 @@ export async function syncPublishedSourcedJobs(
       continue;
     }
 
-    await patchJob(sb, jobRow.id, buildSourcedJobContentPatch(candidate, { applyUrl, lastSeenAt: now }));
+    await patchJob(sb, jobRow.id, buildSourcedJobContentPatch(candidate, { applyUrl, lastSeenAt: now }), "published");
     await sb
       .from("sourcing_sourced_job_candidates")
       .update({

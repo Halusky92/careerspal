@@ -1,6 +1,11 @@
 import Link from "next/link";
-import { formatSalaryDisplay } from "../lib/formatSalary";
 import type { SalaryBucket } from "../lib/salaryBoardSummary";
+
+function formatYearly(amount: number) {
+  const rounded = Math.round(amount / 1000) * 1000;
+  if (rounded >= 10_000) return `$${Math.round(rounded / 1000)}k a year`;
+  return `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(rounded)} a year`;
+}
 
 export default function SalaryInsights({ buckets }: { buckets: SalaryBucket[] }) {
   return (
@@ -8,7 +13,7 @@ export default function SalaryInsights({ buckets }: { buckets: SalaryBucket[] })
       <div className="text-center mb-6">
         <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">Ranges from live listings</h1>
         <p className="mt-4 text-slate-700 font-medium max-w-2xl mx-auto">
-          Parsed from roles currently on the board. A snapshot, not a market forecast.
+          Parsed from roles currently on the board. A small category can be three listings. This is not a US labor-market benchmark.
         </p>
       </div>
 
@@ -33,11 +38,11 @@ export default function SalaryInsights({ buckets }: { buckets: SalaryBucket[] })
                   <p className="text-sm text-slate-500 font-medium mt-1">{bucket.count} live listings with a parsed salary</p>
                 </div>
                 <div className="text-2xl font-black text-slate-900">
-                  {formatSalaryDisplay(`USD ${bucket.min}-${bucket.max} year`)}
+                  {formatYearly(bucket.min).replace(" a year", "")}–{formatYearly(bucket.max)}
                 </div>
               </div>
               <p className="mt-3 text-sm text-slate-600 font-medium">
-                Midpoint around {formatSalaryDisplay(`USD ${bucket.median} year`)}
+                Midpoint {formatYearly(bucket.median)}
               </p>
             </div>
           ))}

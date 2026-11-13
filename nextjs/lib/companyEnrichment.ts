@@ -1,3 +1,4 @@
+import { blurbConflictsWithHost, isBoilerplateDescription, landedOnAnotherHost } from "./companyBoard";
 import { matchDenylistHost } from "./sourcing/denylist";
 import { normalizeHost, normalizeUrlForRegistry } from "./sourcing/domain";
 import { chooseDisplayedLogo } from "./companyLogoUrl";
@@ -138,12 +139,17 @@ export async function enrichCompanyFromWebsite(args: {
   if (!reader) {
     const html = await res.text();
     const base = (res.url || norm.normalizedUrl).toString();
+    if (landedOnAnotherHost(norm.normalizedUrl, base)) {
+      notes.push("redirected_off_host");
+    }
+    const offHost = notes.includes("redirected_off_host");
     const desc =
       extractMeta(html, "og:description") || extractMeta(html, "twitter:description") || extractMeta(html, "description");
     const img = extractMeta(html, "og:logo");
+    const safeDesc = !offHost && desc && !isBoilerplateDescription(desc) && !blurbConflictsWithHost(desc, base) ? desc.slice(0, 280) : null;
     return {
       website: base,
-      description: desc ? desc.slice(0, 280) : null,
+      description: safeDesc,
       logo_url: chooseDisplayedLogo([absolutizeUrl(base, img), absolutizeUrl(base, "/favicon.ico")], base),
       notes,
     };
@@ -186,13 +192,23 @@ export async function enrichCompanyFromWebsite(args: {
     null;
   const website = jsonld.website ? jsonld.website : base;
   const logoUrl = chooseDisplayedLogo([absolutizeUrl(base, icon)], website);
+  const offHost = landedOnAnotherHost(norm.normalizedUrl, base) || landedOnAnotherHost(norm.normalizedUrl, website);
+  if (offHost) notes.push("redirected_off_host");
 
-  if (!description) notes.push("no_description_meta");
+  const rawDescription = description || jsonld.description || "";
+  const safeDescription =
+    !offHost &&
+    rawDescription &&
+    !isBoilerplateDescription(rawDescription) &&
+    !blurbConflictsWithHost(rawDescription, website)
+      ? String(rawDescription).slice(0, 280)
+      : null;
+  if (!safeDescription) notes.push("no_description_meta");
   if (!logoUrl) notes.push("no_logo_meta");
 
   return {
     website,
-    description: (description || jsonld.description) ? String(description || jsonld.description).slice(0, 280) : null,
+    description: safeDescription,
     logo_url: logoUrl,
     location: jsonld.location || null,
     notes,

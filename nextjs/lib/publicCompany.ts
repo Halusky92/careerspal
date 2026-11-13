@@ -4,7 +4,7 @@ import type { Company, Job } from "../types";
 import { isAtsHostname } from "./companyLogoUrl";
 import { isOnNicheJob } from "./nicheScope";
 import { applyLiveBoardFilter, isLiveBoardJob } from "./liveBoard";
-import { isBoilerplateDescription } from "./companyBoard";
+import { isBoilerplateDescription, isForeignCompanyBlurb } from "./companyBoard";
 
 type CompanyRow = {
   id: string;
@@ -33,7 +33,7 @@ const COMPANY_FIELDS =
   "id,name,slug,website,description,long_description,logo_url,location,employee_count,verified,updated_at";
 
 const JOB_FIELDS =
-  "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description)";
+  "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description)";
 
 function mapCompany(row: CompanyRow): Company & { verified?: boolean } {
   return {
@@ -143,7 +143,14 @@ export async function loadPublicCompanyBySlug(slug: string): Promise<PublicCompa
     .filter((job) => isOnNicheJob(job) && isLiveBoardJob(job));
 
   const outCompany = mapCompany(company as CompanyRow);
-  if (isBoilerplateDescription(outCompany.description) || isBoilerplateDescription(outCompany.longDescription)) {
+  const foreign =
+    isForeignCompanyBlurb(outCompany.description, outCompany.name) ||
+    isForeignCompanyBlurb(outCompany.longDescription, outCompany.name);
+  if (
+    foreign ||
+    isBoilerplateDescription(outCompany.description) ||
+    isBoilerplateDescription(outCompany.longDescription)
+  ) {
     outCompany.description = "";
     outCompany.longDescription = "";
   }
@@ -153,7 +160,7 @@ export async function loadPublicCompanyBySlug(slug: string): Promise<PublicCompa
     outCompany.longDescription = "";
     const stableJob = [...mappedJobs].reverse().find((job) => {
       const jobDesc = (job.companyDescription || "").toString().trim();
-      return jobDesc && !isBoilerplateDescription(jobDesc);
+      return jobDesc && !isBoilerplateDescription(jobDesc) && !isForeignCompanyBlurb(jobDesc, outCompany.name);
     });
     const jobDesc = (stableJob?.companyDescription || "").toString().trim();
     if (jobDesc) {

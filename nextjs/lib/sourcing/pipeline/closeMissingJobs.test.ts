@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { boardCloseProtectsEmployer, closeJobsMissingFromBoard } from "./closeMissingJobs";
+import { boardCloseProtectsEmployer, closeJobsMissingFromBoard, SOURCED_REOPEN_STATUSES } from "./closeMissingJobs";
 
 type UpdateCall = { table: string; payload: Record<string, unknown> };
 
@@ -391,4 +391,39 @@ test("a returned role that fails salary-first stays unpublished", async () => {
   assert.equal(out.reopened, 0);
   assert.equal(out.held, 1);
   assert.equal(updates.find((u) => u.table === "jobs")?.payload.status, "pending_review");
+});
+
+test("a manual close is not reopened when the role returns to the ATS", async () => {
+  const updates: UpdateCall[] = [];
+  const out = await closeJobsMissingFromBoard(
+    fakeSb({
+      previousRuns: [{ id: "prev", fetched_count: 1 }],
+      candidates: [{ ...eligibleCandidate, publish_notes: "Closed by admin." }],
+      jobs: [{ id: "j1", status: "closed", origin: "ashby", plan_price: null, stripe_payment_status: null }],
+      updates,
+    }) as never,
+    { sourceId: "src-1", status: "success", fetchedCount: 1, externalIds: ["101"] },
+  );
+  assert.equal(out.reopened, 0);
+  assert.equal(updates.filter((update) => update.table === "jobs").length, 0);
+
+  const rejectedUpdates: UpdateCall[] = [];
+  const rejected = await closeJobsMissingFromBoard(
+    fakeSb({
+      previousRuns: [{ id: "prev", fetched_count: 1 }],
+      candidates: [eligibleCandidate],
+      jobs: [{ id: "j1", status: "rejected", origin: "ashby", plan_price: null, stripe_payment_status: null }],
+      updates: rejectedUpdates,
+    }) as never,
+    { sourceId: "src-1", status: "success", fetchedCount: 1, externalIds: ["101"] },
+  );
+  assert.equal(rejected.reopened, 0);
+  assert.equal(rejectedUpdates.filter((update) => update.payload.status === "published").length, 0);
+});
+
+test("a nightly refresh cannot publish pending_review or rejected listings again", () => {
+  const allowed = new Set<string>(SOURCED_REOPEN_STATUSES);
+  assert.equal(allowed.has("pending_review"), false);
+  assert.equal(allowed.has("rejected"), false);
+  assert.equal(allowed.has("closed"), true);
 });
