@@ -31,12 +31,7 @@ function looksLikeHtml(text: string): boolean {
   return false;
 }
 
-function normalizeSectionHeadings(out: string): string {
-  let s = (out || "").toString();
-  if (!s.trim()) return "";
-  // Normalize common inline section headings into standalone lines (grounded: only if the phrase exists).
-  // This helps turn "Who we are ... What you'll do: ..." into readable sections.
-  const headings = [
+const SECTION_HEADING_PHRASES = [
     "Who we are",
     "About the role",
     "About the team",
@@ -63,15 +58,40 @@ function normalizeSectionHeadings(out: string): string {
     "Benefits",
     "Compensation",
     "Salary",
-    "What we offer",
-  ];
-  for (const h of headings) {
+  "What we offer",
+];
+
+function normalizeSectionHeadings(out: string): string {
+  let s = (out || "").toString();
+  if (!s.trim()) return "";
+  // A heading is a label on its own line. "The role combines…" and "Benefits for this role…"
+  // stay sentences, because the words after the label continue the sentence.
+  for (const h of SECTION_HEADING_PHRASES) {
     const safe = h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    // Boundary: start, newline, or sentence-ish break. Some descriptions use " — " or "|" inline.
-    const re = new RegExp(`(^|\\n|\\.|\\!|\\?|\\||—|-)\\s*(${safe})\\s*:?\\s+`, "gi");
+    const re = new RegExp(`(^|\\n)\\s*(${safe})\\s*:?(?=\\s*(?:\\n|$))`, "gim");
     s = s.replace(re, (_m, p1, p2) => `${p1}\n\n${p2}:\n`);
   }
   return s.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function repairFalseHeadings(out: string): string {
+  const labels = SECTION_HEADING_PHRASES
+    .map((heading) => heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  return (out || "")
+    .replace(new RegExp(`(^|\\n)(${labels}):\\n(?=[a-z])`, "g"), "$1$2 ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function dropSeparatorLines(out: string): string {
+  return (out || "")
+    .replace(/[ \t]*_{4,}[ \t]*/g, "\n")
+    .split("\n")
+    .filter((line) => !/^[_\-=*~.]{4,}$/.test(line.trim()))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function splitDenseParagraphs(out: string): string {
@@ -226,6 +246,7 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
       .split("\n")
       .map((l) => l.replace(/\s+/g, " ").trim());
     let normalized = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    normalized = dropSeparatorLines(repairFalseHeadings(normalized));
     normalized = normalizeSectionHeadings(normalized);
     normalized = explodeInlineBullets(normalized).replace(/\n{3,}/g, "\n\n").trim();
     normalized = splitDenseParagraphs(normalized).replace(/\n{3,}/g, "\n\n").trim();
@@ -273,6 +294,7 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
   // Collapse too many blank lines.
   out = out.replace(/\n{3,}/g, "\n\n").trim();
 
+  out = dropSeparatorLines(repairFalseHeadings(out));
   out = normalizeSectionHeadings(out);
   out = explodeInlineBullets(out).replace(/\n{3,}/g, "\n\n").trim();
   out = splitDenseParagraphs(out).replace(/\n{3,}/g, "\n\n").trim();
@@ -283,7 +305,7 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
   const lineCount = out.split("\n").filter((l) => l.trim()).length;
   if (out.length > 800 && lineCount <= 2) {
     const flat = stripHtmlToText(raw);
-    out = explodeInlineBullets(normalizeSectionHeadings(flat)).replace(/\n{3,}/g, "\n\n").trim();
+    out = explodeInlineBullets(normalizeSectionHeadings(dropSeparatorLines(repairFalseHeadings(flat)))).replace(/\n{3,}/g, "\n\n").trim();
     out = splitDenseParagraphs(out).replace(/\n{3,}/g, "\n\n").trim();
     out = dedupeRepeatedChunks(out);
   }

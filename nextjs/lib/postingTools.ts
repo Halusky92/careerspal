@@ -52,3 +52,52 @@ export function toggleTool(selected: string[], raw: string) {
 export function toolsToKeywords(selected: string[]) {
   return selected.join(", ");
 }
+
+const MENTION_TOOLS = [
+  "Notion",
+  "Airtable",
+  "Zapier",
+  "Make",
+  "n8n",
+  "Salesforce",
+  "HubSpot",
+  "NetSuite",
+  "Workday",
+  "Slack",
+  "Jira",
+  "Asana",
+  "Linear",
+  "SQL",
+  "Looker",
+  "Tableau",
+  "Google Sheets",
+  "Excel",
+  "Snowflake",
+  "Segment",
+];
+
+function escaped(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function toolIsMentioned(tool: string, text: string): boolean {
+  const name = tool.trim();
+  const body = text || "";
+  if (!name) return false;
+  if (/^make$/i.test(name)) return /\bmake\.com\b/i.test(body);
+  if (/^google sheets$/i.test(name) || /^sheets$/i.test(name)) return /\bgoogle sheets\b|\bspreadsheets\b/i.test(body);
+  return new RegExp(`\\b${escaped(name)}\\b`, "i").test(body);
+}
+
+export function toolChipHolds(tool: string, text: string): boolean {
+  const name = tool.trim();
+  const body = text || "";
+  if (!name) return false;
+  if (toolIsMentioned(name, body)) return true;
+  if (new RegExp(escaped(name), "i").test(body)) return false;
+  return true;
+}
+
+export function mentionedPostingTools(text: string): string[] {
+  return MENTION_TOOLS.filter((tool) => toolIsMentioned(tool, text)).slice(0, 12);
+}
