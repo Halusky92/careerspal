@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
+import { listCacheHeaders, publicSuggestionLabels } from "../../../../lib/publicListPreview";
 
 type SuggestionJobRow = {
   title: string | null;
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json(
-    { suggestions: Array.from(suggestions).sort((a, b) => a.localeCompare(b)).slice(0, limit) },
-    { headers: { "Cache-Control": "s-maxage=60, stale-while-revalidate=300" } },
+    { suggestions: publicSuggestionLabels(Array.from(suggestions).sort((a, b) => a.localeCompare(b)), limit) },
+    { headers: listCacheHeaders() },
   );
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
+import { listCacheHeaders, publicSuggestItem } from "../../../../lib/publicListPreview";
 
 const STATIC_ROLES = [
   "Operations",
@@ -84,7 +85,7 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json(
-    { items: items.slice(0, 8) },
-    { headers: { "Cache-Control": "s-maxage=30, stale-while-revalidate=120" } },
+    { items: items.slice(0, 8).map((item) => publicSuggestItem(item)).filter((item) => item !== null) },
+    { headers: listCacheHeaders() },
   );
 }

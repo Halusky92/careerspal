@@ -7,9 +7,9 @@ import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
 import { isOnNicheJob } from "../../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../../lib/liveBoard";
-import { createJobSlug } from "../../../lib/jobs";
-import { formatJobSalary } from "../../../lib/formatSalary";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
+import { previewListedJobs, PUBLIC_CATEGORY_JOB_LIMIT, toPublicJobCard, withoutHiddenStatuses } from "../../../lib/publicListPreview";
+import PremiumListContinuation from "../../../components/PremiumListContinuation";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -75,7 +75,9 @@ export default async function CategoryPage({ params }: PageProps) {
   const result = await fetchPublishedJobsForHub(slug);
   if (!result) notFound();
 
-  const { hubLabel, intro, jobs, preference } = result;
+  const { hubLabel, intro, jobs: loadedJobs, preference } = result;
+  const jobs = withoutHiddenStatuses(loadedJobs);
+  const previewJobs = previewListedJobs(jobs, PUBLIC_CATEGORY_JOB_LIMIT);
   const hub = getCategoryHub(slug)!;
 
   return (
@@ -148,9 +150,10 @@ export default async function CategoryPage({ params }: PageProps) {
                 </div>
               </div>
             ) : (
+              <>
               <ul className="mt-6 space-y-3">
-                {jobs.map((job) => {
-                  const href = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
+                {previewJobs.map((job) => {
+                  const card = toPublicJobCard(job);
                   const desc = plainText(job.description || "");
                   const snippet = desc.length > 140 ? `${desc.slice(0, 140).trim()}…` : desc;
                   return (
@@ -160,8 +163,8 @@ export default async function CategoryPage({ params }: PageProps) {
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
-                          <Link href={href} className="block text-base sm:text-lg font-black text-slate-900 hover:text-indigo-700">
-                            {job.title}
+                          <Link href={card.href} className="block text-base sm:text-lg font-black text-slate-900 hover:text-indigo-700">
+                            {card.title}
                           </Link>
                           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-bold text-slate-600">
                             <span className="truncate">{job.company}</span>
@@ -185,10 +188,10 @@ export default async function CategoryPage({ params }: PageProps) {
                           {snippet && <div className="mt-3 text-sm text-slate-600 font-medium leading-relaxed">{snippet}</div>}
                         </div>
                         <div className="flex-shrink-0 text-right">
-                          <div className="text-sm font-black text-slate-900 whitespace-nowrap">{formatJobSalary(job)}</div>
+                          <div className="text-sm font-black text-slate-900 whitespace-nowrap">{card.salaryLabel}</div>
                           <div className="mt-2">
                             <Link
-                              href={href}
+                              href={card.href}
                               className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
                             >
                               View role →
@@ -200,6 +203,15 @@ export default async function CategoryPage({ params }: PageProps) {
                   );
                 })}
               </ul>
+              {jobs.length > previewJobs.length ? (
+                <PremiumListContinuation
+                  endpoint={`/api/categories/${encodeURIComponent(hub.slug)}/jobs`}
+                  knownIds={previewJobs.map((job) => job.id).join(",")}
+                  total={jobs.length}
+                  shown={previewJobs.length}
+                />
+              ) : null}
+              </>
             )}
           </div>
         </div>

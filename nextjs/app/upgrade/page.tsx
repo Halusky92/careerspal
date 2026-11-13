@@ -86,7 +86,7 @@ export default function UpgradePage() {
     <div className="max-w-lg mx-auto px-4 py-16">
       <h1 className="text-2xl font-semibold text-slate-900">Premium</h1>
       <p className="mt-2 text-sm text-slate-600">
-        $7.99 per month. Unlimited search results, advanced filters, multiple saved searches, and daily alerts.
+        $7.99 per month. Unlimited board browsing, salary and skills filters, multiple saved searches, and daily alerts. Role pages stay public.
         It renews automatically each month until you cancel. Canceling keeps Premium until the end of the paid period.
         A failed renewal keeps that period while Stripe retries. A refund ends Premium immediately.
       </p>

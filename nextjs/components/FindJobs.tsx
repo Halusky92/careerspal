@@ -1080,15 +1080,15 @@ const FindJobs: React.FC<FindJobsProps> = ({
                 </svg>
                 Premium filters
               </div>
-              <p className="mt-1 text-[12px] leading-5 text-slate-500">More filters are locked here.</p>
+              <p className="mt-1 text-[12px] leading-5 text-slate-500">Salary and skills filters are on Premium.</p>
               <Link
                 href="/upgrade"
                 onClick={() => trackFunnel("premium_click", { from: "locked_filters" })}
                 className="mt-3 flex w-full items-center justify-center rounded-lg bg-indigo-600 px-3 py-2.5 text-center text-sm font-medium leading-5 text-white hover:bg-indigo-700"
               >
                 {typeof boardTotal === "number" && boardTotal > 0
-                  ? `Unlock all filters and all ${boardTotal} live jobs`
-                  : "Unlock all filters and all live jobs"}
+                  ? `Unlock salary and skills filters and all ${boardTotal} live jobs`
+                  : "Unlock salary and skills filters and all live jobs"}
               </Link>
             </div>
           ) : null}
