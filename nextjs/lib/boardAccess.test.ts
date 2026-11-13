@@ -9,6 +9,7 @@ import {
   lockedBoardPreviews,
   boardCompanyCount,
   boardAccessHeadline,
+  homeSeeAllLabel,
   boardPageForTier,
   paginateBoardJobs,
   premiumCheckoutAllowed,
@@ -147,4 +148,8 @@ test("locked previews keep titles and drop everything past the cap", () => {
   assert.equal(boardAccessHeadline("registered", 48, 1), "You're viewing 14 of 48 live jobs from 1 company");
   assert.equal(boardAccessHeadline("paid", 48, 20), "You're viewing all 48 live jobs from 20 companies");
   assert.equal(boardAccessHeadline("guest", 3, 2), "You're viewing all 3 live jobs from 2 companies");
+  assert.equal(homeSeeAllLabel(false, 62), "Browse jobs");
+  assert.equal(homeSeeAllLabel(true, null), "See all jobs");
+  assert.equal(homeSeeAllLabel(true, 1), "See all 1 job");
+  assert.equal(homeSeeAllLabel(true, 62), "See all 62 jobs");
 });

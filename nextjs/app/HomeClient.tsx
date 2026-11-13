@@ -12,14 +12,17 @@ import { useSupabaseAuth } from "../components/Providers";
 import { authFetch } from "../lib/authFetch";
 import PublicSubscriberNote from "../components/PublicSubscriberNote";
 import { trackFunnel } from "../lib/funnelTrack";
+import { homeSeeAllLabel } from "../lib/boardAccess";
 
 const PENDING_SAVE_KEY = "cp_pending_save_job";
 
 export default function HomeClient({
   initialJobs,
+  initialLiveTotal = null,
   subscriberCount = null,
 }: {
   initialJobs: Job[];
+  initialLiveTotal?: number | null;
   subscriberCount?: number | null;
 }) {
   const router = useRouter();
@@ -27,6 +30,9 @@ export default function HomeClient({
   const [jobs, setJobs] = useState<Job[]>(() => (initialJobs || []).slice(0, 4));
   const [jobsLoading, setJobsLoading] = useState(() => (initialJobs?.length ? false : true));
   const [boardAccess, setBoardAccess] = useState<"guest" | "registered" | "paid">("guest");
+  const [liveTotal, setLiveTotal] = useState<number | null>(
+    typeof initialLiveTotal === "number" && Number.isFinite(initialLiveTotal) ? initialLiveTotal : null,
+  );
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -70,9 +76,16 @@ export default function HomeClient({
         const response = accessToken
           ? await authFetch("/api/jobs", {}, accessToken)
           : await fetch("/api/jobs");
-        const data = (await response.json()) as { jobs?: Job[]; access?: "guest" | "registered" | "paid" };
+        const data = (await response.json()) as {
+          jobs?: Job[];
+          total?: number;
+          access?: "guest" | "registered" | "paid";
+        };
         if (Array.isArray(data.jobs)) {
           setJobs(data.jobs);
+        }
+        if (typeof data.total === "number" && Number.isFinite(data.total)) {
+          setLiveTotal(data.total);
         }
         if (data.access) setBoardAccess(data.access);
       } catch {
@@ -196,7 +209,7 @@ export default function HomeClient({
           onClick={() => router.push("/jobs")}
           className="mt-4 w-full h-11 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-800 hover:border-slate-300 hover:bg-slate-50"
         >
-          {hasJobs ? (boardAccess === "paid" ? `See all ${liveJobs.length} jobs` : "See all jobs") : "Browse jobs"}
+          {homeSeeAllLabel(hasJobs, liveTotal)}
         </button>
 
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2">

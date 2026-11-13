@@ -204,6 +204,14 @@ export function boardCompanyCount(jobs: Array<{ company?: string | null }>) {
   return new Set(jobs.map((job) => (job.company || "").trim()).filter(Boolean)).size;
 }
 
+/** Full live-board total. The jobs API returns at most one page, so the homepage must not count that page. */
+export function homeSeeAllLabel(hasJobs: boolean, total: number | null | undefined): string {
+  if (!hasJobs) return "Browse jobs";
+  if (typeof total !== "number" || !Number.isFinite(total) || total < 1) return "See all jobs";
+  const count = Math.floor(total);
+  return count === 1 ? "See all 1 job" : `See all ${count} jobs`;
+}
+
 export function boardAccessHeadline(
   tier: BoardTier | null | undefined,
   total: number,
