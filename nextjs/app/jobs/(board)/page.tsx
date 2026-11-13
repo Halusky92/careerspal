@@ -8,7 +8,7 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { formatJobSalary } from "../../../lib/formatSalary";
 import { ApplyClickLink } from "../../../components/JobAnalytics";
 import { applyBoardVisibility, boardAccessHeadline, boardCompanyCount, GUEST_VISIBLE_JOBS, lockedBoardPreviews } from "../../../lib/boardAccess";
-import { loadPublishedBoardJobs } from "../../../lib/publicJobBoard";
+import { countLivePublishedJobs, loadPublishedBoardJobs } from "../../../lib/publicJobBoard";
 
 export const dynamic = "force-dynamic";
 
@@ -32,13 +32,16 @@ type PageProps = {
 
 const getParam = (value: string | string[] | undefined) => (typeof value === "string" ? value : "");
 
-async function fetchPublishedJobs(): Promise<{ jobs: Job[]; total: number }> {
-  if (!supabaseAdmin) return { jobs: [], total: 0 };
-  const jobs = await loadPublishedBoardJobs(supabaseAdmin);
-  return { jobs, total: jobs.length };
+async function fetchPublishedJobs(): Promise<{ jobs: Job[]; total: number | null }> {
+  if (!supabaseAdmin) return { jobs: [], total: null };
+  const [jobs, total] = await Promise.all([
+    loadPublishedBoardJobs(supabaseAdmin),
+    countLivePublishedJobs(supabaseAdmin),
+  ]);
+  return { jobs, total };
 }
 
-function StaticJobsList({ jobs, total, companies }: { jobs: Job[]; total: number; companies: number }) {
+function StaticJobsList({ jobs, total, companies }: { jobs: Job[]; total: number | null; companies: number }) {
   const preview = jobs.slice(0, 4);
   const headline = boardAccessHeadline("guest", total, companies);
   return (
@@ -47,7 +50,7 @@ function StaticJobsList({ jobs, total, companies }: { jobs: Job[]; total: number
         <div className="flex items-center justify-between gap-3">
           <div className="text-xs font-black uppercase tracking-widest text-slate-500">Jobs</div>
           <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600">
-            {total > 0 ? `${total} roles` : "Roles reviewed daily"}
+            {typeof total === "number" && total > 0 ? `${total} roles` : "Roles reviewed daily"}
           </div>
         </div>
 
@@ -117,7 +120,7 @@ function StaticJobsList({ jobs, total, companies }: { jobs: Job[]; total: number
           })}
         </ul>
 
-        {total > preview.length && (
+        {typeof total === "number" && total > preview.length && (
           <div className="mt-4">
             <div className="text-xs font-bold text-slate-500">{headline}</div>
           </div>

@@ -29,7 +29,7 @@ interface FindJobsProps {
   initialLocationQuery?: string;
   user?: UserSession | null;
   boardAccess?: "guest" | "registered" | "paid";
-  boardTotal?: number;
+  boardTotal?: number | null;
   lockedJobs?: LockedBoardPreview[];
   companyCount?: number;
   canLoadMore?: boolean;
@@ -571,11 +571,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     boardAccess && boardAccess !== "paid" && typeof boardTotal === "number" && searchCap != null
       ? Math.max(0, boardTotal - Math.min(searchCap, boardTotal))
       : 0;
-  const accessHeadline = boardAccessHeadline(
-    boardAccess,
-    typeof boardTotal === "number" ? boardTotal : listedJobs.length,
-    companyCount,
-  );
+  const accessHeadline = boardAccessHeadline(boardAccess, boardTotal, companyCount);
   useEffect(() => {
     if (!showSearchLimitCta) return;
     trackFunnelOnce("search_limit_reached", { access: boardAccess || "none", matching: filteredAndSorted.length });

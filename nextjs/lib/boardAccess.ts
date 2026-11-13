@@ -214,12 +214,13 @@ export function homeSeeAllLabel(hasJobs: boolean, total: number | null | undefin
 
 export function boardAccessHeadline(
   tier: BoardTier | null | undefined,
-  total: number,
+  total: number | null | undefined,
   companies = 0,
 ) {
-  const live = Number.isFinite(total) ? Math.max(0, Math.floor(total)) : 0;
   const companyLabel =
     companies > 0 ? ` from ${companies} ${companies === 1 ? "company" : "companies"}` : "";
+  if (typeof total !== "number" || !Number.isFinite(total)) return `You're viewing live jobs${companyLabel}`;
+  const live = Math.max(0, Math.floor(total));
   const cap = tier ? boardCap(tier) : null;
   if (cap == null || live <= cap) return `You're viewing all ${live} live jobs${companyLabel}`;
   return `You're viewing ${Math.min(cap, live)} of ${live} live jobs${companyLabel}`;
