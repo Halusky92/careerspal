@@ -168,10 +168,17 @@ export function omitMissingJobColumns(patch: Record<string, unknown>, message: s
   return removed ? next : null;
 }
 
-async function patchJob(sb: AdminSb, jobId: string, patch: Record<string, unknown>) {
+/** Admin review is final for the nightly refresh. Only a live published row can be revised. */
+export function nightlyRefreshLeavesAdminDecision(status?: string | null) {
+  return status === "rejected" || status === "pending_review";
+}
+
+async function patchJob(sb: AdminSb, jobId: string, patch: Record<string, unknown>, onlyStatus?: string) {
   let payload = { ...patch };
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const result = await sb.from("jobs").update(payload).eq("id", jobId);
+    let query = sb.from("jobs").update(payload).eq("id", jobId);
+    if (onlyStatus) query = query.eq("status", onlyStatus);
+    const result = await query;
     if (!result.error) return;
     const next = omitMissingJobColumns(payload, result.error.message || "");
     if (!next) throw new Error(result.error.message || "job_patch_failed");
@@ -255,9 +262,10 @@ export async function syncPublishedSourcedJobs(
       applyUrlLooksSourcedAts(jobRow.apply_url) ||
       applyUrlLooksSourcedAts(candidate.apply_url);
     if (!atsShape) continue;
+    if (nightlyRefreshLeavesAdminDecision(jobRow.status)) continue;
 
     if (jobRow.content_hash && candidate.payload_hash && jobRow.content_hash === candidate.payload_hash) {
-      await patchJob(sb, jobRow.id, { last_seen_at: now });
+      await patchJob(sb, jobRow.id, { last_seen_at: now }, "published");
       await sb.from("sourcing_sourced_job_candidates").update({ last_seen_at: now }).eq("id", candidate.id);
       unchanged += 1;
       continue;
@@ -282,12 +290,17 @@ export async function syncPublishedSourcedJobs(
     }
 
     if (blockers.length > 0) {
-      await patchJob(sb, jobRow.id, {
-        status: "pending_review",
-        unpublished_at: now,
-        content_hash: candidate.payload_hash,
-        last_seen_at: now,
-      });
+      await patchJob(
+        sb,
+        jobRow.id,
+        {
+          status: "pending_review",
+          unpublished_at: now,
+          content_hash: candidate.payload_hash,
+          last_seen_at: now,
+        },
+        "published",
+      );
       await sb
         .from("sourcing_sourced_job_candidates")
         .update({
@@ -300,7 +313,7 @@ export async function syncPublishedSourcedJobs(
       continue;
     }
 
-    await patchJob(sb, jobRow.id, buildSourcedJobContentPatch(candidate, { applyUrl, lastSeenAt: now }));
+    await patchJob(sb, jobRow.id, buildSourcedJobContentPatch(candidate, { applyUrl, lastSeenAt: now }), "published");
     await sb
       .from("sourcing_sourced_job_candidates")
       .update({

@@ -4,8 +4,10 @@ import {
   applyUrlWouldDuplicate,
   buildSourcedJobContentPatch,
   isPaidEmployerJob,
+  nightlyRefreshLeavesAdminDecision,
   omitMissingJobColumns,
   sourcedPublishBlockers,
+  syncPublishedSourcedJobs,
 } from "./syncPublishedJobs";
 import { sourcedOriginFromSourceType } from "../origin";
 
@@ -188,6 +190,116 @@ test("a missing origin column is dropped without dropping the rest of the patch"
   assert.equal(next?.apply_url, base.apply_url);
   assert.equal(omitMissingJobColumns(patch, "permission denied"), null);
 });
+
+test("a nightly refresh does not rewrite an admin rejected or pending_review job", async () => {
+  assert.equal(nightlyRefreshLeavesAdminDecision("rejected"), true);
+  assert.equal(nightlyRefreshLeavesAdminDecision("pending_review"), true);
+  assert.equal(nightlyRefreshLeavesAdminDecision("published"), false);
+
+  for (const status of ["rejected", "pending_review"] as const) {
+    const updates: Array<{ table: string; payload: Record<string, unknown> }> = [];
+    const out = await syncPublishedSourcedJobs(
+      fakeSyncSb({
+        candidate: { ...base, payload_hash: "changed", apply_url: "mailto:jobs@example.com" },
+        job: {
+          id: "j1",
+          origin: "ashby",
+          status,
+          content_hash: "stored",
+          apply_url: "mailto:jobs@example.com",
+          plan_price: null,
+          stripe_payment_status: null,
+        },
+        updates,
+      }) as never,
+      {},
+    );
+    assert.equal(out.updated, 0);
+    assert.equal(out.held, 0);
+    assert.equal(updates.filter((update) => update.table === "jobs").length, 0);
+  }
+});
+
+test("a published job with blockers still moves to pending review", async () => {
+  const updates: Array<{ table: string; payload: Record<string, unknown>; statusFilter?: string }> = [];
+  const out = await syncPublishedSourcedJobs(
+    fakeSyncSb({
+      candidate: {
+        ...base,
+        payload_hash: "changed",
+        apply_url: "mailto:jobs@example.com",
+        salary_present: false,
+        salary_amount_min: null,
+        salary_amount_max: null,
+      },
+      job: {
+        id: "j1",
+        origin: "ashby",
+        status: "published",
+        content_hash: "stored",
+        apply_url: "mailto:jobs@example.com",
+        plan_price: null,
+        stripe_payment_status: null,
+      },
+      updates,
+    }) as never,
+    {},
+  );
+  assert.equal(out.held, 1);
+  const jobUpdate = updates.find((update) => update.table === "jobs");
+  assert.equal(jobUpdate?.payload.status, "pending_review");
+  assert.equal(jobUpdate?.statusFilter, "published");
+});
+
+function fakeSyncSb(opts: {
+  candidate: Record<string, unknown>;
+  job: Record<string, unknown>;
+  updates: Array<{ table: string; payload: Record<string, unknown>; statusFilter?: string }>;
+}) {
+  return {
+    from(table: string) {
+      const q: {
+        select: () => typeof q;
+        eq: (column?: string, value?: unknown) => typeof q;
+        not: () => typeof q;
+        order: () => typeof q;
+        limit: () => typeof q;
+        maybeSingle: () => Promise<{ data: unknown; error: unknown }>;
+        update: (payload: Record<string, unknown>) => {
+          eq: (column?: string, value?: unknown) => ReturnType<typeof q.update>;
+          then: (onFulfilled: (value: { data: unknown; error: unknown }) => unknown) => Promise<unknown>;
+        };
+        then: (onFulfilled: (value: { data: unknown; error: unknown }) => unknown) => Promise<unknown>;
+      } = {
+        select: () => q,
+        eq: () => q,
+        not: () => q,
+        order: () => q,
+        limit: () => q,
+        maybeSingle: () => Promise.resolve({ data: table === "jobs" ? opts.job : null, error: null }),
+        update: (payload) => {
+          let statusFilter: string | undefined;
+          const write = {
+            eq: (column?: string, value?: unknown) => {
+              if (column === "status" && typeof value === "string") statusFilter = value;
+              return write;
+            },
+            then: (onFulfilled: (value: { data: unknown; error: unknown }) => unknown) => {
+              opts.updates.push({ table, payload, statusFilter });
+              return Promise.resolve({ data: null, error: null }).then(onFulfilled);
+            },
+          };
+          return write;
+        },
+        then: (onFulfilled) => {
+          const data = table === "sourcing_sourced_job_candidates" ? [opts.candidate] : [];
+          return Promise.resolve({ data, error: null }).then(onFulfilled);
+        },
+      };
+      return q;
+    },
+  };
+}
 
 test("paid employer listings are skipped; sourced rows are not treated as paid", () => {
   assert.equal(isPaidEmployerJob({ origin: "employer", plan_price: 79, stripe_payment_status: "paid" }), true);

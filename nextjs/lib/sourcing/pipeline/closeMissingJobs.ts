@@ -205,6 +205,8 @@ export async function closeJobsMissingFromBoard(sb: AdminSb, ingest: IngestClose
     }
     if (action.type === "reopen") {
       const candidate = rowByCandidate.get(action.candidateId);
+      const autoClosed = /closed_from_board/i.test(candidate?.publish_notes || "");
+      if (!autoClosed) continue;
       const blockers = candidate ? await reopenBlockers(sb, candidate, action.jobId) : ["candidate_missing"];
       if (blockers.length > 0) {
         await sb
