@@ -262,7 +262,7 @@ export default function HomeClient({
           <article className="rounded-2xl border border-indigo-600 bg-indigo-600 p-5 flex flex-col text-white shadow-sm">
             <h3 className="text-base font-semibold">Premium</h3>
             <p className="mt-2 text-sm text-indigo-100 leading-relaxed flex-1">
-              Unlimited search results, advanced filters, multiple saved searches, daily alerts, and the weekly newsletter. Cancel in Stripe.
+              Unlimited board browsing, salary and skills filters, multiple saved searches, daily alerts, and the weekly newsletter. Role pages stay public. Cancel in Stripe.
             </p>
             <p className="mt-5 text-3xl font-semibold tracking-tight">
               $7.99<span className="text-base font-medium text-indigo-200"> / month</span>
@@ -275,7 +275,7 @@ export default function HomeClient({
               }}
               className="mt-4 h-10 w-full rounded-lg bg-white text-indigo-700 text-sm font-medium hover:bg-indigo-50"
             >
-              Get full access
+              Unlock the full board
             </button>
           </article>
         </div>

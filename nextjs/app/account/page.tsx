@@ -533,7 +533,7 @@ const AccountPageInner = () => {
                         <>
                           <p className="mt-1 text-sm text-slate-600">
                             {premium
-                              ? "Premium — unlimited search, advanced filters, and daily alerts for this billing period."
+                              ? "Premium — unlimited board browsing, salary and skills filters, and daily alerts for this billing period."
                               : "Free Account — 14 matching search results and one weekly job alert."}
                           </p>
                           {premium && user?.premiumUntil ? (
@@ -880,7 +880,7 @@ const AccountPageInner = () => {
                     <p className="text-sm text-slate-600">
                       {user?.subscriptionStatus
                         ? `Stripe status: ${user.subscriptionStatus.replace(/_/g, " ")}. $7.99 renews each month until you cancel. Canceling keeps Premium until the end of the paid period.`
-                        : "Unlimited search is $7.99 a month and renews until you cancel. Canceling keeps access until the end of the paid period."}
+                        : "Unlimited board browsing is $7.99 a month and renews until you cancel. Canceling keeps access until the end of the paid period."}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {user?.subscriptionStatus !== "active" && user?.subscriptionStatus !== "trialing" ? (

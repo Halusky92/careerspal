@@ -122,6 +122,26 @@ export function resolveBoardTier(input: {
   return "guest";
 }
 
+/** Company and category lists ignore the board-wide caps switch. No session stays guest. */
+export function tierForPublicList(input: {
+  signedIn?: boolean;
+  role?: string | null;
+  premiumUntil?: string | null;
+  subscriptionStatus?: string | null;
+}): BoardTier {
+  if (!input.signedIn) return "guest";
+  if (input.role === "admin") return "paid";
+  const fromUntil = resolveBoardTier({
+    signedIn: true,
+    role: input.role,
+    premiumUntil: input.premiumUntil,
+  });
+  if (fromUntil === "paid") return "paid";
+  const status = input.subscriptionStatus || "";
+  if ((status === "active" || status === "trialing") && !input.premiumUntil) return "paid";
+  return fromUntil;
+}
+
 export const PAID_JOBS_PAGE_MAX = 50;
 
 export function applyBoardVisibility<T extends { timestamp?: number | null }>(jobs: T[], cap: number | null): T[] {
