@@ -34,6 +34,9 @@ test("maps employment types for Google Jobs", () => {
 
 test("reads US/Canada from location text without inventing a country", () => {
   assert.equal(countryFromLocation("Remote - US"), "US");
+  assert.equal(countryFromLocation("Remote (US)"), "US");
+  assert.equal(countryFromLocation("US Remote"), "US");
+  assert.equal(countryFromLocation("Remote in the US"), "US");
   assert.equal(countryFromLocation("Remote, Canada"), "CA");
   assert.equal(countryFromLocation("Remote"), undefined);
 });
@@ -65,6 +68,38 @@ test("JobPosting salary keeps both bounds and skips an OTE ceiling", () => {
     "https://www.careerspal.com/jobs/pandadoc",
   );
   assert.equal(ote?.baseSalary, undefined);
+});
+
+test("a confirmed remote restriction in the posting becomes the applicant country", () => {
+  const vetcove = buildJobPostingLd(
+    job({
+      location: "Remote",
+      remotePolicy: "Remote",
+      description: "BENEFITS: 100% remote within the United States, with travel for company retreats.",
+    }),
+    "https://www.careerspal.com/jobs/vetcove",
+  );
+  assert.equal((vetcove?.applicantLocationRequirements as { name: string }).name, "US");
+  assert.equal(vetcove?.validThrough, undefined);
+  assert.equal((vetcove?.jobLocation as { address: { addressCountry?: string } }).address.addressCountry, undefined);
+
+  const customers = buildJobPostingLd(
+    job({
+      location: "Remote",
+      description: "Clinics in all 50 states rely on the product. Customers in the United States use it daily.",
+    }),
+    "https://www.careerspal.com/jobs/customers",
+  );
+  assert.equal(customers?.applicantLocationRequirements, undefined);
+
+  const both = buildJobPostingLd(
+    job({ location: "Remote - USA or Canada", remotePolicy: "Remote" }),
+    "https://www.careerspal.com/jobs/both",
+  );
+  assert.deepEqual(
+    (both?.applicantLocationRequirements as Array<{ name: string }>).map((item) => item.name),
+    ["US", "CA"],
+  );
 });
 
 test("International and Worldwide do not invent an applicant country", () => {

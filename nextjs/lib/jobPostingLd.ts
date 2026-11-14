@@ -30,13 +30,60 @@ export function googleEmploymentType(type?: string | null): string {
 }
 
 export function countryFromLocation(text?: string | null): string | undefined {
+  return countriesInLocation(text)[0];
+}
+
+function countriesInLocation(text?: string | null): string[] {
   const t = (text || "").toLowerCase();
-  if (!t) return undefined;
-  if (/\bunited states\b|\bu\.s\.a\.?\b|\busa\b/.test(t)) return "US";
-  if (/\bremote\s*[-–,]\s*us\b/.test(t) || /\bus-remote\b/.test(t)) return "US";
-  if (/\bcanada\b/.test(t)) return "CA";
-  if (/\bunited kingdom\b|\bu\.k\.?\b|\bengland\b/.test(t)) return "GB";
-  return undefined;
+  if (!t) return [];
+  const found: string[] = [];
+  if (
+    /\bunited states\b|\bu\.s\.a\.?\b|\busa\b/.test(t) ||
+    /\bremote\s*[-–,(]\s*us\b/.test(t) ||
+    /\bremote\s+in\s+the\s+us\b/.test(t) ||
+    /\bremote\s+us\b/.test(t) ||
+    /\bus\s*[-–]?\s*remote\b/.test(t) ||
+    /\bus-remote\b/.test(t) ||
+    /\(\s*us\s*\)/.test(t)
+  ) {
+    found.push("US");
+  }
+  if (/\bcanada\b/.test(t)) found.push("CA");
+  if (/\bunited kingdom\b|\bu\.k\.?\b|\bengland\b/.test(t)) found.push("GB");
+  return found;
+}
+
+function countriesInDescription(text?: string | null): string[] {
+  const t = text || "";
+  const found: string[] = [];
+  if (
+    /\b(?:within|anywhere in|based in|located in|authorized to work in|eligible to work in)\s+the\s+united states\b/i.test(t) ||
+    /\bremote\s+(?:within|in|across)\s+the\s+united states\b/i.test(t) ||
+    /\b(?:united states|u\.s\.|usa)\s+only\b/i.test(t)
+  ) {
+    found.push("US");
+  }
+  if (
+    /\b(?:within|anywhere in|based in|located in|authorized to work in|eligible to work in)\s+canada\b/i.test(t) ||
+    /\bremote\s+(?:within|in|across)\s+canada\b/i.test(t) ||
+    /\bcanada\s+only\b/i.test(t)
+  ) {
+    found.push("CA");
+  }
+  if (
+    /\b(?:within|anywhere in|based in|located in|authorized to work in|eligible to work in)\s+the\s+united kingdom\b/i.test(t) ||
+    /\b(?:uk|u\.k\.|united kingdom)\s+only\b/i.test(t)
+  ) {
+    found.push("GB");
+  }
+  return found;
+}
+
+/** Countries an applicant must be in. Location wins. The description counts only for an explicit restriction. */
+export function applicantCountries(job: { location?: string | null; remotePolicy?: string | null; description?: string | null }): string[] {
+  const fromLocation = countriesInLocation(`${job.location || ""} ${job.remotePolicy || ""}`);
+  if (fromLocation.length) return fromLocation;
+  return countriesInDescription(job.description);
 }
 
 function postedDate(job: Job): Date | null {
@@ -95,7 +142,9 @@ export function buildJobPostingLd(job: Job, canonicalUrl: string) {
   const workMode = inferWorkMode(job);
   const loc = (job.location || "").trim();
   const remote = workMode === "Remote" || /^remote\b/i.test(loc);
-  const country = countryFromLocation(`${loc} ${job.remotePolicy || ""}`);
+  const countries = applicantCountries(job);
+  const locationCountry = countriesInLocation(`${loc} ${job.remotePolicy || ""}`);
+  const country = locationCountry.length === 1 ? locationCountry[0] : undefined;
 
   const logo = (job.logo || "").trim();
   const website = (job.companyWebsite || "").trim();
@@ -127,8 +176,10 @@ export function buildJobPostingLd(job: Job, canonicalUrl: string) {
 
   if (remote) {
     ld.jobLocationType = "TELECOMMUTE";
-    if (country) {
-      ld.applicantLocationRequirements = { "@type": "Country", name: country };
+    if (countries.length === 1) {
+      ld.applicantLocationRequirements = { "@type": "Country", name: countries[0] };
+    } else if (countries.length > 1) {
+      ld.applicantLocationRequirements = countries.map((name) => ({ "@type": "Country", name }));
     }
   }
   if (loc) {
