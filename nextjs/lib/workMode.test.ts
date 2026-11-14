@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { geographyLabel, inferWorkMode } from "./workMode";
+import { geographyLabel, inferWorkMode, publicLocationLabel } from "./workMode";
 
 test("office anchor days are Hybrid even if the ATS says Remote", () => {
   assert.equal(
@@ -103,9 +103,18 @@ test("a fully remote sentence can fill work mode when location is blank", () => 
 
 test("unspecified remote geography is Not specified and a named country is kept", () => {
   assert.equal(geographyLabel({ location: "Remote", remotePolicy: "Remote" }), "Not specified");
-  assert.equal(geographyLabel({ location: "Remote (Global)", remotePolicy: "Remote" }), "Not specified");
+  assert.equal(geographyLabel({ location: "Remote", remotePolicy: "Remote", description: "We are a global company." }), "Not specified");
+  assert.equal(geographyLabel({ location: "Remote (Global)", remotePolicy: "Remote" }), "Global");
+  assert.equal(geographyLabel({ location: "Remote", description: "This role is open to international candidates." }), "International");
+  assert.equal(geographyLabel({ location: "Remote - US", description: "We also hire international contractors." }), "US");
+  assert.equal(geographyLabel({ location: "Worldwide", remotePolicy: "Remote" }), "Worldwide");
   assert.equal(geographyLabel({ location: "Remote - United Kingdom", remotePolicy: "Remote" }), "United Kingdom");
   assert.equal(geographyLabel({ location: "Remote - USA or Canada", remotePolicy: "Remote" }), "USA or Canada");
-  assert.equal(geographyLabel({ location: "Worldwide", remotePolicy: "Remote" }), "Worldwide");
+  assert.equal(geographyLabel({ location: "Remote - US", remotePolicy: "Remote" }), "US");
+  assert.equal(geographyLabel({ location: "Hybrid - San Francisco - 3 days/week", remotePolicy: "Hybrid" }), "San Francisco 3 days/week");
   assert.equal(geographyLabel({ location: "New York, NY", remotePolicy: "Hybrid" }), "New York, NY");
+  assert.equal(publicLocationLabel({ location: "Remote", description: "This role is open to international candidates." }), "Remote • International");
+  assert.equal(publicLocationLabel({ location: "Worldwide", remotePolicy: "Remote" }), "Worldwide");
+  assert.equal(publicLocationLabel({ location: "Remote", remotePolicy: "Remote" }), "Remote");
+  assert.equal(publicLocationLabel({ location: "Remote - US", remotePolicy: "Remote" }), "Remote - US");
 });

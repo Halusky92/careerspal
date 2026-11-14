@@ -101,3 +101,7 @@ export function toolChipHolds(tool: string, text: string): boolean {
 export function mentionedPostingTools(text: string): string[] {
   return MENTION_TOOLS.filter((tool) => toolIsMentioned(tool, text)).slice(0, 12);
 }
+
+export function visiblePostingTools(tools: string[] | null | undefined, text: string): string[] {
+  return (tools || []).map((tool) => tool.trim()).filter((tool) => tool && toolIsMentioned(tool, text)).slice(0, 12);
+}

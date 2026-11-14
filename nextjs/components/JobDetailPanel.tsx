@@ -8,6 +8,7 @@ import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import FormattedDescription from "./FormattedDescription";
 import { formatJobSalary } from "../lib/formatSalary";
+import { visiblePostingTools } from "../lib/postingTools";
 import { formatRelativePosted } from "../lib/formatPosted";
 import FeaturedBadge from "./FeaturedBadge";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
@@ -81,12 +82,7 @@ export default function JobDetailPanel({
   const roleHref = detailPath;
   const companyHref = companyPath;
 
-  const stack = useMemo(() => {
-    if (!job) return [];
-    const tools = (job.tools || []).filter(Boolean);
-    if (tools.length > 0) return tools;
-    return (job.tags || []).filter(Boolean);
-  }, [job]);
+  const stack = useMemo(() => (job ? visiblePostingTools(job.tools, job.description || "") : []), [job]);
 
   const similarJobs = useMemo(() => {
     if (!job) return [];

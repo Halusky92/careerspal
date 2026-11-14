@@ -76,7 +76,7 @@ export function normalizeAshbyRawPayload(args: {
       salary_parse_notes: ["multiple_salary_bands"],
     };
   } else if (!salary.salary_present && plain) {
-    const fromText = detectAndParseSalaryForGreenhouse(plain);
+    const fromText = detectAndParseSalaryForGreenhouse(plain, location);
     if (fromText.salary_present) salary = fromText;
   }
 

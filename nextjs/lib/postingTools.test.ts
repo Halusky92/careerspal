@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mentionedPostingTools, toggleTool, toolChipHolds, toolsForCategory, toolsToKeywords } from "./postingTools";
+import { mentionedPostingTools, toggleTool, toolChipHolds, toolsForCategory, toolsToKeywords, visiblePostingTools } from "./postingTools";
 
 test("toggle adds then removes a tool without duplicates", () => {
   const once = toggleTool(["Notion"], "zapier");
@@ -24,6 +24,12 @@ test("tool chips ignore verbs and words inside other words", () => {
   assert.equal(toolChipHolds("Excel", "Daily reporting in Excel."), true);
   assert.equal(toolChipHolds("Segment", "Events go to Segment."), true);
   assert.deepEqual(mentionedPostingTools(text), []);
+});
+
+test("a tool stack shows only tools written in the posting", () => {
+  const text = "The team works in Salesforce and writes the plan in a spreadsheet.";
+  assert.deepEqual(visiblePostingTools(["Make", "Salesforce", "Excel"], text), ["Salesforce"]);
+  assert.deepEqual(visiblePostingTools(["Strategic planning"], text), []);
 });
 
 test("keywords stay a simple comma list for AI draft", () => {

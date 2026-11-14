@@ -7,6 +7,7 @@ import { Job } from '../types';
 import CompanyLogo from './CompanyLogo';
 import FormattedDescription from "./FormattedDescription";
 import { formatJobSalary } from "../lib/formatSalary";
+import { visiblePostingTools } from "../lib/postingTools";
 import { inferWorkMode, publicLocationLabel } from "../lib/workMode";
 import { publicCategoryLabel } from "../lib/categories";
 import { formatRelativePosted } from "../lib/formatPosted";
@@ -53,7 +54,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
     .slice(0, 3);
 
   const isPrivate = job.status === 'private' || job.status === 'invite_only';
-  const stack = job.tools && job.tools.length > 0 ? job.tools : job.tags;
+  const stack = visiblePostingTools(job.tools, job.description || "");
   const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl !== '#');
   const displayType = job.type && job.type !== "Unknown" ? job.type : null;
   // description rendering is centralized in <FormattedDescription />

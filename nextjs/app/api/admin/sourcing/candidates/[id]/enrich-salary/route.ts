@@ -3,7 +3,7 @@ import { supabaseAdmin } from "../../../../../../../lib/supabaseAdmin";
 import { getSupabaseProfile } from "../../../../../../../lib/supabaseServerAuth";
 import { matchDenylistHost } from "../../../../../../../lib/sourcing/denylist";
 import { normalizeHost, normalizeUrlForRegistry } from "../../../../../../../lib/sourcing/domain";
-import { detectAndParseSalaryForGreenhouse, parseSalaryFromText, withRoundedSalaryAmounts } from "../../../../../../../lib/sourcing/normalization/salary";
+import { chooseOfficialSalary, detectAndParseSalaryForGreenhouse, withRoundedSalaryAmounts } from "../../../../../../../lib/sourcing/normalization/salary";
 import { stripHtmlToText } from "../../../../../../../lib/sourcing/normalization/text";
 
 export const runtime = "nodejs";
@@ -327,7 +327,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       const obj = JSON.parse(nextData);
       const strings = findSalaryLikeStringsInObject(obj, 400);
       for (const s of strings) {
-        const p = parseSalaryFromText(s);
+        const p = chooseOfficialSalary(s);
         if (p.salary_present) {
           const { data: updated, error: upErr } = await supabaseAdmin
             .from("sourcing_sourced_job_candidates")

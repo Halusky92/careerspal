@@ -113,13 +113,31 @@ function normalizeNumber(value: string): number | null {
   return Number.isFinite(n) ? Math.round(n) : null;
 }
 
+const CURRENCY_CODES = ["USD", "EUR", "GBP", "CAD", "AUD", "NZD", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK", "JPY"];
+
 function normalizeCurrency(symbolOrCode: string | null): string | null {
   const v = (symbolOrCode || "").trim();
   if (!v) return null;
   if (CURRENCY_SYMBOL_TO_CODE[v]) return CURRENCY_SYMBOL_TO_CODE[v];
   const upper = v.toUpperCase();
-  if (["USD", "EUR", "GBP", "CAD", "AUD", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK", "JPY"].includes(upper)) return upper;
+  if (CURRENCY_CODES.includes(upper)) return upper;
   return null;
+}
+
+/** Currency comes from an explicit code or an unambiguous symbol. A country name or a bare $ does not confirm it. */
+function currencyForSalaryMatch(symbol: string, context: string): { currency: string | null; note: string | null } {
+  const codes = [
+    ...new Set(
+      [...context.matchAll(/\b(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|NOK|DKK|PLN|CZK|JPY)\b/gi)].map((match) => match[1].toUpperCase()),
+    ),
+  ];
+  if (codes.length > 1) return { currency: null, note: "currency_unconfirmed" };
+  if (codes.length === 1) return { currency: codes[0], note: null };
+  if (symbol !== "$") {
+    const fromSymbol = normalizeCurrency(symbol);
+    return fromSymbol ? { currency: fromSymbol, note: null } : { currency: null, note: "currency_unconfirmed" };
+  }
+  return { currency: null, note: "currency_unconfirmed" };
 }
 
 function detectPeriod(text: string): SalaryPeriod | null {
@@ -325,43 +343,59 @@ export function parsedSalaryFromStructured(args: {
   });
 }
 
-/** One official base range. Several bands, or an OTE ceiling, stay unpublished. */
-export function chooseOfficialSalary(text: string): ParsedSalary {
+/** One official base range. Several bands, an unconfirmed dollar sign, or an OTE ceiling stay unpublished. */
+export function chooseOfficialSalary(text: string, _locationHint = ""): ParsedSalary {
   const clean = collapseThousandGroups(decodeSalaryEntities(text || ""))
     .trim()
     .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-");
   if (!clean) return parseSalaryFromText("");
   const salaryRe =
-    /(?:^|[\s(>])\s*(USD|EUR|GBP|CAD|AUD|CHF|SEK|NOK|DKK|PLN|CZK|JPY|[$€£¥])\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:(?:[-–]|to|through)\s*(?:\1\s*)?([0-9][0-9,]*(?:\.[0-9]+)?[km]?))?/gi;
+    /(?:^|[\s(>])\s*(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|NOK|DKK|PLN|CZK|JPY|[$€£¥])\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:(?:[-–]|to|through)\s*(?:\1\s*)?([0-9][0-9,]*(?:\.[0-9]+)?[km]?))?/gi;
   const matches = [...clean.matchAll(salaryRe)];
   const hits = matches.map((match, index) => {
     const start = match.index || 0;
     const next = matches[index + 1]?.index ?? clean.length;
-    const context = clean.slice(Math.max(0, start - 48), Math.min(next, start + match[0].length + 48));
+    const context = clean.slice(Math.max(0, start - 64), Math.min(next, start + match[0].length + 64));
     const min = normalizeNumber(match[2]);
     const max = normalizeNumber(match[3] || "");
-    const currency = normalizeCurrency(match[1] || null);
+    const resolved = currencyForSalaryMatch(match[1] || "", context);
+    const currency = resolved.currency;
     const period = periodAroundSalary(context, min, max);
     const present = Boolean(currency && period && (min || max));
     const implausible = present && isImplausibleSalary(period, min, max);
+    const notes = [
+      resolved.note,
+      implausible ? "implausible_salary_amount" : present ? "rounded_for_storage" : null,
+    ].filter((note): note is string => Boolean(note));
     return {
       ote: precedingIsNotBase(clean, start),
+      rawMin: min,
+      rawMax: max,
       parsed: withRoundedSalaryAmounts({
         salary_text_raw: match[0].trim().slice(0, 240),
-        salary_amount_min: min,
-        salary_amount_max: max,
-        salary_currency: currency,
-        salary_period: period,
+        salary_amount_min: present ? min : null,
+        salary_amount_max: present ? max : null,
+        salary_currency: present ? currency : null,
+        salary_period: present ? period : null,
         salary_present: present && !implausible,
         salary_confidence: (present && !implausible ? "medium" : "low") as SalaryConfidence,
         salary_detected_from: "text_comp_section" as SalaryDetectedFrom,
-        salary_parse_notes: [implausible ? "implausible_salary_amount" : "rounded_for_storage"],
+        salary_parse_notes: notes,
       }),
     };
   });
+  const bandKeys = new Set(
+    hits
+      .filter((hit) => !hit.ote && (hit.rawMin || hit.rawMax))
+      .map((hit) => `${hit.rawMin ?? ""}:${hit.rawMax ?? ""}`),
+  );
+  if (bandKeys.size > 1) return absentOfficialSalary("multiple_salary_bands");
   const base = hits.filter((hit) => hit.parsed.salary_present && !hit.ote);
   if (base.length === 0) {
     if (hits.some((hit) => hit.ote)) return absentOfficialSalary("ote_not_base");
+    if (hits.some((hit) => hit.parsed.salary_parse_notes.includes("currency_unconfirmed"))) {
+      return absentOfficialSalary("currency_unconfirmed");
+    }
     return parseSalaryFromText(clean);
   }
   const keys = new Set(
@@ -371,7 +405,7 @@ export function chooseOfficialSalary(text: string): ParsedSalary {
   return base[0].parsed;
 }
 
-export function detectAndParseSalaryForGreenhouse(descriptionText: string): ParsedSalary {
-  return chooseOfficialSalary(descriptionText || "");
+export function detectAndParseSalaryForGreenhouse(descriptionText: string, locationText?: string | null): ParsedSalary {
+  return chooseOfficialSalary(descriptionText || "", locationText || "");
 }
 

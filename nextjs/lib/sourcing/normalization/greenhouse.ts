@@ -135,7 +135,7 @@ export function normalizeGreenhouseRawPayload(args: {
   const remotePolicy =
     inferWorkMode({ title, location: locationText, description: descriptionClean }) || inferRemotePolicy(locationText);
 
-  const salary = detectAndParseSalaryForGreenhouse(descriptionClean || "");
+  const salary = detectAndParseSalaryForGreenhouse(descriptionClean || "", locationText);
   const team = extractTeamText(payload);
 
   return {

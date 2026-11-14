@@ -67,6 +67,21 @@ test("JobPosting salary keeps both bounds and skips an OTE ceiling", () => {
   assert.equal(ote?.baseSalary, undefined);
 });
 
+test("International and Worldwide do not invent an applicant country", () => {
+  const international = buildJobPostingLd(
+    job({ location: "Remote", remotePolicy: "Remote", description: "This role is open to international candidates." }),
+    "https://www.careerspal.com/jobs/international",
+  );
+  const worldwide = buildJobPostingLd(
+    job({ location: "Worldwide", remotePolicy: "Remote", description: "Work from anywhere." }),
+    "https://www.careerspal.com/jobs/worldwide",
+  );
+  assert.equal(international?.applicantLocationRequirements, undefined);
+  assert.equal(worldwide?.applicantLocationRequirements, undefined);
+  const unitedStates = buildJobPostingLd(job({ location: "Remote - US" }), "https://www.careerspal.com/jobs/us");
+  assert.equal((unitedStates?.applicantLocationRequirements as { name: string }).name, "US");
+});
+
 test("does not emit JobPosting for expired or unpublished jobs", () => {
   assert.equal(shouldEmitJobPosting(job({ status: "draft" })), false);
   assert.equal(shouldEmitJobPosting(job({ timestamp: Date.now() - 40 * 24 * 60 * 60 * 1000 })), false);

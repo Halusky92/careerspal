@@ -64,6 +64,23 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
   }
 }
 
+export function applyProbeFromStatus(status: number): ApplyProbeResult | null {
+  if (status === 404 || status === 410) return { ok: false, dead: true, reason: `status ${status}` };
+  if (status === 401 || status === 403 || status === 408 || status === 429) {
+    return { ok: true, dead: false, reason: `temporary ${status}` };
+  }
+  if (status >= 500) return { ok: true, dead: false, reason: `status ${status}` };
+  return null;
+}
+
+export function applyProbeFromFetchError(message: string): ApplyProbeResult {
+  const text = message.toLowerCase();
+  if (text.includes("enotfound") || text.includes("getaddrinfo") || text.includes("err_name_not_resolved")) {
+    return { ok: false, dead: true, reason: "host missing" };
+  }
+  return { ok: true, dead: false, reason: "fetch error" };
+}
+
 export async function probeApplyUrl(raw: string, timeoutMs = 10000): Promise<ApplyProbeResult> {
   if (shouldSkipLiveProbe(raw)) {
     return { ok: applyUrlLooksUsable(raw), dead: !applyUrlLooksUsable(raw), reason: applyUrlLooksUsable(raw) ? "skip" : "missing" };
@@ -71,32 +88,23 @@ export async function probeApplyUrl(raw: string, timeoutMs = 10000): Promise<App
   const url = normalizeApplyHttpUrl(raw);
   try {
     const head = await fetchWithTimeout(url, { method: "HEAD" }, Math.min(8000, timeoutMs));
-    if (head.status === 404 || head.status === 410) {
-      return { ok: false, dead: true, reason: `status ${head.status}` };
-    }
+    const headProbe = applyProbeFromStatus(head.status);
+    if (headProbe && /temporary/.test(headProbe.reason)) return headProbe;
   } catch {
     // HEAD is often blocked; GET is the source of truth.
   }
 
   try {
     const response = await fetchWithTimeout(url, { method: "GET", headers: { "user-agent": "CareersPalBoard/1.0" } }, timeoutMs);
-    if (response.status === 404 || response.status === 410) {
-      return { ok: false, dead: true, reason: `status ${response.status}` };
-    }
-    if (response.status >= 500) {
-      return { ok: true, dead: false, reason: `status ${response.status}` };
-    }
+    const statusProbe = applyProbeFromStatus(response.status);
+    if (statusProbe?.dead || (statusProbe && /temporary|status /.test(statusProbe.reason))) return statusProbe;
     const text = (await response.text()).slice(0, 80000);
     if (isClosedApplyCopy(text)) {
       return { ok: false, dead: true, reason: "closed copy" };
     }
     return { ok: true, dead: false, reason: "ok" };
   } catch (error) {
-    const message = error instanceof Error ? error.message.toLowerCase() : "";
-    if (message.includes("enotfound") || message.includes("getaddrinfo") || message.includes("err_name_not_resolved")) {
-      return { ok: false, dead: true, reason: "host missing" };
-    }
-    return { ok: true, dead: false, reason: "fetch error" };
+    return applyProbeFromFetchError(error instanceof Error ? error.message : "");
   }
 }
 

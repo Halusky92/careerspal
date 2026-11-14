@@ -32,7 +32,7 @@ export function normalizeLeverRawPayload(args: {
       : null,
   });
   if (!salary.salary_present && plain) {
-    const fromText = detectAndParseSalaryForGreenhouse(plain);
+    const fromText = detectAndParseSalaryForGreenhouse(plain, location);
     if (fromText.salary_present) salary = fromText;
   }
   const postedAt = typeof job.createdAt === "number" ? new Date(job.createdAt).toISOString() : null;
