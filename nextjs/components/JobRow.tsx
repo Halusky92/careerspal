@@ -8,6 +8,7 @@ import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import { stripHtmlToText } from "../lib/sourcing/normalization/text";
 import { formatJobSalary } from "../lib/formatSalary";
+import { visiblePostingTools } from "../lib/postingTools";
 import { geographyLabel, inferWorkMode, publicLocationLabel } from "../lib/workMode";
 import { publicCategoryLabel } from "../lib/categories";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
@@ -71,11 +72,7 @@ export default function JobRow({
   const isPrivate = job.status === "private" || job.status === "invite_only";
   const workMode = useMemo(() => getWorkMode(job), [job]);
   const timeAgo = useMemo(() => formatTimeAgo(job), [job.timestamp, job.postedAt]);
-  const stack = useMemo(() => {
-    const tools = (job.tools || []).filter(Boolean);
-    if (tools.length > 0) return tools;
-    return (job.tags || []).filter(Boolean);
-  }, [job.tags, job.tools]);
+  const stack = useMemo(() => visiblePostingTools(job.tools, job.description || ""), [job.description, job.tools]);
 
   // Keep board panel UX (query param) intact, but canonicalize share/open links.
   const boardHref = `/jobs?jobId=${encodeURIComponent(job.id)}`;

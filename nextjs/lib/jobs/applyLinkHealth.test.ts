@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  applyProbeFromFetchError,
+  applyProbeFromStatus,
   applyUrlLooksSourcedAts,
   applyUrlLooksUsable,
   isClosedApplyCopy,
@@ -17,6 +20,21 @@ test("apply urls must be a real page or mailto", () => {
   assert.equal(applyUrlLooksUsable("jobs.ashbyhq.com/notion/abc"), true);
   assert.equal(applyUrlLooksUsable("mailto:jobs@acme.com"), true);
   assert.equal(shouldSkipLiveProbe("mailto:jobs@acme.com"), true);
+});
+
+test("a timeout, 403, or 429 does not close a listing", () => {
+  assert.equal(applyProbeFromStatus(403)?.dead, false);
+  assert.equal(applyProbeFromStatus(429)?.dead, false);
+  assert.equal(applyProbeFromFetchError("The operation was aborted").dead, false);
+  assert.equal(applyProbeFromFetchError("getaddrinfo ENOTFOUND jobs.example").dead, true);
+});
+
+test("only a GET 404 or 410 confirms the listing is gone", () => {
+  const source = readFileSync(new URL("./applyLinkHealth.ts", import.meta.url), "utf8");
+  const headBranch = source.slice(source.indexOf("method: \"HEAD\""), source.indexOf("method: \"GET\""));
+  assert.equal(headBranch.includes("headProbe?.dead"), false);
+  assert.equal(applyProbeFromStatus(404)?.dead, true);
+  assert.equal(applyProbeFromStatus(410)?.dead, true);
 });
 
 test("closed job pages are detected from copy", () => {

@@ -13,8 +13,8 @@ import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
 import { isOnNicheJob } from "../../../lib/nicheScope";
 import { formatJobSalary } from "../../../lib/formatSalary";
-import { toolChipHolds } from "../../../lib/postingTools";
-import { inferWorkMode, publicLocationLabel } from "../../../lib/workMode";
+import { visiblePostingTools } from "../../../lib/postingTools";
+import { geographyLabel, inferWorkMode } from "../../../lib/workMode";
 import { applyLiveBoardFilter, isLiveBoardJob } from "../../../lib/liveBoard";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
 import { buildJobPostingLd } from "../../../lib/jobPostingLd";
@@ -348,12 +348,11 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
     ? companySlug
     : createCompanySlug({ name: job.company || "Company" })).trim()}`;
 
-  const stack = (job.tools && job.tools.length > 0 ? job.tools : job.tags || [])
-    .filter((tag) => toolChipHolds(tag, job.description || ""))
-    .slice(0, 12);
+  const stack = visiblePostingTools(job.tools, job.description || "");
   const benefits = (job.benefits || []).filter(Boolean).slice(0, 12);
   const workMode = inferWorkMode(job);
-  const locationLabel = publicLocationLabel(job);
+  const place = geographyLabel(job);
+  const locationLabel = place && place !== "Not specified" && place !== workMode ? place : "";
   const categoryLabel = publicCategoryLabel(job);
   const displayType = job.type && job.type !== "Unknown" ? job.type : null;
   const roleSections = extractJobDetailSections(sanitizeDescription(job.description) || "");

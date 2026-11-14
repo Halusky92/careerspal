@@ -8,6 +8,7 @@ import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import FormattedDescription from "./FormattedDescription";
 import { formatJobSalary } from "../lib/formatSalary";
+import { visiblePostingTools } from "../lib/postingTools";
 import { inferWorkMode } from "../lib/workMode";
 import { formatRelativePosted } from "../lib/formatPosted";
 import { useSupabaseAuth } from "./Providers";
@@ -66,11 +67,7 @@ export default function JobCard({
   const isPrivate = job.status === "private" || job.status === "invite_only";
   const workModeLabel = getWorkMode(job);
   const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl !== "#");
-  const tools = useMemo(() => {
-    const primary = (job.tools || []).filter(Boolean);
-    if (primary.length > 0) return primary;
-    return (job.tags || []).filter(Boolean);
-  }, [job.tags, job.tools]);
+  const tools = useMemo(() => visiblePostingTools(job.tools, job.description || ""), [job.description, job.tools]);
 
   const containerClass =
     variant === "home"

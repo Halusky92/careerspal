@@ -1,7 +1,7 @@
 import { sliceExpired } from "./slice";
 import { matchDenylistHost } from "../denylist";
 import { normalizeHost, normalizeUrlForRegistry } from "../domain";
-import { detectAndParseSalaryForGreenhouse, parseSalaryFromText, withRoundedSalaryAmounts } from "../normalization/salary";
+import { chooseOfficialSalary, detectAndParseSalaryForGreenhouse, withRoundedSalaryAmounts } from "../normalization/salary";
 import { stripHtmlToText } from "../normalization/text";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -300,7 +300,7 @@ async function fetchAndParseSalary(urlToFetch: string) {
       const obj = JSON.parse(nextData);
       const strings = findSalaryLikeStringsInObject(obj, 400);
       for (const s of strings) {
-        const p = parseSalaryFromText(s);
+        const p = chooseOfficialSalary(s);
         if (p.salary_present) {
           return {
             ok: true as const,
