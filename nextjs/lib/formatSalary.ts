@@ -84,16 +84,21 @@ function displayFrom(parsed: ParsedSalary, fallback: string) {
   ).trim();
 }
 
+const OTHER_CURRENCY = /\b(?:CAD|AUD|EUR|GBP|NZD|CHF)\b|CA\$|A\$|€|£/i;
+
 export function formatSalaryDisplay(raw?: string | null, extraText?: string | null): string {
   const text = (raw || "").replace(/\s+/g, " ").trim();
   const extra = (extraText || "").trim();
   const fromStored = text ? parseSalaryFromText(text) : parseSalaryFromText("");
+  const official = extra ? detectAndParseSalaryForGreenhouse(extra) : null;
+  if (official?.salary_parse_notes.includes("multiple_salary_bands") && OTHER_CURRENCY.test(extra)) {
+    return "Salary listed";
+  }
   if (hasRange(fromStored)) return displayFrom(fromStored, text);
-  if (extra) {
+  if (extra && official && !official.salary_parse_notes.includes("multiple_salary_bands")) {
+    if (official.salary_present && hasRange(official)) return displayFrom(official, extra);
     const fromFull = parseSalaryFromText(extra);
-    const fromSnippet = detectAndParseSalaryForGreenhouse(extra);
-    const fromExtra = hasRange(fromFull) ? fromFull : fromSnippet;
-    if (fromExtra.salary_present && hasRange(fromExtra)) return displayFrom(fromExtra, extra);
+    if (hasRange(fromFull)) return displayFrom(fromFull, extra);
   }
   if (text) return displayFrom(fromStored, text);
   return "Salary listed";

@@ -55,6 +55,17 @@ test("an explicit USD code confirms the dollar range", () => {
   assert.equal(parsed.salary_currency, "USD");
 });
 
+test("a CA$ range is Canadian dollars, and a second country band is not merged into it", () => {
+  const canada = chooseOfficialSalary("Canada : CA$150.5K - CA$215K base a year");
+  assert.equal(canada.salary_present, true);
+  assert.equal(canada.salary_currency, "CAD");
+  assert.equal(canada.salary_amount_min, 151000);
+  assert.equal(canada.salary_amount_max, 215000);
+  const both = chooseOfficialSalary("United States: $108.5K – $155K base Canada : CA$150.5K - CA$215K base");
+  assert.equal(both.salary_present, false);
+  assert.ok(both.salary_parse_notes.includes("multiple_salary_bands"));
+});
+
 test("Canada dollars stay CAD and are not stored as USD", () => {
   const parsed = chooseOfficialSalary("Canada: $150,500 - $215,000 CAD a year");
   assert.equal(parsed.salary_present, true);

@@ -74,6 +74,9 @@ const CURRENCY_SYMBOL_TO_CODE: Record<string, string> = {
   "€": "EUR",
   "£": "GBP",
   "¥": "JPY",
+  CA$: "CAD",
+  A$: "AUD",
+  US$: "USD",
 };
 
 function collapseThousandGroups(text: string) {
@@ -126,6 +129,10 @@ function normalizeCurrency(symbolOrCode: string | null): string | null {
 
 /** Currency comes from an explicit code or an unambiguous symbol. A country name or a bare $ does not confirm it. */
 function currencyForSalaryMatch(symbol: string, context: string): { currency: string | null; note: string | null } {
+  const prefixed = normalizeCurrency(symbol);
+  if (symbol.toUpperCase() === "CA$" || symbol.toUpperCase() === "A$" || symbol.toUpperCase() === "US$") {
+    return prefixed ? { currency: prefixed, note: null } : { currency: null, note: "currency_unconfirmed" };
+  }
   const codes = [
     ...new Set(
       [...context.matchAll(/\b(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|NOK|DKK|PLN|CZK|JPY)\b/gi)].map((match) => match[1].toUpperCase()),
@@ -350,7 +357,7 @@ export function chooseOfficialSalary(text: string, _locationHint = ""): ParsedSa
     .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-");
   if (!clean) return parseSalaryFromText("");
   const salaryRe =
-    /(?:^|[\s(>])\s*(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|NOK|DKK|PLN|CZK|JPY|[$€£¥])\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:(?:[-–]|to|through)\s*(?:\1\s*)?([0-9][0-9,]*(?:\.[0-9]+)?[km]?))?/gi;
+    /(?:^|[\s(>])\s*(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|NOK|DKK|PLN|CZK|JPY|CA\$|A\$|US\$|[$€£¥])\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:(?:[-–]|to|through)\s*(?:(?:\1|CA\$|A\$|US\$|[$€£¥])\s*)?([0-9][0-9,]*(?:\.[0-9]+)?[km]?))?/gi;
   const matches = [...clean.matchAll(salaryRe)];
   const hits = matches.map((match, index) => {
     const start = match.index || 0;
