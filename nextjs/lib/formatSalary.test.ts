@@ -39,6 +39,14 @@ test("a long Checkr about section still yields the base salary range", () => {
   assert.match(shown, /a year/);
 });
 
+test("a dollar range is not shown when the posting also states a Canadian band", () => {
+  const shown = formatSalaryDisplay(
+    "$109k–$155k a year",
+    "United States: $108.5K – $155K base Canada : CA$150.5K - CA$215K base",
+  );
+  assert.equal(shown, "Salary listed");
+});
+
 test("a stored floor without a range is labeled From", () => {
   const shown = formatSalaryDisplay("$95k a year");
   assert.match(shown, /^From \$95k a year$/);

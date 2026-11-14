@@ -117,6 +117,30 @@ test("International and Worldwide do not invent an applicant country", () => {
   assert.equal((unitedStates?.applicantLocationRequirements as { name: string }).name, "US");
 });
 
+test("a second currency in the posting is not sent to Google as USD", () => {
+  const ld = buildJobPostingLd(
+    job({
+      location: "Canada",
+      remotePolicy: "",
+      salary: "$109k–$155k a year",
+      description: "United States: $108.5K – $155K base Canada : CA$150.5K - CA$215K base",
+    }),
+    "https://www.careerspal.com/jobs/docker",
+  );
+  assert.equal(ld?.baseSalary, undefined);
+  const confirmed = buildJobPostingLd(
+    job({
+      salary: "From $139k a year",
+      description: "United States Salary Range $139,200 - $235,200 USD",
+    }),
+    "https://www.careerspal.com/jobs/gitlab",
+  );
+  const value = confirmed?.baseSalary as { currency: string; value: { minValue: number; maxValue: number } };
+  assert.equal(value.currency, "USD");
+  assert.equal(value.value.minValue, 139000);
+  assert.equal(value.value.maxValue, 235000);
+});
+
 test("does not emit JobPosting for expired or unpublished jobs", () => {
   assert.equal(shouldEmitJobPosting(job({ status: "draft" })), false);
   assert.equal(shouldEmitJobPosting(job({ timestamp: Date.now() - 40 * 24 * 60 * 60 * 1000 })), false);

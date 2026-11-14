@@ -1,4 +1,4 @@
-import { parseSalaryFromText, type SalaryPeriod } from "./sourcing/normalization/salary";
+import { chooseOfficialSalary, parseSalaryFromText, type ParsedSalary, type SalaryPeriod } from "./sourcing/normalization/salary";
 import { inferWorkMode } from "./workMode";
 import { isLiveBoardJob } from "./liveBoard";
 import { applyUrlLooksUsable } from "./jobs/applyLinkHealth";
@@ -86,6 +86,25 @@ export function applicantCountries(job: { location?: string | null; remotePolicy
   return countriesInDescription(job.description);
 }
 
+const OTHER_CURRENCY = /\b(?:CAD|AUD|EUR|GBP|NZD|CHF)\b|CA\$|A\$|€|£/i;
+
+function structuredSalary(job: Job): ParsedSalary | null {
+  const description = job.description || "";
+  const official = chooseOfficialSalary(description, `${job.location || ""} ${job.remotePolicy || ""}`);
+  if (official.salary_present && official.salary_currency && (official.salary_amount_min != null || official.salary_amount_max != null)) {
+    return official;
+  }
+  const stored = parseSalaryFromText(job.salary || "");
+  const oteFloor =
+    stored.salary_amount_max == null &&
+    /\b(ote|on-target earnings|on target earnings)\b/i.test(`${job.salary || ""}\n${description}`);
+  if (oteFloor || !stored.salary_present || !stored.salary_currency) return null;
+  const conflicting = official.salary_parse_notes.includes("multiple_salary_bands");
+  const storedNamesCurrency = OTHER_CURRENCY.test(job.salary || "") || /\bUSD\b|US\$/i.test(job.salary || "");
+  if (conflicting || (OTHER_CURRENCY.test(description) && !storedNamesCurrency)) return null;
+  return stored;
+}
+
 function postedDate(job: Job): Date | null {
   const ts = job.timestamp;
   if (typeof ts === "number" && Number.isFinite(ts) && ts > 0) {
@@ -118,15 +137,13 @@ export function buildJobPostingLd(job: Job, canonicalUrl: string) {
   // Only emit validThrough when the employer/ATS provided an end date.
   // Do not invent posted+30d — that is a board hygiene window, not a real expiry.
 
-  const parsed = parseSalaryFromText(job.salary || "");
-  const period = parsed.salary_period;
-  const min = parsed.salary_amount_min;
-  const max = parsed.salary_amount_max;
-  const currency = (parsed.salary_currency || "").toUpperCase();
-  const oteFloor =
-    max == null && /\b(ote|on-target earnings|on target earnings)\b/i.test(`${job.salary || ""}\n${job.description || ""}`);
+  const parsed = structuredSalary(job);
+  const period = parsed?.salary_period;
+  const min = parsed?.salary_amount_min;
+  const max = parsed?.salary_amount_max;
+  const currency = (parsed?.salary_currency || "").toUpperCase();
   const baseSalary =
-    !oteFloor && parsed.salary_present && currency && period && (min != null || max != null)
+    parsed && currency && period && (min != null || max != null)
       ? {
           "@type": "MonetaryAmount",
           currency,
