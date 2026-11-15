@@ -12,6 +12,7 @@ import {
   boardAccessHeadline,
   homeSeeAllLabel,
   boardPageForTier,
+  boardSliceForTier,
   paginateBoardJobs,
   premiumCheckoutAllowed,
   premiumCheckoutOpen,
@@ -24,6 +25,14 @@ import {
   resolveBoardTier,
   tierForPublicList,
 } from "./boardAccess";
+
+test("the jobs page opens on the viewer's tier instead of the guest slice", () => {
+  const jobs = Array.from({ length: 20 }, (_, index) => ({ id: String(index), timestamp: 20 - index }));
+  assert.equal(boardSliceForTier(jobs, "guest").jobs.length, GUEST_VISIBLE_JOBS);
+  assert.equal(boardSliceForTier(jobs, "registered").jobs.length, REGISTERED_VISIBLE_JOBS);
+  assert.equal(boardSliceForTier(jobs, "paid").jobs.length, 20);
+  assert.equal(boardSliceForTier(jobs, "paid").cap, null);
+});
 
 test("guest sees 4, registered 14, paid unlimited", () => {
   assert.equal(boardCap("guest"), GUEST_VISIBLE_JOBS);

@@ -171,6 +171,14 @@ export function jobRank(jobs: Array<{ id: string; timestamp?: number | null }>, 
   return applyBoardVisibility(jobs, null).findIndex((job) => job.id === jobId);
 }
 
+/** First paint of /jobs. Paid and admin get a full page, not the guest slice. */
+export function boardSliceForTier<T extends { timestamp?: number | null }>(jobs: T[], tier: BoardTier) {
+  const cap = boardCap(tier);
+  const ranked = applyBoardVisibility(jobs, null);
+  const visible = cap == null ? ranked.slice(0, PAID_JOBS_PAGE_MAX) : ranked.slice(0, cap);
+  return { jobs: visible, cap, access: tier };
+}
+
 export function boardPageForTier<T extends { timestamp?: number | null }>(
   jobs: T[],
   tier: BoardTier,

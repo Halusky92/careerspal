@@ -369,7 +369,8 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
         <div className="flex items-center justify-between gap-3">
           <Link
-            href="/jobs"
+            href={`/jobs?jobId=${encodeURIComponent(job.id)}`}
+            scroll={false}
             className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-indigo-700"
           >
             <span aria-hidden="true">←</span> Back to jobs
