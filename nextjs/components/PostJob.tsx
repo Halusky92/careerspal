@@ -123,7 +123,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const owner = postingOwnerKey(user?.id, profile?.email);
   const [step, setStep] = useState(1);
   const [logoFileName, setLogoFileName] = useState("");
-  const [openInfoId, setOpenInfoId] = useState<("get" | "requirements" | "review") | null>("get");
+  const [openInfoId, setOpenInfoId] = useState<("get" | "requirements" | "review") | null>(null);
   const [titleMenuOpen, setTitleMenuOpen] = useState(false);
   const liveTitles: string[] = [];
   const [screenIssues, setScreenIssues] = useState<ListingScreenIssue[]>([]);
@@ -553,8 +553,33 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   };
 
   const usingStartPack = Boolean(foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price !== 1);
+  const otherPlans: { type: PlanType; price: number; label: string; note: string }[] = [
+    selectedPlan.type === "Standard"
+      ? null
+      : {
+          type: "Standard" as const,
+          price: foundingEligible ? PLAN_PRICES.startPack : PLAN_PRICES.standard,
+          label: foundingEligible ? "Start pack · Free" : `Standard · ${formatPrice(PLAN_PRICES.standard)}`,
+          note: "On the board for 30 days",
+        },
+    selectedPlan.type === "Featured Pro"
+      ? null
+      : {
+          type: "Featured Pro" as const,
+          price: PLAN_PRICES.pro,
+          label: `Featured Pro · ${formatPrice(PLAN_PRICES.pro)}`,
+          note: "Featured zone on the board",
+        },
+    selectedPlan.type === "Elite Managed"
+      ? null
+      : {
+          type: "Elite Managed" as const,
+          price: PLAN_PRICES.elite,
+          label: `Elite · ${formatPrice(PLAN_PRICES.elite)}`,
+          note: "First in the featured zone",
+        },
+  ].filter((plan): plan is { type: PlanType; price: number; label: string; note: string } => plan !== null);
   const isEmployerAccount = profile?.role === "employer" || profile?.role === "admin";
-  const showPaidStandard = !usingStartPack && selectedPlan.price !== 1 && isEmployerAccount;
   const planChip = selectedPlan.price === 1
     ? "Current plan: Admin Stripe test · $1"
     : usingStartPack
@@ -1236,123 +1261,47 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               </div>
            </div>
            
-           <div className="relative z-20 rounded-xl border-2 border-indigo-500 bg-indigo-50 p-4 sm:p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <h3 className="text-sm font-semibold text-indigo-950">
-                  {usingStartPack || !isEmployerAccount ? "Listing plan" : "Selected plan"}
-                </h3>
-                {showPaidStandard || usingStartPack || selectedPlan.price === 1 ? (
-                  <span className="inline-flex h-6 items-center rounded-full bg-indigo-600 px-2.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                    Current
-                  </span>
-                ) : null}
-              </div>
+           <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">This listing</p>
               {usingStartPack ? (
                 <>
-                  <div className="text-3xl font-semibold text-indigo-700 mb-1 leading-none">
-                    Free
-                    <span className="text-base text-indigo-800/70 font-medium"> Start pack</span>
-                  </div>
-                  <div className="text-xs font-semibold text-indigo-800 uppercase tracking-wide mb-3">
+                  <p className="mt-1 text-lg font-semibold text-slate-900">Start pack · Free</p>
+                  <p className="mt-1 text-xs text-slate-600">
                     {foundingStatus?.remainingJobs ?? 10} of {foundingStatus?.quota ?? 10} free listings left
-                  </div>
+                  </p>
                 </>
               ) : !isEmployerAccount ? (
                 <>
-                  <div className="text-2xl font-semibold text-indigo-700 mb-1 leading-none">1 free, then $79</div>
-                  <p className="text-sm text-indigo-900/80 mb-3">
-                    Start pack is 1 Standard listing per company and account. Sign in as an employer to use it. After that, Standard is $79 / 30 days.
-                  </p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">1 free, then $79</p>
+                  <p className="mt-1 text-xs text-slate-600">One Standard listing per company and account. Sign in as an employer to use it.</p>
                 </>
               ) : (
                 <>
-                  <div className="text-3xl font-semibold text-indigo-700 mb-1 leading-none">
-                    {formatPrice(selectedPlan.price)}
-                    <span className="text-base text-indigo-800/70 font-medium"> / 30 days</span>
-                  </div>
-                  <div className="text-xs font-semibold text-indigo-800 uppercase tracking-wide mb-3">
-                    {selectedPlan.type}
-                  </div>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {selectedPlan.type} · {formatPrice(selectedPlan.price)}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600">30 days on the board after review.</p>
                 </>
               )}
-
-              <details className="lg:hidden mb-3 rounded-lg border border-indigo-200 bg-white/70 px-3 py-2">
-                <summary className="cursor-pointer text-sm font-medium text-indigo-900">Featured and Elite (optional)</summary>
-                <p className="mt-2 text-xs text-indigo-800/80">Fill the role first. Upgrade is optional and only if you want extra placement.</p>
-              </details>
-              
-              {/* Plan Upgrade Options */}
-              {selectedPlan.type === 'Standard' && (
-                <div className="bg-indigo-600 rounded-xl p-4 text-white text-center relative group/tooltip">
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="text-xs font-black uppercase tracking-widest opacity-80 text-left">Boost Visibility</p>
-                    <div className="relative">
-                      <div className="w-5 h-5 rounded-full border border-white/40 flex items-center justify-center text-[10px] font-bold cursor-help hover:bg-white hover:text-indigo-600 transition-colors">?</div>
-                      {/* Tooltip */}
-                      <div className="absolute right-0 bottom-full mb-2 w-64 bg-white text-slate-900 p-4 rounded-xl shadow-2xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 pointer-events-none z-50 transform translate-y-2 group-hover/tooltip:translate-y-0 text-left border border-slate-100">
-                        <div className="text-xs font-black uppercase tracking-widest text-indigo-600 mb-3">Featured Pro</div>
-                        <ul className="space-y-2">
-                           <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
-                              <span className="text-indigo-600 mt-0.5">✓</span> Featured zone on the board
-                           </li>
-                           <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
-                              <span className="text-indigo-600 mt-0.5">✓</span> Prominent placement on the board
-                           </li>
-                        </ul>
-                        <div className="absolute -bottom-2 right-1.5 w-4 h-4 bg-white transform rotate-45 border-r border-b border-slate-100"></div>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="font-bold text-sm mb-4 text-left">Puts this listing in the featured zone on the board.</p>
-                  <button 
-                    onClick={() => onUpgradePlan('Featured Pro', PLAN_PRICES.pro)}
-                    className="w-full bg-white text-indigo-800 py-3 rounded-xl font-black text-sm hover:bg-indigo-50 transition-colors"
-                  >
-                    Upgrade to Pro (+$70)
-                  </button>
-                </div>
-              )}
-              
-              {selectedPlan.type === 'Featured Pro' && (
-                <div className="bg-slate-900 rounded-xl p-4 text-white text-center relative group/tooltip">
-                   <div className="flex justify-between items-start mb-2">
-                     <p className="text-xs font-black uppercase tracking-widest opacity-80 text-left">Go Elite</p>
-                     <div className="relative">
-                      <div className="w-5 h-5 rounded-full border border-white/40 flex items-center justify-center text-[10px] font-bold cursor-help hover:bg-white hover:text-slate-900 transition-colors">?</div>
-                      {/* Tooltip */}
-                      <div className="absolute right-0 bottom-full mb-2 w-64 bg-white text-slate-900 p-4 rounded-xl shadow-2xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 pointer-events-none z-50 transform translate-y-2 group-hover/tooltip:translate-y-0 text-left border border-slate-100">
-                        <div className="text-xs font-black uppercase tracking-widest text-indigo-600 mb-3">Elite Managed</div>
-                        <ul className="space-y-2">
-                           <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
-                              <span className="text-indigo-600 mt-0.5">✓</span> First in the featured zone
-                           </li>
-                           <li className="flex items-start gap-2 text-[11px] font-bold text-slate-600 leading-tight">
-                              <span className="text-indigo-600 mt-0.5">✓</span> Paid placement for 30 days
-                           </li>
-                        </ul>
-                        <div className="absolute -bottom-2 right-1.5 w-4 h-4 bg-white transform rotate-45 border-r border-b border-slate-100"></div>
-                      </div>
-                    </div>
-                   </div>
-                   <p className="font-bold text-sm mb-4 text-left">First in the featured zone for 30 days.</p>
-                   <button 
-                    onClick={() => onUpgradePlan('Elite Managed', PLAN_PRICES.elite)}
-                    className="w-full bg-white text-slate-900 py-3 rounded-xl font-black text-sm hover:bg-slate-200 transition-colors"
-                   >
-                     Upgrade to Elite (+${PLAN_PRICES.elite - PLAN_PRICES.pro})
-                   </button>
-                </div>
-              )}
-
-              {selectedPlan.type !== 'Standard' && (
-                <button
-                  onClick={() => onUpgradePlan('Standard', foundingEligible ? PLAN_PRICES.startPack : PLAN_PRICES.standard)}
-                  className="mt-6 w-full px-4 py-3 rounded-xl border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-indigo-200 hover:text-indigo-600 transition-colors"
-                >
-                  Switch to Standard (${PLAN_PRICES.standard})
-                </button>
-              )}
-
+              {isEmployerAccount ? (
+                <details className="mt-3 border-t border-slate-100 pt-3">
+                  <summary className="cursor-pointer text-sm font-medium text-slate-700">Other plans</summary>
+                  <ul className="mt-2 space-y-2">
+                    {otherPlans.map((plan) => (
+                      <li key={plan.type}>
+                        <button
+                          type="button"
+                          onClick={() => onUpgradePlan(plan.type, plan.price)}
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-left hover:border-indigo-300"
+                        >
+                          <span className="block text-sm font-semibold text-slate-900">{plan.label}</span>
+                          <span className="block text-xs text-slate-500">{plan.note}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
            </div>
         </div>
       </div>
