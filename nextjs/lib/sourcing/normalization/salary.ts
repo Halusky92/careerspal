@@ -168,6 +168,14 @@ function isNonExplicitSalary(text: string): boolean {
   );
 }
 
+/** "$180,000/year - $270,000/year" is one band. The period word must not split it into two floors. */
+export function collapseSplitSalaryRanges(text: string) {
+  return (text || "").replace(
+    /((?:CA\$|A\$|US\$|USD|EUR|GBP|CAD|AUD|CHF|[$€£¥]))\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:\/\s*|\bper\s+|\ba\s+)(year|yr|annum|hour|hr|month|mo|day)\b\s*[-–—]\s*(?:CA\$|A\$|US\$|USD|EUR|GBP|CAD|AUD|CHF|[$€£¥])?\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)/gi,
+    (_match, currency, low, period, high) => `${currency}${low}-${currency}${high} per ${period}`,
+  );
+}
+
 function decodeSalaryEntities(text: string) {
   let next = text || "";
   for (let pass = 0; pass < 2; pass += 1) {
@@ -201,7 +209,7 @@ function precedingIsNotBase(clean: string, index: number) {
 
 export function parseSalaryFromText(text: string): ParsedSalary {
   const notes: string[] = [];
-  const clean = collapseThousandGroups(decodeSalaryEntities(text || ""))
+  const clean = collapseSplitSalaryRanges(collapseThousandGroups(decodeSalaryEntities(text || "")))
     .trim()
     // Normalize common dash variants to hyphen so ranges like "$221,000—$260,000" match reliably.
     .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-");
@@ -352,7 +360,7 @@ export function parsedSalaryFromStructured(args: {
 
 /** One official base range. Several bands, an unconfirmed dollar sign, or an OTE ceiling stay unpublished. */
 export function chooseOfficialSalary(text: string, _locationHint = ""): ParsedSalary {
-  const clean = collapseThousandGroups(decodeSalaryEntities(text || ""))
+  const clean = collapseSplitSalaryRanges(collapseThousandGroups(decodeSalaryEntities(text || "")))
     .trim()
     .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-");
   if (!clean) return parseSalaryFromText("");

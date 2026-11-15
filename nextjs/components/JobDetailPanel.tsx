@@ -10,6 +10,7 @@ import FormattedDescription from "./FormattedDescription";
 import { formatJobSalary } from "../lib/formatSalary";
 import { visiblePostingTools } from "../lib/postingTools";
 import { formatRelativePosted } from "../lib/formatPosted";
+import { geographyLabel, inferWorkMode } from "../lib/workMode";
 import FeaturedBadge from "./FeaturedBadge";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import { trackJobView } from "../lib/trackJobEvent";
@@ -29,24 +30,6 @@ type JobDetailPanelProps = {
 const formatPosted = (job: Job) => formatRelativePosted(job.timestamp, job.postedAt || "");
 
 const ROLE_HEADINGS = new Set(["about the role", "about this job", "the role"]);
-
-function mentionsRemote(value: string) {
-  return /\bremote\b/i.test(value);
-}
-
-function remoteOnlyLabel(value: string) {
-  return /^remote\b/i.test(value.trim());
-}
-
-function placeAndPolicy(location: string, policy: string) {
-  const left = location.trim();
-  const right = policy.trim();
-  if (!left) return { place: right, policy: "" };
-  if (!right || !mentionsRemote(left) || !mentionsRemote(right)) return { place: left, policy: right };
-  if (remoteOnlyLabel(left) && !remoteOnlyLabel(right)) return { place: right, policy: "" };
-  if (!remoteOnlyLabel(left) && remoteOnlyLabel(right)) return { place: left, policy: "" };
-  return { place: right.length >= left.length ? right : left, policy: "" };
-}
 
 function descriptionOpensWithRole(text: string) {
   const first = text.replace(/\r\n/g, "\n").split("\n").map((line) => line.trim()).find(Boolean) || "";
@@ -192,17 +175,19 @@ export default function JobDetailPanel({
               </span>
             ) : null}
             {(() => {
-              const shown = placeAndPolicy(job.location || "", job.remotePolicy || "");
+              const mode = inferWorkMode(job);
+              const place = geographyLabel(job);
+              const placeLabel = place && place !== "Not specified" ? place : "";
               return (
                 <>
-                  {shown.place ? (
+                  {placeLabel ? (
                     <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-700">
-                      {shown.place}
+                      {placeLabel}
                     </span>
                   ) : null}
-                  {shown.policy ? (
+                  {mode ? (
                     <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-emerald-700">
-                      {shown.policy}
+                      {mode}
                     </span>
                   ) : null}
                 </>

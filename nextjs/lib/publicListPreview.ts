@@ -1,6 +1,7 @@
 import type { BoardTier } from "./boardAccess";
 import { formatJobSalary } from "./formatSalary";
 import { createJobSlug } from "./jobs";
+import { publicLocationLabel } from "./workMode";
 
 export const PUBLIC_COMPANY_JOB_LIMIT = 3;
 export const PUBLIC_CATEGORY_JOB_LIMIT = 4;
@@ -23,6 +24,7 @@ type ListJob = {
   title?: string | null;
   company?: string | null;
   location?: string | null;
+  remotePolicy?: string | null;
   salary?: string | null;
   description?: string | null;
   postedAt?: string | null;
@@ -56,7 +58,7 @@ export function toPublicJobCard(job: ListJob): PublicJobCard {
     id: job.id,
     title,
     company: job.company || "",
-    location: job.location || "",
+    location: publicLocationLabel(job) || job.location || "",
     salaryLabel: formatJobSalary({ salary: job.salary, description: job.description }),
     postedAt: job.postedAt || "",
     href: `/jobs/${createJobSlug({ id: job.id, title })}`,
