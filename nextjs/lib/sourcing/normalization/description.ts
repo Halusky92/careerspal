@@ -11,6 +11,10 @@ function decodeEntities(raw: string): string {
     .replace(/&mdash;|&#8212;|&#x2014;/gi, "-")
     .replace(/&ndash;|&#8211;|&#x2013;/gi, "-")
     .replace(/&minus;|&#8722;|&#x2212;/gi, "-")
+    .replace(/&#x([0-9a-f]+);/gi, (_m, n) => {
+      const code = Number.parseInt(n, 16);
+      return Number.isFinite(code) && code > 0 && code < 0x10ffff ? String.fromCharCode(code) : "";
+    })
     .replace(/&#(\d+);/g, (_m, n) => {
       const code = Number(n);
       return Number.isFinite(code) && code > 0 && code < 0x10ffff ? String.fromCharCode(code) : "";
@@ -167,12 +171,56 @@ function isNearDuplicate(a: string, b: string): boolean {
   return false;
 }
 
+function isLegalBoilerplate(value: string) {
+  const text = value.toLowerCase();
+  return (
+    text.includes("equal employment opportunit") ||
+    text.includes("applicant privacy notice") ||
+    text.includes("by submitting your application") ||
+    (text.includes("nondiscrimination") && text.includes("employment"))
+  );
+}
+
+function withoutLegalCopy(paragraph: string) {
+  return paragraph
+    .split("\n")
+    .map((line) =>
+      line
+        .split(/(?<=[.!?])\s+(?=[A-Z])/)
+        .filter((sentence) => !isLegalBoilerplate(sentence))
+        .join(" ")
+        .trim(),
+    )
+    .filter((line) => line && !isLegalBoilerplate(line))
+    .join("\n")
+    .trim();
+}
+
 function dropVendorBlurbs(out: string): string {
   return (out || "")
     .split(/\n{2,}/)
-    .map((p) => p.trim())
+    .map((p) => withoutLegalCopy(p.trim()))
     .filter((p) => p && !isBoilerplateDescription(p))
     .join("\n\n");
+}
+
+function promoteInlineHyphenBullets(out: string) {
+  return (out || "").replace(/(^|[^\n])\s+-\s+(?=[A-Za-z*])/g, (_match, lead) => `${lead}\n- `);
+}
+
+function attachOrphanBullets(out: string) {
+  const lines = (out || "").split("\n");
+  const next: string[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (lines[index].trim() === "-" && lines[index + 1]?.trim() && !lines[index + 1].trim().startsWith("-")) {
+      next.push(`- ${lines[index + 1].trim()}`);
+      index += 1;
+      continue;
+    }
+    if (lines[index].trim() === "-") continue;
+    next.push(lines[index]);
+  }
+  return next.join("\n");
 }
 
 function dedupeRepeatedChunks(out: string): string {
@@ -246,6 +294,9 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
       .split("\n")
       .map((l) => l.replace(/\s+/g, " ").trim());
     let normalized = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    normalized = normalized.replace(/\*\*/g, "");
+    normalized = promoteInlineHyphenBullets(normalized);
+    normalized = attachOrphanBullets(normalized);
     normalized = dropSeparatorLines(repairFalseHeadings(normalized));
     normalized = normalizeSectionHeadings(normalized);
     normalized = explodeInlineBullets(normalized).replace(/\n{3,}/g, "\n\n").trim();
@@ -292,7 +343,8 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
 
   let out = lines.join("\n");
   // Collapse too many blank lines.
-  out = out.replace(/\n{3,}/g, "\n\n").trim();
+  out = out.replace(/\*\*/g, "").replace(/\n{3,}/g, "\n\n").trim();
+  out = attachOrphanBullets(promoteInlineHyphenBullets(out));
 
   out = dropSeparatorLines(repairFalseHeadings(out));
   out = normalizeSectionHeadings(out);

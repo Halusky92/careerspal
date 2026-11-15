@@ -47,6 +47,16 @@ test("a dollar range is not shown when the posting also states a Canadian band",
   assert.equal(shown, "Salary listed");
 });
 
+test("a year marker between two amounts stays one salary range", () => {
+  const shown = formatSalaryDisplay(
+    "From $180k a year",
+    "The typical base pay range for this role across the U.S. is: $180,000/year -$270,000/year + bonus + equity + benefits.",
+  );
+  assert.match(shown, /\$180k/);
+  assert.match(shown, /\$270k/);
+  assert.equal(shown.startsWith("From "), false);
+});
+
 test("a stored floor without a range is labeled From", () => {
   const shown = formatSalaryDisplay("$95k a year");
   assert.match(shown, /^From \$95k a year$/);

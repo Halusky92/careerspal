@@ -24,6 +24,19 @@ test("a sentence that starts with a heading word stays a sentence", () => {
   assert.equal(role.includes("\ncombines"), false);
 });
 
+test("inline hyphen bullets stay in one list and legal boilerplate is dropped", () => {
+  const text = formatSourcedDescription(
+    "What you'll do: Lead the projects. Historical projects include: - Oversee due diligence. - Develop the European market entry strategy. Benefits: - ** Medical, dental, and vision - Flexible paid time off. BetterUp Inc. provides equal employment opportunities (EEO) to all employees and applicants.",
+  );
+  assert.match(text, /^- Oversee due diligence\./m);
+  assert.match(text, /^- Develop the European market entry strategy\./m);
+  assert.equal(text.includes("\n-\n"), false);
+  assert.match(text, /Medical, dental/);
+  assert.equal(text.includes("**"), false);
+  assert.equal(text.includes("equal employment"), false);
+  assert.equal(formatSourcedDescription("You&#x27;re always thinking.").includes("&#x27;"), false);
+});
+
 test("decorative underscore lines are removed", () => {
   const text = formatSourcedDescription("About Docker\n_______________________________________________________________________\nWe are seeking a Senior Manager.");
   assert.equal(text.includes("____"), false);

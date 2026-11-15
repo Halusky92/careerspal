@@ -31,7 +31,7 @@ const KNOWN_HEADINGS = new Set(
 
 function isHeadingLine(line: string): boolean {
   const t = (line || "").trim();
-  if (!t) return false;
+  if (!t || /^[-*•]/.test(t)) return false;
   const normalized = t.replace(/:$/, "").trim().toLowerCase();
   if (KNOWN_HEADINGS.has(normalized)) return true;
   if (t.endsWith(":") && t.length <= 64 && !t.includes(".")) return true;

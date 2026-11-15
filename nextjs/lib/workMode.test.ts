@@ -117,4 +117,37 @@ test("unspecified remote geography is Not specified and a named country is kept"
   assert.equal(publicLocationLabel({ location: "Worldwide", remotePolicy: "Remote" }), "Worldwide");
   assert.equal(publicLocationLabel({ location: "Remote", remotePolicy: "Remote" }), "Remote");
   assert.equal(publicLocationLabel({ location: "Remote - US", remotePolicy: "Remote" }), "Remote - US");
+  assert.equal(
+    geographyLabel({
+      location: "Remote",
+      remotePolicy: "Remote",
+      description: "100% remote within the United States, with travel for company retreats.",
+    }),
+    "United States",
+  );
+  assert.equal(
+    geographyLabel({
+      location: "Remote",
+      description: "More than 25,000 hospitals across all 50 states rely on the product. Customers in the United States use it daily.",
+    }),
+    "Not specified",
+  );
+  assert.equal(
+    inferWorkMode({
+      remotePolicy: "Remote",
+      location: "United States (Remote)",
+      description:
+        "We are a hybrid company. Employees are expected to be available to work from one of our office hubs at least two days per week, or eight days per month.",
+    }),
+    "Hybrid",
+  );
+  assert.equal(
+    publicLocationLabel({
+      remotePolicy: "Remote",
+      location: "United States (Remote)",
+      description:
+        "Employees are expected to be available to work from one of our office hubs at least two days per week, or eight days per month.",
+    }),
+    "Hybrid • United States",
+  );
 });

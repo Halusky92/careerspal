@@ -37,7 +37,7 @@ const KNOWN_HEADINGS = new Set(
 
 function isHeadingLine(line: string): boolean {
   const t = (line || "").trim();
-  if (!t) return false;
+  if (!t || /^[-*•]/.test(t)) return false;
   const normalized = t.replace(/:$/, "").trim().toLowerCase();
   if (KNOWN_HEADINGS.has(normalized)) return true;
   // Generic: short line ending with ":" (common in job posts) -> treat as heading.

@@ -49,11 +49,33 @@ export function publicLocationLabel(job: WorkModeInput): string {
   const location = (job.location || "").trim();
   const mode = inferWorkMode(job);
   const place = geographyLabel(job);
+  if (mode === "Hybrid" && /\bremote\b/i.test(`${location} ${job.remotePolicy || ""}`) && !/\bhybrid\b/i.test(location)) {
+    return place && place !== "Not specified" ? `Hybrid • ${place}` : "Hybrid";
+  }
   if ((mode === "Remote" || mode === "Hybrid") && place && place !== "Not specified" && (!location || /^(remote|hybrid)$/i.test(location))) {
     return `${mode} • ${place}`;
   }
   if (location) return location;
   return mode === "Remote" ? "Remote" : "";
+}
+
+function explicitCountry(text: string): "United States" | "Canada" | "United Kingdom" | null {
+  const us =
+    /\b(?:within|anywhere in|based in|located in|authorized to work in|eligible to work in)\s+the\s+united states\b/i.test(text) ||
+    /\bremote\s+(?:within|in|across)\s+the\s+united states\b/i.test(text) ||
+    /\b(?:united states|u\.s\.|usa)\s+only\b/i.test(text);
+  const canada =
+    /\b(?:within|anywhere in|based in|located in|authorized to work in|eligible to work in)\s+canada\b/i.test(text) ||
+    /\bremote\s+(?:within|in|across)\s+canada\b/i.test(text) ||
+    /\bcanada\s+only\b/i.test(text);
+  const uk =
+    /\b(?:within|anywhere in|based in|located in|authorized to work in|eligible to work in)\s+the\s+united kingdom\b/i.test(text) ||
+    /\b(?:uk|u\.k\.|united kingdom)\s+only\b/i.test(text);
+  const hits = [us, canada, uk].filter(Boolean).length;
+  if (hits !== 1) return null;
+  if (us) return "United States";
+  if (canada) return "Canada";
+  return "United Kingdom";
 }
 
 function statedReach(text: string): "International" | "Worldwide" | "Global" | null {
@@ -80,6 +102,8 @@ export function geographyLabel(job: WorkModeInput): string {
   if (place) return place;
   const fromLocation = statedReach(raw);
   if (fromLocation) return fromLocation;
+  const restricted = explicitCountry((job.description || "").slice(0, 4000));
+  if (restricted) return restricted;
   const fromDescription = statedReach((job.description || "").slice(0, 2500));
   if (fromDescription) return fromDescription;
   const mode = inferWorkMode(job);
