@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import JobsClient from "../JobsClient";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
 import { Job } from "../../../types";
@@ -7,7 +8,8 @@ import { createJobSlug } from "../../../lib/jobs";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { formatJobSalary } from "../../../lib/formatSalary";
 import { ApplyClickLink } from "../../../components/JobAnalytics";
-import { applyBoardVisibility, boardAccessHeadline, boardCompanyCount, GUEST_VISIBLE_JOBS, lockedBoardPreviews } from "../../../lib/boardAccess";
+import { boardAccessHeadline, boardCapsEnabled, boardCompanyCount, boardSliceForTier, lockedBoardPreviews } from "../../../lib/boardAccess";
+import { boardTierFromRequest } from "../../../lib/boardAccessServer";
 import { countLivePublishedJobs, loadPublishedBoardJobs } from "../../../lib/publicJobBoard";
 
 export const dynamic = "force-dynamic";
@@ -135,21 +137,29 @@ export default async function JobsPage({ searchParams }: PageProps) {
   const initialQuery = getParam(params.query);
   const initialLocation = getParam(params.location);
   const { jobs, total } = await fetchPublishedJobs();
-  const capsOn = process.env.BOARD_PREMIUM_CAPS === "1";
-  const ranked = applyBoardVisibility(jobs, null);
-  const initialJobs = capsOn ? ranked.slice(0, GUEST_VISIBLE_JOBS) : ranked.slice(0, 50);
-  const initialLocked = lockedBoardPreviews(ranked, capsOn ? GUEST_VISIBLE_JOBS : null);
+  const capsOn = boardCapsEnabled();
+  const token = capsOn ? (await cookies()).get("cp_access_token")?.value || "" : "";
+  const tier = !capsOn
+    ? "paid"
+    : await boardTierFromRequest(
+        new Request("https://www.careerspal.com/jobs", {
+          headers: token ? { authorization: `Bearer ${token}` } : {},
+        }),
+      );
+  const slice = boardSliceForTier(jobs, tier);
+  const initialJobs = slice.jobs;
+  const initialLocked = lockedBoardPreviews(jobs, slice.cap);
 
   return (
     <div className="pt-3">
       <noscript>
-        <StaticJobsList jobs={initialJobs} total={total} companies={boardCompanyCount(ranked)} />
+        <StaticJobsList jobs={initialJobs} total={total} companies={boardCompanyCount(jobs)} />
       </noscript>
       <JobsClient
         initialJobs={initialJobs}
         initialLocked={initialLocked}
-        initialCompanies={boardCompanyCount(ranked)}
-        initialAccess={capsOn ? "guest" : "paid"}
+        initialCompanies={boardCompanyCount(jobs)}
+        initialAccess={tier}
         initialTotal={total}
         initialQuery={initialQuery}
         initialLocation={initialLocation}

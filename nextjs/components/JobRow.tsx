@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
+import { JOBS_RETURN_KEY } from "../lib/jobsReturn";
 import { stripHtmlToText } from "../lib/sourcing/normalization/text";
 import { formatJobSalary } from "../lib/formatSalary";
 import { visiblePostingTools } from "../lib/postingTools";
@@ -157,7 +158,17 @@ export default function JobRow({
               <h3 className="text-[14px] sm:text-[15px] font-bold text-slate-900 leading-snug line-clamp-2">
                 <Link
                   href={detailHref}
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    try {
+                      window.sessionStorage.setItem(
+                        JOBS_RETURN_KEY,
+                        JSON.stringify({ jobId: job.id, scrollY: window.scrollY }),
+                      );
+                    } catch {
+                      // the back link still carries the job id
+                    }
+                  }}
                   className="block hover:text-indigo-700 hover:underline decoration-indigo-300 underline-offset-2 relative z-10"
                   title="Open role page"
                 >

@@ -19,6 +19,7 @@ import FeaturedBoardZone from "./FeaturedBoardZone";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
 import { jobMatchesLocationQuery, locationLabelsForJobs } from "../lib/locationFilter";
 import { boardAccessHeadline, boardCap, type LockedBoardPreview } from "../lib/boardAccess";
+import { JOBS_RETURN_KEY, jobIdToRestore } from "../lib/jobsReturn";
 import { trackFunnel, trackFunnelOnce } from "../lib/funnelTrack";
 
 interface FindJobsProps {
@@ -199,7 +200,15 @@ const FindJobs: React.FC<FindJobsProps> = ({
     if (urlSeniority && SENIORITY_OPTIONS.includes(urlSeniority as any)) setSeniority(urlSeniority as any);
     setVerifiedOnly(urlVerified === "1");
     setShowSavedOnly(urlSaved === "1");
-    if (urlJobId && urlJobId.trim()) initialJobIdRef.current = urlJobId.trim();
+    let storedReturn: string | null = null;
+    try {
+      storedReturn = window.sessionStorage.getItem(JOBS_RETURN_KEY);
+      if (storedReturn) window.sessionStorage.removeItem(JOBS_RETURN_KEY);
+    } catch {
+      storedReturn = null;
+    }
+    const restoreId = jobIdToRestore(urlJobId, storedReturn);
+    if (restoreId) initialJobIdRef.current = restoreId;
 
     hydratedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -704,12 +713,12 @@ const FindJobs: React.FC<FindJobsProps> = ({
     [query, locationQuery, category, workMode, employmentType, salaryMin, salaryMax, selectedTools, timezone, seniority, verifiedOnly, showSavedOnly],
   );
 
-  const scrollToJob = (jobId: string) => {
+  const scrollToJob = (jobId: string, behavior: ScrollBehavior = "smooth") => {
     if (typeof window === "undefined") return;
     window.requestAnimationFrame(() => {
       const el = rowRefs.current[jobId];
       if (el && typeof el.scrollIntoView === "function") {
-        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        el.scrollIntoView({ block: "center", behavior });
       }
     });
   };
@@ -723,6 +732,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     const idx = boardJobs.findIndex((j) => j.id === initial);
     if (idx >= 0 && idx + 1 > visibleCount) {
       setVisibleCount(Math.min(boardJobs.length, idx + 1));
+      return;
     }
     if (featuredJobs.some((j) => j.id === initial) && featuredJobs.length > FEATURED_ZONE_CAP) {
       setFeaturedOpen(true);
@@ -736,7 +746,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     setSelectedJobId(initial);
     setExpandedJobId(initial);
 
-    window.setTimeout(() => scrollToJob(initial), 0);
+    window.setTimeout(() => scrollToJob(initial, "instant"), 0);
     initialJobIdRef.current = null;
   }, [filteredAndSorted, boardJobs, featuredJobs, isDesktop, visibleCount]);
 

@@ -115,6 +115,10 @@ export default function JobsClient({
 
   useEffect(() => {
     if (authLoading) return;
+    // The server already rendered this signed-in tier from the session cookie.
+    // Fetching again is what flashed the guest locks and jumped the list.
+    if (initialAccess !== "guest") return;
+    if (!accessToken) return;
     let cancelled = false;
     const load = async () => {
       try {
@@ -142,7 +146,7 @@ export default function JobsClient({
     return () => {
       cancelled = true;
     };
-  }, [accessToken, authLoading]);
+  }, [accessToken, authLoading, initialAccess]);
 
   const loadMore = async () => {
     if (boardAccess !== "paid" || loadingMore || typeof boardTotal !== "number" || jobs.length >= boardTotal) return;
