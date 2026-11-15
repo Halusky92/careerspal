@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
-import { JOBS_RETURN_KEY } from "../lib/jobsReturn";
 import { stripHtmlToText } from "../lib/sourcing/normalization/text";
 import { formatJobSalary } from "../lib/formatSalary";
 import { visiblePostingTools } from "../lib/postingTools";
@@ -33,6 +32,7 @@ type JobRowProps = {
   onApply: () => void;
   onAction?: (action: JobRowAction) => void;
   onOpenCompany?: (companyName: string) => void;
+  onOpenRole?: () => void;
 };
 
 const getWorkMode = (job: Job) => inferWorkMode(job);
@@ -60,6 +60,7 @@ export default function JobRow({
   onApply,
   onAction,
   onOpenCompany,
+  onOpenRole,
 }: JobRowProps) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -160,14 +161,7 @@ export default function JobRow({
                   href={detailHref}
                   onClick={(e) => {
                     e.stopPropagation();
-                    try {
-                      window.sessionStorage.setItem(
-                        JOBS_RETURN_KEY,
-                        JSON.stringify({ jobId: job.id, scrollY: window.scrollY }),
-                      );
-                    } catch {
-                      // the back link still carries the job id
-                    }
+                    onOpenRole?.();
                   }}
                   className="block hover:text-indigo-700 hover:underline decoration-indigo-300 underline-offset-2 relative z-10"
                   title="Open role page"
@@ -397,6 +391,7 @@ export default function JobRow({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    onOpenRole?.();
                     router.push(detailHref);
                   }}
                   className="h-11 flex-1 rounded-2xl border border-slate-200/80 bg-white text-[10px] font-semibold uppercase tracking-wide text-slate-700 hover:border-indigo-200 hover:text-indigo-700"

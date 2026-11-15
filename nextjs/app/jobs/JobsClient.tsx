@@ -7,6 +7,7 @@ import { Job, UserSession } from "../../types";
 import type { LockedBoardPreview } from "../../lib/boardAccess";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
+import { JOBS_RETURN_KEY, readJobsReturnPlace } from "../../lib/jobsReturn";
 
 const STORAGE_KEY = "cp_saved_jobs";
 
@@ -146,6 +147,43 @@ export default function JobsClient({
     return () => {
       cancelled = true;
     };
+  }, [accessToken, authLoading, initialAccess]);
+
+  useEffect(() => {
+    if (authLoading || initialAccess === "guest") return;
+    let place: ReturnType<typeof readJobsReturnPlace> = null;
+    try {
+      place = readJobsReturnPlace(window.sessionStorage.getItem(JOBS_RETURN_KEY));
+    } catch {
+      place = null;
+    }
+    if (!place || place.loadedCount <= jobs.length) return;
+    let cancelled = false;
+    const fill = async () => {
+      let loaded = jobs.length;
+      let guard = 0;
+      while (!cancelled && loaded < place.loadedCount && guard < 6) {
+        guard += 1;
+        const response = accessToken
+          ? await authFetch(`/api/jobs?limit=50&skip=${loaded}`, {}, accessToken)
+          : await fetch(`/api/jobs?limit=50&skip=${loaded}`);
+        const data = (await response.json()) as { jobs?: Job[] };
+        const next = Array.isArray(data.jobs) ? data.jobs : [];
+        if (next.length === 0) return;
+        loaded += next.length;
+        if (cancelled) return;
+        setJobs((prev) => {
+          const seen = new Set(prev.map((job) => job.id));
+          return [...prev, ...next.filter((job) => !seen.has(job.id))];
+        });
+      }
+    };
+    fill();
+    return () => {
+      cancelled = true;
+    };
+    // Restore the pages that were already open. Later list growth must not fetch again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, authLoading, initialAccess]);
 
   const loadMore = async () => {
