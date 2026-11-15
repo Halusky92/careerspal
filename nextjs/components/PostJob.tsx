@@ -553,32 +553,31 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   };
 
   const usingStartPack = Boolean(foundingEligible && selectedPlan.type === "Standard" && selectedPlan.price !== 1);
-  const otherPlans: { type: PlanType; price: number; label: string; note: string }[] = [
-    selectedPlan.type === "Standard"
-      ? null
-      : {
-          type: "Standard" as const,
-          price: foundingEligible ? PLAN_PRICES.startPack : PLAN_PRICES.standard,
-          label: foundingEligible ? "Start pack · Free" : `Standard · ${formatPrice(PLAN_PRICES.standard)}`,
-          note: "On the board for 30 days",
-        },
-    selectedPlan.type === "Featured Pro"
-      ? null
-      : {
-          type: "Featured Pro" as const,
-          price: PLAN_PRICES.pro,
-          label: `Featured Pro · ${formatPrice(PLAN_PRICES.pro)}`,
-          note: "Featured zone on the board",
-        },
-    selectedPlan.type === "Elite Managed"
-      ? null
-      : {
-          type: "Elite Managed" as const,
-          price: PLAN_PRICES.elite,
-          label: `Elite · ${formatPrice(PLAN_PRICES.elite)}`,
-          note: "First in the featured zone",
-        },
-  ].filter((plan): plan is { type: PlanType; price: number; label: string; note: string } => plan !== null);
+  const otherPlans: { type: PlanType; price: number; label: string; note: string }[] = [];
+  if (selectedPlan.type !== "Standard") {
+    otherPlans.push({
+      type: "Standard",
+      price: foundingEligible ? PLAN_PRICES.startPack : PLAN_PRICES.standard,
+      label: foundingEligible ? "Start pack · Free" : `Standard · ${formatPrice(PLAN_PRICES.standard)}`,
+      note: "On the board for 30 days",
+    });
+  }
+  if (selectedPlan.type !== "Featured Pro") {
+    otherPlans.push({
+      type: "Featured Pro",
+      price: PLAN_PRICES.pro,
+      label: `Featured Pro · ${formatPrice(PLAN_PRICES.pro)}`,
+      note: "Featured zone on the board",
+    });
+  }
+  if (selectedPlan.type !== "Elite Managed") {
+    otherPlans.push({
+      type: "Elite Managed",
+      price: PLAN_PRICES.elite,
+      label: `Elite · ${formatPrice(PLAN_PRICES.elite)}`,
+      note: "First in the featured zone",
+    });
+  }
   const isEmployerAccount = profile?.role === "employer" || profile?.role === "admin";
   const planChip = selectedPlan.price === 1
     ? "Current plan: Admin Stripe test · $1"
