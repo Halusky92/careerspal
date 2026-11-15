@@ -1,7 +1,7 @@
 "use client";
 
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Job, UserSession } from '../types';
@@ -19,7 +19,7 @@ import FeaturedBoardZone from "./FeaturedBoardZone";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
 import { jobMatchesLocationQuery, locationLabelsForJobs } from "../lib/locationFilter";
 import { boardAccessHeadline, boardCap, type LockedBoardPreview } from "../lib/boardAccess";
-import { JOBS_RETURN_KEY, jobIdToRestore } from "../lib/jobsReturn";
+import { JOBS_RETURN_KEY, jobIdToRestore, readJobsReturnPlace, type JobsReturnPlace } from "../lib/jobsReturn";
 import { trackFunnel, trackFunnelOnce } from "../lib/funnelTrack";
 
 interface FindJobsProps {
@@ -138,6 +138,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [isDesktop, setIsDesktop] = useState(false);
   const [urlUpdateTick, setUrlUpdateTick] = useState(0);
   const initialJobIdRef = useRef<string | null>(null);
+  const restoredJobIdRef = useRef<string | null>(null);
+  const returnPlaceRef = useRef<JobsReturnPlace | null>(null);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const suppressUrlUpdateRef = useRef(false);
   const pendingUrlUpdateRef = useRef(false);
@@ -203,16 +205,55 @@ const FindJobs: React.FC<FindJobsProps> = ({
     let storedReturn: string | null = null;
     try {
       storedReturn = window.sessionStorage.getItem(JOBS_RETURN_KEY);
-      if (storedReturn) window.sessionStorage.removeItem(JOBS_RETURN_KEY);
     } catch {
       storedReturn = null;
     }
+    const place = readJobsReturnPlace(storedReturn);
+    if (place) returnPlaceRef.current = place;
     const restoreId = jobIdToRestore(urlJobId, storedReturn);
     if (restoreId) initialJobIdRef.current = restoreId;
+    if (place && place.visibleCount > JOBS_PER_PAGE) setVisibleCount(place.visibleCount);
 
     hydratedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useLayoutEffect(() => {
+    let stored: string | null = null;
+    try {
+      stored = window.sessionStorage.getItem(JOBS_RETURN_KEY);
+    } catch {
+      stored = null;
+    }
+    const place = readJobsReturnPlace(stored);
+    const params = new URLSearchParams(window.location.search);
+    const restoreId = jobIdToRestore(params.get("jobId"), stored);
+    if (restoreId) initialJobIdRef.current = restoreId;
+    if (!place) return;
+    returnPlaceRef.current = place;
+    if (place.visibleCount > JOBS_PER_PAGE) {
+      setVisibleCount((current) => Math.max(current, place.visibleCount));
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    const place = returnPlaceRef.current;
+    if (!place || place.scrollY <= 0) return;
+    if (place.visibleCount > visibleCount) return;
+    const jobId = initialJobIdRef.current || place.jobId;
+    if (jobId && jobs.some((job) => job.id === jobId) && !rowRefs.current[jobId]) return;
+    if (place.scrollY > window.innerHeight && document.documentElement.scrollHeight < place.scrollY + 200) return;
+    const top = place.scrollY;
+    window.scrollTo({ top, left: 0, behavior: "instant" });
+    const timer = window.setTimeout(() => window.scrollTo({ top, left: 0, behavior: "instant" }), 60);
+    returnPlaceRef.current = null;
+    try {
+      window.sessionStorage.removeItem(JOBS_RETURN_KEY);
+    } catch {
+      // the address still has the job id
+    }
+    return () => window.clearTimeout(timer);
+  }, [jobs, visibleCount]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -240,7 +281,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
       setOrDelete("seniority", seniority !== "any" ? seniority : null);
       setOrDelete("verified", verifiedOnly ? "1" : null);
       setOrDelete("saved", showSavedOnly ? "1" : null);
-      const activeJobId = (isDesktop ? selectedJobId : expandedJobId) || null;
+      const activeJobId = (isDesktop ? selectedJobId : expandedJobId) || initialJobIdRef.current;
       setOrDelete("jobId", activeJobId);
       const qs = params.toString();
       const nextUrl = qs ? `/jobs?${qs}` : "/jobs";
@@ -274,8 +315,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
     router,
   ]);
 
-  // Reset pagination when filters change
+  // Reset pagination when filters change. The first address read is not a new filter,
+  // and a return to an opened role must keep the list window that was already open.
   useEffect(() => {
+    if (returnPlaceRef.current || initialJobIdRef.current || restoredJobIdRef.current) return;
     setVisibleCount(JOBS_PER_PAGE);
     setExpandedJobId(null);
   }, [
@@ -606,6 +649,22 @@ const FindJobs: React.FC<FindJobsProps> = ({
       .slice(0, 6);
   }, [locationQuery, jobs]);
 
+  const rememberPlace = (jobId: string) => {
+    try {
+      window.sessionStorage.setItem(
+        JOBS_RETURN_KEY,
+        JSON.stringify({
+          jobId,
+          scrollY: window.scrollY,
+          visibleCount,
+          loadedCount: jobs.length,
+        }),
+      );
+    } catch {
+      // the back link still carries the job id
+    }
+  };
+
   const handleLoadMore = () => {
     const next = visibleCount + JOBS_PER_PAGE;
     if (canLoadMore && next > boardJobs.length) onLoadMore?.();
@@ -745,6 +804,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     // We set both; rendering decides which one is visible.
     setSelectedJobId(initial);
     setExpandedJobId(initial);
+    restoredJobIdRef.current = initial;
 
     window.setTimeout(() => scrollToJob(initial, "instant"), 0);
     initialJobIdRef.current = null;
@@ -766,7 +826,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   useEffect(() => {
     if (!isDesktop) return;
-    if (initialJobIdRef.current) return;
+    if (initialJobIdRef.current || restoredJobIdRef.current) return;
     if (filteredAndSorted.length === 0) {
       setSelectedJobId(null);
       return;
@@ -1403,6 +1463,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                           setExpandedJobId((prev) => (prev === job.id ? null : job.id));
                         }}
                         onApply={() => handleApply(job)}
+                        onOpenRole={() => rememberPlace(job.id)}
                       />
                     </div>
                   );
@@ -1453,6 +1514,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                       setExpandedJobId((prev) => (prev === job.id ? null : job.id));
                     }}
                     onApply={() => handleApply(job)}
+                    onOpenRole={() => rememberPlace(job.id)}
                   />
                 </div>
               );
