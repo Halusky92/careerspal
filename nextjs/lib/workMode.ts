@@ -102,7 +102,7 @@ export function geographyLabel(job: WorkModeInput): string {
   if (place) return place;
   const fromLocation = statedReach(raw);
   if (fromLocation) return fromLocation;
-  const restricted = explicitCountry((job.description || "").slice(0, 4000));
+  const restricted = explicitCountry(job.description || "");
   if (restricted) return restricted;
   const fromDescription = statedReach((job.description || "").slice(0, 2500));
   if (fromDescription) return fromDescription;

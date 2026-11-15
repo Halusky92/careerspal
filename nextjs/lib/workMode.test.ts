@@ -121,7 +121,7 @@ test("unspecified remote geography is Not specified and a named country is kept"
     geographyLabel({
       location: "Remote",
       remotePolicy: "Remote",
-      description: "100% remote within the United States, with travel for company retreats.",
+      description: `${"The company builds tools for clinics. ".repeat(200)}100% remote within the United States, with travel for company retreats.`,
     }),
     "United States",
   );
