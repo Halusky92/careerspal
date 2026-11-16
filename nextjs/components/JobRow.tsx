@@ -115,7 +115,7 @@ export default function JobRow({
             ? "bg-white border-slate-900/20 shadow-sm"
             : "bg-white border-indigo-200 shadow-sm"
           : isNew
-            ? "bg-amber-50/80 border-amber-200"
+            ? "bg-[#fbf8f2] border-[#efe6d4]"
             : "bg-white border-slate-200",
         selected ? "ring-2 ring-indigo-600 ring-offset-2 ring-offset-[#F8F9FD]" : "hover:shadow-sm",
         isPrivate ? "opacity-80" : "",
@@ -150,7 +150,7 @@ export default function JobRow({
         <div
           className={[
             "rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0",
-            isNew ? "mt-6" : "mt-0.5",
+            isNew ? "mt-5" : "mt-0.5",
             isHome ? "w-10 h-10" : "w-11 h-11",
           ].join(" ")}
         >
@@ -355,7 +355,7 @@ export default function JobRow({
           </div>
 
           {expanded && (
-            <div className="sm:hidden mt-3 pt-3 border-t border-amber-200/60">
+            <div className="sm:hidden mt-3 pt-3 border-t border-[#efe6d4]">
               <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-700">
                 <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1">
                   {workMode}
