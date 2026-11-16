@@ -54,10 +54,15 @@ test("guest and free account share the public cap; premium receives every listed
   const jobs = Array.from({ length: 6 }, (_, index) => job(`j${index}`, now - index));
   const guest = buildPublicList(jobs, "guest", PUBLIC_COMPANY_JOB_LIMIT);
   const free = buildPublicList(jobs, "registered", PUBLIC_COMPANY_JOB_LIMIT);
-  const paid = buildPublicList(jobs, "paid", PUBLIC_COMPANY_JOB_LIMIT);
+  const paid = buildPublicList(jobs, "paid", jobs.length);
+  const guestFull = buildPublicList(jobs, "guest", jobs.length);
   assert.deepEqual(
     guest.jobs.map((item) => item.id),
     free.jobs.map((item) => item.id),
+  );
+  assert.deepEqual(
+    guestFull.jobs.map((item) => item.id),
+    paid.jobs.map((item) => item.id),
   );
   assert.deepEqual(
     paid.jobs.map((item) => item.id),

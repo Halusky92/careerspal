@@ -89,7 +89,7 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Job alerts</p>
         <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Stay in the loop</h1>
         <p className="mt-2 text-sm text-slate-600 max-w-2xl">
-          Send your email and get fresh openings as they hit the market. Stay in the picture — no noise, just new roles.
+          A weekly email for the categories and salary floor you choose. Daily category alerts are on Premium.
         </p>
         <PublicSubscriberNote count={subscriberCount} />
       </div>

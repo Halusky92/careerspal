@@ -82,13 +82,13 @@ export default function PremiumListContinuation({
       {!loading && !paid && remaining > 0 ? (
         <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
           <p className="text-sm text-slate-700">
-            {remaining} more live {remaining === 1 ? "role" : "roles"}. Premium unlocks the rest of this list. Each role page stays public.
+            {remaining} more live {remaining === 1 ? "role" : "roles"} on this list.
           </p>
           <Link
-            href={accessToken ? "/upgrade" : `/auth?from=${encodeURIComponent("/upgrade")}`}
+            href="/jobs"
             className="mt-2 inline-flex text-sm font-medium text-indigo-700 hover:underline"
           >
-            Unlock the full board
+            Browse the board
           </Link>
         </div>
       ) : null}

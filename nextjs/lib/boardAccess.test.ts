@@ -5,13 +5,11 @@ import {
   applyBoardVisibility,
   boardCap,
   boardCapsEnabled,
-  GUEST_VISIBLE_JOBS,
   jobVisibleAtRank,
   lockedBoardPreviews,
   boardCompanyCount,
   boardAccessHeadline,
   boardHiddenNote,
-  boardHiddenSentences,
   homeSeeAllLabel,
   boardPageForTier,
   boardSliceForTier,
@@ -23,22 +21,21 @@ import {
   premiumSubscriptionBlocksNewCheckout,
   resolvePremiumStripeKey,
   stripeKeyForEventMode,
-  REGISTERED_VISIBLE_JOBS,
   resolveBoardTier,
   tierForPublicList,
 } from "./boardAccess";
 
-test("the jobs page opens on the viewer's tier instead of the guest slice", () => {
+test("the jobs page opens the full live board for every viewer", () => {
   const jobs = Array.from({ length: 20 }, (_, index) => ({ id: String(index), timestamp: 20 - index }));
-  assert.equal(boardSliceForTier(jobs, "guest").jobs.length, GUEST_VISIBLE_JOBS);
-  assert.equal(boardSliceForTier(jobs, "registered").jobs.length, REGISTERED_VISIBLE_JOBS);
+  assert.equal(boardSliceForTier(jobs, "guest").jobs.length, 20);
+  assert.equal(boardSliceForTier(jobs, "registered").jobs.length, 20);
   assert.equal(boardSliceForTier(jobs, "paid").jobs.length, 20);
-  assert.equal(boardSliceForTier(jobs, "paid").cap, null);
+  assert.equal(boardSliceForTier(jobs, "guest").cap, null);
 });
 
-test("guest sees 4, registered 14, paid unlimited", () => {
-  assert.equal(boardCap("guest"), GUEST_VISIBLE_JOBS);
-  assert.equal(boardCap("registered"), REGISTERED_VISIBLE_JOBS);
+test("the live board has no guest or free-account cap", () => {
+  assert.equal(boardCap("guest"), null);
+  assert.equal(boardCap("registered"), null);
   assert.equal(boardCap("paid"), null);
 });
 
@@ -81,7 +78,8 @@ test("API pagination never leaks past guest/member caps even with skip", () => {
   );
   const member = boardPageForTier(jobs, "registered", { skip: 10, limit: 100 });
   assert.equal(member.access, "registered");
-  assert.equal(member.jobs.length, REGISTERED_VISIBLE_JOBS);
+  assert.equal(member.jobs.length, 10);
+  assert.equal(boardPageForTier(jobs, "guest", { skip: 10, limit: 100 }).jobs.length, 10);
   const unlimited = boardPageForTier(jobs, "paid", { skip: 14, limit: 3 });
   assert.equal(unlimited.access, "paid");
   assert.deepEqual(
@@ -157,8 +155,8 @@ test("locked previews keep titles and drop everything past the cap", () => {
   assert.equal("description" in locked[0], false);
   assert.equal(lockedBoardPreviews(jobs, null).length, 0);
   assert.equal(boardCompanyCount(jobs), 5);
-  assert.equal(boardAccessHeadline("guest", 48, 20), "You're viewing 4 of 48 live jobs from 20 companies");
-  assert.equal(boardAccessHeadline("registered", 48, 1), "You're viewing 14 of 48 live jobs from 1 company");
+  assert.equal(boardAccessHeadline("guest", 48, 20), "You're viewing all 48 live jobs from 20 companies");
+  assert.equal(boardAccessHeadline("registered", 48, 1), "You're viewing all 48 live jobs from 1 company");
   assert.equal(boardAccessHeadline("paid", 48, 20), "You're viewing all 48 live jobs from 20 companies");
   assert.equal(boardAccessHeadline("guest", 3, 2), "You're viewing all 3 live jobs from 2 companies");
   assert.equal(homeSeeAllLabel(false, 62), "Browse jobs");
@@ -174,29 +172,9 @@ test("locked previews keep titles and drop everything past the cap", () => {
   assert.equal(homeSeeAllLabel(true, 62), "See all 62 jobs");
   assert.notEqual(homeSeeAllLabel(true, 62), `See all ${pageLength} jobs`);
   assert.equal(boardAccessHeadline("guest", null, 4), "You're viewing live jobs from 4 companies");
-  const guestNote = boardHiddenNote("guest", 71);
-  assert.deepEqual(guestNote, { tier: "guest", freeMore: 10, premiumMore: 57 });
-  assert.equal(
-    boardHiddenSentences(guestNote!).free,
-    "A free account shows 10 more of the newest jobs.",
-  );
-  assert.equal(
-    boardHiddenSentences(guestNote!).premium,
-    "Premium unlocks the full live board, salary and skills filters, and daily alerts.",
-  );
-  assert.deepEqual(boardHiddenNote("guest", 8), { tier: "guest", freeMore: 4, premiumMore: 0 });
-  assert.equal(
-    boardHiddenSentences(boardHiddenNote("guest", 8)!).premium,
-    "Salary and skills filters and daily alerts are on Premium.",
-  );
-  assert.deepEqual(boardHiddenNote("registered", 71), { tier: "registered", premiumMore: 57 });
-  assert.equal(
-    boardHiddenSentences(boardHiddenNote("registered", 71)!).premium,
-    "57 more live jobs are on Premium, with salary and skills filters and daily alerts.",
-  );
-  assert.equal(boardHiddenNote("registered", 14), null);
+  assert.equal(boardHiddenNote("guest", 71), null);
+  assert.equal(boardHiddenNote("registered", 71), null);
   assert.equal(boardHiddenNote("paid", 71), null);
-  assert.equal(boardHiddenNote("guest", 4), null);
 });
 
 test("live published count ignores one page and hidden statuses", () => {

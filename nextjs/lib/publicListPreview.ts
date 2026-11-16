@@ -65,10 +65,11 @@ export function toPublicJobCard(job: ListJob): PublicJobCard {
   };
 }
 
-export function jobsForViewer<T extends { timestamp?: number | null }>(jobs: T[], tier: BoardTier, limit: number): T[] {
+/** Limit is how many rows this surface shows. It is the same for every viewer. */
+export function jobsForViewer<T extends { timestamp?: number | null }>(jobs: T[], _tier: BoardTier, limit: number): T[] {
   const ranked = rankByNewest(jobs);
-  if (tier === "paid") return ranked;
-  return ranked.slice(0, Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 0);
+  if (!Number.isFinite(limit) || limit <= 0) return ranked;
+  return ranked.slice(0, Math.floor(limit));
 }
 
 export function buildPublicList<T extends ListJob>(jobs: T[], tier: BoardTier, limit: number) {

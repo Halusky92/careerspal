@@ -8,7 +8,7 @@ import type { Job } from "../../../types";
 import { isOnNicheJob } from "../../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../../lib/liveBoard";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
-import { previewListedJobs, PUBLIC_CATEGORY_JOB_LIMIT, toPublicJobCard, withoutHiddenStatuses } from "../../../lib/publicListPreview";
+import { previewListedJobs, toPublicJobCard, withoutHiddenStatuses } from "../../../lib/publicListPreview";
 import PremiumListContinuation from "../../../components/PremiumListContinuation";
 
 type PageProps = {
@@ -77,7 +77,7 @@ export default async function CategoryPage({ params }: PageProps) {
 
   const { hubLabel, intro, jobs: loadedJobs, preference } = result;
   const jobs = withoutHiddenStatuses(loadedJobs);
-  const previewJobs = previewListedJobs(jobs, PUBLIC_CATEGORY_JOB_LIMIT);
+  const previewJobs = previewListedJobs(jobs, jobs.length);
   const hub = getCategoryHub(slug)!;
 
   return (
