@@ -1430,7 +1430,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                 <p className="mt-1 text-[12px] font-medium leading-5 text-slate-500">
                   {boardAccess === "paid"
                     ? "Most relevant keeps roles from the last 7 days at the top. You see a role as soon as it is published."
-                    : "Most relevant keeps roles from the last 7 days at the top. Roles from the last 24 hours are on Premium first, then they appear here and on Google."}
+                    : "Roles from the last 24 hours are on Premium first, then they appear here."}
                 </p>
                 {hiddenSentences ? (
                   <p className="mt-0.5 text-[12px] font-medium leading-5 text-slate-500">
