@@ -533,8 +533,8 @@ const AccountPageInner = () => {
                         <>
                           <p className="mt-1 text-sm text-slate-600">
                             {premium
-                              ? "Premium — unlimited board browsing, salary and skills filters, and daily alerts for this billing period."
-                              : "Free Account — 14 matching search results and one weekly job alert."}
+                              ? "Premium — more than one saved category search and a daily email for this billing period."
+                              : "Free Account — the open board and one weekly email for one saved category search."}
                           </p>
                           {premium && user?.premiumUntil ? (
                             <p className="mt-1 text-xs text-slate-500">
@@ -736,7 +736,7 @@ const AccountPageInner = () => {
                 <div className="space-y-4">
                   <div className="rounded-xl border border-slate-200 p-4 space-y-3">
                     <p className="text-sm font-medium text-slate-900">Get new jobs by email</p>
-                    <p className="text-sm text-slate-600">Fresh openings in your inbox. Stay in the picture.</p>
+                    <p className="text-sm text-slate-600">A weekly email for the categories and salary floor you choose. Daily category alerts are on Premium.</p>
                     <AlertCategoryPicker
                       selected={parseAlertQuery(alertQuery)}
                       onChange={(next) => setAlertQuery(serializeAlertQuery(next))}
@@ -880,7 +880,7 @@ const AccountPageInner = () => {
                     <p className="text-sm text-slate-600">
                       {user?.subscriptionStatus
                         ? `Stripe status: ${user.subscriptionStatus.replace(/_/g, " ")}. $7.99 renews each month until you cancel. Canceling keeps Premium until the end of the paid period.`
-                        : "Unlimited board browsing is $7.99 a month and renews until you cancel. Canceling keeps access until the end of the paid period."}
+                        : "Daily category alerts are $7.99 a month and renew until you cancel. Canceling keeps them until the end of the paid period. The board stays open."}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {user?.subscriptionStatus !== "active" && user?.subscriptionStatus !== "trialing" ? (

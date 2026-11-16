@@ -187,7 +187,7 @@ export default function JobsClient({
   }, [accessToken, authLoading, initialAccess]);
 
   const loadMore = async () => {
-    if (boardAccess !== "paid" || loadingMore || typeof boardTotal !== "number" || jobs.length >= boardTotal) return;
+    if (loadingMore || typeof boardTotal !== "number" || jobs.length >= boardTotal) return;
     setLoadingMore(true);
     try {
       const response = accessToken
@@ -230,7 +230,7 @@ export default function JobsClient({
         boardTotal={boardTotal}
         lockedJobs={lockedJobs}
         companyCount={companyCount}
-        canLoadMore={boardAccess === "paid" && typeof boardTotal === "number" && jobs.length < boardTotal}
+        canLoadMore={typeof boardTotal === "number" && jobs.length < boardTotal}
         onLoadMore={loadMore}
         onToggleBookmark={handleToggleBookmark}
       />

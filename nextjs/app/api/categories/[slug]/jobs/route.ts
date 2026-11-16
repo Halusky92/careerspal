@@ -5,7 +5,7 @@ import { mapSupabaseJob, type SupabaseJobRow } from "../../../../../lib/supabase
 import { isOnNicheJob } from "../../../../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../../../../lib/liveBoard";
 import { publicListTierFromRequest } from "../../../../../lib/boardAccessServer";
-import { buildPublicList, listCacheHeaders, PUBLIC_CATEGORY_JOB_LIMIT } from "../../../../../lib/publicListPreview";
+import { buildPublicList, listCacheHeaders } from "../../../../../lib/publicListPreview";
 
 export const dynamic = "force-dynamic";
 
@@ -36,5 +36,5 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     .map(mapSupabaseJob)
     .filter((job) => isOnNicheJob(job) && jobMatchesHub(job, hub));
   const tier = await publicListTierFromRequest(request);
-  return NextResponse.json(buildPublicList(jobs, tier, PUBLIC_CATEGORY_JOB_LIMIT), { headers: listCacheHeaders() });
+  return NextResponse.json(buildPublicList(jobs, tier, jobs.length), { headers: listCacheHeaders() });
 };

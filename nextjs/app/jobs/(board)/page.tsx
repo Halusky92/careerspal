@@ -44,7 +44,7 @@ async function fetchPublishedJobs(): Promise<{ jobs: Job[]; total: number | null
 }
 
 function StaticJobsList({ jobs, total, companies }: { jobs: Job[]; total: number | null; companies: number }) {
-  const preview = jobs.slice(0, 4);
+  const preview = jobs;
   const headline = boardAccessHeadline("guest", total, companies);
   return (
     <section className="cp-static-jobs">

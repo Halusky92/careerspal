@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { loadPublicCompanyBySlug } from "../../../../lib/publicCompany";
 import { isOnNicheJob } from "../../../../lib/nicheScope";
 import { publicListTierFromRequest } from "../../../../lib/boardAccessServer";
-import { buildPublicList, listCacheHeaders, PUBLIC_COMPANY_JOB_LIMIT } from "../../../../lib/publicListPreview";
+import { buildPublicList, listCacheHeaders } from "../../../../lib/publicListPreview";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +16,7 @@ export const GET = async (request: Request, context: { params: Promise<{ slug: s
     return NextResponse.json({ error: "Company is unavailable." }, { status: 500 });
   }
   const tier = await publicListTierFromRequest(request);
-  const list = buildPublicList(
-    result.jobs.filter((job) => isOnNicheJob(job)),
-    tier,
-    PUBLIC_COMPANY_JOB_LIMIT,
-  );
+  const listed = result.jobs.filter((job) => isOnNicheJob(job));
+  const list = buildPublicList(listed, tier, listed.length);
   return NextResponse.json({ company: result.company, ...list }, { headers: listCacheHeaders() });
 };

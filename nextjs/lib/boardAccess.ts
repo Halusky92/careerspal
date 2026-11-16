@@ -104,10 +104,9 @@ export const BOARD_PREMIUM_PRICE = 7.99;
 
 export type BoardTier = "guest" | "registered" | "paid";
 
-export function boardCap(tier: BoardTier): number | null {
-  if (tier === "paid") return null;
-  if (tier === "registered") return REGISTERED_VISIBLE_JOBS;
-  return GUEST_VISIBLE_JOBS;
+/** Live roles stay public. Premium is extra saved searches and daily alerts, not a shorter board. */
+export function boardCap(_tier: BoardTier): number | null {
+  return null;
 }
 
 export function resolveBoardTier(input: {

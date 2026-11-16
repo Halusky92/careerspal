@@ -9,7 +9,7 @@ import { isOnNicheJob } from "../../../lib/nicheScope";
 import { isBoilerplateDescription } from "../../../lib/companyBoard";
 import { loadPublicCompanyBySlug } from "../../../lib/publicCompany";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
-import { previewListedJobs, PUBLIC_COMPANY_JOB_LIMIT, toPublicJobCard, withoutHiddenStatuses } from "../../../lib/publicListPreview";
+import { previewListedJobs, toPublicJobCard, withoutHiddenStatuses } from "../../../lib/publicListPreview";
 import PremiumListContinuation from "../../../components/PremiumListContinuation";
 
 // Ensure a consistent runtime (avoid edge differences that can cause production-only crashes).
@@ -139,7 +139,7 @@ export default async function CompanyPage({ params }: PageProps) {
 
   const { company, jobs: rawJobs } = result;
   const jobs = withoutHiddenStatuses(rawJobs.filter((job) => isOnNicheJob(job)));
-  const previewJobs = previewListedJobs(jobs, PUBLIC_COMPANY_JOB_LIMIT).map((job) => toPublicJobCard(job));
+  const previewJobs = previewListedJobs(jobs, jobs.length).map((job) => toPublicJobCard(job));
   const companyName = company.name || "Company";
   const companyWebsite = (company.website || "").trim();
   const companyDescriptionRaw = ((company.longDescription || company.description) || "").trim();

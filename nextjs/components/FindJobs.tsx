@@ -103,7 +103,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
 }) => {
   const router = useRouter();
   const { accessToken } = useSupabaseAuth();
-  const advancedOk = !boardAccess || boardAccess === "paid";
+  const advancedOk = true;
   const searchCap = boardAccess ? boardCap(boardAccess) : null;
   const goCompany = (companyName: string) => {
     const href = `/companies/${createCompanySlug({ name: companyName })}`;
@@ -1139,27 +1139,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
               </div>
             )}
           </div>
-
-          {!advancedOk ? (
-            <div>
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-800">
-                <svg className="h-3.5 w-3.5 text-amber-500" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M3.2 8.2 7.4 12 12 4.8 16.6 12l4.2-3.8L19.2 18H4.8L3.2 8.2Z" />
-                </svg>
-                Premium filters
-              </div>
-              <p className="mt-1 text-[12px] leading-5 text-slate-500">Salary and skills filters are on Premium.</p>
-              <Link
-                href="/upgrade"
-                onClick={() => trackFunnel("premium_click", { from: "locked_filters" })}
-                className="mt-3 flex w-full items-center justify-center rounded-lg bg-indigo-600 px-3 py-2.5 text-center text-sm font-medium leading-5 text-white hover:bg-indigo-700"
-              >
-                {typeof boardTotal === "number" && boardTotal > 0
-                  ? `Unlock salary and skills filters and all ${boardTotal} live jobs`
-                  : "Unlock salary and skills filters and all live jobs"}
-              </Link>
-            </div>
-          ) : null}
 
           {advancedOk ? (
           <>

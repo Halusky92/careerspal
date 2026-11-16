@@ -548,7 +548,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                 Stay in the loop
               </h2>
               <p className="mt-2 text-slate-600 font-medium max-w-2xl">
-                Fresh openings in your inbox as they hit the market.
+                A weekly email for the categories and salary floor you choose. Daily category alerts are on Premium.
               </p>
               <PublicSubscriberNote count={subscriberCount} className="mt-2 text-sm text-slate-600 font-medium" />
             </div>
