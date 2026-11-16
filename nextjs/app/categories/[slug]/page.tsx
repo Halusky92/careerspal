@@ -9,6 +9,7 @@ import { isOnNicheJob } from "../../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../../lib/liveBoard";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
 import { previewListedJobs, toPublicJobCard, withoutHiddenStatuses } from "../../../lib/publicListPreview";
+import { publicPostedLabel } from "../../../lib/formatPosted";
 import { listingsForViewer } from "../../../lib/listingWindow";
 import { viewerTier } from "../../../lib/viewerTier";
 import PremiumListContinuation from "../../../components/PremiumListContinuation";
@@ -180,12 +181,12 @@ export default async function CategoryPage({ params }: PageProps) {
                                 <span className="truncate">{job.remotePolicy}</span>
                               </>
                             )}
-                            {job.postedAt && (
+                            {publicPostedLabel(job.timestamp, job.postedAt) ? (
                               <>
                                 <span className="text-slate-300">•</span>
-                                <span className="truncate">Posted {job.postedAt}</span>
+                                <span className="truncate">Posted {publicPostedLabel(job.timestamp, job.postedAt)}</span>
                               </>
-                            )}
+                            ) : null}
                           </div>
                           {snippet && <div className="mt-3 text-sm text-slate-600 font-medium leading-relaxed">{snippet}</div>}
                         </div>

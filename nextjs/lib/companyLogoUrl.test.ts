@@ -3,6 +3,12 @@ import test from "node:test";
 import { chooseDisplayedLogo, officialWebsiteUrl } from "./companyLogoUrl";
 import { preparedLogoRepairs } from "./companyLogoRepair";
 
+test("a directory profile is not the company website", () => {
+  assert.equal(officialWebsiteUrl("https://www.g2.com/products/optro"), null);
+  assert.equal(officialWebsiteUrl("https://www.linkedin.com/company/teamworks"), null);
+  assert.equal(officialWebsiteUrl("https://optro.ai"), "https://optro.ai");
+});
+
 test("an ATS address is not stored as the company website", () => {
   assert.equal(officialWebsiteUrl("https://jobs.ashbyhq.com/pomelo-care"), null);
   assert.equal(officialWebsiteUrl("https://www.pomelocare.com/careers"), "https://pomelocare.com");

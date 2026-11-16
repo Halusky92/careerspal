@@ -38,6 +38,15 @@ test("a still-eligible sourced job has no freshness blockers", () => {
   assert.deepEqual(sourcedPublishBlockers(base, 90, "auto_publish_candidate"), []);
 });
 
+test("a salary without a currency does not auto-publish", () => {
+  const reasons = sourcedPublishBlockers(
+    { ...base, salary_currency: null },
+    90,
+    "auto_publish_candidate",
+  );
+  assert.ok(reasons.includes("salary_currency_unconfirmed"));
+});
+
 test("salary-first holds when compensation disappears", () => {
   const noSalary = sourcedPublishBlockers(
     { ...base, salary_present: false, salary_amount_min: null, salary_amount_max: null },

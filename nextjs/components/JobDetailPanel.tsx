@@ -129,10 +129,8 @@ export default function JobDetailPanel({
             <button
               onClick={() => onToggleSave(job.id)}
               className={[
-                "h-10 w-10 rounded-2xl border flex items-center justify-center transition-colors",
-                saved
-                  ? "bg-pink-50 border-pink-200 text-pink-600"
-                  : "bg-white border-slate-200/70 text-slate-400 hover:text-pink-500 hover:border-pink-200",
+                "flex h-10 w-10 items-center justify-center bg-transparent",
+                saved ? "text-red-700" : "text-slate-400 hover:text-red-700",
               ].join(" ")}
               aria-pressed={saved ? "true" : "false"}
               aria-label={saved ? "Unsave role" : "Save role"}

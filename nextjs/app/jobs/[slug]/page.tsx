@@ -13,6 +13,7 @@ import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
 import { isOnNicheJob } from "../../../lib/nicheScope";
 import { formatJobSalary } from "../../../lib/formatSalary";
+import { publicPostedLabel } from "../../../lib/formatPosted";
 import { visiblePostingTools } from "../../../lib/postingTools";
 import { geographyLabel, inferWorkMode } from "../../../lib/workMode";
 import { applyLiveBoardFilter, isLiveBoardJob } from "../../../lib/liveBoard";
@@ -387,6 +388,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
   const locationLabel = place && place !== "Not specified" && place !== workMode ? place : "";
   const categoryLabel = publicCategoryLabel(job);
   const displayType = job.type && job.type !== "Unknown" ? job.type : null;
+  const postedLabel = publicPostedLabel(job.timestamp, job.postedAt);
   const roleSections = extractJobDetailSections(sanitizeDescription(job.description) || "");
   const alertHub = resolveCategoryHub(job);
   const alertsHref = alertHub ? `/alerts?category=${encodeURIComponent(alertHub.slug)}` : "/alerts";
@@ -451,11 +453,11 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                       {locationLabel}
                     </span>
                   )}
-                  {job.postedAt && (
+                  {postedLabel ? (
                     <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      Posted {job.postedAt}
+                      Posted {postedLabel}
                     </span>
-                  )}
+                  ) : null}
                 </div>
 
                 <h1 className="mt-4 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight">

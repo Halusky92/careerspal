@@ -86,7 +86,7 @@ export function applicantCountries(job: { location?: string | null; remotePolicy
   return countriesInDescription(job.description);
 }
 
-const OTHER_CURRENCY = /\b(?:CAD|AUD|EUR|GBP|NZD|CHF)\b|CA\$|A\$|€|£/i;
+const OTHER_CURRENCY = /\b(?:CAD|AUD|EUR|GBP|NZD|CHF|SGD|HKD|INR|JPY|SEK|NOK|DKK|PLN|CZK)\b|CA\$|A\$|€|£/i;
 
 function structuredSalary(job: Job): ParsedSalary | null {
   const description = job.description || "";

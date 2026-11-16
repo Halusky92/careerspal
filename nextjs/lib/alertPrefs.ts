@@ -141,6 +141,7 @@ export function serializeAlertPrefs(prefs: AlertPrefs): string {
 
 function annualSalaryCeiling(salaryText?: string | null): number | null {
   const parsed = parseSalaryFromText(salaryText || "");
+  if (parsed.salary_currency && parsed.salary_currency !== "USD") return null;
   const amount = parsed.salary_amount_max ?? parsed.salary_amount_min;
   if (amount == null || !Number.isFinite(amount)) return null;
   if (parsed.salary_period === "hour") return amount * 2080;

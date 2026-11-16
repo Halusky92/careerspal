@@ -128,12 +128,8 @@ export default function JobCard({
             e.stopPropagation();
             onToggleBookmark();
           }}
-          className={`absolute top-2 right-2 sm:right-3 p-1 sm:p-1.5 rounded-full transition-all z-30 hover:scale-110 ${
-            isSaved
-              ? "text-pink-500 bg-pink-50"
-              : isElite
-                ? "text-yellow-700 hover:text-yellow-900 hover:bg-yellow-100"
-                : "text-slate-300 hover:text-pink-400 hover:bg-pink-50"
+          className={`absolute top-2 right-2 z-30 bg-transparent p-1 sm:right-3 sm:p-1.5 ${
+            isSaved ? "text-red-700" : "text-slate-400 hover:text-red-700"
           }`}
           title={isSaved ? "Saved" : "Save"}
           aria-pressed={isSaved ? "true" : "false"}

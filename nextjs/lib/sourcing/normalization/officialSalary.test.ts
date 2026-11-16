@@ -83,6 +83,15 @@ test("US and Canada bands stay separate instead of being merged", () => {
   assert.ok(parsed.salary_parse_notes.includes("multiple_salary_bands"));
 });
 
+test("Singapore dollars stay SGD when the amount is written after the code or the dollar sign", () => {
+  for (const text of ["The base salary is 239,000 SGD per year.", "Base pay $239,000 SGD per year."]) {
+    const parsed = chooseOfficialSalary(text, "Remote Singapore");
+    assert.equal(parsed.salary_present, true, text);
+    assert.equal(parsed.salary_currency, "SGD");
+    assert.equal(parsed.salary_amount_min, 239000);
+  }
+});
+
 test("PandaDoc OTE is not a guaranteed base salary", () => {
   const parsed = chooseOfficialSalary("The annual OTE is up to $255,000.");
   assert.equal(parsed.salary_present, false);

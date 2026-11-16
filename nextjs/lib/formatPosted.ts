@@ -27,3 +27,12 @@ export function formatRelativePosted(timestamp?: number | null, fallback = ""): 
   if (diffDays < 7) return `${diffDays}d ago`;
   return formatShortPostedDate(ms);
 }
+
+/** Age from the stored timestamp. A frozen "Just now" string is not a posted date. */
+export function publicPostedLabel(timestamp?: number | null, postedAt?: string | null): string {
+  const fromStamp = formatRelativePosted(timestamp, "");
+  if (fromStamp) return fromStamp;
+  const raw = (postedAt || "").trim();
+  if (!raw || /^just now$/i.test(raw)) return "";
+  return raw;
+}

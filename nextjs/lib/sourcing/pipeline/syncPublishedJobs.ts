@@ -4,7 +4,7 @@ import { formatSourcedDescription } from "../normalization/description";
 import { stripHtmlToText } from "../normalization/text";
 import { employmentTypeFromProvenance, employmentTypesConflict } from "../normalization/atsEmployment";
 import { detectEmploymentType } from "../normalization/employmentType";
-import { formatSalaryForStorage } from "../../formatSalary";
+import { salaryTextForSourced } from "../../formatSalary";
 import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
 import { isOnNicheJob } from "../../nicheScope";
 import { discoveryMarketBlockers } from "./discoveryPublishGate";
@@ -84,12 +84,13 @@ export function buildSourcedJobContentPatch(
       })
     : fromText;
   const employmentConflict = Boolean(atsType && fromText.type && atsType !== fromText.type);
-  const salaryText = formatSalaryForStorage(
-    (candidate.salary_text_raw || "").trim() ||
-      (minAmt || maxAmt
-        ? `${candidate.salary_currency ?? ""} ${minAmt ?? ""}-${maxAmt ?? ""} ${candidate.salary_period ?? ""}`.trim()
-        : ""),
-  );
+  const salaryText = salaryTextForSourced({
+    raw: candidate.salary_text_raw,
+    currency: candidate.salary_currency,
+    min: minAmt,
+    max: maxAmt,
+    period: candidate.salary_period,
+  });
   return {
     title: (candidate.title || "").trim() || undefined,
     description: formattedDescription || cleanedDescription || undefined,
@@ -121,6 +122,7 @@ export function sourcedPublishBlockers(candidate: CandidateRow, scoreTotal: numb
   if (!(scoreTotal >= minScore)) reasons.push(`score_below_min(${scoreTotal}<${minScore})`);
   if (candidate.salary_present !== true) reasons.push("salary_missing");
   if (candidate.salary_amount_min == null && candidate.salary_amount_max == null) reasons.push("salary_range_missing");
+  if (!String(candidate.salary_currency || "").trim()) reasons.push("salary_currency_unconfirmed");
   const applyUrl = (candidate.apply_url || "").trim();
   if (!applyUrl || applyUrl === "#") reasons.push("apply_missing");
   if (((candidate.description_clean || "").trim().length) < 280) reasons.push("description_thin");

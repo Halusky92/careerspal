@@ -116,7 +116,16 @@ function normalizeNumber(value: string): number | null {
   return Number.isFinite(n) ? Math.round(n) : null;
 }
 
-const CURRENCY_CODES = ["USD", "EUR", "GBP", "CAD", "AUD", "NZD", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK", "JPY"];
+const CURRENCY_CODES = ["USD", "EUR", "GBP", "CAD", "AUD", "NZD", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK", "JPY", "SGD", "HKD", "INR"];
+const NAMED_CURRENCY = CURRENCY_CODES.join("|");
+
+/** "239,000 SGD" becomes "SGD 239,000". Amounts that already have $, £, or € are left for the range parser. */
+function nameSalaryCurrencies(text: string) {
+  return text.replace(
+    new RegExp(`(?<![0-9,$€£¥A-Za-z])([0-9][0-9,]*(?:\\.[0-9]+)?[km]?)\\s*(${NAMED_CURRENCY})\\b`, "gi"),
+    (_match, amount: string, code: string) => `${code.toUpperCase()} ${amount}`,
+  );
+}
 
 function normalizeCurrency(symbolOrCode: string | null): string | null {
   const v = (symbolOrCode || "").trim();
@@ -135,7 +144,7 @@ function currencyForSalaryMatch(symbol: string, context: string): { currency: st
   }
   const codes = [
     ...new Set(
-      [...context.matchAll(/\b(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|NOK|DKK|PLN|CZK|JPY)\b/gi)].map((match) => match[1].toUpperCase()),
+      [...context.matchAll(new RegExp(`\\b(${NAMED_CURRENCY})\\b`, "gi"))].map((match) => match[1].toUpperCase()),
     ),
   ];
   if (codes.length > 1) return { currency: null, note: "currency_unconfirmed" };
@@ -228,7 +237,10 @@ export function parseSalaryFromText(text: string): ParsedSalary {
   }
 
   const salaryRe =
-    /(?:^|[\s(>])\s*(USD|EUR|GBP|CAD|AUD|CHF|SEK|NOK|DKK|PLN|CZK|JPY|[$€£¥])\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:(?:[-–]|to|through)\s*(?:\1\s*)?([0-9][0-9,]*(?:\.[0-9]+)?[km]?))?/gi;
+    new RegExp(
+      `(?:^|[\\s(>])\\s*(${NAMED_CURRENCY}|[$€£¥])\\s*([0-9][0-9,]*(?:\\.[0-9]+)?[km]?)\\s*(?:(?:[-–]|to|through)\\s*(?:\\1\\s*)?([0-9][0-9,]*(?:\\.[0-9]+)?[km]?))?`,
+      "gi",
+    );
   const matches = [...clean.matchAll(salaryRe)];
   if (matches.length === 0) {
     if (isNonExplicitSalary(clean)) {
@@ -360,12 +372,16 @@ export function parsedSalaryFromStructured(args: {
 
 /** One official base range. Several bands, an unconfirmed dollar sign, or an OTE ceiling stay unpublished. */
 export function chooseOfficialSalary(text: string, _locationHint = ""): ParsedSalary {
-  const clean = collapseSplitSalaryRanges(collapseThousandGroups(decodeSalaryEntities(text || "")))
-    .trim()
-    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-");
+  const clean = nameSalaryCurrencies(
+    collapseSplitSalaryRanges(collapseThousandGroups(decodeSalaryEntities(text || "")))
+      .trim()
+      .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-"),
+  );
   if (!clean) return parseSalaryFromText("");
-  const salaryRe =
-    /(?:^|[\s(>])\s*(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|NOK|DKK|PLN|CZK|JPY|CA\$|A\$|US\$|[$€£¥])\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:(?:[-–]|to|through)\s*(?:(?:\1|CA\$|A\$|US\$|[$€£¥])\s*)?([0-9][0-9,]*(?:\.[0-9]+)?[km]?))?/gi;
+  const salaryRe = new RegExp(
+    `(?:^|[\\s(>])\\s*(${NAMED_CURRENCY}|CA\\$|A\\$|US\\$|[$€£¥])\\s*([0-9][0-9,]*(?:\\.[0-9]+)?[km]?)\\s*(?:(?:[-–]|to|through)\\s*(?:(?:\\1|CA\\$|A\\$|US\\$|[$€£¥])\\s*)?([0-9][0-9,]*(?:\\.[0-9]+)?[km]?))?`,
+    "gi",
+  );
   const matches = [...clean.matchAll(salaryRe)];
   const hits = matches.map((match, index) => {
     const start = match.index || 0;

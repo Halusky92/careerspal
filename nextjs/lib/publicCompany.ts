@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "./supabaseAdmin";
 import { mapSupabaseJob, type SupabaseJobRow } from "./supabaseJobs";
 import type { Company, Job } from "../types";
-import { isAtsHostname } from "./companyLogoUrl";
+import { isNotCompanyWebsiteHost, officialWebsiteUrl } from "./companyLogoUrl";
 import { isOnNicheJob } from "./nicheScope";
 import { applyLiveBoardFilter, isLiveBoardJob } from "./liveBoard";
 import { isBoilerplateDescription, isForeignCompanyBlurb } from "./companyBoard";
@@ -39,7 +39,7 @@ function mapCompany(row: CompanyRow): Company & { verified?: boolean } {
   return {
     name: row.name || "Unknown",
     logo: row.logo_url || "",
-    website: row.website || "",
+    website: officialWebsiteUrl(row.website) || "",
     description: row.description || "",
     longDescription: row.long_description || row.description || "",
     verified: Boolean(row.verified),
@@ -57,7 +57,7 @@ function pickPublicWebsite(value: string | null) {
   if (!raw || raw === "#" || raw.startsWith("mailto:") || raw.startsWith("/")) return null;
   try {
     const url = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
-    if (isAtsHostname(url.hostname)) return null;
+    if (isNotCompanyWebsiteHost(url.hostname)) return null;
     return `${url.protocol}//${url.hostname}`;
   } catch {
     return null;
@@ -103,20 +103,24 @@ export async function loadPublicCompanyBySlug(slug: string): Promise<PublicCompa
       return "";
     }
   })();
-  const needsWebsite = !String(company.website || "").trim() || Boolean(existingHost && isAtsHostname(existingHost));
+  const storedWebsite = String(company.website || "").trim();
+  const needsWebsite = !storedWebsite || Boolean(existingHost && isNotCompanyWebsiteHost(existingHost));
   if (needsWebsite) {
     const { data: jobRow } = await supabaseAdmin
       .from("jobs")
-      .select("company_website,apply_url")
+      .select("company_website")
       .eq("company_id", company.id)
       .eq("status", "published")
       .order("timestamp", { ascending: false })
       .limit(1)
       .maybeSingle();
-    const derived = pickPublicWebsite(jobRow?.company_website || null) || pickPublicWebsite(jobRow?.apply_url || null);
+    const derived = pickPublicWebsite(jobRow?.company_website || null);
     if (derived) {
       await supabaseAdmin.from("companies").update({ website: derived }).eq("id", company.id);
       company = { ...company, website: derived };
+    } else if (storedWebsite) {
+      await supabaseAdmin.from("companies").update({ website: null }).eq("id", company.id);
+      company = { ...company, website: null };
     }
   }
 
