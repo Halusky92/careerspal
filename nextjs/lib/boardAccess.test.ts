@@ -10,6 +10,8 @@ import {
   lockedBoardPreviews,
   boardCompanyCount,
   boardAccessHeadline,
+  boardHiddenNote,
+  boardHiddenSentences,
   homeSeeAllLabel,
   boardPageForTier,
   boardSliceForTier,
@@ -172,6 +174,29 @@ test("locked previews keep titles and drop everything past the cap", () => {
   assert.equal(homeSeeAllLabel(true, 62), "See all 62 jobs");
   assert.notEqual(homeSeeAllLabel(true, 62), `See all ${pageLength} jobs`);
   assert.equal(boardAccessHeadline("guest", null, 4), "You're viewing live jobs from 4 companies");
+  const guestNote = boardHiddenNote("guest", 71);
+  assert.deepEqual(guestNote, { tier: "guest", freeMore: 10, premiumMore: 57 });
+  assert.equal(
+    boardHiddenSentences(guestNote!).free,
+    "A free account shows 10 more of the newest jobs.",
+  );
+  assert.equal(
+    boardHiddenSentences(guestNote!).premium,
+    "Premium unlocks the full live board, salary and skills filters, and daily alerts.",
+  );
+  assert.deepEqual(boardHiddenNote("guest", 8), { tier: "guest", freeMore: 4, premiumMore: 0 });
+  assert.equal(
+    boardHiddenSentences(boardHiddenNote("guest", 8)!).premium,
+    "Salary and skills filters and daily alerts are on Premium.",
+  );
+  assert.deepEqual(boardHiddenNote("registered", 71), { tier: "registered", premiumMore: 57 });
+  assert.equal(
+    boardHiddenSentences(boardHiddenNote("registered", 71)!).premium,
+    "57 more live jobs are on Premium, with salary and skills filters and daily alerts.",
+  );
+  assert.equal(boardHiddenNote("registered", 14), null);
+  assert.equal(boardHiddenNote("paid", 71), null);
+  assert.equal(boardHiddenNote("guest", 4), null);
 });
 
 test("live published count ignores one page and hidden statuses", () => {

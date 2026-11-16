@@ -18,7 +18,7 @@ import { inferWorkMode } from "../lib/workMode";
 import FeaturedBoardZone from "./FeaturedBoardZone";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
 import { jobMatchesLocationQuery, locationLabelsForJobs } from "../lib/locationFilter";
-import { boardAccessHeadline, boardCap, type LockedBoardPreview } from "../lib/boardAccess";
+import { boardAccessHeadline, boardCap, boardHiddenNote, boardHiddenSentences, type LockedBoardPreview } from "../lib/boardAccess";
 import { JOBS_RETURN_KEY, jobIdToRestore, readJobsReturnPlace, type JobsReturnPlace } from "../lib/jobsReturn";
 import { trackFunnel, trackFunnelOnce } from "../lib/funnelTrack";
 
@@ -619,10 +619,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
   }, [lockedJobs, searchCap, query, locationQuery, category]);
   const lockedShown = matchingLocked.slice(0, 2);
   const lockedMore = matchingLocked.length - lockedShown.length;
-  const hiddenJobCount =
-    boardAccess && boardAccess !== "paid" && typeof boardTotal === "number" && searchCap != null
-      ? Math.max(0, boardTotal - Math.min(searchCap, boardTotal))
-      : 0;
+  const hiddenNote = boardHiddenNote(boardAccess, boardTotal);
+  const hiddenSentences = hiddenNote ? boardHiddenSentences(hiddenNote) : null;
   const accessHeadline = boardAccessHeadline(boardAccess, boardTotal, companyCount);
   useEffect(() => {
     if (!showSearchLimitCta) return;
@@ -1380,14 +1378,26 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     </span>
                   )}
                 </div>
-                {hiddenJobCount > 0 ? (
-                  <Link
-                    href="/upgrade"
-                    onClick={() => trackFunnel("premium_click", { from: "hidden_jobs" })}
-                    className="mt-0.5 block w-fit text-[12px] font-medium text-slate-500 hover:text-indigo-700"
-                  >
-                    {hiddenJobCount} more {hiddenJobCount === 1 ? "job" : "jobs"} available with Premium
-                  </Link>
+                {hiddenSentences ? (
+                  <p className="mt-0.5 text-[12px] font-medium leading-5 text-slate-500">
+                    {hiddenSentences.free ? (
+                      <Link
+                        href="/auth?from=%2Fjobs"
+                        onClick={() => trackFunnel("signup_started", { from: "hidden_jobs" })}
+                        className="hover:text-indigo-700"
+                      >
+                        {hiddenSentences.free}
+                      </Link>
+                    ) : null}
+                    {hiddenSentences.free ? " " : null}
+                    <Link
+                      href={boardAccess === "guest" ? "/auth?from=%2Fupgrade" : "/upgrade"}
+                      onClick={() => trackFunnel("premium_click", { from: "hidden_jobs" })}
+                      className="hover:text-indigo-700"
+                    >
+                      {hiddenSentences.premium}
+                    </Link>
+                  </p>
                 ) : null}
               </div>
               <div className="hidden sm:flex items-center gap-3">
@@ -1569,9 +1579,17 @@ const FindJobs: React.FC<FindJobsProps> = ({
                 })}
                 <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4 text-center">
                   <p className="text-sm font-medium text-slate-800">
-                    {lockedMore > 0 ? `And ${lockedMore} more jobs` : "More live jobs available with Premium"}
+                    {boardAccess === "guest"
+                      ? "A free account shows more of the newest jobs."
+                      : hiddenNote?.tier === "registered"
+                        ? `${hiddenNote.premiumMore} more live ${hiddenNote.premiumMore === 1 ? "job is" : "jobs are"} on Premium.`
+                        : "More live jobs are on Premium."}
                   </p>
-                  <p className="mt-1 text-sm text-slate-500">Unlock more roles on the full board.</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {boardAccess === "guest" && hiddenNote?.tier === "guest" && hiddenNote.premiumMore > 0
+                      ? "Premium unlocks the full live board, salary and skills filters, and daily alerts."
+                      : "Salary and skills filters and daily alerts are on Premium."}
+                  </p>
                   <Link
                     href={boardAccess === "guest" ? "/auth?from=%2Fjobs" : "/upgrade"}
                     onClick={() =>

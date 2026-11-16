@@ -30,7 +30,9 @@ const TermsOfService: React.FC = () => {
         <section>
           <h2 className="text-base font-semibold text-slate-900">3. Candidates</h2>
           <ul className="mt-2 list-disc pl-5 space-y-1">
-            <li>Use the board to find published roles and apply on the employer’s own link.</li>
+            <li>Without an account you see the newest roles. A free account sees more of those newest roles. Premium is the full live board.</li>
+            <li>A free account can save one search and receive a weekly email. Daily alerts, salary and skills filters, and more than one saved search are on Premium.</li>
+            <li>Apply on the employer’s own link. Job pages stay public.</li>
             <li>Keep your account information accurate.</li>
             <li>We do not run a talent pool or send your profile to employers.</li>
           </ul>
@@ -44,7 +46,16 @@ const TermsOfService: React.FC = () => {
           </ul>
         </section>
         <section>
-          <h2 className="text-base font-semibold text-slate-900">5. Fees and billing</h2>
+          <h2 className="text-base font-semibold text-slate-900">5. Candidate Premium</h2>
+          <p className="mt-2">
+            Premium is $7.99 per month (USD). It includes unlimited browsing of the live board, salary and skills filters,
+            multiple saved searches, and daily alerts. It renews each month until you cancel. Canceling keeps Premium
+            until the end of the paid period. A failed renewal keeps that period while Stripe retries. A refund ends
+            Premium immediately.
+          </p>
+        </section>
+        <section>
+          <h2 className="text-base font-semibold text-slate-900">6. Employer fees and billing</h2>
           <p className="mt-2">
             The first Standard listing per employer is free (Start pack). After that: Standard $79 / 30 days,
             Featured Pro $149, Elite Managed $249 (USD). Paid listings go through Stripe. Stripe emails the receipt
@@ -56,7 +67,7 @@ const TermsOfService: React.FC = () => {
           </p>
         </section>
         <section>
-          <h2 className="text-base font-semibold text-slate-900">6. Refunds</h2>
+          <h2 className="text-base font-semibold text-slate-900">7. Employer refunds</h2>
           <p className="mt-2">
             If a paid listing is not published after review, we refund the Stripe charge. Email {operator.email} from
             the paying account. If the listing went live, the fee is for that 30-day placement and is not refunded when
@@ -64,7 +75,7 @@ const TermsOfService: React.FC = () => {
           </p>
         </section>
         <section>
-          <h2 className="text-base font-semibold text-slate-900">7. Liability</h2>
+          <h2 className="text-base font-semibold text-slate-900">8. Liability</h2>
           <p className="mt-2">
             CareersPal is a job board. We review listings before publish. We do not guarantee hiring outcomes or working
             conditions.
