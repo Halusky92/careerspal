@@ -14,6 +14,7 @@ import { publicCategoryLabel } from "../lib/categories";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
 import NewListingBadge from "./NewListingBadge";
+import { isNewListing } from "../lib/listingWindow";
 import { formatRelativePosted } from "../lib/formatPosted";
 
 export type JobRowAction = "copy_link" | "open_new_tab";
@@ -72,6 +73,7 @@ export default function JobRow({
 
   const isElite = job.planType === "Elite Managed";
   const isBoosted = isPaidFeaturedListing(job);
+  const isNew = isNewListing(job);
   const isPrivate = job.status === "private" || job.status === "invite_only";
   const workMode = useMemo(() => getWorkMode(job), [job]);
   const timeAgo = useMemo(() => formatTimeAgo(job), [job.timestamp, job.postedAt]);
@@ -112,7 +114,9 @@ export default function JobRow({
           ? isElite
             ? "bg-white border-slate-900/20 shadow-sm"
             : "bg-white border-indigo-200 shadow-sm"
-          : "bg-white border-slate-200",
+          : isNew
+            ? "bg-amber-50/80 border-amber-200"
+            : "bg-white border-slate-200",
         selected ? "ring-2 ring-indigo-600 ring-offset-2 ring-offset-[#F8F9FD]" : "hover:shadow-sm",
         isPrivate ? "opacity-80" : "",
       ].join(" ")}
@@ -137,10 +141,16 @@ export default function JobRow({
           className={["absolute inset-y-0 left-0 w-1", isElite ? "bg-slate-900" : "bg-indigo-500"].join(" ")}
         />
       )}
+      {isNew ? (
+        <span className="absolute top-2 left-2 z-10">
+          <NewListingBadge job={job} />
+        </span>
+      ) : null}
       <div className={["flex items-start gap-2.5", isHome ? "px-3 py-2" : "px-3 py-2"].join(" ")}>
         <div
           className={[
-            "mt-0.5 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0",
+            "rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0",
+            isNew ? "mt-6" : "mt-0.5",
             isHome ? "w-10 h-10" : "w-11 h-11",
           ].join(" ")}
         >
@@ -189,7 +199,6 @@ export default function JobRow({
                 </a>
 
                 <FeaturedBadge job={job} />
-                <NewListingBadge job={job} />
 
                 {isPrivate && (
                   <span className="inline-flex items-center rounded-full bg-slate-900 text-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">

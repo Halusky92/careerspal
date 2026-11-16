@@ -6,6 +6,9 @@ export const EARLY_ACCESS_MS = 24 * 60 * 60 * 1000;
 /** After it is public, a new role stays at the top of Most relevant for the rest of this window. */
 export const PRIORITY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** The New mark covers the premium day and the next two public days. */
+export const NEW_BADGE_MS = 3 * 24 * 60 * 60 * 1000;
+
 type Stamp = {
   timestamp?: number | null;
   publishedAt?: string | null;
@@ -46,6 +49,12 @@ export function isPriorityListing(job: Stamp, now = Date.now()): boolean {
   const seen = listedAtMs(job);
   if (seen == null) return false;
   return now - seen < PRIORITY_WINDOW_MS;
+}
+
+export function isNewListing(job: Stamp, now = Date.now()): boolean {
+  const seen = listedAtMs(job);
+  if (seen == null) return false;
+  return now - seen < NEW_BADGE_MS;
 }
 
 export function viewerCanSeeListing(job: Stamp, tier: BoardTier | null | undefined, now = Date.now()): boolean {
