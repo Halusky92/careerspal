@@ -1013,7 +1013,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                       <option>Remote (Global)</option>
                       <option>Remote (Regional)</option>
                       <option>Hybrid</option>
-                      <option>Onsite</option>
+                      {formData.remotePolicy === "Onsite" ? <option>Onsite</option> : null}
                     </select>
                   </div>
                   <div className="space-y-2">

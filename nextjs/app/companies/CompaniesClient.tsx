@@ -169,7 +169,7 @@ const CompaniesClient = ({ companies }: Props) => {
                 <input
                   value={locationPick}
                   onChange={(e) => setLocationPick(e.target.value)}
-                  placeholder="City, country, or Remote"
+                  placeholder="City or country"
                   className="w-full h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none"
                   autoFocus
                 />

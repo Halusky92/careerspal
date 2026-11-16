@@ -80,6 +80,8 @@ function escaped(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+export const KNOWN_TOOL_LABELS = Array.from(new Set([...POSTING_TOOLS, ...MENTION_TOOLS]));
+
 export function toolIsMentioned(tool: string, text: string): boolean {
   const name = tool.trim();
   const body = text || "";

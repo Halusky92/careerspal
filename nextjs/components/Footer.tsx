@@ -24,7 +24,7 @@ const Footer = () => {
               <BrandMark size={28} className="h-7 w-7" />
               CareersPal
             </div>
-            <p className="text-slate-600">Ops, Systems, Automation, RevOps, Product Ops, Chief of Staff. Remote, hybrid, and onsite.</p>
+            <p className="text-slate-600">Ops, Systems, Automation, RevOps, Product Ops, Chief of Staff. Remote and hybrid.</p>
           </div>
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Jobs</h4>

@@ -1,4 +1,10 @@
 import type { Job } from "../types";
+import { geographyLabel } from "./workMode";
+
+type PlaceJob = Pick<Job, "location" | "remotePolicy"> & {
+  description?: string | null;
+  title?: string | null;
+};
 
 type PlaceKind = "remote" | "country" | "city";
 
@@ -45,15 +51,15 @@ const OPTION_BY_LABEL = new Map<string, PlaceOption>([
   ...CITIES.map((c) => [c.label.toLowerCase(), { id: c.id, label: c.label, kind: "city" as const }] as const),
 ]);
 
-const hay = (job: Pick<Job, "location" | "remotePolicy">) =>
-  `${job.location || ""} ${job.remotePolicy || ""}`.toLowerCase();
+const hay = (job: PlaceJob) =>
+  `${job.location || ""} ${job.remotePolicy || ""} ${geographyLabel(job)}`.toLowerCase();
 
 const hasToken = (text: string, token: string) => {
   if (token.includes(" ")) return text.includes(token);
   return new RegExp(`(?:^|[^a-z])${token.replace(".", "\\.")}(?:[^a-z]|$)`, "i").test(text);
 };
 
-export function placesOnJob(job: Pick<Job, "location" | "remotePolicy">): Set<string> {
+export function placesOnJob(job: PlaceJob): Set<string> {
   const text = hay(job);
   const ids = new Set<string>();
   if (/\bremote\b/.test(text) || /\bworldwide\b/.test(text) || /\bglobal\b/.test(text)) {
@@ -90,7 +96,7 @@ function placesFromQuery(query: string): Set<string> {
   return ids;
 }
 
-export function jobMatchesLocationQuery(job: Pick<Job, "location" | "remotePolicy">, query: string): boolean {
+export function jobMatchesLocationQuery(job: PlaceJob, query: string): boolean {
   const q = query.trim();
   if (!q) return true;
   const exact = OPTION_BY_LABEL.get(q.toLowerCase());
@@ -103,13 +109,24 @@ export function jobMatchesLocationQuery(job: Pick<Job, "location" | "remotePolic
   return hay(job).includes(q.toLowerCase());
 }
 
-export function locationFilterOptions(jobs: Pick<Job, "location" | "remotePolicy">[]): PlaceOption[] {
+const WORK_MODE_LABELS: Record<string, "Remote" | "Hybrid" | "Onsite"> = {
+  remote: "Remote",
+  hybrid: "Hybrid",
+  onsite: "Onsite",
+  "on-site": "Onsite",
+};
+
+/** A place menu must not offer a work mode. Remote, Hybrid, and Onsite are a separate filter. */
+export function workModeFromPlaceLabel(value: string): "Remote" | "Hybrid" | "Onsite" | null {
+  return WORK_MODE_LABELS[value.trim().toLowerCase()] || null;
+}
+
+export function locationFilterOptions(jobs: PlaceJob[]): PlaceOption[] {
   const present = new Set<string>();
   for (const job of jobs) {
     for (const id of placesOnJob(job)) present.add(id);
   }
   const out: PlaceOption[] = [];
-  if (present.has("remote")) out.push({ id: "remote", label: "Remote", kind: "remote" });
   for (const country of COUNTRIES) {
     if (present.has(country.id)) out.push({ id: country.id, label: country.label, kind: "country" });
   }
@@ -119,6 +136,6 @@ export function locationFilterOptions(jobs: Pick<Job, "location" | "remotePolicy
   return out;
 }
 
-export function locationLabelsForJobs(jobs: Pick<Job, "location" | "remotePolicy">[]): string[] {
+export function locationLabelsForJobs(jobs: PlaceJob[]): string[] {
   return locationFilterOptions(jobs).map((item) => item.label);
 }

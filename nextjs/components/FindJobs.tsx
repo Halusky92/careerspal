@@ -19,7 +19,8 @@ import FeaturedBoardZone from "./FeaturedBoardZone";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
 import { isPriorityListing } from "../lib/listingWindow";
 import SalaryRangeSlider from "./SalaryRangeSlider";
-import { jobMatchesLocationQuery, locationLabelsForJobs } from "../lib/locationFilter";
+import { jobMatchesLocationQuery, locationLabelsForJobs, workModeFromPlaceLabel } from "../lib/locationFilter";
+import { KNOWN_TOOL_LABELS } from "../lib/postingTools";
 import { boardAccessHeadline, boardCap, boardHiddenNote, boardHiddenSentences, type LockedBoardPreview } from "../lib/boardAccess";
 import { JOBS_RETURN_KEY, jobIdToRestore, readJobsReturnPlace, type JobsReturnPlace } from "../lib/jobsReturn";
 import { trackFunnel, trackFunnelOnce } from "../lib/funnelTrack";
@@ -42,7 +43,6 @@ interface FindJobsProps {
 
 const JOBS_PER_PAGE = 7;
 
-const TOOL_OPTIONS = ["Notion", "Airtable", "Zapier", "Make"] as const;
 const SENIORITY_OPTIONS = ["any", "junior", "mid", "senior", "lead"] as const;
 const TZ_OPTIONS = ["any", "eu", "us"] as const;
 
@@ -88,6 +88,22 @@ const getToolSignals = (job: Job) => {
   return new Set(normalized);
 };
 
+const jobHasSelectedTools = (job: Job, tools: string[]) => {
+  if (tools.length === 0) return true;
+  const tokens = getToolSignals(job);
+  return tools.every((tool) => {
+    const key = tool.toLowerCase();
+    if (key === "make") return tokens.has("make") || tokens.has("make.com");
+    if (key === "google sheets") return tokens.has("google sheets") || tokens.has("sheets");
+    return tokens.has(key);
+  });
+};
+
+const canonicalTool = (label: string) => {
+  const key = label.trim().toLowerCase();
+  return KNOWN_TOOL_LABELS.find((tool) => tool.toLowerCase() === key) || label.trim();
+};
+
 const FindJobs: React.FC<FindJobsProps> = ({
   jobs,
   onSelectJob,
@@ -118,7 +134,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [query, setQuery] = useState(initialQuery);
   const [locationQuery, setLocationQuery] = useState(initialLocationQuery);
   const [category, setCategory] = useState('All Roles');
-  const [workMode, setWorkMode] = useState<'All' | 'Remote' | 'Hybrid' | 'Onsite'>('All');
+  const [workMode, setWorkMode] = useState<'All' | 'Remote' | 'Hybrid'>('All');
   const [employmentType, setEmploymentType] = useState<'All' | Job['type']>('All');
   const [sortBy, setSortBy] = useState<SortOption>("relevant");
   const [salaryMin, setSalaryMin] = useState(0);
@@ -129,7 +145,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [openWwrDropdown, setOpenWwrDropdown] = useState<null | "category" | "salary" | "skills" | "country">(null);
+  const [openWwrDropdown, setOpenWwrDropdown] = useState<null | "category" | "salary" | "skills" | "country" | "work">(null);
   const [wwrSkillQuery, setWwrSkillQuery] = useState("");
   const [wwrLocationQuery, setWwrLocationQuery] = useState("");
   const [showTitleSuggestions, setShowTitleSuggestions] = useState(false);
@@ -155,7 +171,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [visibleCount, setVisibleCount] = useState(JOBS_PER_PAGE);
   const [featuredOpen, setFeaturedOpen] = useState(false);
 
-  const workModes: Array<'All' | 'Remote' | 'Hybrid' | 'Onsite'> = ['All', 'Remote', 'Hybrid', 'Onsite'];
+  const workModes: Array<'All' | 'Remote' | 'Hybrid'> = ['All', 'Remote', 'Hybrid'];
   const employmentTypes: Array<'All' | Job['type']> = ['All', 'Full-time', 'Contract', 'Part-time', 'Freelance', 'Internship', 'Temporary'];
   const salaryFloors = [
     { label: 'Any', value: 0 },
@@ -170,6 +186,12 @@ const FindJobs: React.FC<FindJobsProps> = ({
   }, [initialQuery]);
 
   useEffect(() => {
+    const moved = workModeFromPlaceLabel(initialLocationQuery);
+    if (moved === "Remote" || moved === "Hybrid") setWorkMode(moved);
+    if (moved) {
+      setLocationQuery("");
+      return;
+    }
     setLocationQuery(initialLocationQuery);
   }, [initialLocationQuery]);
 
@@ -192,7 +214,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
     const urlJobId = params.get("jobId");
 
     if (typeof urlQuery === "string" && urlQuery !== query) setQuery(urlQuery);
-    if (typeof urlLocation === "string" && urlLocation !== locationQuery) setLocationQuery(urlLocation);
+    const movedPlace = typeof urlLocation === "string" ? workModeFromPlaceLabel(urlLocation) : null;
+    if (movedPlace) {
+      setLocationQuery("");
+      if (!urlWorkMode && (movedPlace === "Remote" || movedPlace === "Hybrid")) setWorkMode(movedPlace);
+    } else if (typeof urlLocation === "string" && urlLocation !== locationQuery) {
+      setLocationQuery(urlLocation);
+    }
     if (urlCategory) setCategory(resolveCategoryParam(urlCategory));
     if (urlWorkMode && workModes.includes(urlWorkMode as any)) setWorkMode(urlWorkMode as any);
     if (urlType && employmentTypes.includes(urlType as any)) setEmploymentType(urlType as any);
@@ -465,22 +493,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
     }, {});
   }, [jobs]);
 
-  const toolCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    TOOL_OPTIONS.forEach((tool) => {
-      counts[tool] = 0;
-    });
-    jobs.forEach((job) => {
-      const signals = getToolSignals(job);
-      TOOL_OPTIONS.forEach((tool) => {
-        const low = tool.toLowerCase();
-        const hit = low === "make" ? (signals.has("make") || signals.has("make.com")) : signals.has(low);
-        if (hit) counts[tool] = (counts[tool] || 0) + 1;
-      });
-    });
-    return counts;
-  }, [jobs]);
-
   const savedIds = useMemo(() => new Set(user?.savedJobIds || []), [user?.savedJobIds]);
   const savedCount = savedIds.size;
   const canUseSaved = user?.role !== "employer";
@@ -488,9 +500,12 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const filteredAndSorted = useMemo(() => {
     let result = jobs.filter(j => {
       if (!isOnNicheJob(j)) return false;
-      const matchesQuery = j.title.toLowerCase().includes(query.toLowerCase()) || 
-                          j.company.toLowerCase().includes(query.toLowerCase()) ||
-                          j.tags.some(t => t.toLowerCase().includes(query.toLowerCase()));
+      const q = query.trim().toLowerCase();
+      const matchesQuery = !q ||
+        j.title.toLowerCase().includes(q) ||
+        j.company.toLowerCase().includes(q) ||
+        (j.tags || []).some((t) => t.toLowerCase().includes(q)) ||
+        (j.tools || []).some((t) => t.toLowerCase().includes(q));
       const matchesLocation = jobMatchesLocationQuery(j, locationQuery);
       const hub = category === "All Roles" ? null : getCategoryHub(category);
       const matchesCat = !hub || jobMatchesHub(j, hub);
@@ -506,14 +521,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
       const useVerified = advancedOk && verifiedOnly;
       const matchesSalaryMin = useSalaryMin === 0 || salaryRange.max >= useSalaryMin;
       const matchesSalaryMax = useSalaryMax === 0 || salaryRange.min <= useSalaryMax;
-      const toolSignals = getToolSignals(j);
-      const matchesTools =
-        useTools.length === 0 ||
-        useTools.some((tool) => {
-          const low = tool.toLowerCase();
-          if (low === "make") return toolSignals.has("make") || toolSignals.has("make.com");
-          return toolSignals.has(low);
-        });
+      const matchesTools = jobHasSelectedTools(j, useTools);
       const bucket = inferTimezoneBucket(j);
       const matchesTz = useTz === "any" ? true : bucket === useTz || bucket === "unknown";
       const inferredSeniority = inferSeniority(j);
@@ -639,9 +647,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
     
     const titles = jobs.filter(j => j.title.toLowerCase().includes(lowQuery)).map(j => j.title);
     const companies = jobs.filter(j => j.company.toLowerCase().includes(lowQuery)).map(j => j.company);
-    const tags = jobs.flatMap(j => j.tags).filter(t => t.toLowerCase().includes(lowQuery));
+    const tags = jobs.flatMap(j => j.tags || []).filter(t => t.toLowerCase().includes(lowQuery));
+    const tools = jobs.flatMap(j => j.tools || []).filter(t => t.toLowerCase().includes(lowQuery));
     
-    return Array.from(new Set([...titles, ...companies, ...tags])).slice(0, 5);
+    return Array.from(new Set([...titles, ...companies, ...tags, ...tools])).slice(0, 5);
   }, [query, jobs]);
 
   const locationSuggestions = useMemo(() => {
@@ -879,19 +888,26 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const countryOptions = useMemo(() => locationLabelsForJobs(jobs), [jobs]);
 
   const skillOptions = useMemo(() => {
-    const seen = new Set<string>(TOOL_OPTIONS.map((t) => t.toLowerCase()));
-    const out: string[] = [...TOOL_OPTIONS];
+    const seen = new Set<string>();
+    const out: string[] = [];
+    const known = new Set(KNOWN_TOOL_LABELS.map((tool) => tool.toLowerCase()));
     for (const job of jobs) {
-      for (const raw of [...(job.tools || []), ...(job.tags || [])]) {
-        const label = (raw || "").trim();
-        if (!label || label.length > 28) continue;
+      for (const raw of job.tools || []) {
+        const label = canonicalTool(raw);
         const key = label.toLowerCase();
-        if (seen.has(key)) continue;
+        if (!label || label.length > 28 || seen.has(key) || workModeFromPlaceLabel(label)) continue;
+        seen.add(key);
+        out.push(label);
+      }
+      for (const raw of job.tags || []) {
+        const label = canonicalTool(raw);
+        const key = label.toLowerCase();
+        if (!known.has(key) || seen.has(key)) continue;
         seen.add(key);
         out.push(label);
       }
     }
-    return out.slice(0, 24);
+    return out.sort((a, b) => a.localeCompare(b));
   }, [jobs]);
 
   const skillsSummary = useMemo(() => {
@@ -1074,7 +1090,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   <input
                     value={wwrLocationQuery}
                     onChange={(e) => setWwrLocationQuery(e.target.value)}
-                    placeholder="City, country, or Remote"
+                    placeholder="City or country"
                     className="w-full h-9 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
                     autoFocus
                   />
@@ -1123,6 +1139,49 @@ const FindJobs: React.FC<FindJobsProps> = ({
             )}
           </div>
 
+          <div className="relative" data-wwr-filter>
+            <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
+              <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12h4l3-8 4 16 3-8h4" />
+              </svg>
+              Work mode
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpenWwrDropdown((prev) => (prev === "work" ? null : "work"))}
+              className="cp-field mt-2 w-full h-10 rounded-xl bg-white px-3 text-left text-sm font-medium text-slate-900"
+            >
+              <span className={workMode === "All" ? "text-slate-400" : ""}>
+                {workMode === "All" ? "Any" : workMode}
+              </span>
+            </button>
+            {openWwrDropdown === "work" && (
+              <div className="absolute z-30 mt-2 w-full rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                <div className="py-1">
+                  {workModes.map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() =>
+                        preserveFilterPosition(() => {
+                          setWorkMode(mode);
+                          setOpenWwrDropdown(null);
+                          if (window.innerWidth < 1024) setIsFilterOpen(false);
+                        })
+                      }
+                      className={[
+                        "w-full text-left px-3 py-2 text-sm font-medium hover:bg-slate-50",
+                        workMode === mode ? "bg-indigo-50 text-indigo-700" : mode === "All" ? "text-slate-500" : "text-slate-900",
+                      ].join(" ")}
+                    >
+                      {mode === "All" ? "Any" : mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {advancedOk ? (
           <>
           <SalaryRangeSlider
@@ -1140,7 +1199,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-7 4h8m2 5H6a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v14a2 2 0 01-2 2z" />
               </svg>
-              Skills
+              Tools
             </div>
             <button
               type="button"
@@ -1148,7 +1207,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               className="cp-field mt-2 w-full h-10 rounded-xl bg-white px-3 text-left text-sm font-medium text-slate-900"
             >
               <span className={skillsSummary ? "" : "text-slate-400"}>
-                {skillsSummary || "Search skills..."}
+                {skillsSummary || "Any tool"}
               </span>
             </button>
             {openWwrDropdown === "skills" && (
@@ -1157,12 +1216,15 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   <input
                     value={wwrSkillQuery}
                     onChange={(e) => setWwrSkillQuery(e.target.value)}
-                    placeholder="Search skills..."
+                    placeholder="Search tools..."
                     className="w-full h-9 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
                     autoFocus
                   />
                 </div>
                 <div className="max-h-56 overflow-y-auto py-1">
+                  {skillOptions.filter((t) => t.toLowerCase().includes(wwrSkillQuery.trim().toLowerCase())).length === 0 && (
+                    <div className="px-3 py-2 text-sm text-slate-500">No matching tools on the board.</div>
+                  )}
                   {skillOptions.filter((t) => t.toLowerCase().includes(wwrSkillQuery.trim().toLowerCase())).map((tool) => {
                     const active = selectedTools.includes(tool);
                     return (
@@ -1199,11 +1261,42 @@ const FindJobs: React.FC<FindJobsProps> = ({
           ) : null}
 
           {activeFilterChips.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {activeFilterChips.map((chip, index) => (
+                <button
+                  key={`${chip.label}-${index}`}
+                  type="button"
+                  onClick={() => preserveFilterPosition(chip.onClear)}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-indigo-200 hover:text-indigo-600"
+                >
+                  {chip.label}
+                  <span className="text-[10px]">×</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {variant === "sheet" ? (
+            <div>
+              <div className="text-[11px] font-medium text-slate-700">Sort</div>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="cp-field mt-2 w-full h-10 rounded-xl bg-white px-3 text-sm font-medium text-slate-900 outline-none"
+              >
+                <option value="relevant">Most relevant</option>
+                <option value="newest">Newest</option>
+                <option value="salary">Highest salary</option>
+              </select>
+            </div>
+          ) : null}
+
+          {variant === "sheet" && activeFilterChips.length > 0 ? (
             <button
               type="button"
               onClick={() => {
                 setOpenWwrDropdown(null);
-                if (variant === "sheet") setIsFilterOpen(false);
+                setIsFilterOpen(false);
               }}
               className="mt-2 w-full h-9 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-black"
             >
@@ -1351,25 +1444,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
               </div>
             </div>
 
-            {activeFilterChips.length > 0 && (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                {activeFilterChips.slice(0, 6).map((chip, index) => (
-                  <button
-                    key={`${chip.label}-${index}`}
-                    onClick={chip.onClear}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-indigo-200 hover:text-indigo-600"
-                  >
-                    {chip.label}
-                    <span className="text-[10px]">×</span>
-                  </button>
-                ))}
-                {activeFilterChips.length > 6 && (
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
-                    +{activeFilterChips.length - 6} more
-                  </span>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
@@ -1465,13 +1539,15 @@ const FindJobs: React.FC<FindJobsProps> = ({
               );
             })}
 
-            {(boardJobs.length > visibleCount || canLoadMore) && (
+            {(boardJobs.length > visibleCount || (canLoadMore && visibleCount >= boardJobs.length)) && (
               <div className="pt-4 pb-2 text-center">
                 <button
                   onClick={handleLoadMore}
                   className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:border-indigo-200 hover:text-indigo-700"
                 >
-                  Show more ({boardJobs.length - visibleCount} remaining)
+                  {boardJobs.length > visibleCount
+                    ? `Show more (${boardJobs.length - visibleCount} remaining)`
+                    : "Show more"}
                 </button>
               </div>
             )}
