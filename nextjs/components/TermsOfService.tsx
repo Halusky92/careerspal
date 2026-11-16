@@ -31,7 +31,7 @@ const TermsOfService: React.FC = () => {
           <h2 className="text-base font-semibold text-slate-900">3. Candidates</h2>
           <ul className="mt-2 list-disc pl-5 space-y-1">
             <li>The live board is open without an account. Job pages stay public.</li>
-            <li>A free account can save one search and receive a weekly email. The email uses category, salary floor, and tools stored on the role. It includes roles that are already on the public board.</li>
+            <li>A free account can save one search. The email goes out Tuesday and Friday, after a role is public, and uses category, salary floor, and tools stored on the role.</li>
             <li>Apply on the employer’s own link. Job pages stay public.</li>
             <li>Keep your account information accurate.</li>
             <li>We do not run a talent pool or send your profile to employers.</li>
@@ -48,7 +48,7 @@ const TermsOfService: React.FC = () => {
         <section>
           <h2 className="text-base font-semibold text-slate-900">5. Candidate Premium</h2>
           <p className="mt-2">
-            Premium is $11.99 per month (USD). It adds more than one saved search, a daily email when a role matches
+            Premium is $11.99 per month (USD). It adds more than one saved search, an email after each search when a role matches
             the category, salary floor, and tools stored on the role, and the new roles from the last 24 hours. Those roles join the public board after 24 hours. It renews each month until you cancel. Canceling keeps Premium
             until the end of the paid period. A failed renewal keeps that period while Stripe retries. A refund ends
             Premium immediately.

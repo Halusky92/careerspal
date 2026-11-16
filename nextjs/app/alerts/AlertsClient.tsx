@@ -94,7 +94,7 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Job alerts</p>
         <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Stay in the loop</h1>
         <p className="mt-2 text-sm text-slate-600 max-w-2xl">
-          A weekly email for the category, salary, place, work mode, and stored tools you choose. The same search goes out daily on Premium.
+          Tuesday and Friday for the category, salary, place, work mode, and stored tools you choose, after a role is public. Premium sends that search after each search, including the first 24 hours.
         </p>
         <PublicSubscriberNote count={subscriberCount} />
       </div>

@@ -18,7 +18,7 @@ const AboutUs: React.FC = () => {
           <h2 className="text-lg font-semibold text-slate-900">For people looking</h2>
           <ul className="mt-3 space-y-2 text-[15px] text-slate-700">
             <li>The live board is open. Search, filter, and apply on the employer’s own page.</li>
-            <li>A free account can save one search and get a weekly email. The email uses category, salary floor, and tools stored on the role. Daily delivery, more saved searches, and roles from the last 24 hours are on Premium.</li>
+            <li>A free account can save one search. The email goes out Tuesday and Friday, after a role is public, and uses category, salary floor, and tools stored on the role. An email after each search, more saved searches, and roles from the first 24 hours are on Premium.</li>
             <li>Pay is shown when the posting states it. We don’t invent ranges.</li>
             <li>A new role is on Premium for 24 hours, then its page is public. You apply on the employer’s own page.</li>
           </ul>

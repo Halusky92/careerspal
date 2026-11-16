@@ -86,7 +86,7 @@ export default function UpgradePage() {
     <div className="max-w-lg mx-auto px-4 py-16">
       <h1 className="text-2xl font-semibold text-slate-900">Premium</h1>
       <p className="mt-2 text-sm text-slate-600">
-        $11.99 per month. More than one saved search, a daily email when a role matches the category, salary floor, and tools stored on the role, and new roles for their first 24 hours. After that they are on the public board, including Google.
+        $11.99 per month. More than one saved search, an email after each search when a role matches the category, salary floor, and tools stored on the role, and new roles for their first 24 hours. After that they are on the public board, including Google. A free account gets that search on Tuesday and Friday.
         It renews automatically each month until you cancel. Canceling keeps Premium until the end of the paid period.
         A failed renewal keeps that period while Stripe retries. A refund ends Premium immediately.
       </p>

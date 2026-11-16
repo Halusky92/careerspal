@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { jobMatchesSavedSearch, parseSavedSearch, savedSearchLabel, serializeSavedSearch } from "./alertPrefs";
+import { isTwiceWeeklySendDay, jobMatchesSavedSearch, parseSavedSearch, savedSearchLabel, serializeSavedSearch } from "./alertPrefs";
 
 const role = {
   title: "Revenue Operations Manager",
@@ -13,6 +13,12 @@ const role = {
   keywords: "Notion",
   description: "Daily work in Excel and Slack.",
 };
+
+test("account mail goes out Tuesday and Friday", () => {
+  assert.equal(isTwiceWeeklySendDay(new Date("2026-11-17T08:00:00.000Z")), true);
+  assert.equal(isTwiceWeeklySendDay(new Date("2026-11-20T08:00:00.000Z")), true);
+  assert.equal(isTwiceWeeklySendDay(new Date("2026-11-18T08:00:00.000Z")), false);
+});
 
 test("a legacy category string still matches that category", () => {
   const search = parseSavedSearch("revops");

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isWeeklySendDay } from "../../../../lib/alertPrefs";
+import { isTwiceWeeklySendDay } from "../../../../lib/alertPrefs";
 import { sendDigest } from "../../../../lib/alerts/sendDigest";
 
 export const runtime = "nodejs";
@@ -16,6 +16,9 @@ function isAuthorized(request: Request): boolean {
   if (alerts && auth === `Bearer ${alerts}`) return true;
   if (alerts && secret === alerts) return true;
   if (cron && secret === cron) return true;
+  const sourcing = (process.env.SOURCING_CRON_SECRET || "").trim();
+  if (sourcing && auth === `Bearer ${sourcing}`) return true;
+  if (sourcing && secret === sourcing) return true;
   return false;
 }
 
@@ -28,11 +31,12 @@ export async function GET(request: Request) {
   const force = url.searchParams.get("force") === "1";
   const trial = url.searchParams.get("trial") === "1";
   const now = new Date();
+  const onlyPremium = url.searchParams.get("cadence") === "daily";
   const daily = await sendDigest({ dryRun, force, trial, cadence: "daily" });
   if (!daily.ok) {
     return NextResponse.json({ error: daily.error }, { status: 500 });
   }
-  if (!force && !trial && !isWeeklySendDay(now)) {
+  if (onlyPremium || (!force && !trial && !isTwiceWeeklySendDay(now))) {
     return NextResponse.json({ ok: true, cadence: "daily", daily });
   }
   const weekly = await sendDigest({ dryRun, force, trial, cadence: "weekly" });

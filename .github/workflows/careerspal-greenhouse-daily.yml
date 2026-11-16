@@ -137,6 +137,20 @@ jobs:
               --data-urlencode "mode=logos")
             echo "$body" | jq '{ok,mode,updated:.summary.updated,jobs:.summary.jobsUpdated,skipped:.summary.skipped}'
             echo "$body" | jq -e '.ok == true' >/dev/null || failed=1
+            origin=$(printf '%s\n' "$PIPELINE_URL" | sed -E 's#^(https?://[^/]+).*#\1#')
+            echo "Premium alerts for roles found in this search"
+            body=$(curl -sS -L \
+              --connect-timeout 15 \
+              --max-time 90 \
+              --retry 2 \
+              --retry-delay 2 \
+              --retry-all-errors \
+              --fail \
+              -G "$origin/api/alerts/daily" \
+              --data-urlencode "secret=$CRON_SECRET" \
+              --data-urlencode "cadence=daily") || failed=1
+            echo "$body" | jq '{ok,cadence,sent:.daily.sent}'
+            echo "$body" | jq -e '.ok == true and .cadence == "daily"' >/dev/null || failed=1
           else
             run_slices refresh || failed=1
           fi

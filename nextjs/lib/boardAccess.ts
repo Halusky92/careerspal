@@ -111,7 +111,7 @@ export const BOARD_PREMIUM_PRICE = 11.99;
 
 export type BoardTier = "guest" | "registered" | "paid";
 
-/** Live roles stay public. Premium is extra saved searches and daily alerts, not a shorter board. */
+/** Live roles stay public. Premium is extra saved searches and an email after each search, not a shorter board. */
 export function boardCap(_tier: BoardTier): number | null {
   return null;
 }
@@ -286,12 +286,12 @@ export function boardHiddenSentences(note: BoardHiddenNote): { free?: string; pr
       free: `A free account shows ${note.freeMore} more of the newest ${jobs}.`,
       premium:
         note.premiumMore > 0
-          ? "Premium unlocks the full live board, salary and skills filters, and daily alerts."
-          : "Salary and skills filters and daily alerts are on Premium.",
+          ? "Premium adds more than one saved search, an email after each search, and roles from the first 24 hours."
+          : "More than one saved search and an email after each search are on Premium.",
     };
   }
   const jobs = note.premiumMore === 1 ? "job" : "jobs";
   return {
-    premium: `${note.premiumMore} more live ${jobs} are on Premium, with salary and skills filters and daily alerts.`,
+    premium: `${note.premiumMore} more live ${jobs} are on Premium, with an email after each search.`,
   };
 }
