@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 import { parseAlertQuery, serializeAlertQuery } from "../../lib/categories";
-import { ALERT_MIN_SALARIES, ALERT_REGIONS, type AlertRegion } from "../../lib/alertPrefs";
+import { ALERT_MIN_SALARIES, ALERT_REGIONS, ALERT_WORK_MODES, type AlertRegion, type AlertWorkMode } from "../../lib/alertPrefs";
 import AlertCategoryPicker from "../../components/AlertCategoryPicker";
 import AlertToolPicker from "../../components/AlertToolPicker";
 import PublicSubscriberNote from "../../components/PublicSubscriberNote";
@@ -21,6 +21,7 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
   const [selected, setSelected] = useState<string[]>(() => parseAlertQuery(initialCategory));
   const [minSalary, setMinSalary] = useState(0);
   const [region, setRegion] = useState<AlertRegion>("anywhere");
+  const [workMode, setWorkMode] = useState<AlertWorkMode>("any");
   const [tools, setTools] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
@@ -47,7 +48,7 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query, minSalary, region, tools }),
+            body: JSON.stringify({ query, minSalary, region, workMode, tools }),
           },
           accessToken,
         );
@@ -61,6 +62,7 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
           categories: selected,
           minSalary,
           region,
+          workMode,
           tools,
         }),
       });
@@ -92,7 +94,7 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Job alerts</p>
         <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Stay in the loop</h1>
         <p className="mt-2 text-sm text-slate-600 max-w-2xl">
-          A weekly email for the category, salary floor, and stored tools you choose. The same search goes out daily on Premium.
+          A weekly email for the category, salary, place, work mode, and stored tools you choose. The same search goes out daily on Premium.
         </p>
         <PublicSubscriberNote count={subscriberCount} />
       </div>
@@ -100,7 +102,7 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
       <div className="p-4 sm:p-5 space-y-4">
         <AlertCategoryPicker selected={selected} onChange={setSelected} />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <label className="block">
             <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Minimum salary</span>
             <select
@@ -123,6 +125,20 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
               className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800"
             >
               {ALERT_REGIONS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Work mode</span>
+            <select
+              value={workMode}
+              onChange={(event) => setWorkMode(event.target.value as AlertWorkMode)}
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800"
+            >
+              {ALERT_WORK_MODES.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.label}
                 </option>
