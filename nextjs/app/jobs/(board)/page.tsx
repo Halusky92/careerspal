@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import JobsClient from "../JobsClient";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
 import { Job } from "../../../types";
@@ -8,9 +7,10 @@ import { createJobSlug } from "../../../lib/jobs";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { formatJobSalary } from "../../../lib/formatSalary";
 import { ApplyClickLink } from "../../../components/JobAnalytics";
-import { boardAccessHeadline, boardCapsEnabled, boardCompanyCount, boardSliceForTier, lockedBoardPreviews } from "../../../lib/boardAccess";
-import { boardTierFromRequest } from "../../../lib/boardAccessServer";
+import { boardAccessHeadline, boardCompanyCount, boardSliceForTier, lockedBoardPreviews } from "../../../lib/boardAccess";
 import { countLivePublishedJobs, loadPublishedBoardJobs } from "../../../lib/publicJobBoard";
+import { listingsForViewer } from "../../../lib/listingWindow";
+import { viewerTier } from "../../../lib/viewerTier";
 
 export const dynamic = "force-dynamic";
 
@@ -136,16 +136,11 @@ export default async function JobsPage({ searchParams }: PageProps) {
   const params = (await searchParams) || {};
   const initialQuery = getParam(params.query);
   const initialLocation = getParam(params.location);
-  const { jobs, total } = await fetchPublishedJobs();
-  const capsOn = boardCapsEnabled();
-  const token = capsOn ? (await cookies()).get("cp_access_token")?.value || "" : "";
-  const tier = !capsOn
-    ? "paid"
-    : await boardTierFromRequest(
-        new Request("https://www.careerspal.com/jobs", {
-          headers: token ? { authorization: `Bearer ${token}` } : {},
-        }),
-      );
+  const loaded = await fetchPublishedJobs();
+  const tier = await viewerTier();
+  const jobs = listingsForViewer(loaded.jobs, tier);
+  const hiddenEarly = loaded.jobs.length - jobs.length;
+  const total = loaded.total == null ? null : Math.max(0, loaded.total - hiddenEarly);
   const slice = boardSliceForTier(jobs, tier);
   const initialJobs = slice.jobs;
   const initialLocked = lockedBoardPreviews(jobs, slice.cap);

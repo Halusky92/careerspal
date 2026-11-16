@@ -9,6 +9,8 @@ import { applyLiveBoardFilter } from "../../lib/liveBoard";
 import { formatJobSalary } from "../../lib/formatSalary";
 import { getPublicSubscriberCount } from "../../lib/countAlertSubscribers";
 import { countLivePublishedJobs } from "../../lib/publicJobBoard";
+import { listingsForViewer } from "../../lib/listingWindow";
+import { viewerTier } from "../../lib/viewerTier";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +23,7 @@ async function fetchPublishedJobs(): Promise<Job[]> {
     supabaseAdmin
       .from("jobs")
       .select(
-        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
+        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
       )
       .eq("status", "published"),
   )
@@ -67,9 +69,13 @@ function StaticHomeJobs({ jobs }: { jobs: Job[] }) {
 }
 
 export default async function HomePage() {
-  const jobs = await fetchPublishedJobs();
+  const loaded = await fetchPublishedJobs();
+  const tier = await viewerTier();
+  const jobs = listingsForViewer(loaded, tier);
+  const hiddenEarly = loaded.length - jobs.length;
   const subscriberCount = await getPublicSubscriberCount();
-  const liveTotal = supabaseAdmin ? await countLivePublishedJobs(supabaseAdmin) : null;
+  const counted = supabaseAdmin ? await countLivePublishedJobs(supabaseAdmin) : null;
+  const liveTotal = counted == null ? null : Math.max(0, counted - hiddenEarly);
   return (
     <>
       <StaticHomeJobs jobs={jobs} />

@@ -5,6 +5,7 @@ import { inferWorkMode } from "../workMode";
 import { parseSalaryFromText } from "../sourcing/normalization/salary";
 import type { Job } from "../../types";
 import { indexVisibility, type IndexJobSnapshot } from "./plan";
+import { isEarlyAccessListing } from "../listingWindow";
 
 export type IndexJobRow = {
   id: string;
@@ -65,6 +66,7 @@ export function toIndexSnapshot(row: IndexJobRow): IndexJobSnapshot {
       status: row.status,
       onNiche: isOnNicheJob(job),
       live: isLiveBoardJob(job),
+      early: isEarlyAccessListing(job),
       jobPosting: shouldEmitJobPosting(job),
     }),
   };

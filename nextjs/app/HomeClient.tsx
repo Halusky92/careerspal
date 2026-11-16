@@ -7,6 +7,7 @@ import HomePreviewCard from "../components/HomePreviewCard";
 import { Job } from "../types";
 import { isOnNicheJob } from "../lib/nicheScope";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
+import { isPriorityListing } from "../lib/listingWindow";
 import FeaturedBoardZone from "../components/FeaturedBoardZone";
 import { useSupabaseAuth } from "../components/Providers";
 import { authFetch } from "../lib/authFetch";
@@ -101,7 +102,11 @@ export default function HomeClient({
     () =>
       [...jobs]
         .filter((job) => isOnNicheJob(job))
-        .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0)),
+        .sort((a, b) => {
+          const priority = Number(isPriorityListing(b)) - Number(isPriorityListing(a));
+          if (priority !== 0) return priority;
+          return (b.timestamp ?? 0) - (a.timestamp ?? 0);
+        }),
     [jobs],
   );
   const featuredPreview = useMemo(() => {
@@ -244,7 +249,7 @@ export default function HomeClient({
           <article className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col">
             <h3 className="text-base font-semibold text-slate-900">Free Account</h3>
             <p className="mt-2 text-sm text-slate-600 leading-relaxed flex-1">
-              The same open board. Save one search and get a weekly email. It uses category, salary floor, and tools stored on the role.
+              The same open board. Save one search and get a weekly email. It uses category, salary floor, and tools stored on the role. New roles join that email after 24 hours.
             </p>
             <p className="mt-5 text-3xl font-semibold tracking-tight text-slate-900">$0</p>
             <button
@@ -262,10 +267,10 @@ export default function HomeClient({
           <article className="rounded-2xl border border-indigo-600 bg-indigo-600 p-5 flex flex-col text-white shadow-sm">
             <h3 className="text-base font-semibold">Premium</h3>
             <p className="mt-2 text-sm text-indigo-100 leading-relaxed flex-1">
-              More than one saved search, and a daily email when a role matches the category, salary floor, and stored tools. The board stays open. Cancel in Stripe.
+              More than one saved search, a daily email for the category, salary floor, and stored tools, and new roles for their first 24 hours. Cancel in Stripe.
             </p>
             <p className="mt-5 text-3xl font-semibold tracking-tight">
-              $7.99<span className="text-base font-medium text-indigo-200"> / month</span>
+              $11.99<span className="text-base font-medium text-indigo-200"> / month</span>
             </p>
             <button
               type="button"

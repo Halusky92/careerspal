@@ -9,6 +9,8 @@ import { isOnNicheJob } from "../../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../../lib/liveBoard";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
 import { previewListedJobs, toPublicJobCard, withoutHiddenStatuses } from "../../../lib/publicListPreview";
+import { listingsForViewer } from "../../../lib/listingWindow";
+import { viewerTier } from "../../../lib/viewerTier";
 import PremiumListContinuation from "../../../components/PremiumListContinuation";
 
 type PageProps = {
@@ -35,7 +37,7 @@ async function fetchPublishedJobsForHub(hubSlug: string): Promise<{ hubLabel: st
     supabaseAdmin
       .from("jobs")
       .select(
-        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
+        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
       )
       .eq("status", "published"),
   )
@@ -76,7 +78,7 @@ export default async function CategoryPage({ params }: PageProps) {
   if (!result) notFound();
 
   const { hubLabel, intro, jobs: loadedJobs, preference } = result;
-  const jobs = withoutHiddenStatuses(loadedJobs);
+  const jobs = listingsForViewer(withoutHiddenStatuses(loadedJobs), await viewerTier());
   const previewJobs = previewListedJobs(jobs, jobs.length);
   const hub = getCategoryHub(slug)!;
 

@@ -3,7 +3,7 @@ import { getResendFrom } from "./resendFrom";
 
 export function premiumReceiptText(until?: string | null) {
   const through = until ? ` Current period through ${until}.` : "";
-  return `CareersPal Premium is $7.99 per month. It renews automatically until you cancel. Canceling keeps Premium until the end of the paid period. A refund ends it immediately.${through} This is a payment confirmation, not a tax invoice.`;
+  return `CareersPal Premium is $11.99 per month. It renews automatically until you cancel. Canceling keeps Premium until the end of the paid period. A refund ends it immediately.${through} This is a payment confirmation, not a tax invoice.`;
 }
 
 export async function sendPremiumReceipt(args: { to?: string | null; until?: string | null }) {

@@ -7,7 +7,7 @@ import { mapSupabaseJob, type SupabaseJobRow } from "./supabaseJobs";
 import { boardCap, boardPageForTier, type BoardTier } from "./boardAccess";
 
 export const PUBLIC_JOB_SELECT =
-  "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)";
+  "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)";
 
 export type PublicBoardFilters = {
   company?: string | null;

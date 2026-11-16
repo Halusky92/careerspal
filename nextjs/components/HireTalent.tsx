@@ -9,7 +9,7 @@ interface HireTalentProps {
 const STEPS = [
   { title: "Post", text: "Salary, scope, and a working apply link." },
   { title: "Review", text: "Checked before it is published. Not a timed SLA." },
-  { title: "Live", text: "On the public board. People apply on your link." },
+  { title: "Live", text: "On Premium for 24 hours, then on the public board. People apply on your link." },
 ];
 
 export default function HireTalent({ companyNames = [] }: HireTalentProps) {

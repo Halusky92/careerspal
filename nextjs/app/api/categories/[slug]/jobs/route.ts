@@ -5,6 +5,7 @@ import { mapSupabaseJob, type SupabaseJobRow } from "../../../../../lib/supabase
 import { isOnNicheJob } from "../../../../../lib/nicheScope";
 import { applyLiveBoardFilter } from "../../../../../lib/liveBoard";
 import { publicListTierFromRequest } from "../../../../../lib/boardAccessServer";
+import { listingsForViewer } from "../../../../../lib/listingWindow";
 import { buildPublicList, listCacheHeaders } from "../../../../../lib/publicListPreview";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     supabaseAdmin
       .from("jobs")
       .select(
-        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
+        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
       )
       .eq("status", "published"),
   )
@@ -32,9 +33,12 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   if (error) {
     return NextResponse.json({ error: "Category is unavailable." }, { status: 500 });
   }
-  const jobs = ((data as unknown as SupabaseJobRow[] | null) || [])
-    .map(mapSupabaseJob)
-    .filter((job) => isOnNicheJob(job) && jobMatchesHub(job, hub));
   const tier = await publicListTierFromRequest(request);
+  const jobs = listingsForViewer(
+    ((data as unknown as SupabaseJobRow[] | null) || [])
+      .map(mapSupabaseJob)
+      .filter((job) => isOnNicheJob(job) && jobMatchesHub(job, hub)),
+    tier,
+  );
   return NextResponse.json(buildPublicList(jobs, tier, jobs.length), { headers: listCacheHeaders() });
 };

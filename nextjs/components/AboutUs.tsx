@@ -18,16 +18,16 @@ const AboutUs: React.FC = () => {
           <h2 className="text-lg font-semibold text-slate-900">For people looking</h2>
           <ul className="mt-3 space-y-2 text-[15px] text-slate-700">
             <li>The live board is open. Search, filter, and apply on the employer’s own page.</li>
-            <li>A free account can save one search and get a weekly email. The email uses category, salary floor, and tools stored on the role. Daily delivery and more saved searches are on Premium.</li>
+            <li>A free account can save one search and get a weekly email. The email uses category, salary floor, and tools stored on the role. Daily delivery, more saved searches, and roles from the last 24 hours are on Premium.</li>
             <li>Pay is shown when the posting states it. We don’t invent ranges.</li>
-            <li>Each role page stays open. You apply on the employer’s own page.</li>
+            <li>A new role is on Premium for 24 hours, then its page is public. You apply on the employer’s own page.</li>
           </ul>
         </section>
         <section>
           <h2 className="text-lg font-semibold text-slate-900">For people hiring</h2>
           <ul className="mt-3 space-y-2 text-[15px] text-slate-700">
             <li>Post → review → live. Salary and a working apply link are required.</li>
-            <li>The listing sits on the public board. Candidates apply on your link. First Standard listing is free, then $79 / $149 / $249 (USD).</li>
+            <li>A new listing is on Premium for 24 hours, then on the public board. Candidates apply on your link. First Standard listing is free, then $79 / $149 / $249 (USD).</li>
             <li>We do not run a talent pool, intros, or candidate screening.</li>
           </ul>
         </section>
