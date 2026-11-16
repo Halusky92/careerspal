@@ -219,7 +219,7 @@ export default function HomeClient({
             className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-slate-300 hover:bg-slate-50"
           >
             <div className="text-sm font-semibold text-slate-900">For candidates</div>
-            <p className="mt-1 text-xs text-slate-600">Weekly email for one saved category. Apply on the company site.</p>
+            <p className="mt-1 text-xs text-slate-600">Weekly email for one saved search. Apply on the company site.</p>
             <PublicSubscriberNote count={subscriberCount} className="mt-1 text-xs text-slate-500" />
           </button>
           <button
@@ -244,7 +244,7 @@ export default function HomeClient({
           <article className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col">
             <h3 className="text-base font-semibold text-slate-900">Free Account</h3>
             <p className="mt-2 text-sm text-slate-600 leading-relaxed flex-1">
-              The same open board. Save one category search and get a weekly email when new roles in it are published.
+              The same open board. Save one search and get a weekly email. It uses category, salary floor, and tools stored on the role.
             </p>
             <p className="mt-5 text-3xl font-semibold tracking-tight text-slate-900">$0</p>
             <button
@@ -262,7 +262,7 @@ export default function HomeClient({
           <article className="rounded-2xl border border-indigo-600 bg-indigo-600 p-5 flex flex-col text-white shadow-sm">
             <h3 className="text-base font-semibold">Premium</h3>
             <p className="mt-2 text-sm text-indigo-100 leading-relaxed flex-1">
-              More than one saved category search, and a daily email when a role in those categories is published. The board stays open. Cancel in Stripe.
+              More than one saved search, and a daily email when a role matches the category, salary floor, and stored tools. The board stays open. Cancel in Stripe.
             </p>
             <p className="mt-5 text-3xl font-semibold tracking-tight">
               $7.99<span className="text-base font-medium text-indigo-200"> / month</span>

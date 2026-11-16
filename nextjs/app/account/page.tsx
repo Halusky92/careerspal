@@ -10,7 +10,8 @@ import { Job } from "../../types";
 import { formatSalaryDisplay } from "../../lib/formatSalary";
 import { getCategoryHubForDbCategory, jobMatchesHub, parseAlertQuery, serializeAlertQuery } from "../../lib/categories";
 import AlertCategoryPicker from "../../components/AlertCategoryPicker";
-import { ALERT_MIN_SALARIES, ALERT_REGIONS, alertPrefsLabel, parseAlertPrefs, type AlertRegion } from "../../lib/alertPrefs";
+import AlertToolPicker from "../../components/AlertToolPicker";
+import { ALERT_MIN_SALARIES, ALERT_REGIONS, alertPrefsLabel, parseAlertPrefs, savedSearchLabel, type AlertRegion } from "../../lib/alertPrefs";
 import ProfileVisibilitySelect from "../../components/ProfileVisibilitySelect";
 import AdminDeskBar from "../../components/AdminDeskBar";
 import { trackFunnel } from "../../lib/funnelTrack";
@@ -78,6 +79,7 @@ const AccountPageInner = () => {
   const [alertQuery, setAlertQuery] = useState<string>("all");
   const [alertMinSalary, setAlertMinSalary] = useState(0);
   const [alertRegion, setAlertRegion] = useState<AlertRegion>("anywhere");
+  const [alertTools, setAlertTools] = useState<string[]>([]);
   const [alertBusy, setAlertBusy] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
@@ -151,6 +153,7 @@ const AccountPageInner = () => {
           setAlertQuery(prefs.categories);
           setAlertMinSalary(prefs.minSalary || 0);
           setAlertRegion(prefs.region);
+          setAlertTools(prefs.tools || []);
         }
       } catch {
         // keep empty
@@ -320,7 +323,7 @@ const AccountPageInner = () => {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query: alertQuery }),
+            body: JSON.stringify({ query: alertQuery, minSalary: alertMinSalary, region: alertRegion, tools: alertTools }),
           },
           accessToken,
         );
@@ -333,6 +336,7 @@ const AccountPageInner = () => {
           categories: parseAlertQuery(alertQuery),
           minSalary: alertMinSalary,
           region: alertRegion,
+          tools: alertTools,
         }),
       });
       const subData = (await subRes.json()) as { subscriber?: SubscriberRow; error?: string; pendingConfirm?: boolean };
@@ -533,8 +537,8 @@ const AccountPageInner = () => {
                         <>
                           <p className="mt-1 text-sm text-slate-600">
                             {premium
-                              ? "Premium — more than one saved category search and a daily email for this billing period."
-                              : "Free Account — the open board and one weekly email for one saved category search."}
+                              ? "Premium — more than one saved search and a daily email for this billing period. The email uses category, salary floor, and stored tools."
+                              : "Free Account — the open board and one weekly email. It uses category, salary floor, and stored tools."}
                           </p>
                           {premium && user?.premiumUntil ? (
                             <p className="mt-1 text-xs text-slate-500">
@@ -736,7 +740,7 @@ const AccountPageInner = () => {
                 <div className="space-y-4">
                   <div className="rounded-xl border border-slate-200 p-4 space-y-3">
                     <p className="text-sm font-medium text-slate-900">Get new jobs by email</p>
-                    <p className="text-sm text-slate-600">A weekly email for the categories and salary floor you choose. Daily category alerts are on Premium.</p>
+                    <p className="text-sm text-slate-600">A weekly email for this category, salary floor, and stored tools. Daily delivery of the same search is on Premium.</p>
                     <AlertCategoryPicker
                       selected={parseAlertQuery(alertQuery)}
                       onChange={(next) => setAlertQuery(serializeAlertQuery(next))}
@@ -771,6 +775,7 @@ const AccountPageInner = () => {
                         </select>
                       </label>
                     </div>
+                    <AlertToolPicker selected={alertTools} onChange={setAlertTools} />
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -823,7 +828,7 @@ const AccountPageInner = () => {
                     <div className="space-y-2">
                       {alerts.map((row) => (
                         <div key={row.id} className="rounded-xl border border-slate-200 px-4 py-3 flex items-center justify-between gap-3">
-                          <p className="text-sm text-slate-800 truncate">{row.query}</p>
+                          <p className="text-sm text-slate-800 truncate">{savedSearchLabel(row.query)}</p>
                           <button
                             type="button"
                             onClick={() => handleDeleteAlert(row.id)}
@@ -880,7 +885,7 @@ const AccountPageInner = () => {
                     <p className="text-sm text-slate-600">
                       {user?.subscriptionStatus
                         ? `Stripe status: ${user.subscriptionStatus.replace(/_/g, " ")}. $7.99 renews each month until you cancel. Canceling keeps Premium until the end of the paid period.`
-                        : "Daily category alerts are $7.99 a month and renew until you cancel. Canceling keeps them until the end of the paid period. The board stays open."}
+                        : "Daily alerts are $7.99 a month and renew until you cancel. They use the same category, salary floor, and stored tools as the weekly email. Canceling keeps them until the end of the paid period. The board stays open."}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {user?.subscriptionStatus !== "active" && user?.subscriptionStatus !== "trialing" ? (

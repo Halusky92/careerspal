@@ -3,6 +3,7 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { getSupabaseProfile } from "../../../lib/supabaseServerAuth";
 import { REGISTERED_SAVED_SEARCHES } from "../../../lib/boardAccess";
 import { boardTierFromRequest } from "../../../lib/boardAccessServer";
+import { normalizeAlertTools, parseSavedSearch, serializeSavedSearch, type AlertRegion } from "../../../lib/alertPrefs";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -38,11 +39,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json()) as { query?: string };
+  const body = (await request.json()) as {
+    query?: string;
+    minSalary?: number | string;
+    region?: string;
+    tools?: string[] | string;
+  };
   const query = body?.query?.trim();
   if (!query) {
     return NextResponse.json({ error: "Missing query." }, { status: 400 });
   }
+  const salaryRaw = Number(body.minSalary);
+  const storedQuery = serializeSavedSearch({
+    categories: query,
+    minSalary: Number.isFinite(salaryRaw) ? salaryRaw : null,
+    region: (body.region || "anywhere") as AlertRegion,
+    tools: normalizeAlertTools(body.tools),
+  });
+  const saved = parseSavedSearch(storedQuery);
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }
@@ -51,31 +65,33 @@ export async function POST(request: Request) {
   if (!profileId) {
     return NextResponse.json({ error: "User not found." }, { status: 404 });
   }
-  const { data: existing } = await supabaseAdmin
+  const { data: existingRows } = await supabaseAdmin
     .from("alerts")
     .select("id, query, location, created_at, last_run_at")
     .eq("user_id", profileId)
-    .eq("query", query)
-    .maybeSingle();
-  if (existing) {
-    return NextResponse.json({ alert: existing, existing: true });
-  }
+    .order("created_at", { ascending: true });
+  const rows = existingRows || [];
+  const sameCategory = rows.find((row) => parseSavedSearch(row.query).categories === saved.categories);
   const tier = await boardTierFromRequest(request);
-  if (tier !== "paid") {
-    const { count } = await supabaseAdmin
+  const replaceRow = sameCategory || (tier !== "paid" && rows.length >= REGISTERED_SAVED_SEARCHES ? rows[0] : null);
+  if (replaceRow) {
+    const { data: updated } = await supabaseAdmin
       .from("alerts")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", profileId);
-    if ((count || 0) >= REGISTERED_SAVED_SEARCHES) {
-      return NextResponse.json(
-        { error: "Free accounts can save one search. Premium unlocks more.", cap: REGISTERED_SAVED_SEARCHES },
-        { status: 403 },
-      );
-    }
+      .update({ query: storedQuery })
+      .eq("id", replaceRow.id)
+      .select("id, query, location, created_at, last_run_at")
+      .single();
+    return NextResponse.json({ alert: updated || { ...replaceRow, query: storedQuery }, existing: true });
+  }
+  if (tier !== "paid" && rows.length >= REGISTERED_SAVED_SEARCHES) {
+    return NextResponse.json(
+      { error: "Free accounts can save one search. Premium unlocks more.", cap: REGISTERED_SAVED_SEARCHES },
+      { status: 403 },
+    );
   }
   const { data } = await supabaseAdmin
     .from("alerts")
-    .insert({ user_id: profileId, query })
+    .insert({ user_id: profileId, query: storedQuery })
     .select("id, query, location, created_at, last_run_at")
     .single();
   return NextResponse.json({ alert: data }, { status: 201 });

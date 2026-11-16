@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { parseAlertQuery, serializeAlertQuery } from "../../../../lib/categories";
-import { isGuestAlertConfirmed, newUnsubToken, parseAlertPrefs, serializeAlertPrefs, type AlertRegion } from "../../../../lib/alertPrefs";
+import { isGuestAlertConfirmed, newUnsubToken, normalizeAlertTools, parseAlertPrefs, serializeAlertPrefs, type AlertRegion } from "../../../../lib/alertPrefs";
 import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
 import { renderAlertEmail } from "../../../../lib/alerts/emailTemplate";
 import { getResendFrom } from "../../../../lib/resendFrom";
@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     query?: string;
     minSalary?: number | string;
     region?: string;
+    tools?: string[] | string;
   };
 
   const email = (body.email || "").trim().toLowerCase();
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
     categories,
     minSalary,
     region,
+    tools: normalizeAlertTools(body.tools),
     token: current.token || newUnsubToken(),
     lastSentAt: current.lastSentAt || null,
     confirmed: alreadyConfirmed,
