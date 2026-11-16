@@ -17,9 +17,10 @@ const AboutUs: React.FC = () => {
         <section>
           <h2 className="text-lg font-semibold text-slate-900">For people looking</h2>
           <ul className="mt-3 space-y-2 text-[15px] text-slate-700">
-            <li>Browse or search the live board.</li>
-            <li>Save roles and get an email when a new one in your category is published.</li>
-            <li>Pay is shown on the listing when the employer provided it — we don’t invent ranges.</li>
+            <li>The newest roles are open without an account. A free account shows more of them. Premium opens the full live board, salary and skills filters, and daily alerts.</li>
+            <li>A free account can save one search and get a weekly email. Daily alerts are on Premium.</li>
+            <li>Pay is shown when the posting states it. We don’t invent ranges.</li>
+            <li>Each role page stays open. You apply on the employer’s own page.</li>
           </ul>
         </section>
         <section>

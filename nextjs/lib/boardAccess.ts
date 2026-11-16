@@ -253,3 +253,39 @@ export function boardAccessHeadline(
   if (cap == null || live <= cap) return `You're viewing all ${live} live jobs${companyLabel}`;
   return `You're viewing ${Math.min(cap, live)} of ${live} live jobs${companyLabel}`;
 }
+
+export type BoardHiddenNote =
+  | { tier: "guest"; freeMore: number; premiumMore: number }
+  | { tier: "registered"; premiumMore: number };
+
+/** Jobs past the current cap. A guest's remainder includes the free-account window, so it is not a Premium count. */
+export function boardHiddenNote(
+  tier: BoardTier | null | undefined,
+  total: number | null | undefined,
+): BoardHiddenNote | null {
+  if (tier !== "guest" && tier !== "registered") return null;
+  if (typeof total !== "number" || !Number.isFinite(total)) return null;
+  const live = Math.max(0, Math.floor(total));
+  const cap = boardCap(tier);
+  if (cap == null || live <= cap) return null;
+  const premiumMore = Math.max(0, live - REGISTERED_VISIBLE_JOBS);
+  if (tier === "registered") return { tier, premiumMore };
+  return { tier, freeMore: Math.min(live, REGISTERED_VISIBLE_JOBS) - cap, premiumMore };
+}
+
+export function boardHiddenSentences(note: BoardHiddenNote): { free?: string; premium: string } {
+  if (note.tier === "guest") {
+    const jobs = note.freeMore === 1 ? "job" : "jobs";
+    return {
+      free: `A free account shows ${note.freeMore} more of the newest ${jobs}.`,
+      premium:
+        note.premiumMore > 0
+          ? "Premium unlocks the full live board, salary and skills filters, and daily alerts."
+          : "Salary and skills filters and daily alerts are on Premium.",
+    };
+  }
+  const jobs = note.premiumMore === 1 ? "job" : "jobs";
+  return {
+    premium: `${note.premiumMore} more live ${jobs} are on Premium, with salary and skills filters and daily alerts.`,
+  };
+}
