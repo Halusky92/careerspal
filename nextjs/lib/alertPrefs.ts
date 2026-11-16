@@ -12,11 +12,11 @@ export const ALERT_WORK_MODES = [
   { id: "any", label: "Any" },
   { id: "remote", label: "Remote" },
   { id: "hybrid", label: "Hybrid" },
-  { id: "onsite", label: "Onsite" },
 ] as const;
 
 export type AlertRegion = (typeof ALERT_REGIONS)[number]["id"];
-export type AlertWorkMode = (typeof ALERT_WORK_MODES)[number]["id"];
+/** Onsite stays readable on older saved alerts. The board does not publish office-only roles. */
+export type AlertWorkMode = (typeof ALERT_WORK_MODES)[number]["id"] | "onsite";
 
 export const ALERT_MIN_SALARIES = [0, 60000, 80000, 100000, 120000, 150000] as const;
 
@@ -52,7 +52,8 @@ export type SavedSearch = {
 };
 
 const isRegion = (value: string): value is AlertRegion => ALERT_REGIONS.some((item) => item.id === value);
-const isWorkMode = (value: string): value is AlertWorkMode => ALERT_WORK_MODES.some((item) => item.id === value);
+const isWorkMode = (value: string): value is AlertWorkMode =>
+  value === "any" || value === "remote" || value === "hybrid" || value === "onsite";
 
 /** Older alerts stored Remote, Hybrid, and Onsite in the region field. */
 function readPlaceAndMode(regionRaw: unknown, modeRaw: unknown): { region: AlertRegion; workMode: AlertWorkMode } {

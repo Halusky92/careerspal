@@ -1,6 +1,6 @@
 "use client";
 
-export const SALARY_SLIDER_CAP = 300000;
+export const SALARY_SLIDER_CAP = 500000;
 export const SALARY_SLIDER_STEP = 10000;
 
 function money(value: number) {
@@ -20,8 +20,9 @@ export default function SalaryRangeSlider({
   const right = max > 0 ? Math.min(max, SALARY_SLIDER_CAP) : SALARY_SLIDER_CAP;
   const left = Math.min(Math.max(0, min), right);
   const openEnded = right >= SALARY_SLIDER_CAP;
+  const capLabel = `$${Math.round(SALARY_SLIDER_CAP / 1000)}k`;
   const label =
-    left <= 0 && openEnded ? "Any listed salary" : `${money(left)} – ${openEnded ? "$300k+" : money(right)}`;
+    left <= 0 && openEnded ? "Any listed salary" : `${money(left)} – ${openEnded ? `${capLabel}+` : money(right)}`;
 
   return (
     <div>
@@ -57,7 +58,7 @@ export default function SalaryRangeSlider({
           step={SALARY_SLIDER_STEP}
           value={right}
           aria-label="Maximum salary"
-          aria-valuetext={openEnded ? "$300k or more" : money(right)}
+          aria-valuetext={openEnded ? `${capLabel} or more` : money(right)}
           onChange={(event) => {
             const next = Math.max(Number(event.target.value), left);
             onChange(left, next >= SALARY_SLIDER_CAP ? 0 : next);
