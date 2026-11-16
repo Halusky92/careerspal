@@ -60,9 +60,10 @@ export function indexVisibility(input: {
   onNiche: boolean;
   live: boolean;
   jobPosting: boolean;
+  early?: boolean;
 }): IndexVisibility {
   if (input.status !== "published" || !input.onNiche) return "gone";
-  if (!input.live) return "noindex";
+  if (!input.live || input.early) return "noindex";
   if (input.jobPosting) return "job_posting";
   return "public_without_posting";
 }

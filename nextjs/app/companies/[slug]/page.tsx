@@ -11,6 +11,8 @@ import { loadPublicCompanyBySlug } from "../../../lib/publicCompany";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
 import { previewListedJobs, toPublicJobCard, withoutHiddenStatuses } from "../../../lib/publicListPreview";
 import PremiumListContinuation from "../../../components/PremiumListContinuation";
+import { listingsForViewer } from "../../../lib/listingWindow";
+import { viewerTier } from "../../../lib/viewerTier";
 
 // Ensure a consistent runtime (avoid edge differences that can cause production-only crashes).
 export const runtime = "nodejs";
@@ -138,7 +140,7 @@ export default async function CompanyPage({ params }: PageProps) {
   if (result.kind === "not_found") notFound();
 
   const { company, jobs: rawJobs } = result;
-  const jobs = withoutHiddenStatuses(rawJobs.filter((job) => isOnNicheJob(job)));
+  const jobs = listingsForViewer(withoutHiddenStatuses(rawJobs.filter((job) => isOnNicheJob(job))), await viewerTier());
   const previewJobs = previewListedJobs(jobs, jobs.length).map((job) => toPublicJobCard(job));
   const companyName = company.name || "Company";
   const companyWebsite = (company.website || "").trim();

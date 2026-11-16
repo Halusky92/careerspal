@@ -6,6 +6,7 @@ import { applyLiveBoardFilter, isLiveBoardJob } from "../lib/liveBoard";
 import { isOnNicheJob } from "../lib/nicheScope";
 import { getCanonicalSiteUrl } from "../lib/alerts/siteUrl";
 import { isNonProductionDeployment } from "../lib/siteIndexing";
+import { isEarlyAccessListing } from "../lib/listingWindow";
 
 function lastmodFromTimestamp(timestamp?: number | null): Date | undefined {
   if (typeof timestamp !== "number" || !Number.isFinite(timestamp) || timestamp <= 0) return undefined;
@@ -60,7 +61,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     );
 
     const live = (jobs || []).filter(
-      (job) => isLiveBoardJob(job) && isOnNicheJob(job),
+      (job) => isLiveBoardJob(job) && isOnNicheJob(job) && !isEarlyAccessListing(job),
     );
 
     for (const job of live) {

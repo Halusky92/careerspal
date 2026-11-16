@@ -13,6 +13,7 @@ import { geographyLabel, inferWorkMode, publicLocationLabel } from "../lib/workM
 import { publicCategoryLabel } from "../lib/categories";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
+import NewListingBadge from "./NewListingBadge";
 import { formatRelativePosted } from "../lib/formatPosted";
 
 export type JobRowAction = "copy_link" | "open_new_tab";
@@ -188,6 +189,7 @@ export default function JobRow({
                 </a>
 
                 <FeaturedBadge job={job} />
+                <NewListingBadge job={job} />
 
                 {isPrivate && (
                   <span className="inline-flex items-center rounded-full bg-slate-900 text-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">

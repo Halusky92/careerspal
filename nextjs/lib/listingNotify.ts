@@ -146,7 +146,7 @@ export async function sendListingOutcomeEmails(input: {
            <p>Plan: ${escapeHtml(planLine)}</p>
            <p>${
              input.live
-               ? "It is on the CareersPal board now."
+               ? "It is on Premium for the first 24 hours, then on the public board."
                : "It will go live after a last check. That is not a timed SLA."
            }</p>`,
           input.live ? jobUrl : employerUrl,

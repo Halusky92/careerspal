@@ -18,6 +18,7 @@ import { getResendFrom } from "../resendFrom";
 import { ownerAdminEmails } from "../adminAccess";
 import { jobsForDigest } from "./digestJobs";
 import { resolveBoardTier } from "../boardAccess";
+import { isEarlyAccessListing, listedAtMs } from "../listingWindow";
 
 type AlertRow = {
   id: string;
@@ -40,6 +41,8 @@ type JobRow = {
   tools?: unknown;
   category: string | null;
   timestamp: number | null;
+  published_at?: string | null;
+  created_at?: string | null;
   companies?: { name?: string | null } | Array<{ name?: string | null }> | null;
 };
 
@@ -105,14 +108,23 @@ export async function sendDigest(options: SendDigestOptions = {}) {
 
   let jobQuery = supabaseAdmin
     .from("jobs")
-    .select("id,title,description,location,salary,remote_policy,apply_url,keywords,tags,tools,category,timestamp,companies(name)")
+    .select("id,title,description,location,salary,remote_policy,apply_url,keywords,tags,tools,category,timestamp,published_at,created_at,companies(name)")
     .eq("status", "published")
     .order("timestamp", { ascending: false })
     .limit(trial ? 40 : 80);
-  if (!trial) jobQuery = jobQuery.gte("timestamp", sinceDefault.getTime());
+  if (!trial) {
+    jobQuery = jobQuery.or(
+      `timestamp.gte.${sinceDefault.getTime()},published_at.gte.${sinceDefault.toISOString()},created_at.gte.${sinceDefault.toISOString()}`,
+    );
+  }
   const { data: recentJobs } = await jobQuery;
   const published = ((recentJobs || []) as JobRow[]).filter((job) => isOnNicheJob(job));
-  const liveFallback = published.slice(0, 8);
+  const publicPublished = published.filter((job) => !isEarlyAccessListing(job));
+  const liveFallback = publicPublished.slice(0, 8);
+  const arrivedSince = (job: JobRow, since: number) => {
+    const listed = listedAtMs(job);
+    return (listed != null && listed >= since) || (job.timestamp || 0) >= since;
+  };
 
   let sent = 0;
   const emailed = new Set<string>();
@@ -128,10 +140,9 @@ export async function sendDigest(options: SendDigestOptions = {}) {
     if (!toEmail || emailed.has(toEmail)) continue;
     const since = trial ? 0 : alert.last_run_at ? new Date(alert.last_run_at).getTime() : sinceDefault.getTime();
     const search = parseSavedSearch(alert.query);
-    const matched = published.filter(
-      (job) => (job.timestamp || 0) >= since && jobMatchesSavedSearch(job, search),
-    );
-    const bundle = jobsForDigest(matched, liveFallback, trial);
+    const pool = paid ? published : publicPublished;
+    const matched = pool.filter((job) => arrivedSince(job, since) && jobMatchesSavedSearch(job, search));
+    const bundle = jobsForDigest(matched, pool.slice(0, 8), trial);
     matchedTotal += matched.length;
     if (bundle.length === 0) {
       if (!dryRun) await supabaseAdmin.from("alerts").update({ last_run_at: now.toISOString() }).eq("id", alert.id);
@@ -175,8 +186,8 @@ export async function sendDigest(options: SendDigestOptions = {}) {
       continue;
     }
     const since = trial ? 0 : prefs.lastSentAt ? new Date(prefs.lastSentAt).getTime() : sinceDefault.getTime();
-    const matched = published.filter((job) => (job.timestamp || 0) >= since && jobMatchesAlertPrefs(job, prefs));
-    const bundle = jobsForDigest(matched, liveFallback, trial);
+    const matched = publicPublished.filter((job) => arrivedSince(job, since) && jobMatchesAlertPrefs(job, prefs));
+    const bundle = jobsForDigest(matched, publicPublished.slice(0, 8), trial);
     matchedTotal += matched.length;
     if (bundle.length === 0) {
       if (!dryRun) {

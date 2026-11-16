@@ -11,8 +11,9 @@ import { canUseAdminTestPlan } from "../../../../lib/adminTestPlan";
 import {
   premiumCheckoutOpen,
   premiumLiveBuyerAllowed,
+  PREMIUM_UNIT_AMOUNT,
   premiumPriceIdForKey,
-  premiumPriceIsMonthly799,
+  premiumPriceIsCurrentMonthly,
   premiumSubscriptionBlocksNewCheckout,
   resolvePremiumStripeKey,
 } from "../../../../lib/boardAccess";
@@ -96,14 +97,10 @@ export async function POST(request: Request) {
     try {
       const stripe = new Stripe(premiumKey, { apiVersion: "2026-01-28.clover" });
       const priceId = premiumPriceIdForKey(premiumKey);
-      if (premiumKey.startsWith("sk_live_")) {
-        if (!priceId) {
-          return NextResponse.json({ error: "Premium checkout is not open." }, { status: 403 });
-        }
+      let catalogPriceId = "";
+      if (priceId) {
         const price = await stripe.prices.retrieve(priceId);
-        if (!premiumPriceIsMonthly799(price)) {
-          return NextResponse.json({ error: "Premium checkout is not open." }, { status: 403 });
-        }
+        if (premiumPriceIsCurrentMonthly(price)) catalogPriceId = priceId;
       }
       const { data: billing } = await supabaseAdmin
         .from("profiles")
@@ -125,16 +122,16 @@ export async function POST(request: Request) {
         mode: "subscription",
         payment_method_types: ["card"],
         line_items: [
-          priceId
-            ? { price: priceId, quantity: 1 }
+          catalogPriceId
+            ? { price: catalogPriceId, quantity: 1 }
             : {
                 price_data: {
                   currency: "usd",
                   product_data: {
                     name: "CareersPal Premium",
-                    description: "Unlimited search results, advanced filters, and daily alerts",
+                    description: "Daily alerts and new roles for the first 24 hours",
                   },
-                  unit_amount: 799,
+                  unit_amount: PREMIUM_UNIT_AMOUNT,
                   recurring: { interval: "month" },
                 },
                 quantity: 1,

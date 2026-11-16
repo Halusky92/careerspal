@@ -8,6 +8,7 @@ import { formatJobSalary } from "../lib/formatSalary";
 import { inferWorkMode } from "../lib/workMode";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
+import NewListingBadge from "./NewListingBadge";
 import { formatRelativePosted } from "../lib/formatPosted";
 
 const getWorkMode = (job: Job) => inferWorkMode(job);
@@ -54,6 +55,7 @@ export default function HomePreviewCard({
               {job.title}
             </h3>
             <FeaturedBadge job={job} />
+            <NewListingBadge job={job} />
           </div>
           <p className="mt-0.5 truncate text-xs text-slate-500">
             {job.company} · {place}

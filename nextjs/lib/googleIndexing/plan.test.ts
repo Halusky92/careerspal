@@ -47,6 +47,7 @@ function sent(overrides: Partial<SentNotice> = {}): SentNotice {
 
 test("visibility follows the public job page", () => {
   assert.equal(indexVisibility({ status: "published", onNiche: true, live: true, jobPosting: true }), "job_posting");
+  assert.equal(indexVisibility({ status: "published", onNiche: true, live: true, jobPosting: true, early: true }), "noindex");
   assert.equal(indexVisibility({ status: "published", onNiche: true, live: false, jobPosting: false }), "noindex");
   assert.equal(indexVisibility({ status: "pending_review", onNiche: true, live: true, jobPosting: false }), "gone");
   assert.equal(indexVisibility({ status: "published", onNiche: false, live: true, jobPosting: true }), "gone");

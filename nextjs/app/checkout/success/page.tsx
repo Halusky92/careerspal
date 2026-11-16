@@ -60,7 +60,7 @@ function CheckoutSuccessInner() {
         <p className="mt-3 text-sm text-slate-600 leading-relaxed">
           {payload?.boardAccess
             ? paid
-              ? "Payment received. Premium is $7.99 per month and renews automatically. If you cancel, it stays on until the end of this paid period."
+              ? "Payment received. Premium is $11.99 per month and renews automatically. If you cancel, it stays on until the end of this paid period."
               : "Stripe will confirm this payment, then Premium renews monthly until you cancel."
             : paid
               ? `${title ? `“${title}”` : "Your listing"} is paid. An admin approves it before it goes live. That is not a timed SLA.`

@@ -72,13 +72,20 @@ export function premiumPriceIdForKey(stripeKey: string, env?: PremiumEnv) {
   return (env.STRIPE_BOARD_PRICE_ID || "").trim();
 }
 
-export function premiumPriceIsMonthly799(price: {
+export const PREMIUM_UNIT_AMOUNT = 1199;
+
+export function premiumPriceIsCurrentMonthly(price: {
   unit_amount?: number | null;
   currency?: string | null;
   active?: boolean | null;
   recurring?: { interval?: string | null } | null;
 }) {
-  return price.unit_amount === 799 && price.currency === "usd" && price.recurring?.interval === "month" && price.active !== false;
+  return (
+    price.unit_amount === PREMIUM_UNIT_AMOUNT &&
+    price.currency === "usd" &&
+    price.recurring?.interval === "month" &&
+    price.active !== false
+  );
 }
 
 export function stripeKeyForEventMode(livemode: boolean, env?: PremiumEnv) {
@@ -100,7 +107,7 @@ export function stripeKeyForCheckoutSession(sessionId: string, env?: PremiumEnv)
 export const GUEST_VISIBLE_JOBS = 4;
 export const REGISTERED_VISIBLE_JOBS = 14;
 export const REGISTERED_SAVED_SEARCHES = 1;
-export const BOARD_PREMIUM_PRICE = 7.99;
+export const BOARD_PREMIUM_PRICE = 11.99;
 
 export type BoardTier = "guest" | "registered" | "paid";
 

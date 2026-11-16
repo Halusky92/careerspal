@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
-import { boardTierFromRequest } from "../../../../lib/boardAccessServer";
+import { publicListTierFromRequest } from "../../../../lib/boardAccessServer";
+import { listingsForViewer } from "../../../../lib/listingWindow";
 import { PAID_JOBS_PAGE_MAX } from "../../../../lib/boardAccess";
 import { loadPublishedBoardJobs, pagePublishedBoard } from "../../../../lib/publicJobBoard";
 
@@ -13,13 +14,13 @@ export async function GET(request: Request) {
   const skipParam = Number(searchParams.get("skip") || "0");
   const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, PAID_JOBS_PAGE_MAX) : PAID_JOBS_PAGE_MAX;
   const skip = Number.isFinite(skipParam) && skipParam > 0 ? skipParam : 0;
-  const tier = await boardTierFromRequest(request);
-  const jobs = await loadPublishedBoardJobs(supabaseAdmin, {
+  const tier = await publicListTierFromRequest(request);
+  const jobs = listingsForViewer(await loadPublishedBoardJobs(supabaseAdmin, {
     category: searchParams.get("category"),
     type: searchParams.get("type"),
     planType: searchParams.get("planType"),
     remote: searchParams.get("remote"),
-  });
+  }), tier);
   const location = (searchParams.get("location") || "").trim().toLowerCase();
   const query = (searchParams.get("q") || "").trim().toLowerCase();
   const filtered = jobs.filter((job) => {

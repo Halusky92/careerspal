@@ -4,6 +4,8 @@ import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { mapSupabaseJob, SupabaseJobRow } from "../../../../lib/supabaseJobs";
 import { getSupabaseProfile } from "../../../../lib/supabaseServerAuth";
 import { isOnNicheJob } from "../../../../lib/nicheScope";
+import { publicListTierFromRequest } from "../../../../lib/boardAccessServer";
+import { isEarlyAccessListing } from "../../../../lib/listingWindow";
 
 export const GET = async (_request: NextRequest, context: { params: Promise<{ id: string }> }) => {
   const { id } = await context.params;
@@ -14,7 +16,7 @@ export const GET = async (_request: NextRequest, context: { params: Promise<{ id
   const { data } = await supabaseAdmin
     .from("jobs")
     .select(
-      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,created_by,companies(name,slug,logo_url,website,description,verified)",
+      "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,created_by,companies(name,slug,logo_url,website,description,verified)",
     )
     .eq("id", id)
     .single();
@@ -25,6 +27,14 @@ export const GET = async (_request: NextRequest, context: { params: Promise<{ id
 
   const row = data as SupabaseJobRow & { created_by?: string | null };
   const mapped = mapSupabaseJob(row);
+  if (row.status === "published" && isOnNicheJob(mapped) && isEarlyAccessListing(mapped)) {
+    const auth = await getSupabaseProfile(_request);
+    const tier = await publicListTierFromRequest(_request);
+    const isOwner = Boolean(auth?.profile?.id && row.created_by === auth.profile.id);
+    if (tier !== "paid" && !isOwner && auth?.profile?.role !== "admin") {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+  }
   if (row.status !== "published" || !isOnNicheJob(mapped)) {
     const auth = await getSupabaseProfile(_request);
     if (!auth?.profile) {

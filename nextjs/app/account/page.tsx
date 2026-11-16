@@ -552,7 +552,7 @@ const AccountPageInner = () => {
                                 onClick={() => trackFunnel("premium_click", { from: "account_plan" })}
                                 className="inline-flex h-9 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700"
                               >
-                                Unlock Premium — $7.99/month
+                                Unlock Premium — $11.99/month
                               </Link>
                             ) : user?.hasStripeCustomer ? (
                               <Link
@@ -884,8 +884,8 @@ const AccountPageInner = () => {
                     <p className="text-sm font-medium text-slate-900">Premium</p>
                     <p className="text-sm text-slate-600">
                       {user?.subscriptionStatus
-                        ? `Stripe status: ${user.subscriptionStatus.replace(/_/g, " ")}. $7.99 renews each month until you cancel. Canceling keeps Premium until the end of the paid period.`
-                        : "Daily alerts are $7.99 a month and renew until you cancel. They use the same category, salary floor, and stored tools as the weekly email. Canceling keeps them until the end of the paid period. The board stays open."}
+                        ? `Stripe status: ${user.subscriptionStatus.replace(/_/g, " ")}. $11.99 renews each month until you cancel. Canceling keeps Premium until the end of the paid period.`
+                        : "Daily alerts are $11.99 a month and renew until you cancel. They use the same category, salary floor, and stored tools as the weekly email, and include roles from the last 24 hours. Canceling keeps them until the end of the paid period."}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {user?.subscriptionStatus !== "active" && user?.subscriptionStatus !== "trialing" ? (

@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       paymentStatus: session.payment_status,
       boardAccess: true,
       title: "Premium",
-      amount: typeof session.amount_total === "number" ? session.amount_total / 100 : 7.99,
+      amount: typeof session.amount_total === "number" ? session.amount_total / 100 : 11.99,
     });
   }
   const jobId = session.metadata?.jobId || "";

@@ -17,7 +17,7 @@ import {
   premiumCheckoutAllowed,
   premiumCheckoutOpen,
   premiumLiveBuyerAllowed,
-  premiumPriceIsMonthly799,
+  premiumPriceIsCurrentMonthly,
   premiumSubscriptionBlocksNewCheckout,
   resolvePremiumStripeKey,
   stripeKeyForEventMode,
@@ -114,8 +114,8 @@ test("search caps stay off until enabled, and Premium checkout rejects a live ke
   );
   assert.equal(stripeKeyForEventMode(false, { STRIPE_SECRET_KEY: "sk_live_employer", STRIPE_PREMIUM_SECRET_KEY: "sk_live_premium" }), "sk_live_employer");
   assert.equal(stripeKeyForEventMode(true, { STRIPE_SECRET_KEY: "sk_live_employer", STRIPE_PREMIUM_SECRET_KEY: "sk_live_premium" }), "sk_live_premium");
-  assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "usd", active: true, recurring: { interval: "month" } }), true);
-  assert.equal(premiumPriceIsMonthly799({ unit_amount: 800, currency: "usd", active: true, recurring: { interval: "month" } }), false);
+  assert.equal(premiumPriceIsCurrentMonthly({ unit_amount: 1199, currency: "usd", active: true, recurring: { interval: "month" } }), true);
+  assert.equal(premiumPriceIsCurrentMonthly({ unit_amount: 799, currency: "usd", active: true, recurring: { interval: "month" } }), false);
 });
 
 test("live Premium checkout is open to every signed-in account and blocks a second subscription", () => {
@@ -131,9 +131,9 @@ test("live Premium checkout is open to every signed-in account and blocks a seco
   assert.equal(premiumSubscriptionBlocksNewCheckout(["active"]), true);
   assert.equal(premiumSubscriptionBlocksNewCheckout(["trialing"]), true);
   assert.equal(premiumSubscriptionBlocksNewCheckout(["past_due"]), true);
-  assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "usd", active: true, recurring: { interval: "month" } }), true);
-  assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "eur", active: true, recurring: { interval: "month" } }), false);
-  assert.equal(premiumPriceIsMonthly799({ unit_amount: 799, currency: "usd", active: true, recurring: { interval: "year" } }), false);
+  assert.equal(premiumPriceIsCurrentMonthly({ unit_amount: 1199, currency: "usd", active: true, recurring: { interval: "month" } }), true);
+  assert.equal(premiumPriceIsCurrentMonthly({ unit_amount: 1199, currency: "eur", active: true, recurring: { interval: "month" } }), false);
+  assert.equal(premiumPriceIsCurrentMonthly({ unit_amount: 1199, currency: "usd", active: true, recurring: { interval: "year" } }), false);
 });
 
 test("locked previews keep titles and drop everything past the cap", () => {

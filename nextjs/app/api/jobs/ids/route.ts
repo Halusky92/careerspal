@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
-import { boardTierFromRequest } from "../../../../lib/boardAccessServer";
+import { publicListTierFromRequest } from "../../../../lib/boardAccessServer";
+import { listingsForViewer } from "../../../../lib/listingWindow";
 import { PAID_JOBS_PAGE_MAX } from "../../../../lib/boardAccess";
 import { cappedListTake } from "../../../../lib/publicJobBoard";
 
@@ -12,16 +13,17 @@ export async function GET(request: Request) {
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }
-  const tier = await boardTierFromRequest(request);
+  const tier = await publicListTierFromRequest(request);
   const take = cappedListTake(tier, requested);
   const { data: jobs } = await supabaseAdmin
     .from("jobs")
-    .select("id")
+    .select("id,timestamp,published_at,created_at")
     .eq("status", status)
     .order("timestamp", { ascending: false })
-    .limit(take);
+    .limit(Math.min(take + 40, 80));
+  const ids = listingsForViewer(jobs || [], tier).slice(0, take).map((job) => job.id);
   return NextResponse.json(
-    { ids: (jobs || []).map((job) => job.id), access: tier },
+    { ids, access: tier },
     { headers: { "Cache-Control": "private, no-store" } },
   );
 }

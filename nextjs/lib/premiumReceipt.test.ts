@@ -4,7 +4,7 @@ import { premiumReceiptText, sendPremiumReceipt } from "./premiumReceipt";
 
 test("premium confirmation states price, renewal, cancel, and refund", async () => {
   const text = premiumReceiptText("2026-12-11T00:00:00.000Z");
-  assert.match(text, /\$7\.99 per month/);
+  assert.match(text, /\$11\.99 per month/);
   assert.match(text, /renews automatically/);
   assert.match(text, /end of the paid period/);
   assert.match(text, /refund ends it immediately/);

@@ -17,6 +17,8 @@ import { startApply } from "../lib/startApply";
 import { inferWorkMode } from "../lib/workMode";
 import FeaturedBoardZone from "./FeaturedBoardZone";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
+import { isPriorityListing } from "../lib/listingWindow";
+import SalaryRangeSlider from "./SalaryRangeSlider";
 import { jobMatchesLocationQuery, locationLabelsForJobs } from "../lib/locationFilter";
 import { boardAccessHeadline, boardCap, boardHiddenNote, boardHiddenSentences, type LockedBoardPreview } from "../lib/boardAccess";
 import { JOBS_RETURN_KEY, jobIdToRestore, readJobsReturnPlace, type JobsReturnPlace } from "../lib/jobsReturn";
@@ -118,7 +120,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [category, setCategory] = useState('All Roles');
   const [workMode, setWorkMode] = useState<'All' | 'Remote' | 'Hybrid' | 'Onsite'>('All');
   const [employmentType, setEmploymentType] = useState<'All' | Job['type']>('All');
-  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [sortBy, setSortBy] = useState<SortOption>("relevant");
   const [salaryMin, setSalaryMin] = useState(0);
   const [salaryMax, setSalaryMax] = useState(0);
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
@@ -273,7 +275,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
       setOrDelete("category", category !== "All Roles" ? category : null);
       setOrDelete("workMode", workMode !== "All" ? workMode : null);
       setOrDelete("type", employmentType !== "All" ? employmentType : null);
-      setOrDelete("sort", sortBy !== "newest" ? sortBy : null);
+      setOrDelete("sort", sortBy !== "relevant" ? sortBy : null);
       setOrDelete("salaryMin", salaryMin > 0 ? String(salaryMin) : null);
       setOrDelete("salaryMax", salaryMax > 0 ? String(salaryMax) : null);
       setOrDelete("tools", selectedTools.length > 0 ? selectedTools.join(",") : null);
@@ -540,7 +542,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
         return getSalaryValue(b.salary) - getSalaryValue(a.salary);
       }
 
-      if (sortBy === 'relevant') {
+      if (sortBy === "relevant") {
+        const priority = Number(isPriorityListing(b)) - Number(isPriorityListing(a));
+        if (priority !== 0) return priority;
         const q = query.trim().toLowerCase();
         const tokens = q ? q.split(/\s+/).filter(Boolean) : [];
         const score = (job: Job) => {
@@ -558,7 +562,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
             seniority !== "any" && inferSeniority(job) === seniority ? 6 : 0;
           return base + hit + toolBonus + seniorityBonus;
         };
-        return score(b) - score(a);
+        const scored = score(b) - score(a);
+        if (scored !== 0) return scored;
       }
       
       // Secondary Sort: Date (Newest First) if weights are equal and not sorting by salary
@@ -733,7 +738,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     setCategory('All Roles');
     setWorkMode('All');
     setEmploymentType('All');
-    setSortBy('newest');
+    setSortBy("relevant");
     setSalaryMin(0);
     setSalaryMax(0);
     setSelectedTools([]);
@@ -888,28 +893,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
     }
     return out.slice(0, 24);
   }, [jobs]);
-
-  const SALARY_RANGE_OPTIONS = useMemo(
-    () =>
-      [
-        { label: "Any salary", min: 0, max: 0 },
-        { label: "$10,000 – $25,000 USD", min: 10000, max: 25000 },
-        { label: "$25,000 – $49,999 USD", min: 25000, max: 49999 },
-        { label: "$50,000 – $74,999 USD", min: 50000, max: 74999 },
-        { label: "$75,000 – $99,999 USD", min: 75000, max: 99999 },
-        { label: "$100,000 – $149,999 USD", min: 100000, max: 149999 },
-        { label: "$150,000+ USD", min: 150000, max: 0 },
-      ] as const,
-    [],
-  );
-
-  const selectedSalaryLabel = useMemo(() => {
-    if (!salaryMin && !salaryMax) return "";
-    const hit = SALARY_RANGE_OPTIONS.find((o) => o.min === salaryMin && o.max === (salaryMax || 0));
-    if (hit) return hit.label;
-    if (salaryMax > 0) return `${formatSalaryFloor(salaryMin)} – ${formatSalaryFloor(salaryMax)}`;
-    return `From ${formatSalaryFloor(salaryMin)}`;
-  }, [SALARY_RANGE_OPTIONS, salaryMin, salaryMax]);
 
   const skillsSummary = useMemo(() => {
     if (selectedTools.length === 0) return "";
@@ -1142,46 +1125,14 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
           {advancedOk ? (
           <>
-          <div className="relative" data-wwr-filter>
-            <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
-              <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-3 0-5 1.343-5 3s2 3 5 3 5 1.343 5 3-2 3-5 3m0-15v2m0 12v2" />
-              </svg>
-              Salary Range
-            </div>
-            <button
-              type="button"
-              onClick={() => setOpenWwrDropdown((prev) => (prev === "salary" ? null : "salary"))}
-              className="cp-field mt-2 w-full h-10 rounded-xl bg-white px-3 text-left text-sm font-medium text-slate-900"
-            >
-              <span className={selectedSalaryLabel ? "" : "text-slate-400"}>
-                {selectedSalaryLabel || "Search by salary range..."}
-              </span>
-            </button>
-            {openWwrDropdown === "salary" && (
-              <div className="mt-2 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
-                <div className="max-h-56 overflow-y-auto py-1">
-                  {SALARY_RANGE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.label}
-                      type="button"
-                      onClick={() =>
-                        preserveFilterPosition(() => {
-                          setSalaryMin(opt.min);
-                          setSalaryMax(opt.max === 0 ? 0 : opt.max);
-                          setOpenWwrDropdown(null);
-                          if (window.innerWidth < 1024) setIsFilterOpen(false);
-                        })
-                      }
-                      className="w-full text-left px-3 py-2 text-sm font-medium hover:bg-slate-50 text-slate-900"
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <SalaryRangeSlider
+            min={salaryMin}
+            max={salaryMax}
+            onChange={(nextMin, nextMax) => {
+              setSalaryMin(nextMin);
+              setSalaryMax(nextMax);
+            }}
+          />
 
           {/* Skills */}
           <div className="relative" data-wwr-filter>
@@ -1306,9 +1257,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                     className="cp-field mt-1 w-full h-10 rounded-lg bg-white px-3 text-sm text-slate-800 outline-none"
                   >
+                    <option value="relevant">Most relevant</option>
                     <option value="newest">Newest</option>
                     <option value="salary">Highest salary</option>
-                    <option value="relevant">Most relevant</option>
                   </select>
                 </div>
 
@@ -1357,6 +1308,11 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     </span>
                   )}
                 </div>
+                <p className="mt-1 text-[12px] font-medium leading-5 text-slate-500">
+                  {boardAccess === "paid"
+                    ? "Most relevant keeps roles from the last 7 days at the top. You see a role as soon as it is published."
+                    : "Most relevant keeps roles from the last 7 days at the top. Roles from the last 24 hours are on Premium first, then they appear here and on Google."}
+                </p>
                 {hiddenSentences ? (
                   <p className="mt-0.5 text-[12px] font-medium leading-5 text-slate-500">
                     {hiddenSentences.free ? (

@@ -16,6 +16,9 @@ import { formatJobSalary } from "../../../lib/formatSalary";
 import { visiblePostingTools } from "../../../lib/postingTools";
 import { geographyLabel, inferWorkMode } from "../../../lib/workMode";
 import { applyLiveBoardFilter, isLiveBoardJob } from "../../../lib/liveBoard";
+import { isEarlyAccessListing, listingsForViewer } from "../../../lib/listingWindow";
+import { viewerTier } from "../../../lib/viewerTier";
+import NewListingBadge from "../../../components/NewListingBadge";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
 import { buildJobPostingLd } from "../../../lib/jobPostingLd";
 import { ApplyClickLink, JobViewTracker } from "../../../components/JobAnalytics";
@@ -221,7 +224,7 @@ async function fetchSimilarPublishedJobs(job: Job): Promise<Job[]> {
     supabaseAdmin
       .from("jobs")
       .select(
-        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,logo_url,website,description,verified)",
+        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,logo_url,website,description,verified)",
       )
       .eq("status", "published")
       .neq("id", job.id)
@@ -253,23 +256,29 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const imageUrl = job.logo ? (job.logo.startsWith("http") ? job.logo : `${baseUrl}${job.logo}`) : undefined;
 
   const live = isLiveBoardJob(job);
+  const early = isEarlyAccessListing(job);
+  const hidden = early && (await viewerTier()) !== "paid";
+  const publicTitle = hidden ? "New role — CareersPal" : title;
+  const publicDescription = hidden
+    ? "This role is on Premium for its first 24 hours, then on the public board."
+    : description;
   return {
-    title,
-    description,
+    title: publicTitle,
+    description: publicDescription,
     alternates: { canonical: canonicalUrl },
-    robots: live ? undefined : { index: false, follow: true },
+    robots: early || !live ? { index: false, follow: true } : undefined,
     openGraph: {
-      title,
-      description,
+      title: publicTitle,
+      description: publicDescription,
       url: canonicalUrl,
       type: "article",
-      images: imageUrl ? [{ url: imageUrl }] : undefined,
+      images: imageUrl && !hidden ? [{ url: imageUrl }] : undefined,
     },
     twitter: {
       card: imageUrl ? "summary_large_image" : "summary",
-      title,
-      description,
-      images: imageUrl ? [imageUrl] : undefined,
+      title: publicTitle,
+      description: publicDescription,
+      images: imageUrl && !hidden ? [imageUrl] : undefined,
     },
   };
 }
@@ -330,13 +339,36 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
     notFound();
   }
 
-  const similarJobs = await fetchSimilarPublishedJobs(job);
+  const tier = await viewerTier();
+  if (isEarlyAccessListing(job) && tier !== "paid") {
+    return (
+      <div className="bg-[#F8F9FD] min-h-screen">
+        <div className="max-w-xl mx-auto px-6 pt-16 pb-24">
+          <h1 className="text-2xl font-semibold text-slate-900">This role is on Premium for its first 24 hours.</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            After that it joins the public board, including Google, and stays at the top of Most relevant for the rest of its first week.
+            Premium is $11.99 a month.
+          </p>
+          <div className="mt-6 flex gap-3">
+            <Link href="/upgrade" className="inline-flex h-10 items-center rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white">
+              See Premium
+            </Link>
+            <Link href="/jobs" className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700">
+              Back to jobs
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const similarJobs = listingsForViewer(await fetchSimilarPublishedJobs(job), tier);
   const subscriberCount = await getPublicSubscriberCount();
   const canonicalSlug = createJobSlug({ id: job.id, title: job.title || "role" });
   const canonicalPath = `/jobs/${canonicalSlug}`;
   const canonicalUrl = `${getBaseUrl()}${canonicalPath}`;
 
-  const jobPostingLd = buildJobPostingLd(
+  const jobPostingLd = isEarlyAccessListing(job) ? null : buildJobPostingLd(
     { ...job, description: sanitizeDescription(job.description) || job.description },
     canonicalUrl,
   );
@@ -439,6 +471,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                   <span className="text-slate-300">•</span>
                   <span className="text-sm sm:text-base font-black text-slate-900">{formatJobSalary(job)}</span>
                   {isPaidFeaturedListing(job) ? <FeaturedBadge job={job} size="md" /> : null}
+                  <NewListingBadge job={job} />
                 </div>
 
                 <div className="mt-6 flex flex-col sm:flex-row gap-3">
@@ -548,7 +581,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                 Stay in the loop
               </h2>
               <p className="mt-2 text-slate-600 font-medium max-w-2xl">
-                A weekly email for the category, salary floor, and stored tools you choose. The same search goes out daily on Premium.
+                A weekly email for the category, salary floor, and stored tools you choose. Premium sends that search daily and shows new roles for their first 24 hours.
               </p>
               <PublicSubscriberNote count={subscriberCount} className="mt-2 text-sm text-slate-600 font-medium" />
             </div>
