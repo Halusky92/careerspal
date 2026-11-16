@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     categories?: string[] | string;
     minSalary?: number;
     region?: string;
+    workMode?: string;
   };
   const email = (body.email || "").trim().toLowerCase();
   if (!email || !isValidEmail(email)) {
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
       categories: body.categories,
       minSalary: body.minSalary,
       region: body.region,
+      workMode: body.workMode,
     }),
   });
   const payload = await forwarded.json();

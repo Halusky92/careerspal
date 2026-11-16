@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { parseAlertQuery, serializeAlertQuery } from "../../../../lib/categories";
-import { isGuestAlertConfirmed, newUnsubToken, normalizeAlertTools, parseAlertPrefs, serializeAlertPrefs, type AlertRegion } from "../../../../lib/alertPrefs";
+import { isGuestAlertConfirmed, newUnsubToken, normalizeAlertTools, parseAlertPrefs, serializeAlertPrefs, type AlertRegion, type AlertWorkMode } from "../../../../lib/alertPrefs";
 import { getPublicSiteUrl } from "../../../../lib/alerts/siteUrl";
 import { renderAlertEmail } from "../../../../lib/alerts/emailTemplate";
 import { getResendFrom } from "../../../../lib/resendFrom";
@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     query?: string;
     minSalary?: number | string;
     region?: string;
+    workMode?: string;
     tools?: string[] | string;
   };
 
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
   const minSalaryRaw = Number(body.minSalary);
   const minSalary = Number.isFinite(minSalaryRaw) && minSalaryRaw > 0 ? minSalaryRaw : null;
   const region = (body.region || "anywhere").toString() as AlertRegion;
+  const workMode = (body.workMode || "any").toString() as AlertWorkMode;
 
   const { data: existing } = await supabaseAdmin.from("subscribers").select("email,preference").eq("email", email).maybeSingle();
   const current = parseAlertPrefs(existing?.preference || null);
@@ -44,6 +46,7 @@ export async function POST(request: Request) {
     categories,
     minSalary,
     region,
+    workMode,
     tools: normalizeAlertTools(body.tools),
     token: current.token || newUnsubToken(),
     lastSentAt: current.lastSentAt || null,

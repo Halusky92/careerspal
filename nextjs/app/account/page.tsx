@@ -11,7 +11,7 @@ import { formatSalaryDisplay } from "../../lib/formatSalary";
 import { getCategoryHubForDbCategory, jobMatchesHub, parseAlertQuery, serializeAlertQuery } from "../../lib/categories";
 import AlertCategoryPicker from "../../components/AlertCategoryPicker";
 import AlertToolPicker from "../../components/AlertToolPicker";
-import { ALERT_MIN_SALARIES, ALERT_REGIONS, alertPrefsLabel, parseAlertPrefs, savedSearchLabel, type AlertRegion } from "../../lib/alertPrefs";
+import { ALERT_MIN_SALARIES, ALERT_REGIONS, ALERT_WORK_MODES, alertPrefsLabel, parseAlertPrefs, savedSearchLabel, type AlertRegion, type AlertWorkMode } from "../../lib/alertPrefs";
 import ProfileVisibilitySelect from "../../components/ProfileVisibilitySelect";
 import AdminDeskBar from "../../components/AdminDeskBar";
 import { trackFunnel } from "../../lib/funnelTrack";
@@ -91,6 +91,7 @@ const AccountPageInner = () => {
   const [alertQuery, setAlertQuery] = useState<string>("all");
   const [alertMinSalary, setAlertMinSalary] = useState(0);
   const [alertRegion, setAlertRegion] = useState<AlertRegion>("anywhere");
+  const [alertWorkMode, setAlertWorkMode] = useState<AlertWorkMode>("any");
   const [alertTools, setAlertTools] = useState<string[]>([]);
   const [alertBusy, setAlertBusy] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
@@ -165,6 +166,7 @@ const AccountPageInner = () => {
           setAlertQuery(prefs.categories);
           setAlertMinSalary(prefs.minSalary || 0);
           setAlertRegion(prefs.region);
+          setAlertWorkMode(prefs.workMode);
           setAlertTools(prefs.tools || []);
         }
       } catch {
@@ -335,7 +337,7 @@ const AccountPageInner = () => {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query: alertQuery, minSalary: alertMinSalary, region: alertRegion, tools: alertTools }),
+            body: JSON.stringify({ query: alertQuery, minSalary: alertMinSalary, region: alertRegion, workMode: alertWorkMode, tools: alertTools }),
           },
           accessToken,
         );
@@ -348,6 +350,7 @@ const AccountPageInner = () => {
           categories: parseAlertQuery(alertQuery),
           minSalary: alertMinSalary,
           region: alertRegion,
+          workMode: alertWorkMode,
           tools: alertTools,
         }),
       });
@@ -757,7 +760,7 @@ const AccountPageInner = () => {
                       selected={parseAlertQuery(alertQuery)}
                       onChange={(next) => setAlertQuery(serializeAlertQuery(next))}
                     />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <label className="block">
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Minimum salary</span>
                         <select
@@ -780,6 +783,20 @@ const AccountPageInner = () => {
                           className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800"
                         >
                           {ALERT_REGIONS.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Work mode</span>
+                        <select
+                          value={alertWorkMode}
+                          onChange={(event) => setAlertWorkMode(event.target.value as AlertWorkMode)}
+                          className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800"
+                        >
+                          {ALERT_WORK_MODES.map((item) => (
                             <option key={item.id} value={item.id}>
                               {item.label}
                             </option>

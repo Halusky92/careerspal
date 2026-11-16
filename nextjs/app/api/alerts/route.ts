@@ -3,7 +3,7 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { getSupabaseProfile } from "../../../lib/supabaseServerAuth";
 import { REGISTERED_SAVED_SEARCHES } from "../../../lib/boardAccess";
 import { boardTierFromRequest } from "../../../lib/boardAccessServer";
-import { normalizeAlertTools, parseSavedSearch, serializeSavedSearch, type AlertRegion } from "../../../lib/alertPrefs";
+import { normalizeAlertTools, parseSavedSearch, serializeSavedSearch, type AlertRegion, type AlertWorkMode } from "../../../lib/alertPrefs";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     query?: string;
     minSalary?: number | string;
     region?: string;
+    workMode?: string;
     tools?: string[] | string;
   };
   const query = body?.query?.trim();
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
     categories: query,
     minSalary: Number.isFinite(salaryRaw) ? salaryRaw : null,
     region: (body.region || "anywhere") as AlertRegion,
+    workMode: (body.workMode || "any") as AlertWorkMode,
     tools: normalizeAlertTools(body.tools),
   });
   const saved = parseSavedSearch(storedQuery);

@@ -22,7 +22,7 @@ test("a legacy category string still matches that category", () => {
 });
 
 test("salary floor drops a role whose stored pay is below it", () => {
-  const search = parseSavedSearch(serializeSavedSearch({ categories: "revops", minSalary: 180000, region: "anywhere", tools: [] }));
+  const search = parseSavedSearch(serializeSavedSearch({ categories: "revops", minSalary: 180000, region: "anywhere", workMode: "any", tools: [] }));
   assert.equal(jobMatchesSavedSearch(role, search), false);
   assert.equal(
     jobMatchesSavedSearch(role, { ...search, minSalary: 120000 }),
@@ -32,7 +32,7 @@ test("salary floor drops a role whose stored pay is below it", () => {
 
 test("tools match stored tools and tags, not a mention in the description", () => {
   const withSalesforce = parseSavedSearch(
-    serializeSavedSearch({ categories: "revops", minSalary: null, region: "anywhere", tools: ["Salesforce"] }),
+    serializeSavedSearch({ categories: "revops", minSalary: null, region: "anywhere", workMode: "any", tools: ["Salesforce"] }),
   );
   assert.equal(jobMatchesSavedSearch(role, withSalesforce), true);
   const excelOnly = { ...withSalesforce, tools: ["Excel"] };
@@ -40,4 +40,15 @@ test("tools match stored tools and tags, not a mention in the description", () =
   const both = { ...withSalesforce, tools: ["Salesforce", "HubSpot"] };
   assert.equal(jobMatchesSavedSearch(role, both), true);
   assert.match(savedSearchLabel(serializeSavedSearch(both)), /Salesforce/);
+});
+
+test("place and work mode combine, and an old remote region stays a work mode", () => {
+  const legacy = parseSavedSearch(JSON.stringify({ categories: "revops", region: "remote" }));
+  assert.equal(legacy.region, "anywhere");
+  assert.equal(legacy.workMode, "remote");
+  const usRemote = { ...legacy, region: "us" as const };
+  const remoteUs = { title: "Revenue Operations Manager", location: "Remote • United States", remote_policy: "Remote" };
+  const remoteEu = { title: "Revenue Operations Manager", location: "Remote • Germany", remote_policy: "Remote" };
+  assert.equal(jobMatchesSavedSearch(remoteUs, usRemote), true);
+  assert.equal(jobMatchesSavedSearch(remoteEu, usRemote), false);
 });
