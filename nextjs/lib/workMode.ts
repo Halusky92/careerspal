@@ -63,7 +63,9 @@ function explicitCountry(text: string): "United States" | "Canada" | "United Kin
   const us =
     /\b(?:within|anywhere in|based in|located in|authorized to work in|eligible to work in)\s+the\s+united states\b/i.test(text) ||
     /\bremote\s+(?:within|in|across)\s+the\s+united states\b/i.test(text) ||
-    /\b(?:united states|u\.s\.|usa)\s+only\b/i.test(text);
+    /\b(?:united states|u\.s\.|usa)\s+only\b/i.test(text) ||
+    /\bcontinental\s+(?:us|u\.s\.|united states)\b/i.test(text) ||
+    /\blocated in the\s+(?:continental\s+)?(?:us|u\.s\.|united states)\b/i.test(text);
   const canada =
     /\b(?:within|anywhere in|based in|located in|authorized to work in|eligible to work in)\s+canada\b/i.test(text) ||
     /\bremote\s+(?:within|in|across)\s+canada\b/i.test(text) ||

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { publicLogoFallbacks } from "../lib/companyLogoUrl";
+import { isDirectoryLogo, publicLogoFallbacks } from "../lib/companyLogoUrl";
 
 type CompanyLogoProps = {
   name: string;
@@ -60,8 +60,8 @@ const CompanyLogo: React.FC<CompanyLogoProps> = ({
   const fallbackColor = useMemo(() => COLORS[hashString(name || "Company") % COLORS.length], [name]);
   const candidates = useMemo(() => {
     const nameLogo = KNOWN_LOGOS[(name || "").trim().toLowerCase()] || "";
-    const list = [logoUrl, nameLogo, ...publicLogoFallbacks(website || logoUrl)].filter(
-      (value): value is string => Boolean(value && value.trim()),
+    const list = [logoUrl, nameLogo, ...publicLogoFallbacks(website)].filter(
+      (value): value is string => Boolean(value && value.trim() && !isDirectoryLogo(value)),
     );
     return Array.from(new Set(list));
   }, [logoUrl, name, website]);

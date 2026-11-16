@@ -10,7 +10,7 @@ import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
 import NewListingBadge from "./NewListingBadge";
 import { isNewListing } from "../lib/listingWindow";
-import { formatRelativePosted } from "../lib/formatPosted";
+import { publicPostedLabel } from "../lib/formatPosted";
 
 const getWorkMode = (job: Job) => inferWorkMode(job);
 
@@ -28,7 +28,7 @@ export default function HomePreviewCard({
   const isNew = isNewListing(job);
   const elite = job.planType === "Elite Managed";
   const place = getWorkMode(job);
-  const timeAgo = formatRelativePosted(job.timestamp, job.postedAt || "");
+  const timeAgo = publicPostedLabel(job.timestamp, job.postedAt);
 
   return (
     <div

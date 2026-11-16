@@ -111,6 +111,14 @@ test("unspecified remote geography is Not specified and a named country is kept"
   assert.equal(geographyLabel({ location: "Remote - United Kingdom", remotePolicy: "Remote" }), "United Kingdom");
   assert.equal(geographyLabel({ location: "Remote - USA or Canada", remotePolicy: "Remote" }), "USA or Canada");
   assert.equal(geographyLabel({ location: "Remote - US", remotePolicy: "Remote" }), "US");
+  assert.equal(
+    geographyLabel({
+      location: "Remote",
+      remotePolicy: "Remote",
+      description: "This role is open to any candidates located in the continental US.",
+    }),
+    "United States",
+  );
   assert.equal(geographyLabel({ location: "Hybrid - San Francisco - 3 days/week", remotePolicy: "Hybrid" }), "San Francisco 3 days/week");
   assert.equal(geographyLabel({ location: "New York, NY", remotePolicy: "Hybrid" }), "New York, NY");
   assert.equal(publicLocationLabel({ location: "Remote", description: "This role is open to international candidates." }), "Remote • International");

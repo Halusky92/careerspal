@@ -9,7 +9,7 @@ import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import FormattedDescription from "./FormattedDescription";
 import { formatJobSalary } from "../lib/formatSalary";
 import { visiblePostingTools } from "../lib/postingTools";
-import { formatRelativePosted } from "../lib/formatPosted";
+import { publicPostedLabel } from "../lib/formatPosted";
 import { geographyLabel, inferWorkMode } from "../lib/workMode";
 import FeaturedBadge from "./FeaturedBadge";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
@@ -27,7 +27,7 @@ type JobDetailPanelProps = {
 
 // description rendering is centralized in <FormattedDescription />
 
-const formatPosted = (job: Job) => formatRelativePosted(job.timestamp, job.postedAt || "");
+const formatPosted = (job: Job) => publicPostedLabel(job.timestamp, job.postedAt);
 
 const ROLE_HEADINGS = new Set(["about the role", "about this job", "the role"]);
 
@@ -191,9 +191,11 @@ export default function JobDetailPanel({
                 </>
               );
             })()}
-            <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[9px] font-medium uppercase tracking-wide text-slate-600">
-              Posted {formatPosted(job)}
-            </span>
+            {formatPosted(job) ? (
+              <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[9px] font-medium uppercase tracking-wide text-slate-600">
+                Posted {formatPosted(job)}
+              </span>
+            ) : null}
             {isPaidFeaturedListing(job) ? <FeaturedBadge job={job} /> : null}
           </div>
 

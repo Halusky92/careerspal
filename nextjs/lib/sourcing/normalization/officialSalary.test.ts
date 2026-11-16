@@ -83,6 +83,18 @@ test("US and Canada bands stay separate instead of being merged", () => {
   assert.ok(parsed.salary_parse_notes.includes("multiple_salary_bands"));
 });
 
+test("a Canada listing keeps the Canadian band when the posting also lists a US band", () => {
+  const text = "United States: $108.5K – $155K base\n\nCanada : CA$150.5K\nCA$215K base";
+  const canada = chooseOfficialSalary(text, "Remote Canada");
+  assert.equal(canada.salary_present, true);
+  assert.equal(canada.salary_currency, "CAD");
+  assert.equal(canada.salary_amount_min, 151000);
+  assert.equal(canada.salary_amount_max, 215000);
+  const unnamed = chooseOfficialSalary(text, "Remote");
+  assert.equal(unnamed.salary_present, false);
+  assert.ok(unnamed.salary_parse_notes.includes("multiple_salary_bands"));
+});
+
 test("Singapore dollars stay SGD when the amount is written after the code or the dollar sign", () => {
   for (const text of ["The base salary is 239,000 SGD per year.", "Base pay $239,000 SGD per year."]) {
     const parsed = chooseOfficialSalary(text, "Remote Singapore");

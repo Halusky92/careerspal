@@ -37,6 +37,12 @@ test("inline hyphen bullets stay in one list and legal boilerplate is dropped", 
   assert.equal(formatSourcedDescription("You&#x27;re always thinking.").includes("&#x27;"), false);
 });
 
+test("a currency range keeps its hyphen instead of becoming two paragraphs", () => {
+  const text = formatSourcedDescription("Canada : CA$150.5K - CA$215K base");
+  assert.match(text, /CA\$150\.5K - CA\$215K/);
+  assert.equal(text.includes("\n- CA$"), false);
+});
+
 test("decorative underscore lines are removed", () => {
   const text = formatSourcedDescription("About Docker\n_______________________________________________________________________\nWe are seeking a Senior Manager.");
   assert.equal(text.includes("____"), false);
