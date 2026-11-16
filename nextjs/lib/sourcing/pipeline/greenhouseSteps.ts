@@ -16,10 +16,10 @@ import { employmentTypeFromProvenance, employmentTypesConflict } from "../normal
 import { detectNotionSignal } from "../signals/notion";
 import { createCompanySlug } from "../../jobs";
 import { enrichCompanyFromWebsite } from "../../companyEnrichment";
-import { publicLogoUrlForWebsite } from "../../companyLogoUrl";
+import { isNotCompanyWebsiteHost, publicLogoUrlForWebsite } from "../../companyLogoUrl";
 import { isOnNicheJob } from "../../nicheScope";
 import { probeApplyUrl } from "../../jobs/applyLinkHealth";
-import { formatSalaryForStorage } from "../../formatSalary";
+import { salaryTextForSourced } from "../../formatSalary";
 import { mentionedPostingTools } from "../../postingTools";
 import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
 import { isBoilerplateDescription, isForeignCompanyBlurb } from "../../companyBoard";
@@ -676,20 +676,11 @@ export async function autoPublishEligibleCandidates(
       if (!raw || raw === "#" || raw.startsWith("mailto:") || raw.startsWith("/")) return null;
       try {
         const u = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
-        if (isAtsHost(u.hostname)) return null;
+        if (isAtsHost(u.hostname) || isNotCompanyWebsiteHost(u.hostname)) return null;
         return `${u.protocol}//${u.hostname}`;
       } catch {
         return null;
       }
-    };
-    const fromDescription = () => {
-      const text = (candidate.description_clean || "").toString();
-      const matches = text.match(/https?:\/\/[^\s)"']+/gi) || [];
-      for (const m of matches) {
-        const hit = tryUrl(m.replace(/[.,;]+$/, ""));
-        if (hit) return hit;
-      }
-      return null;
     };
     const knownByToken: Record<string, string> = {
       checkr: "https://www.checkr.com",
@@ -698,9 +689,6 @@ export async function autoPublishEligibleCandidates(
     const token = (src?.ats_identifier || "").toString().trim().toLowerCase();
     return (
       tryUrl(src?.companies?.website || null) ||
-      fromDescription() ||
-      tryUrl(candidate.job_url) ||
-      tryUrl(candidate.apply_url) ||
       tryUrl(knownByToken[token] || null) ||
       tryUrl(src?.normalized_url || null) ||
       tryUrl(src?.base_url || null) ||
@@ -744,6 +732,7 @@ export async function autoPublishEligibleCandidates(
     if (candidate.salary_present !== true) ineligibleReasons.push("salary_missing");
     if (candidate.salary_amount_min == null && candidate.salary_amount_max == null)
       ineligibleReasons.push("salary_range_missing");
+    if (!String(candidate.salary_currency || "").trim()) ineligibleReasons.push("salary_currency_unconfirmed");
     if (dupConfidence === "high") ineligibleReasons.push("duplicate_high");
     if (blocking.length > 0) ineligibleReasons.push(`blocking=${blocking.join(",")}`);
     if (!Boolean(candidate.apply_url && candidate.apply_url.trim() && candidate.apply_url.trim() !== "#"))
@@ -963,12 +952,13 @@ export async function autoPublishEligibleCandidates(
 
     const now = Date.now();
     const timestamp = candidate.posted_at ? Date.parse(candidate.posted_at) : now;
-    const salaryText = formatSalaryForStorage(
-      (candidate.salary_text_raw || "").trim() ||
-        (minAmt || maxAmt
-          ? `${candidate.salary_currency ?? ""} ${minAmt ?? ""}-${maxAmt ?? ""} ${candidate.salary_period ?? ""}`.trim()
-          : ""),
-    );
+    const salaryText = salaryTextForSourced({
+      raw: candidate.salary_text_raw,
+      currency: candidate.salary_currency,
+      min: minAmt,
+      max: maxAmt,
+      period: candidate.salary_period,
+    });
 
     const cleanedDescription = stripHtmlToText(
       ((candidate as any).description_raw || candidate.description_clean || "").toString(),
@@ -1031,7 +1021,7 @@ export async function autoPublishEligibleCandidates(
       salary_min: minAmt || null,
       salary_max: maxAmt || null,
       salary_currency: candidate.salary_currency || null,
-      posted_at_text: candidate.posted_at ? new Date(candidate.posted_at).toISOString().slice(0, 10) : "Just now",
+      posted_at_text: candidate.posted_at ? new Date(candidate.posted_at).toISOString().slice(0, 10) : null,
       timestamp: Number.isFinite(timestamp) ? Math.floor(timestamp) : now,
       category,
       apply_url: applyUrl,
@@ -1042,9 +1032,13 @@ export async function autoPublishEligibleCandidates(
       })(),
       company_website: (() => {
         const raw = ((companyForJob?.website || "").toString().trim() || derivedCompanyWebsite || src?.companies?.website || "").trim();
-        const lower = raw.toLowerCase();
         if (!raw) return null;
-        if (lower.includes("greenhouse.io") || lower.includes("lever.co") || lower.includes("ashbyhq.com")) return null;
+        try {
+          const host = new URL(raw.startsWith("http") ? raw : `https://${raw}`).hostname;
+          if (isNotCompanyWebsiteHost(host)) return null;
+        } catch {
+          return null;
+        }
         return raw;
       })(),
       logo_url: (companyForJob?.logo_url || "").toString().trim() || src?.companies?.logo_url || derivedLogoUrl || null,

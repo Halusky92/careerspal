@@ -1,4 +1,5 @@
 import { resolveCategoryHub, type CategorySlug } from "./categories";
+import { isNotCompanyWebsiteHost } from "./companyLogoUrl";
 import { jobMatchesLocationQuery } from "./locationFilter";
 
 export type BoardCompany = {
@@ -93,8 +94,7 @@ export function blurbConflictsWithHost(description?: string | null, pageUrl?: st
 
 export const publicCompanyHost = (value?: string | null) => {
   const host = companyHost(value);
-  if (!host) return "";
-  if (host.includes("greenhouse.io") || host.includes("lever.co") || host.includes("ashbyhq.com")) return "";
+  if (!host || isNotCompanyWebsiteHost(host)) return "";
   return host;
 };
 

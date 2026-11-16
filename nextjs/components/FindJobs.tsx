@@ -433,6 +433,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
   }, []);
 
   const parseSalaryRange = (salary: string) => {
+    if (/\b(?:sgd|hkd|inr|eur|gbp|cad|aud|nzd|chf|jpy|sek|nok|dkk|pln|czk)\b|€|£|ca\$|a\$/i.test(salary) && !/\busd\b|us\$/i.test(salary)) {
+      return { min: 0, max: 0 };
+    }
     const normalized = salary.toLowerCase().replace(/,/g, '');
     const isHourly =
       normalized.includes('/hr') || normalized.includes('per hour') || normalized.includes('hour');

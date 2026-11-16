@@ -84,7 +84,7 @@ function displayFrom(parsed: ParsedSalary, fallback: string) {
   ).trim();
 }
 
-const OTHER_CURRENCY = /\b(?:CAD|AUD|EUR|GBP|NZD|CHF)\b|CA\$|A\$|€|£/i;
+const OTHER_CURRENCY = /\b(?:CAD|AUD|EUR|GBP|NZD|CHF|SGD|HKD|INR|JPY|SEK|NOK|DKK|PLN|CZK)\b|CA\$|A\$|€|£/i;
 
 export function formatSalaryDisplay(raw?: string | null, extraText?: string | null): string {
   const text = (raw || "").replace(/\s+/g, " ").trim();
@@ -93,6 +93,9 @@ export function formatSalaryDisplay(raw?: string | null, extraText?: string | nu
   const official = extra ? detectAndParseSalaryForGreenhouse(extra) : null;
   if (official?.salary_parse_notes.includes("multiple_salary_bands") && OTHER_CURRENCY.test(extra)) {
     return "Salary listed";
+  }
+  if (official?.salary_present && official.salary_currency && official.salary_currency !== "USD") {
+    return displayFrom(official, extra);
   }
   if (hasRange(fromStored)) return displayFrom(fromStored, text);
   if (extra && official && !official.salary_parse_notes.includes("multiple_salary_bands")) {
@@ -111,6 +114,23 @@ export function formatJobSalary(job: { salary?: string | null; description?: str
 export function formatSalaryForStorage(raw?: string | null): string {
   const display = formatSalaryDisplay(raw);
   return display === "Salary listed" ? (raw || "").trim() : display;
+}
+
+/** Stored pay text for a sourced role. A named non-dollar currency wins over a bare $ in the raw text. */
+export function salaryTextForSourced(args: {
+  raw?: string | null;
+  currency?: string | null;
+  min?: number | null;
+  max?: number | null;
+  period?: string | null;
+}): string {
+  const code = (args.currency || "").trim().toUpperCase();
+  const structured =
+    code && (args.min != null || args.max != null)
+      ? `${code} ${args.min ?? ""}-${args.max ?? ""} ${args.period || "year"}`.replace(/\s+/g, " ").trim()
+      : "";
+  if (code && code !== "USD" && structured) return formatSalaryForStorage(structured);
+  return formatSalaryForStorage((args.raw || "").trim() || structured);
 }
 
 /** Employer board is USD. If they type numbers without a currency, store them as dollars. */

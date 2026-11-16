@@ -1,5 +1,6 @@
 import type { BoardTier } from "./boardAccess";
 import { formatJobSalary } from "./formatSalary";
+import { publicPostedLabel } from "./formatPosted";
 import { createJobSlug } from "./jobs";
 import { publicLocationLabel } from "./workMode";
 
@@ -60,7 +61,7 @@ export function toPublicJobCard(job: ListJob): PublicJobCard {
     company: job.company || "",
     location: publicLocationLabel(job) || job.location || "",
     salaryLabel: formatJobSalary({ salary: job.salary, description: job.description }),
-    postedAt: job.postedAt || "",
+    postedAt: publicPostedLabel(job.timestamp, job.postedAt),
     href: `/jobs/${createJobSlug({ id: job.id, title })}`,
   };
 }

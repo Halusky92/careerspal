@@ -240,10 +240,8 @@ export default function JobRow({
                     onToggleSave();
                   }}
                   className={[
-                    "h-11 w-11 rounded-2xl border flex items-center justify-center transition-colors",
-                    isSaved
-                      ? "bg-pink-50 border-pink-200 text-pink-600"
-                      : "bg-white border-slate-200/70 text-slate-400 hover:text-pink-500 hover:border-pink-200",
+                    "flex h-11 w-11 items-center justify-center bg-transparent",
+                    isSaved ? "text-red-700" : "text-slate-400 hover:text-red-700",
                   ].join(" ")}
                   aria-pressed={isSaved ? "true" : "false"}
                   aria-label={isSaved ? "Unsave role" : "Save role"}

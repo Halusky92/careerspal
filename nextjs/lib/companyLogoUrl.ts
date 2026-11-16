@@ -11,13 +11,41 @@ export function isAtsHostname(hostname: string): boolean {
   );
 }
 
+const DIRECTORY_HOSTS = [
+  "linkedin.com",
+  "g2.com",
+  "crunchbase.com",
+  "wikipedia.org",
+  "glassdoor.com",
+  "indeed.com",
+  "wellfound.com",
+  "builtin.com",
+  "zoominfo.com",
+  "owler.com",
+  "pitchbook.com",
+  "yelp.com",
+  "trustpilot.com",
+  "facebook.com",
+  "instagram.com",
+  "x.com",
+  "twitter.com",
+  "youtube.com",
+];
+
+/** A directory, social profile, or ATS host is not the company's own site. */
+export function isNotCompanyWebsiteHost(hostname: string): boolean {
+  const host = hostname.replace(/^www\./i, "").toLowerCase();
+  if (!host || isAtsHostname(host)) return true;
+  return DIRECTORY_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+}
+
 export function hostnameFromWebsite(website?: string | null): string | null {
   const raw = (website || "").trim();
   if (!raw || raw === "#" || raw.startsWith("mailto:") || raw.startsWith("/")) return null;
   try {
     const u = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
     const host = u.hostname.replace(/^www\./i, "").toLowerCase();
-    if (!host || isAtsHostname(host)) return null;
+    if (!host || isNotCompanyWebsiteHost(host)) return null;
     return host;
   } catch {
     return null;

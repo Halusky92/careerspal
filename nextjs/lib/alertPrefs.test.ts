@@ -30,6 +30,11 @@ test("salary floor drops a role whose stored pay is below it", () => {
   );
 });
 
+test("a Singapore dollar salary does not pass a US dollar floor", () => {
+  const search = parseSavedSearch(serializeSavedSearch({ categories: "revops", minSalary: 100000, region: "anywhere", workMode: "any", tools: [] }));
+  assert.equal(jobMatchesSavedSearch({ ...role, salary: "SGD 239k a year" }, search), false);
+});
+
 test("tools match stored tools and tags, not a mention in the description", () => {
   const withSalesforce = parseSavedSearch(
     serializeSavedSearch({ categories: "revops", minSalary: null, region: "anywhere", workMode: "any", tools: ["Salesforce"] }),

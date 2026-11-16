@@ -62,6 +62,12 @@ test("a stored floor without a range is labeled From", () => {
   assert.match(shown, /^From \$95k a year$/);
 });
 
+test("a stored dollar string yields to SGD named in the posting", () => {
+  const shown = formatSalaryDisplay("$239k a year", "The annual base salary for this role is 239,000 SGD.");
+  assert.match(shown, /SGD 239k/);
+  assert.equal(shown.includes("$"), false);
+});
+
 test("Checkr Greenhouse copy is annual even when later benefits mention months", () => {
   const description =
     "On-target Earnings OR Base Salary range (Nashville, TN) $80,000 — $100,000 USD What We Offer A fast-paced environment 100% medical coverage Up to 3 months parental leave and $25K reimbursement.";
