@@ -583,7 +583,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                 Stay in the loop
               </h2>
               <p className="mt-2 text-slate-600 font-medium max-w-2xl">
-                A weekly email for the category, salary floor, and stored tools you choose. Premium sends that search daily and shows new roles for their first 24 hours.
+                Tuesday and Friday for the category, salary floor, and stored tools you choose, after a role is public. Premium sends that search after each search and shows new roles for their first 24 hours.
               </p>
               <PublicSubscriberNote count={subscriberCount} className="mt-2 text-sm text-slate-600 font-medium" />
             </div>

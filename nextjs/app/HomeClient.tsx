@@ -224,7 +224,7 @@ export default function HomeClient({
             className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-slate-300 hover:bg-slate-50"
           >
             <div className="text-sm font-semibold text-slate-900">For candidates</div>
-            <p className="mt-1 text-xs text-slate-600">Weekly email for one saved search. Apply on the company site.</p>
+            <p className="mt-1 text-xs text-slate-600">Tuesday and Friday email for one saved search. Apply on the company site.</p>
             <PublicSubscriberNote count={subscriberCount} className="mt-1 text-xs text-slate-500" />
           </button>
           <button
@@ -249,7 +249,7 @@ export default function HomeClient({
           <article className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col">
             <h3 className="text-base font-semibold text-slate-900">Free Account</h3>
             <p className="mt-2 text-sm text-slate-600 leading-relaxed flex-1">
-              The same open board. Save one search and get a weekly email. It uses category, salary floor, and tools stored on the role. New roles join that email after 24 hours.
+              The same open board. Save one search. The email goes out Tuesday and Friday, after a role is public. It uses category, salary floor, and tools stored on the role.
             </p>
             <p className="mt-5 text-3xl font-semibold tracking-tight text-slate-900">$0</p>
             <button
@@ -267,7 +267,7 @@ export default function HomeClient({
           <article className="rounded-2xl border border-indigo-600 bg-indigo-600 p-5 flex flex-col text-white shadow-sm">
             <h3 className="text-base font-semibold">Premium</h3>
             <p className="mt-2 text-sm text-indigo-100 leading-relaxed flex-1">
-              More than one saved search, a daily email for the category, salary floor, and stored tools, and new roles for their first 24 hours. Cancel in Stripe.
+              More than one saved search, an email after each search for the category, salary floor, and stored tools, and new roles for their first 24 hours. Cancel in Stripe.
             </p>
             <p className="mt-5 text-3xl font-semibold tracking-tight">
               $11.99<span className="text-base font-medium text-indigo-200"> / month</span>
@@ -280,7 +280,7 @@ export default function HomeClient({
               }}
               className="mt-4 h-10 w-full rounded-lg bg-white text-indigo-700 text-sm font-medium hover:bg-indigo-50"
             >
-              Get daily alerts
+              Get Premium
             </button>
           </article>
         </div>

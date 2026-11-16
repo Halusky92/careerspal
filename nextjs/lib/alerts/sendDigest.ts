@@ -6,6 +6,7 @@ import { isOnNicheJob } from "../nicheScope";
 import {
   alertPrefsLabel,
   isGuestAlertConfirmed,
+  isWeeklySendDay,
   jobMatchesAlertPrefs,
   jobMatchesSavedSearch,
   parseAlertPrefs,
@@ -160,7 +161,10 @@ export async function sendDigest(options: SendDigestOptions = {}) {
           jobs: toDigestJobs(bundle, baseUrl),
           cta: { label: "Browse all jobs", href: `${baseUrl}/jobs` },
           unsubscribeUrl: `${baseUrl}/account?tab=alerts`,
-          footerNote: cadence === "daily" ? "Daily Premium alert. Manage it in your account." : "Weekly alert. Change or stop this in your account.",
+          footerNote:
+            cadence === "daily"
+              ? "Premium alert. Sent after a search when a saved search matches. Manage it in your account."
+              : "Tuesday and Friday, after a role is on the public board. Change or stop this in your account.",
         }),
       });
       if (!sendResult.error) {
@@ -231,7 +235,7 @@ export async function sendDigest(options: SendDigestOptions = {}) {
       .eq("email", toEmail);
   }
 
-  if ((cadence === "weekly" || trial) && !dryRun) {
+  if ((cadence === "weekly" || trial) && !dryRun && (trial || isWeeklySendDay(now))) {
     const { data: newsRows } = await supabaseAdmin
       .from("profiles")
       .select("email,newsletter_opt_in,role");
@@ -284,7 +288,7 @@ export async function sendDigest(options: SendDigestOptions = {}) {
           jobs: toDigestJobs(liveFallback, baseUrl),
           cta: { label: "Browse all jobs", href: `${baseUrl}/jobs` },
           unsubscribeUrl: `${baseUrl}/account?tab=alerts`,
-          footerNote: "This was a one-time sample. Weekly alerts only go out if you subscribe.",
+          footerNote: "This was a one-time sample. Tuesday and Friday alerts only go out if you subscribe.",
         }),
       });
       if (!sendResult.error) {

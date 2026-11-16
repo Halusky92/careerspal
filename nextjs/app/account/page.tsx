@@ -365,7 +365,9 @@ const AccountPageInner = () => {
       setAlertMsg(
         subData.pendingConfirm
           ? "Check your email. Click the confirm link before we send roles."
-          : "Alert saved. Tuesday and Friday, matching published roles.",
+          : seesPremium(user)
+            ? "Alert saved. It goes out after each search, including roles from the first 24 hours."
+            : "Alert saved. Tuesday and Friday, after a role is on the public board.",
       );
     } finally {
       setAlertBusy(false);
@@ -546,10 +548,10 @@ const AccountPageInner = () => {
                         <>
                           <p className="mt-1 text-sm text-slate-600">
                             {user?.role === "admin"
-                              ? "Admin sees the same board and alerts as Premium: more than one saved search, a daily email, and roles from the last 24 hours."
+                              ? "Admin sees the same board and alerts as Premium: more than one saved search, an email after each search, and roles from the first 24 hours."
                               : premium
-                              ? "Premium — more than one saved search, a daily email, and roles from the last 24 hours. The email uses category, salary floor, and stored tools."
-                              : "Free Account — the open board and one weekly email. It uses category, salary floor, and stored tools."}
+                              ? "Premium — more than one saved search and an email after each search, including roles from the first 24 hours. The email uses category, salary floor, and stored tools."
+                              : "Free Account — the open board and one saved search. The email goes out Tuesday and Friday, after a role is public."}
                           </p>
                           {premium && user?.premiumUntil ? (
                             <p className="mt-1 text-xs text-slate-500">
@@ -753,8 +755,8 @@ const AccountPageInner = () => {
                     <p className="text-sm font-medium text-slate-900">Get new jobs by email</p>
                     <p className="text-sm text-slate-600">
                       {seesPremium(user)
-                        ? "A daily email for this category, salary floor, and stored tools, including roles from the last 24 hours."
-                        : "A weekly email for this category, salary floor, and stored tools. Daily delivery of the same search is on Premium."}
+                        ? "An email after each search for this category, salary floor, and stored tools, including roles from the first 24 hours."
+                        : "Tuesday and Friday for this category, salary floor, and stored tools, after a role is public. The same search goes out after each search on Premium."}
                     </p>
                     <AlertCategoryPicker
                       selected={parseAlertQuery(alertQuery)}
@@ -913,10 +915,10 @@ const AccountPageInner = () => {
                     <p className="text-sm font-medium text-slate-900">Premium</p>
                     <p className="text-sm text-slate-600">
                       {user?.role === "admin"
-                        ? "This admin account sees new roles and daily alerts the same way Premium does. There is no separate charge."
+                        ? "This admin account sees new roles and the same alerts as Premium. There is no separate charge."
                         : user?.subscriptionStatus
                         ? `Stripe status: ${user.subscriptionStatus.replace(/_/g, " ")}. $11.99 renews each month until you cancel. Canceling keeps Premium until the end of the paid period.`
-                        : "Daily alerts are $11.99 a month and renew until you cancel. They use the same category, salary floor, and stored tools as the weekly email, and include roles from the last 24 hours. Canceling keeps them until the end of the paid period."}
+                        : "Premium is $11.99 a month and renews until you cancel. The email goes out after each search, uses the same category, salary floor, and stored tools, and includes roles from the first 24 hours. Canceling keeps it until the end of the paid period."}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {!seesPremium(user) ? (

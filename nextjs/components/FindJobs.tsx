@@ -1316,6 +1316,29 @@ const FindJobs: React.FC<FindJobsProps> = ({
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 sm:py-3">
         <div>
           <div className="cp-search rounded-xl px-3 sm:px-4 py-2">
+            {boardAccess !== "paid" ? (
+              <div className="mb-2 flex items-center justify-end gap-2">
+                <Link
+                  href={boardAccess === "guest" ? "/auth?from=%2Fupgrade" : "/upgrade"}
+                  onClick={() => trackFunnel("premium_click", { from: "jobs_top" })}
+                  className="inline-flex h-8 items-center rounded-lg bg-indigo-600 px-3 text-xs font-medium text-white hover:bg-indigo-700"
+                >
+                  Get Premium
+                </Link>
+                <span className="group relative">
+                  <button
+                    type="button"
+                    aria-label="What Premium includes"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-xs font-medium text-slate-500 hover:border-indigo-200 hover:text-indigo-700"
+                  >
+                    ?
+                  </button>
+                  <span className="pointer-events-none absolute right-0 top-full z-30 mt-1 hidden w-72 rounded-lg border border-slate-200 bg-white p-3 text-left text-xs font-normal leading-5 text-slate-600 shadow-lg group-hover:block group-focus-within:block">
+                    Premium is $11.99 a month. It adds more than one saved search and an email after each search when a role matches your category, salary floor, and stored tools, including the first 24 hours. A free account gets that search on Tuesday and Friday, after the role is public.
+                  </span>
+                </span>
+              </div>
+            ) : null}
             <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_minmax(0,11rem)_auto] gap-2 lg:gap-3 lg:items-end">
               <div ref={titleRef} className="relative">
                   <label className="text-[10px] font-medium text-slate-500">
@@ -1601,8 +1624,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   </p>
                   <p className="mt-1 text-sm text-slate-500">
                     {boardAccess === "guest" && hiddenNote?.tier === "guest" && hiddenNote.premiumMore > 0
-                      ? "Premium unlocks the full live board, salary and skills filters, and daily alerts."
-                      : "Salary and skills filters and daily alerts are on Premium."}
+                      ? "Premium adds more than one saved search, an email after each search, and roles from the first 24 hours."
+                      : "More than one saved search and an email after each search are on Premium."}
                   </p>
                   <Link
                     href={boardAccess === "guest" ? "/auth?from=%2Fjobs" : "/upgrade"}
