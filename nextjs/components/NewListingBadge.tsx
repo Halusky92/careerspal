@@ -7,7 +7,7 @@ export default function NewListingBadge({
 }) {
   if (!isNewListing(job)) return null;
   return (
-    <span className="inline-flex items-center rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+    <span className="inline-flex items-center rounded bg-[#f3e4bc] px-1 py-px text-[9px] font-normal uppercase tracking-wide text-slate-900">
       New
     </span>
   );

@@ -39,7 +39,7 @@ export default function HomePreviewCard({
             ? "border-slate-900/20 bg-white"
             : "border-indigo-200 bg-white"
           : isNew
-            ? "border-amber-200 bg-amber-50/80"
+            ? "border-[#efe6d4] bg-[#fbf8f2]"
             : "border-slate-200 bg-white hover:border-slate-300",
       ].join(" ")}
     >
