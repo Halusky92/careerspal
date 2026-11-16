@@ -44,6 +44,18 @@ type UserFile = {
 
 type Tab = "profile" | "saved" | "alerts" | "documents" | "settings";
 
+function seesPremium(user?: AccountUser | null) {
+  if (user?.role === "admin") return true;
+  const status = user?.subscriptionStatus || "";
+  const until = user?.premiumUntil ? Date.parse(user.premiumUntil) : 0;
+  return (
+    status === "active" ||
+    status === "trialing" ||
+    status === "past_due" ||
+    (Number.isFinite(until) && until > Date.now())
+  );
+}
+
 type AlertRow = { id: string; query: string; created_at?: string };
 type SubscriberRow = { email: string; preference: string; created_at?: string };
 
@@ -526,18 +538,14 @@ const AccountPageInner = () => {
                   <div className="rounded-xl border border-slate-200 p-4">
                     <p className="text-sm font-medium text-slate-900">Your plan</p>
                     {(() => {
-                      const status = user?.subscriptionStatus || "";
-                      const until = user?.premiumUntil ? Date.parse(user.premiumUntil) : 0;
-                      const premium =
-                        status === "active" ||
-                        status === "trialing" ||
-                        status === "past_due" ||
-                        (Number.isFinite(until) && until > Date.now());
+                      const premium = seesPremium(user);
                       return (
                         <>
                           <p className="mt-1 text-sm text-slate-600">
-                            {premium
-                              ? "Premium — more than one saved search and a daily email for this billing period. The email uses category, salary floor, and stored tools."
+                            {user?.role === "admin"
+                              ? "Admin sees the same board and alerts as Premium: more than one saved search, a daily email, and roles from the last 24 hours."
+                              : premium
+                              ? "Premium — more than one saved search, a daily email, and roles from the last 24 hours. The email uses category, salary floor, and stored tools."
                               : "Free Account — the open board and one weekly email. It uses category, salary floor, and stored tools."}
                           </p>
                           {premium && user?.premiumUntil ? (
@@ -740,7 +748,11 @@ const AccountPageInner = () => {
                 <div className="space-y-4">
                   <div className="rounded-xl border border-slate-200 p-4 space-y-3">
                     <p className="text-sm font-medium text-slate-900">Get new jobs by email</p>
-                    <p className="text-sm text-slate-600">A weekly email for this category, salary floor, and stored tools. Daily delivery of the same search is on Premium.</p>
+                    <p className="text-sm text-slate-600">
+                      {seesPremium(user)
+                        ? "A daily email for this category, salary floor, and stored tools, including roles from the last 24 hours."
+                        : "A weekly email for this category, salary floor, and stored tools. Daily delivery of the same search is on Premium."}
+                    </p>
                     <AlertCategoryPicker
                       selected={parseAlertQuery(alertQuery)}
                       onChange={(next) => setAlertQuery(serializeAlertQuery(next))}
@@ -883,12 +895,14 @@ const AccountPageInner = () => {
                   <div className="rounded-xl border border-slate-200 p-4 space-y-2">
                     <p className="text-sm font-medium text-slate-900">Premium</p>
                     <p className="text-sm text-slate-600">
-                      {user?.subscriptionStatus
+                      {user?.role === "admin"
+                        ? "This admin account sees new roles and daily alerts the same way Premium does. There is no separate charge."
+                        : user?.subscriptionStatus
                         ? `Stripe status: ${user.subscriptionStatus.replace(/_/g, " ")}. $11.99 renews each month until you cancel. Canceling keeps Premium until the end of the paid period.`
                         : "Daily alerts are $11.99 a month and renew until you cancel. They use the same category, salary floor, and stored tools as the weekly email, and include roles from the last 24 hours. Canceling keeps them until the end of the paid period."}
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {user?.subscriptionStatus !== "active" && user?.subscriptionStatus !== "trialing" ? (
+                      {!seesPremium(user) ? (
                       <Link href="/upgrade" className="inline-flex h-9 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white">
                         Get Premium
                       </Link>
