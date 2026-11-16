@@ -3,12 +3,13 @@ import { supabaseAdmin } from "../supabaseAdmin";
 import { createJobSlug } from "../jobs";
 import { formatSalaryDisplay } from "../formatSalary";
 import { isOnNicheJob } from "../nicheScope";
-import { jobMatchesAlertQuery } from "../categories";
 import {
   alertPrefsLabel,
   isGuestAlertConfirmed,
   jobMatchesAlertPrefs,
+  jobMatchesSavedSearch,
   parseAlertPrefs,
+  parseSavedSearch,
   serializeAlertPrefs,
 } from "../alertPrefs";
 import { renderAlertEmail, type DigestJob } from "./emailTemplate";
@@ -36,6 +37,7 @@ type JobRow = {
   apply_url: string | null;
   keywords: string | null;
   tags: unknown;
+  tools?: unknown;
   category: string | null;
   timestamp: number | null;
   companies?: { name?: string | null } | Array<{ name?: string | null }> | null;
@@ -103,7 +105,7 @@ export async function sendDigest(options: SendDigestOptions = {}) {
 
   let jobQuery = supabaseAdmin
     .from("jobs")
-    .select("id,title,description,location,salary,remote_policy,apply_url,keywords,tags,category,timestamp,companies(name)")
+    .select("id,title,description,location,salary,remote_policy,apply_url,keywords,tags,tools,category,timestamp,companies(name)")
     .eq("status", "published")
     .order("timestamp", { ascending: false })
     .limit(trial ? 40 : 80);
@@ -125,8 +127,9 @@ export async function sendDigest(options: SendDigestOptions = {}) {
     const toEmail = String(emailByUser.get(alert.user_id) || "").trim().toLowerCase();
     if (!toEmail || emailed.has(toEmail)) continue;
     const since = trial ? 0 : alert.last_run_at ? new Date(alert.last_run_at).getTime() : sinceDefault.getTime();
+    const search = parseSavedSearch(alert.query);
     const matched = published.filter(
-      (job) => (job.timestamp || 0) >= since && jobMatchesAlertQuery(job, alert.query || ""),
+      (job) => (job.timestamp || 0) >= since && jobMatchesSavedSearch(job, search),
     );
     const bundle = jobsForDigest(matched, liveFallback, trial);
     matchedTotal += matched.length;
@@ -142,7 +145,7 @@ export async function sendDigest(options: SendDigestOptions = {}) {
         html: renderAlertEmail({
           title: trial ? "Roles on the board" : "New matching roles",
           preheader: "Published Ops and Systems roles from CareersPal.",
-          introHtml: `<p style="margin:0 0 12px;">${trial ? "A short look at live roles on CareersPal." : "New published roles matching your saved categories."} Each one opens on CareersPal.</p>`,
+          introHtml: `<p style="margin:0 0 12px;">${trial ? "A short look at live roles on CareersPal." : "New published roles matching your saved category, salary floor, and tools."} Each one opens on CareersPal.</p>`,
           jobs: toDigestJobs(bundle, baseUrl),
           cta: { label: "Browse all jobs", href: `${baseUrl}/jobs` },
           unsubscribeUrl: `${baseUrl}/account?tab=alerts`,

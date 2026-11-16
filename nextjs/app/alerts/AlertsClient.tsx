@@ -7,6 +7,7 @@ import { authFetch } from "../../lib/authFetch";
 import { parseAlertQuery, serializeAlertQuery } from "../../lib/categories";
 import { ALERT_MIN_SALARIES, ALERT_REGIONS, type AlertRegion } from "../../lib/alertPrefs";
 import AlertCategoryPicker from "../../components/AlertCategoryPicker";
+import AlertToolPicker from "../../components/AlertToolPicker";
 import PublicSubscriberNote from "../../components/PublicSubscriberNote";
 
 type AlertsClientProps = {
@@ -20,6 +21,7 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
   const [selected, setSelected] = useState<string[]>(() => parseAlertQuery(initialCategory));
   const [minSalary, setMinSalary] = useState(0);
   const [region, setRegion] = useState<AlertRegion>("anywhere");
+  const [tools, setTools] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
@@ -45,7 +47,7 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query }),
+            body: JSON.stringify({ query, minSalary, region, tools }),
           },
           accessToken,
         );
@@ -59,6 +61,7 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
           categories: selected,
           minSalary,
           region,
+          tools,
         }),
       });
       const payload = (await response.json()) as { error?: string; existing?: boolean; pendingConfirm?: boolean };
@@ -89,7 +92,7 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Job alerts</p>
         <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Stay in the loop</h1>
         <p className="mt-2 text-sm text-slate-600 max-w-2xl">
-          A weekly email for the categories and salary floor you choose. Daily category alerts are on Premium.
+          A weekly email for the category, salary floor, and stored tools you choose. The same search goes out daily on Premium.
         </p>
         <PublicSubscriberNote count={subscriberCount} />
       </div>
@@ -127,6 +130,8 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
             </select>
           </label>
         </div>
+
+        <AlertToolPicker selected={tools} onChange={setTools} />
 
         {loading ? (
           <div className="text-sm text-slate-600">Loading…</div>

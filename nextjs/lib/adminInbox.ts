@@ -1,4 +1,4 @@
-import { alertPrefsLabel, isGuestAlertConfirmed, parseAlertPrefs } from "./alertPrefs";
+import { alertPrefsLabel, isGuestAlertConfirmed, parseAlertPrefs, savedSearchLabel } from "./alertPrefs";
 
 export type AdminAlertRow = {
   email: string;
@@ -43,13 +43,18 @@ export function accountAlertRows(
   for (const row of alerts) {
     const email = emailById.get(row.user_id || "") || "";
     if (!email) continue;
-    const query = (row.query || "").trim() || "saved alert";
+    const query = (row.query || "").trim();
     const location = (row.location || "").trim();
+    const label = query.startsWith("{")
+      ? savedSearchLabel(query)
+      : location
+        ? `${query || "saved alert"} · ${location}`
+        : query || "saved alert";
     rows.push({
       email,
       source: "account",
       confirmed: true,
-      label: location ? `${query} · ${location}` : query,
+      label,
       joinedAt: row.created_at || null,
     });
   }
