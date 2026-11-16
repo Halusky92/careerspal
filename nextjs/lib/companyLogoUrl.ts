@@ -66,6 +66,22 @@ export function publicLogoUrlForWebsite(website?: string | null): string | null 
   return googleFaviconUrl(host);
 }
 
+/** A favicon or image that points at G2, LinkedIn, or another directory is not the company logo. */
+export function isDirectoryLogo(url?: string | null): boolean {
+  const raw = (url || "").trim();
+  if (!raw) return false;
+  try {
+    const parsed = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+    const domain = parsed.searchParams.get("domain") || "";
+    if (domain && isNotCompanyWebsiteHost(domain)) return true;
+    const host = parsed.hostname.replace(/^www\./i, "");
+    if (host === "google.com" || host.endsWith(".google.com") || host.endsWith("duckduckgo.com")) return false;
+    return isNotCompanyWebsiteHost(host);
+  } catch {
+    return false;
+  }
+}
+
 export function officialWebsiteUrl(website?: string | null): string | null {
   const host = hostnameFromWebsite(website);
   if (!host) return null;

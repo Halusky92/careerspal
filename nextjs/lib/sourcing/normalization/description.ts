@@ -205,7 +205,11 @@ function dropVendorBlurbs(out: string): string {
 }
 
 function promoteInlineHyphenBullets(out: string) {
-  return (out || "").replace(/(^|[^\n])\s+-\s+(?=[A-Za-z*])/g, (_match, lead) => `${lead}\n- `);
+  return (out || "").replace(/(^|[^\n])\s+-\s+(?=[A-Za-z*])/g, (match, lead: string, offset: number, text: string) => {
+    const before = text.slice(Math.max(0, offset - 16), offset + String(lead).length);
+    if (/[\d$€£¥%]/.test(before)) return match;
+    return `${lead}\n- `;
+  });
 }
 
 function attachOrphanBullets(out: string) {

@@ -15,7 +15,7 @@ import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
 import NewListingBadge from "./NewListingBadge";
 import { isNewListing } from "../lib/listingWindow";
-import { formatRelativePosted } from "../lib/formatPosted";
+import { publicPostedLabel } from "../lib/formatPosted";
 
 export type JobRowAction = "copy_link" | "open_new_tab";
 
@@ -39,7 +39,7 @@ type JobRowProps = {
 
 const getWorkMode = (job: Job) => inferWorkMode(job);
 
-const formatTimeAgo = (job: Job) => formatRelativePosted(job.timestamp, job.postedAt || "");
+const formatTimeAgo = (job: Job) => publicPostedLabel(job.timestamp, job.postedAt);
 
 const getRemoteMeta = (job: Job, workMode: string) => {
   const place = geographyLabel(job);

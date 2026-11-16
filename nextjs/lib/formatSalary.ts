@@ -86,11 +86,11 @@ function displayFrom(parsed: ParsedSalary, fallback: string) {
 
 const OTHER_CURRENCY = /\b(?:CAD|AUD|EUR|GBP|NZD|CHF|SGD|HKD|INR|JPY|SEK|NOK|DKK|PLN|CZK)\b|CA\$|A\$|€|£/i;
 
-export function formatSalaryDisplay(raw?: string | null, extraText?: string | null): string {
+export function formatSalaryDisplay(raw?: string | null, extraText?: string | null, place?: string | null): string {
   const text = (raw || "").replace(/\s+/g, " ").trim();
   const extra = (extraText || "").trim();
   const fromStored = text ? parseSalaryFromText(text) : parseSalaryFromText("");
-  const official = extra ? detectAndParseSalaryForGreenhouse(extra) : null;
+  const official = extra ? detectAndParseSalaryForGreenhouse(extra, place) : null;
   if (official?.salary_parse_notes.includes("multiple_salary_bands") && OTHER_CURRENCY.test(extra)) {
     return "Salary listed";
   }
@@ -107,8 +107,13 @@ export function formatSalaryDisplay(raw?: string | null, extraText?: string | nu
   return "Salary listed";
 }
 
-export function formatJobSalary(job: { salary?: string | null; description?: string | null }) {
-  return formatSalaryDisplay(job.salary, job.description);
+export function formatJobSalary(job: {
+  salary?: string | null;
+  description?: string | null;
+  location?: string | null;
+  remotePolicy?: string | null;
+}) {
+  return formatSalaryDisplay(job.salary, job.description, `${job.location || ""} ${job.remotePolicy || ""}`);
 }
 
 export function formatSalaryForStorage(raw?: string | null): string {

@@ -62,6 +62,17 @@ test("a stored floor without a range is labeled From", () => {
   assert.match(shown, /^From \$95k a year$/);
 });
 
+test("a Canada role shows the Canadian band instead of the US band", () => {
+  const shown = formatSalaryDisplay(
+    "$109k–$155k a year",
+    "United States: $108.5K – $155K base\nCanada : CA$150.5K\nCA$215K base",
+    "Remote Canada",
+  );
+  assert.match(shown, /CA\$151k/);
+  assert.match(shown, /CA\$215k/);
+  assert.equal(shown.includes("$109k"), false);
+});
+
 test("a stored dollar string yields to SGD named in the posting", () => {
   const shown = formatSalaryDisplay("$239k a year", "The annual base salary for this role is 239,000 SGD.");
   assert.match(shown, /SGD 239k/);

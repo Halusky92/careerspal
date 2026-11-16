@@ -80,7 +80,7 @@ export const mapSupabaseJob = (row: SupabaseJobRow): Job => ({
   // Keep conservative: if we don't have a confident type stored, show Unknown rather than guessing.
   type: (row.type as Job["type"]) || "Unknown",
   salary: row.salary || "",
-  postedAt: row.posted_at_text || "Just now",
+  postedAt: row.posted_at_text && !/^just now$/i.test(row.posted_at_text) ? row.posted_at_text : "",
   category: row.category || "Operations",
   description: row.description || "",
   tags: toStringArray(row.tags),

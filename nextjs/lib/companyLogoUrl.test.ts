@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { chooseDisplayedLogo, officialWebsiteUrl } from "./companyLogoUrl";
+import { chooseDisplayedLogo, isDirectoryLogo, officialWebsiteUrl } from "./companyLogoUrl";
 import { preparedLogoRepairs } from "./companyLogoRepair";
+
+test("a directory favicon is not used as the company logo", () => {
+  assert.equal(isDirectoryLogo("https://www.google.com/s2/favicons?domain=g2.com&sz=128"), true);
+  assert.equal(isDirectoryLogo("https://www.google.com/s2/favicons?domain=optro.ai&sz=128"), false);
+});
 
 test("a directory profile is not the company website", () => {
   assert.equal(officialWebsiteUrl("https://www.g2.com/products/optro"), null);

@@ -127,7 +127,10 @@ test("a second currency in the posting is not sent to Google as USD", () => {
     }),
     "https://www.careerspal.com/jobs/docker",
   );
-  assert.equal(ld?.baseSalary, undefined);
+  const canada = ld?.baseSalary as { currency: string; value: { minValue: number; maxValue: number } };
+  assert.equal(canada.currency, "CAD");
+  assert.equal(canada.value.minValue, 151000);
+  assert.equal(canada.value.maxValue, 215000);
   const confirmed = buildJobPostingLd(
     job({
       salary: "From $139k a year",

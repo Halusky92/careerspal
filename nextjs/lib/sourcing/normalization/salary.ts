@@ -370,12 +370,34 @@ export function parsedSalaryFromStructured(args: {
   });
 }
 
+function currencyForPlace(place: string): string | null {
+  const text = place.toLowerCase();
+  const hits = new Set<string>();
+  if (/\bcanada\b|\bcanadian\b/.test(text)) hits.add("CAD");
+  if (/\bunited kingdom\b|\bengland\b|\bbritain\b|\blondon\b|(?:^|[^a-z])uk(?:[^a-z]|$)/.test(text)) hits.add("GBP");
+  if (/\bunited states\b|\busa\b|\bu\.s\b|(?:^|[^a-z])us(?:[^a-z]|$)/.test(text)) hits.add("USD");
+  if (/\bgermany\b|\bfrance\b|\bnetherlands\b|\bireland\b|\beurope\b|\beurozone\b/.test(text)) hits.add("EUR");
+  if (/\baustralia\b/.test(text)) hits.add("AUD");
+  if (/\bsingapore\b/.test(text)) hits.add("SGD");
+  return hits.size === 1 ? [...hits][0] : null;
+}
+
+/** A pay range split across a line break, such as "CA$150.5K\\nCA$215K", is one band. */
+function joinSplitCurrencyRanges(text: string) {
+  return text.replace(
+    /(CA\$|A\$|US\$|[$€£¥])\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:\n{1,2}\s*-?\s*|\s+-\s+)(?:\1\s*)?([0-9][0-9,]*(?:\.[0-9]+)?[km]?)/gi,
+    (_match, symbol: string, low: string, high: string) => `${symbol}${low}-${symbol}${high}`,
+  );
+}
+
 /** One official base range. Several bands, an unconfirmed dollar sign, or an OTE ceiling stay unpublished. */
-export function chooseOfficialSalary(text: string, _locationHint = ""): ParsedSalary {
-  const clean = nameSalaryCurrencies(
-    collapseSplitSalaryRanges(collapseThousandGroups(decodeSalaryEntities(text || "")))
-      .trim()
-      .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-"),
+export function chooseOfficialSalary(text: string, locationHint = ""): ParsedSalary {
+  const clean = joinSplitCurrencyRanges(
+    nameSalaryCurrencies(
+      collapseSplitSalaryRanges(collapseThousandGroups(decodeSalaryEntities(text || "")))
+        .trim()
+        .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-"),
+    ),
   );
   if (!clean) return parseSalaryFromText("");
   const salaryRe = new RegExp(
@@ -420,7 +442,17 @@ export function chooseOfficialSalary(text: string, _locationHint = ""): ParsedSa
       .filter((hit) => !hit.ote && (hit.rawMin || hit.rawMax))
       .map((hit) => `${hit.rawMin ?? ""}:${hit.rawMax ?? ""}`),
   );
-  if (bandKeys.size > 1) return absentOfficialSalary("multiple_salary_bands");
+  if (bandKeys.size > 1) {
+    const wanted = currencyForPlace(locationHint);
+    const matched = wanted
+      ? hits.filter((hit) => hit.parsed.salary_present && !hit.ote && hit.parsed.salary_currency === wanted)
+      : [];
+    const matchedKeys = new Set(
+      matched.map((hit) => `${hit.parsed.salary_amount_min ?? ""}:${hit.parsed.salary_amount_max ?? ""}`),
+    );
+    if (wanted && matchedKeys.size === 1) return matched[0].parsed;
+    return absentOfficialSalary("multiple_salary_bands");
+  }
   const base = hits.filter((hit) => hit.parsed.salary_present && !hit.ote);
   if (base.length === 0) {
     if (hits.some((hit) => hit.ote)) return absentOfficialSalary("ote_not_base");
