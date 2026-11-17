@@ -282,7 +282,7 @@ export default async function CompanyPage({ params }: PageProps) {
 
           <div className="lg:col-span-8 space-y-3">
             {companyDescription && !companyDescription.toLowerCase().includes("coming soon") ? (
-            <section id="about" className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+            <section id="about" className="scroll-mt-20 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">About</div>
               <h2 className="mt-1 text-base font-semibold text-slate-900">What they do</h2>
               <p className="mt-2 text-sm text-slate-700 leading-relaxed">
@@ -292,7 +292,7 @@ export default async function CompanyPage({ params }: PageProps) {
             ) : null}
 
             {stack.length > 0 && (
-              <section id="stack" className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+              <section id="stack" className="scroll-mt-20 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Stack</div>
                 <h2 className="mt-1 text-base font-semibold text-slate-900">Tools & keywords seen in roles</h2>
                 <div className="mt-3 flex flex-wrap gap-1.5">
@@ -309,7 +309,7 @@ export default async function CompanyPage({ params }: PageProps) {
             )}
 
             {benefits.length > 0 && (
-              <section id="benefits" className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+              <section id="benefits" className="scroll-mt-20 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Benefits</div>
                 <h2 className="mt-1 text-base font-semibold text-slate-900">Benefits mentioned in roles</h2>
                 <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm text-slate-700">
@@ -323,7 +323,7 @@ export default async function CompanyPage({ params }: PageProps) {
               </section>
             )}
 
-            <section id="roles" className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+            <section id="roles" className="scroll-mt-20 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Roles</div>
               <h2 className="mt-1 text-base font-semibold text-slate-900">{companyName} roles on the board</h2>
               <p className="mt-1 text-sm text-slate-600">

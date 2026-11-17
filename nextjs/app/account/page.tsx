@@ -15,6 +15,7 @@ import { ALERT_MIN_SALARIES, ALERT_REGIONS, ALERT_WORK_MODES, alertPrefsLabel, p
 import ProfileVisibilitySelect from "../../components/ProfileVisibilitySelect";
 import AdminDeskBar from "../../components/AdminDeskBar";
 import { trackFunnel } from "../../lib/funnelTrack";
+import PlanComparison from "../../components/PlanComparison";
 
 type AccountUser = {
   name?: string;
@@ -546,28 +547,29 @@ const AccountPageInner = () => {
                       const premium = seesPremium(user);
                       return (
                         <>
-                          <p className="mt-1 text-sm text-slate-600">
-                            {user?.role === "admin"
-                              ? "Admin sees the same board and alerts as Premium: more than one saved search, an email after each search, and roles from the first 24 hours."
-                              : premium
-                              ? "Premium — more than one saved search and an email after each search, including roles from the first 24 hours. The email uses category, salary floor, and stored tools."
-                              : "Free Account — the open board and one saved search. The email goes out Tuesday and Friday, after a role is public."}
-                          </p>
+                          {user?.role === "admin" ? (
+                            <p className="mt-1 text-sm text-slate-600">Admin uses the same board and alerts as Premium.</p>
+                          ) : null}
+                          <div className="mt-3">
+                            <PlanComparison
+                              current={premium ? "premium" : "account"}
+                              onGetPremium={
+                                premium
+                                  ? undefined
+                                  : () => {
+                                      trackFunnel("premium_click", { from: "account_plan" });
+                                      router.push("/upgrade");
+                                    }
+                              }
+                            />
+                          </div>
                           {premium && user?.premiumUntil ? (
                             <p className="mt-1 text-xs text-slate-500">
                               Current period through {new Date(user.premiumUntil).toLocaleDateString()}. It renews monthly until you cancel.
                             </p>
                           ) : null}
                           <div className="mt-3 flex flex-wrap gap-2">
-                            {!premium ? (
-                              <Link
-                                href="/upgrade"
-                                onClick={() => trackFunnel("premium_click", { from: "account_plan" })}
-                                className="inline-flex h-9 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700"
-                              >
-                                Unlock Premium — $11.99/month
-                              </Link>
-                            ) : user?.hasStripeCustomer ? (
+                            {premium && user?.hasStripeCustomer ? (
                               <Link
                                 href="/account?tab=settings"
                                 className="inline-flex h-9 items-center rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:border-indigo-300"
