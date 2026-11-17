@@ -1,60 +1,51 @@
 import Link from "next/link";
 import type { SalaryBucket } from "../lib/salaryBoardSummary";
 
-function formatYearly(amount: number) {
+function formatCompact(amount: number) {
   const rounded = Math.round(amount / 1000) * 1000;
-  if (rounded >= 10_000) return `$${Math.round(rounded / 1000)}k a year`;
-  return `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(rounded)} a year`;
+  if (rounded >= 10_000) return `$${Math.round(rounded / 1000)}k`;
+  return `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(rounded)}`;
 }
 
 export default function SalaryInsights({ buckets }: { buckets: SalaryBucket[] }) {
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="text-center mb-6">
-        <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">Ranges from live listings</h1>
-        <p className="mt-4 text-slate-700 font-medium max-w-2xl mx-auto">
-          Salary data from current listings, not a market-wide salary survey. The figure is the median of each listing’s own midpoint. A category needs at least three parsed USD salaries.
-        </p>
-      </div>
+    <div className="mx-auto max-w-xl px-4 py-8">
+      <h1 className="text-xl font-semibold tracking-tight text-slate-900">Pay on the board</h1>
+      <p className="mt-2 text-sm leading-6 text-slate-600">
+        Observed range is the lowest to highest listing midpoint. Median listing midpoint is the middle of those. USD roles only. Not a market-wide salary survey.
+      </p>
 
       {buckets.length === 0 ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center">
-          <p className="text-lg font-black text-slate-900">No salary summary yet.</p>
-          <p className="mt-2 text-slate-600 font-medium">There aren’t enough live listings in a category to show a range.</p>
-          <Link
-            href="/jobs"
-            className="mt-6 inline-flex px-6 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest"
-          >
+        <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center">
+          <p className="text-sm text-slate-700">Not enough parsed salaries in one category yet.</p>
+          <Link href="/jobs" className="mt-3 inline-flex text-sm font-medium text-indigo-700 hover:underline">
             Browse jobs
           </Link>
         </div>
       ) : (
-        <div className="space-y-4">
+        <ul className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
           {buckets.map((bucket) => (
-            <div key={bucket.category} className="rounded-[1.8rem] border border-slate-200 bg-white p-6 sm:p-8">
-              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-black text-slate-900">{bucket.label}</h2>
-                  <p className="text-sm text-slate-500 font-medium mt-1">{bucket.count} live listings with a parsed salary</p>
-                </div>
-                <div className="text-2xl font-black text-slate-900">
-                  {formatYearly(bucket.min).replace(" a year", "")}–{formatYearly(bucket.max)}
-                </div>
-              </div>
-              <p className="mt-3 text-sm text-slate-600 font-medium">
-                Median listing midpoint {formatYearly(bucket.median)}
-              </p>
-              {bucket.count < 8 ? (
-                <p className="mt-1 text-sm text-slate-500">Small sample. Not a representative market salary.</p>
-              ) : null}
-            </div>
+            <li key={bucket.category} className="border-b border-slate-100 last:border-b-0">
+              <Link
+                href={`/jobs?category=${encodeURIComponent(bucket.category)}`}
+                className="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-slate-50"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium text-slate-900">{bucket.label}</span>
+                  <span className="block text-xs text-slate-500">
+                    {bucket.count} listings{bucket.count < 8 ? " · small sample" : ""}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block text-sm font-medium text-slate-900">
+                    {formatCompact(bucket.min)}–{formatCompact(bucket.max)}
+                  </span>
+                  <span className="block text-xs text-slate-500">median {formatCompact(bucket.median)}</span>
+                </span>
+              </Link>
+            </li>
           ))}
-          <div className="pt-4 text-center">
-            <Link href="/jobs" className="text-indigo-600 font-black text-sm hover:underline">
-              Browse jobs →
-            </Link>
-          </div>
-        </div>
+        </ul>
       )}
     </div>
   );

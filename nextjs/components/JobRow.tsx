@@ -9,7 +9,7 @@ import { createCompanySlug, createJobSlug } from "../lib/jobs";
 import { stripHtmlToText } from "../lib/sourcing/normalization/text";
 import { formatJobSalary } from "../lib/formatSalary";
 import { visiblePostingTools } from "../lib/postingTools";
-import { geographyLabel, inferWorkMode, publicLocationLabel } from "../lib/workMode";
+import { inferWorkMode, publicLocationLabel } from "../lib/workMode";
 import { publicCategoryLabel } from "../lib/categories";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
@@ -43,11 +43,10 @@ const getWorkMode = (job: Job) => inferWorkMode(job);
 const formatTimeAgo = (job: Job) => publicPostedLabel(job.timestamp, job.postedAt);
 
 const getRemoteMeta = (job: Job, workMode: string) => {
-  const place = geographyLabel(job);
-  if (workMode === "Remote") return `Remote • ${place || "Not specified"}`;
-  if (workMode === "Hybrid") return `Hybrid • ${place || "Not specified"}`;
-  if (!workMode) return publicLocationLabel(job) || "";
-  return place ? `Onsite • ${place}` : publicLocationLabel(job) || "Onsite";
+  const shown = publicLocationLabel(job);
+  if (shown) return shown;
+  if (workMode === "Remote" || workMode === "Hybrid") return `${workMode} • Not specified`;
+  return workMode ? "Onsite" : "";
 };
 
 export default function JobRow({
