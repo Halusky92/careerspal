@@ -60,6 +60,44 @@ export function duckDuckGoIconUrl(host: string): string {
   return `https://icons.duckduckgo.com/ip3/${host}.ico`;
 }
 
+const UTILITY_HOSTS = [
+  "google.com",
+  "gstatic.com",
+  "googleapis.com",
+  "googleusercontent.com",
+  "googletagmanager.com",
+  "jobpostingtoday.com",
+  "e-verify.gov",
+  "schema.org",
+  "w3.org",
+  "cloudflare.com",
+  "amazonaws.com",
+  "doubleclick.net",
+  "sentry.io",
+  "statuspage.io",
+  "recaptcha.net",
+];
+
+function isUtilityHost(hostname: string) {
+  return UTILITY_HOSTS.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
+}
+
+/**
+ * A company site mentioned once in the employer's own posting.
+ * Two different sites, or only a directory, ATS, or utility link, stay unresolved.
+ */
+export function soleCompanyWebsiteFromText(value?: string | null): string | null {
+  const hosts = new Set<string>();
+  for (const match of String(value || "").matchAll(/https?:\/\/[^\s"'<>]+/gi)) {
+    const cleaned = match[0].replace(/&quot;?/gi, "").replace(/[),.;]+$/g, "");
+    const host = hostnameFromWebsite(cleaned);
+    if (!host || isUtilityHost(host)) continue;
+    hosts.add(host);
+  }
+  if (hosts.size !== 1) return null;
+  return `https://${[...hosts][0]}`;
+}
+
 export function publicLogoUrlForWebsite(website?: string | null): string | null {
   const host = hostnameFromWebsite(website);
   if (!host) return null;

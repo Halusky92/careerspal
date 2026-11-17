@@ -16,7 +16,7 @@ import { employmentTypeFromProvenance, employmentTypesConflict } from "../normal
 import { detectNotionSignal } from "../signals/notion";
 import { createCompanySlug } from "../../jobs";
 import { enrichCompanyFromWebsite } from "../../companyEnrichment";
-import { isNotCompanyWebsiteHost, publicLogoUrlForWebsite } from "../../companyLogoUrl";
+import { isNotCompanyWebsiteHost, publicLogoUrlForWebsite, soleCompanyWebsiteFromText } from "../../companyLogoUrl";
 import { isOnNicheJob } from "../../nicheScope";
 import { probeApplyUrl } from "../../jobs/applyLinkHealth";
 import { salaryTextForSourced } from "../../formatSalary";
@@ -562,6 +562,7 @@ type AutoPublishCandidateRow = {
   location_text: string | null;
   remote_policy: string | null;
   posted_at: string | null;
+  description_raw?: string | null;
   description_clean: string | null;
   salary_text_raw: string | null;
   salary_amount_min: number | null;
@@ -610,7 +611,7 @@ export async function autoPublishEligibleCandidates(
   let q = sb
     .from("sourcing_sourced_job_candidates")
     .select(
-      "id,source_id,source_run_id,source_type,source_url,external_job_id,job_url,apply_url,title,company_name,location_text,remote_policy,posted_at,description_clean,salary_text_raw,salary_amount_min,salary_amount_max,salary_currency,salary_period,salary_present,published_job_id,publish_status,publish_notes,provenance," +
+      "id,source_id,source_run_id,source_type,source_url,external_job_id,job_url,apply_url,title,company_name,location_text,remote_policy,posted_at,description_raw,description_clean,salary_text_raw,salary_amount_min,salary_amount_max,salary_currency,salary_period,salary_present,published_job_id,publish_status,publish_notes,provenance," +
         "sourcing_candidate_scores(score_total)," +
         // Disambiguate relationship: sourcing_candidate_dedupes has 2 FKs to candidates (candidate_id + duplicate_of_candidate_id)
         "sourcing_candidate_dedupes!sourcing_candidate_dedupes_candidate_id_fkey(confidence,duplicate_of_job_id)," +
@@ -698,6 +699,30 @@ export async function autoPublishEligibleCandidates(
 
   const deriveFaviconUrl = (website: string | null) => publicLogoUrlForWebsite(website);
 
+  const greenhouseSites = new Map<string, string | null>();
+  const websiteFromGreenhouseBoard = async (token: string) => {
+    const key = token.trim().toLowerCase();
+    if (!key) return null;
+    if (greenhouseSites.has(key)) return greenhouseSites.get(key) || null;
+    try {
+      const res = await fetch(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(key)}`, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) {
+        greenhouseSites.set(key, null);
+        return null;
+      }
+      const data = (await res.json()) as { content?: string | null };
+      const site = soleCompanyWebsiteFromText(String(data?.content || ""));
+      greenhouseSites.set(key, site);
+      return site;
+    } catch {
+      greenhouseSites.set(key, null);
+      return null;
+    }
+  };
+
   const inferCategory = (candidate: AutoPublishCandidateRow) => {
     const hub = resolveCategoryHub({ title: candidate.title, category: null });
     return hub?.dbCategories[0] || "Other";
@@ -722,9 +747,9 @@ export async function autoPublishEligibleCandidates(
     const blocking = (candidate.sourcing_candidate_decisions?.blocking_reason_codes as string[] | undefined) || [];
     const dupConfidence = (candidate.sourcing_candidate_dedupes?.confidence || "none").toString();
     const derivedCompanyName = deriveCompanyName(candidate, src);
-    const derivedCompanyWebsite = deriveCompanyWebsite(candidate, src);
+    let derivedCompanyWebsite = deriveCompanyWebsite(candidate, src);
     const derivedCompanySlug = derivedCompanyName ? createCompanySlug({ name: derivedCompanyName }) : null;
-    const derivedLogoUrl = deriveFaviconUrl(derivedCompanyWebsite);
+    let derivedLogoUrl = deriveFaviconUrl(derivedCompanyWebsite);
 
     const ineligibleReasons: string[] = [];
     if (decision !== "auto_publish_candidate") ineligibleReasons.push(`decision=${decision || "null"}`);
@@ -829,6 +854,13 @@ export async function autoPublishEligibleCandidates(
     }
 
     let companyId: string | null = src?.company_id || null;
+    if (!derivedCompanyWebsite) {
+      derivedCompanyWebsite = soleCompanyWebsiteFromText(`${candidate.description_raw || ""}\n${candidate.description_clean || ""}`);
+    }
+    if (!derivedCompanyWebsite && (candidate.source_type || "").toLowerCase() === "greenhouse") {
+      derivedCompanyWebsite = await websiteFromGreenhouseBoard(String(src?.ats_identifier || ""));
+    }
+    if (derivedCompanyWebsite) derivedLogoUrl = deriveFaviconUrl(derivedCompanyWebsite);
     if (!companyId) {
       const companyName = derivedCompanyName;
       if (!companyName) {

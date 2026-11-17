@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { chooseDisplayedLogo, isDirectoryLogo, officialWebsiteUrl } from "./companyLogoUrl";
+import { chooseDisplayedLogo, isDirectoryLogo, officialWebsiteUrl, soleCompanyWebsiteFromText } from "./companyLogoUrl";
 import { preparedLogoRepairs } from "./companyLogoRepair";
 
 test("a directory favicon is not used as the company logo", () => {
@@ -12,6 +12,18 @@ test("a directory profile is not the company website", () => {
   assert.equal(officialWebsiteUrl("https://www.g2.com/products/optro"), null);
   assert.equal(officialWebsiteUrl("https://www.linkedin.com/company/teamworks"), null);
   assert.equal(officialWebsiteUrl("https://optro.ai"), "https://optro.ai");
+});
+
+test("a single company link in the posting is the company site", () => {
+  assert.equal(
+    soleCompanyWebsiteFromText(
+      'About <a href="https://www.alpha-sense.com/">AlphaSense</a> https://www.google.com/search https://jobpostingtoday.com/x',
+    ),
+    "https://alpha-sense.com",
+  );
+  assert.equal(soleCompanyWebsiteFromText("https://www.e-verify.gov/employers"), null);
+  assert.equal(soleCompanyWebsiteFromText("https://boards.greenhouse.io/perfectserve"), null);
+  assert.equal(soleCompanyWebsiteFromText("https://a.example https://b.example"), null);
 });
 
 test("an ATS address is not stored as the company website", () => {
