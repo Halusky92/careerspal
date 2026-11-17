@@ -8,10 +8,10 @@
  *   npx tsx scripts/sourcing-discover-jobfirst.ts --jobfirst --production-candidates
  *
  * --staging-candidates writes only to the staging project and refuses production.
- * --production-candidates is the one-shot production entry. It allows at most 20 searches
+ * --production-candidates is the one-shot production entry. It allows at most 30 searches
  * and 4 new sources, inserts them disabled, and does not publish jobs.
- * --production-daily is the daily entry. It rotates all 8 groups, allows at most 20
- * basic searches, and stops when the monthly ledger reaches 620.
+ * --production-daily is the daily entry. It rotates all 8 groups, allows at most 30
+ * basic searches, and stops when the monthly ledger reaches 900.
  */
 import fs from "fs";
 import path from "path";
