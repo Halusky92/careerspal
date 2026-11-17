@@ -180,7 +180,7 @@ function isNonExplicitSalary(text: string): boolean {
 /** "$180,000/year - $270,000/year" is one band. The period word must not split it into two floors. */
 export function collapseSplitSalaryRanges(text: string) {
   return (text || "").replace(
-    /((?:CA\$|A\$|US\$|USD|EUR|GBP|CAD|AUD|CHF|[$€£¥]))\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:\/\s*|\bper\s+|\ba\s+)(year|yr|annum|hour|hr|month|mo|day)\b\s*[-–—]\s*(?:CA\$|A\$|US\$|USD|EUR|GBP|CAD|AUD|CHF|[$€£¥])?\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)/gi,
+    /((?:CA\$|A\$|US\$|USD|EUR|GBP|CAD|AUD|CHF|[$€£¥]))\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)\s*(?:\/\s*|\bper\s+|\ba\s+)(year|yr|annum|hour|hr|month|mo|day)\b\s*[-–—]\s*(?:CA\$|A\$|US\$|USD|EUR|GBP|CAD|AUD|CHF|[$€£¥])?\s*([0-9][0-9,]*(?:\.[0-9]+)?[km]?)(?:\s*(?:\/\s*|\bper\s+|\ba\s+)\3\b)?/gi,
     (_match, currency, low, period, high) => `${currency}${low}-${currency}${high} per ${period}`,
   );
 }

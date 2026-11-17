@@ -93,6 +93,25 @@ test("JobPosting salary keeps both bounds and skips an OTE ceiling", () => {
   assert.equal(ote?.baseSalary, undefined);
 });
 
+test("a base-pay range split by /year keeps both bounds in JobPosting", () => {
+  const ld = buildJobPostingLd(
+    job({
+      salary: "From $180k a year",
+      location: "Remote",
+      remotePolicy: "Remote",
+      description:
+        "This role is remote within the United States. The typical base pay range for this role across the U.S. is: $180,000/year -$270,000/year + bonus + equity + benefits. There is a different range applicable to specific work locations.",
+    }),
+    "https://www.careerspal.com/jobs/vetcove-pay",
+  );
+  const value = ld?.baseSalary as { currency: string; value: { minValue: number; maxValue?: number; unitText: string } };
+  assert.equal(value.currency, "USD");
+  assert.equal(value.value.minValue, 180000);
+  assert.equal(value.value.maxValue, 270000);
+  assert.equal(value.value.unitText, "YEAR");
+  assert.equal(ld?.validThrough, undefined);
+});
+
 test("a confirmed remote restriction in the posting becomes the applicant country", () => {
   const vetcove = buildJobPostingLd(
     job({
