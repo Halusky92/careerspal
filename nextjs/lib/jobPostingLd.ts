@@ -99,10 +99,27 @@ function structuredSalary(job: Job): ParsedSalary | null {
   const oteFloor =
     stored.salary_amount_max == null &&
     /\b(ote|on-target earnings|on target earnings)\b/i.test(`${job.salary || ""}\n${description}`);
-  if (oteFloor || !stored.salary_present || !stored.salary_currency) return null;
+  if (oteFloor) return null;
   const conflicting = official.salary_parse_notes.includes("multiple_salary_bands");
   const storedNamesCurrency = OTHER_CURRENCY.test(job.salary || "") || /\bUSD\b|US\$/i.test(job.salary || "");
   if (conflicting || (OTHER_CURRENCY.test(description) && !storedNamesCurrency)) return null;
+  const storedHasRange =
+    stored.salary_amount_min != null &&
+    stored.salary_amount_max != null &&
+    stored.salary_amount_min !== stored.salary_amount_max;
+  if (!storedHasRange) {
+    const fromPosting = parseSalaryFromText(description);
+    const postingHasRange =
+      fromPosting.salary_present &&
+      fromPosting.salary_currency &&
+      fromPosting.salary_period &&
+      fromPosting.salary_amount_min != null &&
+      fromPosting.salary_amount_max != null &&
+      fromPosting.salary_amount_min !== fromPosting.salary_amount_max;
+    const sameFloor = stored.salary_amount_min == null || stored.salary_amount_min === fromPosting.salary_amount_min;
+    if (postingHasRange && sameFloor) return fromPosting;
+  }
+  if (!stored.salary_present || !stored.salary_currency) return null;
   return stored;
 }
 
