@@ -14,6 +14,7 @@ import { authFetch } from "../lib/authFetch";
 import PublicSubscriberNote from "../components/PublicSubscriberNote";
 import { trackFunnel } from "../lib/funnelTrack";
 import { homeSeeAllLabel } from "../lib/boardAccess";
+import PlanComparison from "../components/PlanComparison";
 
 const PENDING_SAVE_KEY = "cp_pending_save_job";
 
@@ -224,7 +225,7 @@ export default function HomeClient({
             className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-slate-300 hover:bg-slate-50"
           >
             <div className="text-sm font-semibold text-slate-900">For candidates</div>
-            <p className="mt-1 text-xs text-slate-600">One saved search. Tuesday and Friday, after a role is public.</p>
+            <p className="mt-1 text-xs text-slate-600">Browse and apply without an account. An account keeps one saved search.</p>
             <PublicSubscriberNote count={subscriberCount} className="mt-1 text-xs text-slate-500" />
           </button>
           <button
@@ -237,59 +238,18 @@ export default function HomeClient({
           </button>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col">
-            <h3 className="text-base font-semibold text-slate-900">Free</h3>
-            <ul className="mt-3 space-y-1.5 text-sm text-slate-700 flex-1">
-              <li className="flex gap-2"><span aria-hidden="true" className="text-emerald-600">✓</span>Browse public jobs</li>
-              <li className="flex gap-2"><span aria-hidden="true" className="text-emerald-600">✓</span>Search and filters</li>
-              <li className="flex gap-2"><span aria-hidden="true" className="text-emerald-600">✓</span>Apply on the employer site</li>
-            </ul>
-            <p className="mt-5 text-3xl font-semibold tracking-tight text-slate-900">$0</p>
-          </article>
-
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col">
-            <h3 className="text-base font-semibold text-slate-900">Free Account</h3>
-            <ul className="mt-3 space-y-1.5 text-sm text-slate-700 flex-1">
-              <li className="flex gap-2"><span aria-hidden="true" className="text-emerald-600">✓</span>Everything in Free</li>
-              <li className="flex gap-2"><span aria-hidden="true" className="text-emerald-600">✓</span>One saved search</li>
-              <li className="flex gap-2"><span aria-hidden="true" className="text-emerald-600">✓</span>Tuesday and Friday alerts, after a role is public</li>
-            </ul>
-            <p className="mt-5 text-3xl font-semibold tracking-tight text-slate-900">$0</p>
-            <button
-              type="button"
-              onClick={() => {
-                trackFunnel("signup_started", { from: "home_card" });
-                router.push(`/auth?from=${encodeURIComponent("/")}`);
-              }}
-              className="mt-4 h-10 w-full rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
-            >
-              Create account
-            </button>
-          </article>
-
-          <article className="rounded-2xl border border-indigo-600 bg-indigo-600 p-5 flex flex-col text-white shadow-sm">
-            <h3 className="text-base font-semibold">Premium</h3>
-            <ul className="mt-3 space-y-1.5 text-sm text-indigo-50 flex-1">
-              <li className="flex gap-2"><span aria-hidden="true">✓</span>Everything in Free Account</li>
-              <li className="flex gap-2"><span aria-hidden="true">✓</span>More than one saved search</li>
-              <li className="flex gap-2"><span aria-hidden="true">✓</span>24-hour early access</li>
-              <li className="flex gap-2"><span aria-hidden="true">✓</span>An email after each search</li>
-            </ul>
-            <p className="mt-5 text-3xl font-semibold tracking-tight">
-              $11.99<span className="text-base font-medium text-indigo-200"> / month</span>
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                trackFunnel("premium_click", { from: "home_card" });
-                router.push(accessToken ? "/upgrade" : `/auth?from=${encodeURIComponent("/upgrade")}`);
-              }}
-              className="mt-4 h-10 w-full rounded-lg bg-white text-indigo-700 text-sm font-medium hover:bg-indigo-50"
-            >
-              Get Premium
-            </button>
-          </article>
+        <div className="mt-8">
+          <PlanComparison
+            current={boardAccess === "paid" ? "premium" : boardAccess === "registered" ? "account" : "guest"}
+            onCreateAccount={() => {
+              trackFunnel("signup_started", { from: "home_card" });
+              router.push(`/auth?from=${encodeURIComponent("/")}`);
+            }}
+            onGetPremium={() => {
+              trackFunnel("premium_click", { from: "home_card" });
+              router.push(accessToken ? "/upgrade" : `/auth?from=${encodeURIComponent("/upgrade")}`);
+            }}
+          />
         </div>
       </section>
     </>
