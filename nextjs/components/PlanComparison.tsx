@@ -75,8 +75,11 @@ export default function PlanComparison({
             <ul className="mt-3 flex-1 space-y-1.5 text-sm">
               {card.lines.map((line) => (
                 <li key={line.text} className="flex gap-2">
-                  <span aria-hidden="true" className={line.ok ? (premium ? "text-white" : "text-emerald-600") : premium ? "text-indigo-200" : "text-slate-300"}>
-                    {line.ok ? "✓" : "—"}
+                  <span
+                    aria-hidden="true"
+                    className={line.ok ? (premium ? "text-white" : "text-emerald-600") : premium ? "text-red-200" : "text-red-600"}
+                  >
+                    {line.ok ? "✓" : "×"}
                   </span>
                   <span className={premium ? "text-indigo-50" : "text-slate-700"}>{line.text}</span>
                 </li>
