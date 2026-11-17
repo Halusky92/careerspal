@@ -174,11 +174,27 @@ function isNearDuplicate(a: string, b: string): boolean {
 function isLegalBoilerplate(value: string) {
   const text = value.toLowerCase();
   return (
-    text.includes("equal employment opportunit") ||
-    text.includes("applicant privacy notice") ||
+    text.includes("equal employment") ||
+    text.includes("equal opportunity employer") ||
+    text.includes("do not discriminate") ||
+    text.includes("does not discriminate") ||
+    text.includes("applicant privacy") ||
+    text.includes("recruiting privacy") ||
     text.includes("by submitting your application") ||
+    text.includes("submit application") ||
+    text.includes("criminal histor") ||
+    text.includes("reasonable accommodation") ||
+    text.includes("consistent with applicable law") ||
+    text.includes("federal, state") ||
+    /^#\s*li[-\s]/i.test(value.trim()) ||
     (text.includes("nondiscrimination") && text.includes("employment"))
   );
+}
+
+function isLegalLabel(line: string) {
+  const text = line.replace(/:$/, "").trim().toLowerCase();
+  if (!text || text.length > 60) return false;
+  return text.startsWith("equal opportunity") || text === "eeo" || (text.includes("accommodation") && text.split(/\s+/).length <= 6);
 }
 
 function withoutLegalCopy(paragraph: string) {
@@ -191,7 +207,7 @@ function withoutLegalCopy(paragraph: string) {
         .join(" ")
         .trim(),
     )
-    .filter((line) => line && !isLegalBoilerplate(line))
+    .filter((line) => line && !isLegalBoilerplate(line) && !isLegalLabel(line) && !/^#\s*li[-\s]/i.test(line))
     .join("\n")
     .trim();
 }
@@ -210,6 +226,37 @@ function promoteInlineHyphenBullets(out: string) {
     if (/[\d$€£¥%]/.test(before)) return match;
     return `${lead}\n- `;
   });
+}
+
+function joinIntroducingBullets(out: string) {
+  const lines = (out || "").split("\n");
+  const next: string[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const current = lines[index].match(/^-\s+(.*)$/);
+    const following = lines[index + 1]?.match(/^-\s+(.*)$/);
+    const intro = current && /\b(following|including|such as)\b[^.!?]{0,40}$/i.test(current[1]);
+    if (current && following && intro && !/^(you|we|this|the candidate)\b/i.test(following[1])) {
+      next.push(`- ${current[1].trim()}: ${following[1].trim()}`);
+      index += 1;
+      continue;
+    }
+    next.push(lines[index]);
+  }
+  return next.join("\n");
+}
+
+function promoteListLabels(out: string) {
+  const lines = (out || "").split("\n");
+  return lines
+    .map((line, index) => {
+      const label = line.trim();
+      if (!label || label.startsWith("-") || label.endsWith(":") || /[.!?,]/.test(label)) return line;
+      if (label.length > 48 || label.split(/\s+/).length > 8 || /\d/.test(label) || !/^[A-Z]/.test(label)) return line;
+      const next = lines.slice(index + 1).find((item) => item.trim());
+      if (!next || !/^-\s+/.test(next.trim())) return line;
+      return `${label}:`;
+    })
+    .join("\n");
 }
 
 function attachOrphanBullets(out: string) {
@@ -302,7 +349,8 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
     let normalized = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
     normalized = normalized.replace(/\*\*/g, "");
     normalized = promoteInlineHyphenBullets(normalized);
-    normalized = attachOrphanBullets(normalized);
+    normalized = joinIntroducingBullets(attachOrphanBullets(normalized));
+    normalized = promoteListLabels(normalized);
     normalized = dropSeparatorLines(repairFalseHeadings(normalized));
     normalized = normalizeSectionHeadings(normalized);
     normalized = explodeInlineBullets(normalized).replace(/\n{3,}/g, "\n\n").trim();
@@ -350,7 +398,7 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
   let out = lines.join("\n");
   // Collapse too many blank lines.
   out = out.replace(/\*\*/g, "").replace(/\n{3,}/g, "\n\n").trim();
-  out = attachOrphanBullets(promoteInlineHyphenBullets(out));
+  out = promoteListLabels(joinIntroducingBullets(attachOrphanBullets(promoteInlineHyphenBullets(out))));
 
   out = dropSeparatorLines(repairFalseHeadings(out));
   out = normalizeSectionHeadings(out);
