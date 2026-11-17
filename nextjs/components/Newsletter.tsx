@@ -26,7 +26,7 @@ const Newsletter: React.FC = () => {
   };
 
   return (
-    <section id="subscribe" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 scroll-mt-20">
+    <section id="subscribe" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="rounded-xl border border-slate-200 bg-white p-5">
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-600">Get alerts</p>

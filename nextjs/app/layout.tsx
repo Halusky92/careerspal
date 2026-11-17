@@ -9,6 +9,7 @@ import Providers from "../components/Providers";
 import AnalyticsTracker from "../components/AnalyticsTracker";
 import CanonicalHostRedirect from "../components/CanonicalHostRedirect";
 import ApplyResume from "../components/ApplyResume";
+import HashScroll from "../components/HashScroll";
 import { getCanonicalSiteUrl } from "../lib/alerts/siteUrl";
 import { isNonProductionDeployment } from "../lib/siteIndexing";
 
@@ -110,6 +111,7 @@ export default function RootLayout({
           </Suspense>
           <Navbar />
           <ApplyResume />
+          <HashScroll />
           <main>{children}</main>
           <Footer />
         </Providers>
