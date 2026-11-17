@@ -5,11 +5,12 @@ import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createJobSlug } from "../lib/jobs";
 import { formatJobSalary } from "../lib/formatSalary";
-import { inferWorkMode } from "../lib/workMode";
+import { inferWorkMode, publicLocationLabel } from "../lib/workMode";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
 import NewListingBadge from "./NewListingBadge";
-import { isNewListing } from "../lib/listingWindow";
+import PremiumWindowBadge from "./PremiumWindowBadge";
+import { isEarlyAccessListing, isNewListing } from "../lib/listingWindow";
 import { publicPostedLabel } from "../lib/formatPosted";
 
 const getWorkMode = (job: Job) => inferWorkMode(job);
@@ -25,6 +26,7 @@ export default function HomePreviewCard({
 }) {
   const href = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
   const featured = isPaidFeaturedListing(job);
+  const isEarly = isEarlyAccessListing(job);
   const isNew = isNewListing(job);
   const elite = job.planType === "Elite Managed";
   const place = getWorkMode(job);
@@ -38,20 +40,22 @@ export default function HomePreviewCard({
           ? elite
             ? "border-slate-900/20 bg-white"
             : "border-indigo-200 bg-white"
-          : isNew
-            ? "border-[#efe6d4] bg-[#fbf8f2]"
-            : "border-slate-200 bg-white hover:border-slate-300",
+          : isEarly
+            ? "border-[#c6a15b] bg-[#fbf8f2]"
+            : isNew
+              ? "border-[#efe6d4] bg-[#fbf8f2]"
+              : "border-slate-200 bg-white hover:border-slate-300",
       ].join(" ")}
     >
       {featured ? (
         <span aria-hidden className={["absolute inset-y-0 left-0 w-1", elite ? "bg-slate-900" : "bg-indigo-500"].join(" ")} />
       ) : null}
-      {isNew ? (
+      {isEarly || isNew ? (
         <span className="absolute top-1.5 left-1.5 z-10">
-          <NewListingBadge job={job} />
+          {isEarly ? <PremiumWindowBadge job={job} /> : <NewListingBadge job={job} />}
         </span>
       ) : null}
-      <Link href={href} className={["flex min-w-0 flex-1 items-center gap-3", isNew ? "pl-8" : ""].join(" ")}>
+      <Link href={href} className={["flex min-w-0 flex-1 items-center gap-3", isEarly || isNew ? "pl-8" : ""].join(" ")}>
         <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
           <CompanyLogo
             name={job.company}
@@ -70,7 +74,7 @@ export default function HomePreviewCard({
             <FeaturedBadge job={job} />
           </div>
           <p className="mt-0.5 truncate text-xs text-slate-500">
-            {job.company} · {place}
+            {job.company} · {publicLocationLabel(job) || place}
             {timeAgo ? ` · ${timeAgo}` : ""}
           </p>
           <p className="sm:hidden mt-0.5 text-xs font-semibold tabular-nums text-slate-900">

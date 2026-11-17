@@ -216,12 +216,14 @@ function attachOrphanBullets(out: string) {
   const lines = (out || "").split("\n");
   const next: string[] = [];
   for (let index = 0; index < lines.length; index += 1) {
-    if (lines[index].trim() === "-" && lines[index + 1]?.trim() && !lines[index + 1].trim().startsWith("-")) {
+    const mark = lines[index].trim();
+    const orphan = mark === "-" || mark === "–" || mark === "—";
+    if (orphan && lines[index + 1]?.trim() && !/^[-–—]/.test(lines[index + 1].trim())) {
       next.push(`- ${lines[index + 1].trim()}`);
       index += 1;
       continue;
     }
-    if (lines[index].trim() === "-") continue;
+    if (orphan) continue;
     next.push(lines[index]);
   }
   return next.join("\n");

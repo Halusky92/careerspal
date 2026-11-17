@@ -81,7 +81,7 @@ test("a confirmed remote restriction in the posting becomes the applicant countr
   );
   assert.equal((vetcove?.applicantLocationRequirements as { name: string }).name, "US");
   assert.equal(vetcove?.validThrough, undefined);
-  assert.equal((vetcove?.jobLocation as { address: { addressCountry?: string } }).address.addressCountry, undefined);
+  assert.equal(vetcove?.jobLocation, undefined);
 
   const customers = buildJobPostingLd(
     job({
@@ -142,6 +142,23 @@ test("a second currency in the posting is not sent to Google as USD", () => {
   assert.equal(value.currency, "USD");
   assert.equal(value.value.minValue, 139000);
   assert.equal(value.value.maxValue, 235000);
+});
+
+test("a hybrid role names the cities the posting confirms", () => {
+  const ld = buildJobPostingLd(
+    job({
+      location: "Hybrid",
+      remotePolicy: "Hybrid",
+      description:
+        "This role can be based in either San Francisco or New York City. We work from our offices on Mondays, Tuesdays and Thursdays.",
+    }),
+    "https://www.careerspal.com/jobs/notion",
+  );
+  const places = ld?.jobLocation as Array<{ address: { addressLocality: string } }>;
+  assert.deepEqual(
+    places.map((place) => place.address.addressLocality),
+    ["San Francisco", "New York City"],
+  );
 });
 
 test("does not emit JobPosting for expired or unpublished jobs", () => {

@@ -60,7 +60,7 @@ export function toPublicJobCard(job: ListJob): PublicJobCard {
     title,
     company: job.company || "",
     location: publicLocationLabel(job) || job.location || "",
-    salaryLabel: formatJobSalary({ salary: job.salary, description: job.description }),
+    salaryLabel: formatJobSalary(job),
     postedAt: publicPostedLabel(job.timestamp, job.postedAt),
     href: `/jobs/${createJobSlug({ id: job.id, title })}`,
   };

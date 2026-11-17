@@ -1,5 +1,5 @@
 import { chooseOfficialSalary, parseSalaryFromText, type ParsedSalary, type SalaryPeriod } from "./sourcing/normalization/salary";
-import { inferWorkMode } from "./workMode";
+import { geographyLabel, inferWorkMode } from "./workMode";
 import { isLiveBoardJob } from "./liveBoard";
 import { applyUrlLooksUsable } from "./jobs/applyLinkHealth";
 import type { Job } from "../types";
@@ -158,6 +158,9 @@ export function buildJobPostingLd(job: Job, canonicalUrl: string) {
 
   const workMode = inferWorkMode(job);
   const loc = (job.location || "").trim();
+  const place = geographyLabel(job);
+  const countryOnly = new Set(["United States", "Canada", "United Kingdom", "International", "Worldwide", "Global", "US", "USA", "Not specified"]);
+  const specificPlace = place && !countryOnly.has(place) ? place : "";
   const remote = workMode === "Remote" || /^remote\b/i.test(loc);
   const countries = applicantCountries(job);
   const locationCountry = countriesInLocation(`${loc} ${job.remotePolicy || ""}`);
@@ -199,7 +202,18 @@ export function buildJobPostingLd(job: Job, canonicalUrl: string) {
       ld.applicantLocationRequirements = countries.map((name) => ({ "@type": "Country", name }));
     }
   }
-  if (loc) {
+  if (workMode === "Hybrid" && specificPlace) {
+    const parts = specificPlace.split(/\s+or\s+/i).map((part) => part.trim()).filter((part) => part.length > 1);
+    const placeFor = (locality: string) => ({
+      "@type": "Place",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: locality,
+        addressCountry: country,
+      },
+    });
+    ld.jobLocation = parts.length > 1 ? parts.map(placeFor) : placeFor(specificPlace);
+  } else if (loc && !/^(remote|hybrid)$/i.test(loc)) {
     ld.jobLocation = {
       "@type": "Place",
       address: {

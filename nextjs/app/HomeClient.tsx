@@ -224,7 +224,7 @@ export default function HomeClient({
             className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-slate-300 hover:bg-slate-50"
           >
             <div className="text-sm font-semibold text-slate-900">For candidates</div>
-            <p className="mt-1 text-xs text-slate-600">Tuesday and Friday email for one saved search. Apply on the company site.</p>
+            <p className="mt-1 text-xs text-slate-600">One saved search. Tuesday and Friday, after a role is public.</p>
             <PublicSubscriberNote count={subscriberCount} className="mt-1 text-xs text-slate-500" />
           </button>
           <button
@@ -240,17 +240,21 @@ export default function HomeClient({
         <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
           <article className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col">
             <h3 className="text-base font-semibold text-slate-900">Free</h3>
-            <p className="mt-2 text-sm text-slate-600 leading-relaxed flex-1">
-              The live board is open. Search, filter by salary and skills, open a role, and apply on the company site.
-            </p>
+            <ul className="mt-3 space-y-1.5 text-sm text-slate-700 flex-1">
+              <li className="flex gap-2"><span aria-hidden="true" className="text-emerald-600">✓</span>Browse public jobs</li>
+              <li className="flex gap-2"><span aria-hidden="true" className="text-emerald-600">✓</span>Search and filters</li>
+              <li className="flex gap-2"><span aria-hidden="true" className="text-emerald-600">✓</span>Apply on the employer site</li>
+            </ul>
             <p className="mt-5 text-3xl font-semibold tracking-tight text-slate-900">$0</p>
           </article>
 
           <article className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col">
             <h3 className="text-base font-semibold text-slate-900">Free Account</h3>
-            <p className="mt-2 text-sm text-slate-600 leading-relaxed flex-1">
-              The same open board. Save one search. The email goes out Tuesday and Friday, after a role is public. It uses category, salary floor, and tools stored on the role.
-            </p>
+            <ul className="mt-3 space-y-1.5 text-sm text-slate-700 flex-1">
+              <li className="flex gap-2"><span aria-hidden="true" className="text-emerald-600">✓</span>Everything in Free</li>
+              <li className="flex gap-2"><span aria-hidden="true" className="text-emerald-600">✓</span>One saved search</li>
+              <li className="flex gap-2"><span aria-hidden="true" className="text-emerald-600">✓</span>Tuesday and Friday alerts, after a role is public</li>
+            </ul>
             <p className="mt-5 text-3xl font-semibold tracking-tight text-slate-900">$0</p>
             <button
               type="button"
@@ -266,9 +270,12 @@ export default function HomeClient({
 
           <article className="rounded-2xl border border-indigo-600 bg-indigo-600 p-5 flex flex-col text-white shadow-sm">
             <h3 className="text-base font-semibold">Premium</h3>
-            <p className="mt-2 text-sm text-indigo-100 leading-relaxed flex-1">
-              More than one saved search, an email after each search for the category, salary floor, and stored tools, and new roles for their first 24 hours. Cancel in Stripe.
-            </p>
+            <ul className="mt-3 space-y-1.5 text-sm text-indigo-50 flex-1">
+              <li className="flex gap-2"><span aria-hidden="true">✓</span>Everything in Free Account</li>
+              <li className="flex gap-2"><span aria-hidden="true">✓</span>More than one saved search</li>
+              <li className="flex gap-2"><span aria-hidden="true">✓</span>24-hour early access</li>
+              <li className="flex gap-2"><span aria-hidden="true">✓</span>An email after each search</li>
+            </ul>
             <p className="mt-5 text-3xl font-semibold tracking-tight">
               $11.99<span className="text-base font-medium text-indigo-200"> / month</span>
             </p>
