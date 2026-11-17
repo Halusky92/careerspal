@@ -11,7 +11,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
     <div className="max-w-6xl mx-auto px-4 pb-8">
       <div className="text-center mb-5">
         <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Post a role on the board</h1>
-        <p className="mt-1 text-sm text-slate-600">Post → review → live. Candidates apply on your link. Prices in USD.</p>
+        <p className="mt-1 text-sm text-slate-600">Post → review → Premium for 24 hours → the public board. Candidates apply on your link. Prices in USD.</p>
         <p className="mt-2 text-sm text-slate-600">{PLAN_PRICE_LINE}</p>
       </div>
 
@@ -42,7 +42,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
             ${PLAN_PRICES.standard} <span className="text-sm font-medium text-slate-500">/ 30 days</span>
           </p>
           <ul className="mt-3 space-y-1.5 text-sm text-slate-700 flex-1">
-            <li>On the board after review</li>
+            <li>Premium for 24 hours, then the public board</li>
             <li>Views, apply clicks, traffic source</li>
             <li>Your apply link</li>
           </ul>

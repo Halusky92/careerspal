@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatEmployerSalaryForStorage, formatSalaryDisplay } from "./formatSalary";
+import { formatEmployerSalaryForStorage, formatJobSalary, formatSalaryDisplay } from "./formatSalary";
 
 test("employer salary numbers are stored as USD", () => {
   const stored = formatEmployerSalaryForStorage("80000-120000");
@@ -68,6 +68,19 @@ test("a Canada role shows the Canadian band instead of the US band", () => {
     "United States: $108.5K – $155K base\nCanada : CA$150.5K\nCA$215K base",
     "Remote Canada",
   );
+  assert.match(shown, /CA\$151k/);
+  assert.match(shown, /CA\$215k/);
+  assert.equal(shown.includes("$109k"), false);
+});
+
+test("the same Canada role shows the Canadian band from the card and the detail", () => {
+  const job = {
+    salary: "$109k–$155k a year",
+    location: "Remote",
+    remotePolicy: "Remote",
+    description: "This role is based in Canada. United States: $108.5K – $155K base. Canada: CA$150.5K – CA$215K base.",
+  };
+  const shown = formatJobSalary(job);
   assert.match(shown, /CA\$151k/);
   assert.match(shown, /CA\$215k/);
   assert.equal(shown.includes("$109k"), false);

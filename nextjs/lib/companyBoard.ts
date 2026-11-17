@@ -38,9 +38,19 @@ export const isBoilerplateDescription = (value?: string | null) => {
     /\bgreenhouse software\b/.test(t) ||
     /\bgreenhouse\.io\b/.test(t) ||
     t.includes("coming soon") ||
-    isStorefrontPromo(t)
+    isStorefrontPromo(t) ||
+    isProductPlanBlurb(t)
   );
 };
+
+/** A product or plan advertisement is not a company description. */
+export function isProductPlanBlurb(value?: string | null) {
+  const text = (value || "").toLowerCase();
+  if (!text.trim()) return false;
+  const shopPlan = /\b(explore|shop|enroll in|compare)\b/.test(text) && /\b(plans?|premiums?)\b/.test(text);
+  const medicareOffer = /\bmedicare advantage\b/.test(text) && /\b(20\d{2}|ppo|premium|otc|rewards)\b/.test(text);
+  return shopPlan || medicareOffer;
+}
 
 /** A retail homepage blurb, whatever the brand is. */
 export function isStorefrontPromo(value?: string | null) {

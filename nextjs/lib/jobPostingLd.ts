@@ -1,4 +1,5 @@
 import { chooseOfficialSalary, parseSalaryFromText, type ParsedSalary, type SalaryPeriod } from "./sourcing/normalization/salary";
+import { salaryPlaceHint } from "./formatSalary";
 import { geographyLabel, inferWorkMode } from "./workMode";
 import { isLiveBoardJob } from "./liveBoard";
 import { applyUrlLooksUsable } from "./jobs/applyLinkHealth";
@@ -90,7 +91,7 @@ const OTHER_CURRENCY = /\b(?:CAD|AUD|EUR|GBP|NZD|CHF|SGD|HKD|INR|JPY|SEK|NOK|DKK
 
 function structuredSalary(job: Job): ParsedSalary | null {
   const description = job.description || "";
-  const official = chooseOfficialSalary(description, `${job.location || ""} ${job.remotePolicy || ""}`);
+  const official = chooseOfficialSalary(description, salaryPlaceHint(job));
   if (official.salary_present && official.salary_currency && (official.salary_amount_min != null || official.salary_amount_max != null)) {
     return official;
   }

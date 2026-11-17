@@ -5,6 +5,7 @@ import {
   type ParsedSalary,
   type SalaryPeriod,
 } from "./sourcing/normalization/salary";
+import { geographyLabel } from "./workMode";
 
 const PERIOD_LABEL: Record<SalaryPeriod, string> = {
   year: "year",
@@ -107,13 +108,25 @@ export function formatSalaryDisplay(raw?: string | null, extraText?: string | nu
   return "Salary listed";
 }
 
+/** The same place the card and the detail use, so the pay band follows that place. */
+export function salaryPlaceHint(job: {
+  location?: string | null;
+  remotePolicy?: string | null;
+  description?: string | null;
+}) {
+  const place = geographyLabel(job);
+  return [job.location, job.remotePolicy, place && place !== "Not specified" ? place : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function formatJobSalary(job: {
   salary?: string | null;
   description?: string | null;
   location?: string | null;
   remotePolicy?: string | null;
 }) {
-  return formatSalaryDisplay(job.salary, job.description, `${job.location || ""} ${job.remotePolicy || ""}`);
+  return formatSalaryDisplay(job.salary, job.description, salaryPlaceHint(job));
 }
 
 export function formatSalaryForStorage(raw?: string | null): string {
