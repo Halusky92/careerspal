@@ -1,5 +1,6 @@
 import { Job } from "../types";
 import { detectAndParseSalaryForGreenhouse, parseSalaryFromText } from "./sourcing/normalization/salary";
+import { salaryPlaceHint } from "./formatSalary";
 import { CATEGORY_FILTER_LABELS } from "../constants";
 
 export type SalaryBucket = {
@@ -21,8 +22,7 @@ function median(values: number[]) {
 
 function yearlyAmount(job: Pick<Job, "salary" | "description" | "location" | "remotePolicy">): number | null {
   const blob = `${job.salary || ""}\n${job.description || ""}`;
-  const place = `${job.location || ""} ${job.remotePolicy || ""}`;
-  const official = detectAndParseSalaryForGreenhouse(blob, place);
+  const official = detectAndParseSalaryForGreenhouse(blob, salaryPlaceHint(job));
   if (official.salary_currency && official.salary_currency !== "USD") return null;
   if (official.salary_parse_notes.includes("multiple_salary_bands")) return null;
   const fromStored = parseSalaryFromText(job.salary || "");

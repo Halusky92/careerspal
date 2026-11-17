@@ -6,6 +6,7 @@ import { Job, ResumeAudit, UserSession } from '../types';
 import { createJobSlug } from '../lib/jobs';
 import { auditCandidateProfile } from '../services/geminiService';
 import { startApply } from "../lib/startApply";
+import { formatJobSalary } from "../lib/formatSalary";
 import { useSupabaseAuth } from "./Providers";
 
 interface CandidateDashboardProps {
@@ -322,7 +323,7 @@ const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ onBrowse, user,
                          </div>
                          <div>
                             <h4 className="font-black text-slate-900 text-lg group-hover:text-indigo-600 transition-colors">{job.title}</h4>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{job.company} • {job.salary}</p>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{job.company} • {formatJobSalary(job)}</p>
                          </div>
                       </div>
                       <button

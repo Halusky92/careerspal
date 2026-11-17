@@ -14,6 +14,16 @@ test("a storefront promo is rejected for any brand, not only one company", () =>
   assert.equal(isForeignCompanyBlurb("Join Target.com today.", "BetterUp"), true);
 });
 
+test("a dated product plan is not shown as what the company does", () => {
+  assert.equal(
+    isBoilerplateDescription(
+      "Explore Clover Health 2027 Medicare Advantage PPO plans: $0 to low premiums, dental, vision, OTC allowances and up to $400 in rewards.",
+    ),
+    true,
+  );
+  assert.equal(isBoilerplateDescription("Clover Health is a Medicare Advantage company."), false);
+});
+
 test("a company's own site blurb is kept", () => {
   const own = "BetterUp helps people grow with coaching at work.";
   assert.equal(isBoilerplateDescription(own), false);

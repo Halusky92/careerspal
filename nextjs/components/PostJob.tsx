@@ -204,7 +204,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const planHighlights = useMemo(() => {
     const base = [
       "Listing reviewed before publish",
-      "30 days live on the board",
+      "30 days. Premium for the first 24 hours, then the public board",
       "Included in search + filters",
       "Support via info@careerspal.com",
     ];
@@ -1279,7 +1279,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                   <p className="mt-1 text-lg font-semibold text-slate-900">
                     {selectedPlan.type} · {formatPrice(selectedPlan.price)}
                   </p>
-                  <p className="mt-1 text-xs text-slate-600">30 days on the board after review.</p>
+                  <p className="mt-1 text-xs text-slate-600">30 days. Premium for the first 24 hours, then the public board.</p>
                 </>
               )}
               {isEmployerAccount ? (

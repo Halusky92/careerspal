@@ -7,7 +7,7 @@ import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 import { createJobSlug } from "../../lib/jobs";
 import { Job } from "../../types";
-import { formatSalaryDisplay } from "../../lib/formatSalary";
+import { formatJobSalary } from "../../lib/formatSalary";
 import { getCategoryHubForDbCategory, jobMatchesHub, parseAlertQuery, serializeAlertQuery } from "../../lib/categories";
 import AlertCategoryPicker from "../../components/AlertCategoryPicker";
 import AlertToolPicker from "../../components/AlertToolPicker";
@@ -691,7 +691,7 @@ const AccountPageInner = () => {
                           >
                             <div className="text-sm font-medium text-slate-900 truncate">{job.title}</div>
                             <div className="text-xs text-slate-500 truncate">
-                              {[job.company, formatSalaryDisplay(job.salary)].filter(Boolean).join(" · ")}
+                              {[job.company, formatJobSalary(job)].filter(Boolean).join(" · ")}
                             </div>
                           </Link>
                         ))
@@ -733,7 +733,7 @@ const AccountPageInner = () => {
                             {job?.title || jobId}
                           </Link>
                           <p className="text-xs text-slate-500 truncate">
-                            {[job?.company, job?.location, job ? formatSalaryDisplay(job.salary) : ""]
+                            {[job?.company, job?.location, job ? formatJobSalary(job) : ""]
                               .filter(Boolean)
                               .join(" · ")}
                           </p>

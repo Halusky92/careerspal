@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { supabaseAdmin } from "../supabaseAdmin";
 import { createJobSlug } from "../jobs";
-import { formatSalaryDisplay } from "../formatSalary";
+import { formatJobSalary } from "../formatSalary";
 import { isOnNicheJob } from "../nicheScope";
 import {
   alertPrefsLabel,
@@ -64,7 +64,12 @@ function toDigestJobs(matches: JobRow[], baseUrl: string): DigestJob[] {
     title: job.title || "Role",
     company: getCompanyName(job),
     location: job.location || "—",
-    salary: formatSalaryDisplay(job.salary, job.description, `${job.location || ""} ${job.remote_policy || ""}`),
+    salary: formatJobSalary({
+      salary: job.salary,
+      description: job.description,
+      location: job.location,
+      remotePolicy: job.remote_policy,
+    }),
     href: `${baseUrl}/jobs/${createJobSlug({ title: job.title || "role", id: job.id })}?utm_source=alerts`,
   }));
 }

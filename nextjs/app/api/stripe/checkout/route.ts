@@ -129,7 +129,7 @@ export async function POST(request: Request) {
                   currency: "usd",
                   product_data: {
                     name: "CareersPal Premium",
-                    description: "Daily alerts and new roles for the first 24 hours",
+                    description: "An email after each search, and new roles for the first 24 hours",
                   },
                   unit_amount: PREMIUM_UNIT_AMOUNT,
                   recurring: { interval: "month" },
