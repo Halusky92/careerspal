@@ -944,22 +944,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
         </div>
 
         <div className="mt-4 space-y-3">
-          {/* Search */}
-          <div>
-            <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
-              <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              Search
-            </div>
-            <input
-              value={query}
-              onChange={(e) => preserveFilterPosition(() => setQuery(e.target.value))}
-              placeholder="Search everything..."
-              className="cp-field mt-2 w-full h-10 rounded-xl px-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400"
-            />
-          </div>
-
           {/* Job Categories */}
           <div className="relative" data-wwr-filter>
             <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">

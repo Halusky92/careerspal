@@ -17,7 +17,7 @@ const CARDS: {
       { ok: true, text: "Search and filters" },
       { ok: true, text: "Apply on the company site" },
       { ok: false, text: "Saved search" },
-      { ok: true, text: "Tuesday and Friday email" },
+      { ok: false, text: "Tuesday and Friday email" },
       { ok: false, text: "First 24 hours" },
     ],
   },

@@ -13,7 +13,7 @@ export default function SalaryInsights({ buckets }: { buckets: SalaryBucket[] })
       <div className="text-center mb-6">
         <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">Ranges from live listings</h1>
         <p className="mt-4 text-slate-700 font-medium max-w-2xl mx-auto">
-          Parsed from roles currently on the board. A small category can be three listings. This is not a US labor-market benchmark.
+          Salary data from current listings, not a market-wide salary survey. The figure is the median of each listing’s own midpoint. A category needs at least three parsed USD salaries.
         </p>
       </div>
 
@@ -42,8 +42,11 @@ export default function SalaryInsights({ buckets }: { buckets: SalaryBucket[] })
                 </div>
               </div>
               <p className="mt-3 text-sm text-slate-600 font-medium">
-                Midpoint {formatYearly(bucket.median)}
+                Median listing midpoint {formatYearly(bucket.median)}
               </p>
+              {bucket.count < 8 ? (
+                <p className="mt-1 text-sm text-slate-500">Small sample. Not a representative market salary.</p>
+              ) : null}
             </div>
           ))}
           <div className="pt-4 text-center">

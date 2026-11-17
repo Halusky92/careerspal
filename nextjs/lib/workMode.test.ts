@@ -143,6 +143,15 @@ test("unspecified remote geography is Not specified and a named country is kept"
   assert.equal(publicLocationLabel({ location: "Remote", remotePolicy: "Remote" }), "Remote");
   assert.equal(publicLocationLabel({ location: "Remote - US", remotePolicy: "Remote" }), "Remote - US");
   assert.equal(
+    geographyLabel({ title: "Marketing Operations Manager - US Remote", location: "Remote", remotePolicy: "Remote" }),
+    "United States",
+  );
+  assert.equal(
+    publicLocationLabel({ title: "Marketing Operations Manager - US Remote", location: "Remote", remotePolicy: "Remote" }),
+    "Remote • United States",
+  );
+  assert.equal(inferWorkMode({ title: "Marketing Operations Manager - US Remote", location: "Remote" }), "Remote");
+  assert.equal(
     geographyLabel({
       location: "Remote",
       remotePolicy: "Remote",

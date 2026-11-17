@@ -259,6 +259,30 @@ function promoteListLabels(out: string) {
     .join("\n");
 }
 
+function promoteStrayListLines(out: string) {
+  const lines = (out || "").split("\n");
+  return lines
+    .map((line, index) => {
+      const trimmed = line.trim();
+      if (!trimmed || /^-\s+/.test(trimmed) || trimmed.endsWith(":")) return line;
+      if (trimmed.length > 200) return line;
+      const words = trimmed.split(/\s+/);
+      if (words.length <= 8 && words.every((word) => /^[A-Z]/.test(word)) && !/[.!?,]/.test(trimmed)) return line;
+      const prev = [...lines.slice(0, index)].reverse().find((item) => item.trim());
+      const next = lines.slice(index + 1).find((item) => item.trim());
+      if (prev && /^-\s+/.test(prev.trim()) && next && /^-\s+/.test(next.trim())) return `- ${trimmed}`;
+      return line;
+    })
+    .join("\n");
+}
+
+function finishDisplayedDescription(out: string, maxLen: number) {
+  const tidy = promoteStrayListLines(out.replace(/[ \t]+([.,;:!?])/g, "$1"))
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return tidy.length > maxLen ? `${tidy.slice(0, maxLen).trim()}…` : tidy;
+}
+
 function attachOrphanBullets(out: string) {
   const lines = (out || "").split("\n");
   const next: string[] = [];
@@ -349,14 +373,14 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
     let normalized = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
     normalized = normalized.replace(/\*\*/g, "");
     normalized = promoteInlineHyphenBullets(normalized);
-    normalized = joinIntroducingBullets(attachOrphanBullets(normalized));
+    normalized = promoteStrayListLines(joinIntroducingBullets(attachOrphanBullets(normalized)));
     normalized = promoteListLabels(normalized);
     normalized = dropSeparatorLines(repairFalseHeadings(normalized));
     normalized = normalizeSectionHeadings(normalized);
     normalized = explodeInlineBullets(normalized).replace(/\n{3,}/g, "\n\n").trim();
     normalized = splitDenseParagraphs(normalized).replace(/\n{3,}/g, "\n\n").trim();
     normalized = dedupeRepeatedChunks(normalized);
-    return normalized.length > maxLen ? `${normalized.slice(0, maxLen).trim()}…` : normalized;
+    return finishDisplayedDescription(normalized, maxLen);
   }
 
   // 1) Remove scripts/styles.
@@ -398,7 +422,7 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
   let out = lines.join("\n");
   // Collapse too many blank lines.
   out = out.replace(/\*\*/g, "").replace(/\n{3,}/g, "\n\n").trim();
-  out = promoteListLabels(joinIntroducingBullets(attachOrphanBullets(promoteInlineHyphenBullets(out))));
+  out = promoteListLabels(promoteStrayListLines(joinIntroducingBullets(attachOrphanBullets(promoteInlineHyphenBullets(out)))));
 
   out = dropSeparatorLines(repairFalseHeadings(out));
   out = normalizeSectionHeadings(out);
@@ -416,6 +440,6 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
     out = dedupeRepeatedChunks(out);
   }
 
-  return out.length > maxLen ? `${out.slice(0, maxLen).trim()}…` : out;
+  return finishDisplayedDescription(out, maxLen);
 }
 
