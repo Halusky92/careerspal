@@ -123,10 +123,53 @@ function isHttpApply(url?: string | null) {
   return value.startsWith("http://") || value.startsWith("https://") || !value.startsWith("/");
 }
 
+const COUNTRY_ONLY = new Set([
+  "United States",
+  "Canada",
+  "United Kingdom",
+  "International",
+  "Worldwide",
+  "Global",
+  "US",
+  "USA",
+  "Not specified",
+]);
+
+/** Google's JobPosting examples use these country names, not ISO codes. */
+function applicantCountryName(code: string) {
+  if (code === "US") return "USA";
+  if (code === "CA") return "Canada";
+  if (code === "GB") return "United Kingdom";
+  return code;
+}
+
+function isCountryOnlyLabel(value: string) {
+  return COUNTRY_ONLY.has(value.trim());
+}
+
+/** Keep paragraph breaks. Google requires them and ignores a single collapsed line. */
+function jobPostingDescription(value: string) {
+  const text = value
+    .replace(/<\s*br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|h[1-6]|tr|ul|ol)>/gi, "\n")
+    .replace(/<li\b[^>]*>/gi, "\n- ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  if (text.length <= 12000) return text;
+  const cut = text.slice(0, 12000);
+  const lastBreak = cut.lastIndexOf("\n");
+  return (lastBreak > 8000 ? cut.slice(0, lastBreak) : cut).trim();
+}
+
 export function shouldEmitJobPosting(job: Job): boolean {
   if (job.status && job.status !== "published") return false;
   if (!isLiveBoardJob(job)) return false;
+  if (!postedDate(job)) return false;
   if (!job.title?.trim() || !job.company?.trim()) return false;
+  if (!jobPostingDescription(job.description || "")) return false;
   return isHttpApply(job.applyUrl);
 }
 
@@ -160,8 +203,7 @@ export function buildJobPostingLd(job: Job, canonicalUrl: string) {
   const workMode = inferWorkMode(job);
   const loc = (job.location || "").trim();
   const place = geographyLabel(job);
-  const countryOnly = new Set(["United States", "Canada", "United Kingdom", "International", "Worldwide", "Global", "US", "USA", "Not specified"]);
-  const specificPlace = place && !countryOnly.has(place) ? place : "";
+  const specificPlace = place && !isCountryOnlyLabel(place) ? place : "";
   const remote = workMode === "Remote" || /^remote\b/i.test(loc);
   const countries = applicantCountries(job);
   const locationCountry = countriesInLocation(`${loc} ${job.remotePolicy || ""}`);
@@ -175,13 +217,13 @@ export function buildJobPostingLd(job: Job, canonicalUrl: string) {
     "@context": "https://schema.org",
     "@type": "JobPosting",
     title: job.title,
-    description: (job.description || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 8000),
+    description: jobPostingDescription(job.description || ""),
     datePosted,
-    employmentType: googleEmploymentType(job.type),
+    ...(googleEmploymentType(job.type) !== "OTHER" ? { employmentType: googleEmploymentType(job.type) } : {}),
     url: canonicalUrl,
     identifier: {
       "@type": "PropertyValue",
-      name: "CareersPal",
+      name: job.company,
       value: job.id,
     },
     hiringOrganization: {
@@ -190,7 +232,6 @@ export function buildJobPostingLd(job: Job, canonicalUrl: string) {
       sameAs: website && !atsHost ? website : undefined,
       logo: logo || undefined,
     },
-    directApply: true,
   };
 
   if (baseSalary) ld.baseSalary = baseSalary;
@@ -198,9 +239,9 @@ export function buildJobPostingLd(job: Job, canonicalUrl: string) {
   if (remote) {
     ld.jobLocationType = "TELECOMMUTE";
     if (countries.length === 1) {
-      ld.applicantLocationRequirements = { "@type": "Country", name: countries[0] };
+      ld.applicantLocationRequirements = { "@type": "Country", name: applicantCountryName(countries[0]) };
     } else if (countries.length > 1) {
-      ld.applicantLocationRequirements = countries.map((name) => ({ "@type": "Country", name }));
+      ld.applicantLocationRequirements = countries.map((name) => ({ "@type": "Country", name: applicantCountryName(name) }));
     }
   }
   if (workMode === "Hybrid" && specificPlace) {
@@ -223,7 +264,7 @@ export function buildJobPostingLd(job: Job, canonicalUrl: string) {
         addressCountry: country,
       },
     };
-  } else if (loc && !/^(remote|hybrid)(\b|[\s•·-])/i.test(loc)) {
+  } else if (loc && !isCountryOnlyLabel(loc) && !/^(remote|hybrid)(\b|[\s•·-])/i.test(loc)) {
     ld.jobLocation = {
       "@type": "Place",
       address: {
@@ -232,7 +273,18 @@ export function buildJobPostingLd(job: Job, canonicalUrl: string) {
         addressCountry: country,
       },
     };
+  } else if (!remote && country) {
+    ld.jobLocation = {
+      "@type": "Place",
+      address: {
+        "@type": "PostalAddress",
+        addressCountry: country,
+      },
+    };
   }
+
+  if (remote && !ld.applicantLocationRequirements) delete ld.jobLocationType;
+  if (!ld.jobLocation && !ld.applicantLocationRequirements) return null;
 
   return ld;
 }

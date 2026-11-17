@@ -51,6 +51,29 @@ test("emits JobPosting with salary, remote and apply URL without invented expiry
   assert.equal(ld.validThrough, undefined);
   assert.ok(typeof ld.datePosted === "string");
   assert.equal(ld.url, "https://www.careerspal.com/jobs/revenue-operations-manager-job-1");
+  assert.equal(ld.directApply, undefined);
+  assert.equal((ld.identifier as { name: string }).name, "Acme");
+});
+
+test("job posting description keeps paragraph breaks", () => {
+  const ld = buildJobPostingLd(
+    job({ description: "<p>Own the forecast.</p><ul><li>Report the weekly variance</li></ul>" }),
+    "https://www.careerspal.com/jobs/desc",
+  );
+  const description = String(ld?.description || "");
+  assert.match(description, /Own the forecast\./);
+  assert.match(description, /\n- Report the weekly variance/);
+  assert.equal(description.includes("<p>"), false);
+});
+
+test("a country name is not sent as a city", () => {
+  const ld = buildJobPostingLd(
+    job({ location: "Canada", remotePolicy: "Remote" }),
+    "https://www.careerspal.com/jobs/canada-remote",
+  );
+  assert.equal(ld?.jobLocation, undefined);
+  assert.equal(ld?.jobLocationType, "TELECOMMUTE");
+  assert.equal((ld?.applicantLocationRequirements as { name: string }).name, "Canada");
 });
 
 test("JobPosting salary keeps both bounds and skips an OTE ceiling", () => {
@@ -79,7 +102,7 @@ test("a confirmed remote restriction in the posting becomes the applicant countr
     }),
     "https://www.careerspal.com/jobs/vetcove",
   );
-  assert.equal((vetcove?.applicantLocationRequirements as { name: string }).name, "US");
+  assert.equal((vetcove?.applicantLocationRequirements as { name: string }).name, "USA");
   assert.equal(vetcove?.validThrough, undefined);
   assert.equal(vetcove?.jobLocation, undefined);
 
@@ -90,7 +113,7 @@ test("a confirmed remote restriction in the posting becomes the applicant countr
     }),
     "https://www.careerspal.com/jobs/customers",
   );
-  assert.equal(customers?.applicantLocationRequirements, undefined);
+  assert.equal(customers, null);
 
   const both = buildJobPostingLd(
     job({ location: "Remote - USA or Canada", remotePolicy: "Remote" }),
@@ -98,7 +121,7 @@ test("a confirmed remote restriction in the posting becomes the applicant countr
   );
   assert.deepEqual(
     (both?.applicantLocationRequirements as Array<{ name: string }>).map((item) => item.name),
-    ["US", "CA"],
+    ["USA", "Canada"],
   );
 });
 
@@ -111,10 +134,10 @@ test("International and Worldwide do not invent an applicant country", () => {
     job({ location: "Worldwide", remotePolicy: "Remote", description: "Work from anywhere." }),
     "https://www.careerspal.com/jobs/worldwide",
   );
-  assert.equal(international?.applicantLocationRequirements, undefined);
-  assert.equal(worldwide?.applicantLocationRequirements, undefined);
+  assert.equal(international, null);
+  assert.equal(worldwide, null);
   const unitedStates = buildJobPostingLd(job({ location: "Remote - US" }), "https://www.careerspal.com/jobs/us");
-  assert.equal((unitedStates?.applicantLocationRequirements as { name: string }).name, "US");
+  assert.equal((unitedStates?.applicantLocationRequirements as { name: string }).name, "USA");
 });
 
 test("a second currency in the posting is not sent to Google as USD", () => {
@@ -131,6 +154,9 @@ test("a second currency in the posting is not sent to Google as USD", () => {
   assert.equal(canada.currency, "CAD");
   assert.equal(canada.value.minValue, 151000);
   assert.equal(canada.value.maxValue, 215000);
+  const canadaAddress = (ld?.jobLocation as { address: { addressCountry?: string; addressLocality?: string } }).address;
+  assert.equal(canadaAddress.addressCountry, "CA");
+  assert.equal(canadaAddress.addressLocality, undefined);
   const confirmed = buildJobPostingLd(
     job({
       salary: "From $139k a year",
@@ -166,4 +192,8 @@ test("does not emit JobPosting for expired or unpublished jobs", () => {
   assert.equal(shouldEmitJobPosting(job({ timestamp: Date.now() - 40 * 24 * 60 * 60 * 1000 })), false);
   assert.equal(shouldEmitJobPosting(job({ applyUrl: "#" })), false);
   assert.equal(buildJobPostingLd(job({ applyUrl: "#" }), "https://www.careerspal.com/jobs/x"), null);
+  assert.equal(
+    shouldEmitJobPosting(job({ timestamp: undefined, publishedAt: new Date().toISOString() })),
+    false,
+  );
 });
