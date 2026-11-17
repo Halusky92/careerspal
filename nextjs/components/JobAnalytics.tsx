@@ -31,7 +31,7 @@ export function ApplyClickLink({
   const router = useRouter();
   const { accessToken } = useSupabaseAuth();
   const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (!accessToken || !applyLinkReady(href)) {
+    if (!applyLinkReady(href)) {
       event.preventDefault();
       const result = startApply({ accessToken, jobId, applyUrl: href });
       if (result.href) router.push(result.href);

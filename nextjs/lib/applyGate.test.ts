@@ -13,7 +13,7 @@ test("apply auth return path stays on-site", () => {
   assert.equal(authHrefForApply("/jobs/ops-role"), "/auth?from=%2Fjobs%2Fops-role");
 });
 
-test("guest apply stays on CareersPal auth, then returns to the job", () => {
-  assert.equal(authHrefForApply("/jobs/ops-role"), "/auth?from=%2Fjobs%2Fops-role");
+test("a public apply link does not require an account", () => {
+  assert.equal(applyLinkReady("https://firm.com/jobs"), true);
   assert.equal(authHrefForApply("/jobs/ops-role").includes("/apply/continue"), false);
 });
