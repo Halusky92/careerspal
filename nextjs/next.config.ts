@@ -13,12 +13,6 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  async rewrites() {
-    return [
-      { source: "/favicon.svg", destination: "/logo.png" },
-      { source: "/logo.svg", destination: "/logo.png" },
-    ];
-  },
   async headers() {
     return [
       {
