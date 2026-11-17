@@ -11,8 +11,8 @@ import {
 
 test("daily discovery rotates every category and keeps both caps", () => {
   assert.equal(DISCOVERY_GROUPS.length, 8);
-  assert.equal(DAILY_SEARCH_CAP, 20);
-  assert.equal(MONTHLY_SEARCH_CAP, 620);
+  assert.equal(DAILY_SEARCH_CAP, 30);
+  assert.equal(MONTHLY_SEARCH_CAP, 900);
   const first = rotateDiscoveryGroups(DISCOVERY_GROUPS, new Date("2026-11-11T09:00:00.000Z"));
   const next = rotateDiscoveryGroups(DISCOVERY_GROUPS, new Date("2026-11-12T09:00:00.000Z"));
   assert.equal(first.length, 8);
@@ -51,7 +51,7 @@ test("a category searched today is not searched again", async () => {
 test("the daily cap uses the next phrase and does not repeat a search", async () => {
   const groups = ["revops", "sales-ops", "bizops", "chief-of-staff", "product-ops", "systems", "automation", "gtm-ops"].map((id) => ({
     id,
-    phrases: [`${id} one`, `${id} two`, `${id} three`],
+    phrases: [`${id} one`, `${id} two`, `${id} three`, `${id} four`],
   }));
   const seen = new Set<string>();
   const result = await runJobFirstDiscovery({
@@ -86,7 +86,7 @@ test("the daily cap uses the next phrase and does not repeat a search", async ()
       enabled: false,
     }),
   });
-  assert.equal(result.searches, 20);
-  assert.equal(seen.size, 20);
+  assert.equal(result.searches, 30);
+  assert.equal(seen.size, 30);
   assert.equal(result.stopped, "search_cap");
 });
