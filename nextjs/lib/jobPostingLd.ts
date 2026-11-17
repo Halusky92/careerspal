@@ -214,7 +214,16 @@ export function buildJobPostingLd(job: Job, canonicalUrl: string) {
       },
     });
     ld.jobLocation = parts.length > 1 ? parts.map(placeFor) : placeFor(specificPlace);
-  } else if (loc && !/^(remote|hybrid)$/i.test(loc)) {
+  } else if (specificPlace) {
+    ld.jobLocation = {
+      "@type": "Place",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: specificPlace,
+        addressCountry: country,
+      },
+    };
+  } else if (loc && !/^(remote|hybrid)(\b|[\s•·-])/i.test(loc)) {
     ld.jobLocation = {
       "@type": "Place",
       address: {

@@ -57,18 +57,22 @@ export function workModeLabel(job: WorkModeInput) {
   return inferWorkMode(job);
 }
 
+function tidyLocationSeparators(value: string) {
+  return value.replace(/(?:\s*•\s*){2,}/g, " • ").replace(/\s+/g, " ").trim();
+}
+
 /** Location as shown on the detail. Does not invent a city or a country. */
 export function publicLocationLabel(job: WorkModeInput): string {
   const location = (job.location || "").trim();
   const mode = inferWorkMode(job);
   const place = geographyLabel(job);
   if (mode === "Hybrid" && /\bremote\b/i.test(`${location} ${job.remotePolicy || ""}`) && !/\bhybrid\b/i.test(location)) {
-    return place && place !== "Not specified" ? `Hybrid • ${place}` : "Hybrid";
+    return place && place !== "Not specified" ? tidyLocationSeparators(`Hybrid • ${place}`) : "Hybrid";
   }
   if ((mode === "Remote" || mode === "Hybrid") && place && place !== "Not specified" && (!location || /^(remote|hybrid)$/i.test(location))) {
-    return `${mode} • ${place}`;
+    return tidyLocationSeparators(`${mode} • ${place}`);
   }
-  if (location) return location;
+  if (location) return tidyLocationSeparators(location);
   return mode === "Remote" ? "Remote" : "";
 }
 
@@ -140,6 +144,7 @@ export function geographyLabel(job: WorkModeInput): string {
     .replace(/\b(fully remote|remote-first|remote|hybrid|onsite|on-site|in-office|worldwide|world-wide|international|internationally|global)\b/gi, " ")
     .replace(/[()]/g, " ")
     .replace(/[-–—]+/g, " ")
+    .replace(/[•·]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   if (place) return place;
