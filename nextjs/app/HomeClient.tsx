@@ -234,7 +234,7 @@ export default function HomeClient({
             className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-slate-300 hover:bg-slate-50"
           >
             <div className="text-sm font-semibold text-slate-900">For employers</div>
-            <p className="mt-1 text-xs text-slate-600">Post → review → live. Candidates apply on your link.</p>
+            <p className="mt-1 text-xs text-slate-600">Post → review → Premium for 24 hours → public. Candidates apply on your link.</p>
           </button>
         </div>
 
