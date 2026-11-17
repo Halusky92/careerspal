@@ -19,11 +19,21 @@ function median(values: number[]) {
   return sorted[mid];
 }
 
-function yearlyAmount(job: Pick<Job, "salary" | "description">): number | null {
+function yearlyAmount(job: Pick<Job, "salary" | "description" | "location" | "remotePolicy">): number | null {
   const blob = `${job.salary || ""}\n${job.description || ""}`;
-  const fromFull = parseSalaryFromText(blob);
-  const parsed = fromFull.salary_present ? fromFull : detectAndParseSalaryForGreenhouse(blob);
+  const place = `${job.location || ""} ${job.remotePolicy || ""}`;
+  const official = detectAndParseSalaryForGreenhouse(blob, place);
+  if (official.salary_currency && official.salary_currency !== "USD") return null;
+  if (official.salary_parse_notes.includes("multiple_salary_bands")) return null;
+  const fromStored = parseSalaryFromText(job.salary || "");
+  const parsed =
+    official.salary_present && official.salary_currency === "USD"
+      ? official
+      : fromStored.salary_present && (!fromStored.salary_currency || fromStored.salary_currency === "USD")
+        ? fromStored
+        : official;
   if (!parsed.salary_present) return null;
+  if (parsed.salary_currency && parsed.salary_currency !== "USD") return null;
   const mid =
     parsed.salary_amount_min != null && parsed.salary_amount_max != null
       ? (parsed.salary_amount_min + parsed.salary_amount_max) / 2
@@ -35,7 +45,9 @@ function yearlyAmount(job: Pick<Job, "salary" | "description">): number | null {
   return mid;
 }
 
-export function salaryBucketsFromJobs(jobs: Array<Pick<Job, "salary" | "description" | "category">>): SalaryBucket[] {
+export function salaryBucketsFromJobs(
+  jobs: Array<Pick<Job, "salary" | "description" | "category" | "location" | "remotePolicy">>,
+): SalaryBucket[] {
   const byCat = new Map<string, number[]>();
   jobs.forEach((job) => {
     const amount = yearlyAmount(job);

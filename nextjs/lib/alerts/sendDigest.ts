@@ -64,7 +64,7 @@ function toDigestJobs(matches: JobRow[], baseUrl: string): DigestJob[] {
     title: job.title || "Role",
     company: getCompanyName(job),
     location: job.location || "—",
-    salary: formatSalaryDisplay(job.salary, job.description),
+    salary: formatSalaryDisplay(job.salary, job.description, `${job.location || ""} ${job.remote_policy || ""}`),
     href: `${baseUrl}/jobs/${createJobSlug({ title: job.title || "role", id: job.id })}?utm_source=alerts`,
   }));
 }

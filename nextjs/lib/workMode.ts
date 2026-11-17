@@ -92,6 +92,34 @@ function statedReach(text: string): "International" | "Worldwide" | "Global" | n
   return "Global";
 }
 
+function tidyStatedPlaces(raw: string): string | null {
+  const text = raw
+    .replace(/^(?:either|one of)\s+/i, "")
+    .split(/\b(?:because|where|and we|we work|our anchor)\b/i)[0]
+    .replace(/[.;:]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (text.length < 3 || text.length > 80) return null;
+  if (!/[A-Za-z]/.test(text)) return null;
+  return text;
+}
+
+/** Cities the posting names as the place for this role. A company headquarters is not a work location. */
+function statedRoleCities(description: string): string | null {
+  const text = description.slice(0, 4000);
+  const patterns = [
+    /(?:this role|the role|this position|the position)\s+(?:can be|may be|will be|is|are)\s+based in\s+([^.]{3,90})/i,
+    /(?:candidates?|applicants?)\s+(?:must|should|need to|will)\s+be based in\s+([^.]{3,90})/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (!match) continue;
+    const tidy = tidyStatedPlaces(match[1]);
+    if (tidy) return tidy;
+  }
+  return null;
+}
+
 /** Known geographic limit. Bare Remote stays Not specified. International is used only when the posting says so. */
 export function geographyLabel(job: WorkModeInput): string {
   const raw = `${job.location || ""} ${job.remotePolicy || ""}`.replace(/\s+/g, " ").trim();
@@ -102,6 +130,8 @@ export function geographyLabel(job: WorkModeInput): string {
     .replace(/\s+/g, " ")
     .trim();
   if (place) return place;
+  const cities = statedRoleCities(job.description || "");
+  if (cities) return cities;
   const fromLocation = statedReach(raw);
   if (fromLocation) return fromLocation;
   const restricted = explicitCountry(job.description || "");

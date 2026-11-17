@@ -43,6 +43,12 @@ test("a currency range keeps its hyphen instead of becoming two paragraphs", () 
   assert.equal(text.includes("\n- CA$"), false);
 });
 
+test("a lone dash becomes the bullet for the next line", () => {
+  const text = formatSourcedDescription("What you'll do\n-\nOwn the weekly review");
+  assert.match(text, /^- Own the weekly review/m);
+  assert.equal(text.includes("\n-\n"), false);
+});
+
 test("decorative underscore lines are removed", () => {
   const text = formatSourcedDescription("About Docker\n_______________________________________________________________________\nWe are seeking a Senior Manager.");
   assert.equal(text.includes("____"), false);
