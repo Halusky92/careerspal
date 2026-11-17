@@ -55,6 +55,22 @@ test("decorative underscore lines are removed", () => {
   assert.match(text, /Senior Manager/);
 });
 
+test("a short list label becomes a heading and a split language bullet stays one item", () => {
+  const text = formatSourcedDescription(
+    "Skills You'll Need to Bring\n- You have 4+ years in product operations.\n\nNice To Haves\n- Knowledge of and experience using one or more of the following languages\n- Python, Go, C++ or Java\n\n#LI-Onsite\n\nBy clicking Submit Application, you agree to the recruiting privacy policy.\n\nNotion is an equal opportunity employer and does not discriminate.",
+  );
+  assert.match(text, /Skills You'll Need to Bring:/);
+  assert.match(text, /Nice To Haves:/);
+  assert.match(text, /following languages: Python, Go, C\+\+ or Java/);
+  assert.equal(text.includes("#LI-"), false);
+  assert.equal(text.includes("Submit Application"), false);
+  assert.equal(text.includes("equal opportunity"), false);
+  assert.equal(
+    formatSourcedDescription("We still encourage you to apply. Notion considers qualified applicants with criminal histories, consistent with applicable law.").includes("criminal"),
+    false,
+  );
+});
+
 test("named ATS headings become job-detail sections", () => {
   const sections = extractJobDetailSections(
     "About the role\nRun the weekly ops review.\n\nWhat you'll do\n- Build the tracker\n\nRequirements\n- SQL",
