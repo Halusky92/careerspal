@@ -75,7 +75,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-slate-900 p-4 flex flex-col text-white">
-          <h2 className="text-base font-semibold">Elite Managed</h2>
+          <h2 className="text-base font-semibold">Elite</h2>
           <p className="mt-2 text-3xl font-semibold">
             ${PLAN_PRICES.elite} <span className="text-sm font-medium text-slate-300">/ 30 days</span>
           </p>

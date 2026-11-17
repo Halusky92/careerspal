@@ -94,7 +94,10 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Job alerts</p>
         <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Stay in the loop</h1>
         <p className="mt-2 text-sm text-slate-600 max-w-2xl">
-          Tuesday and Friday for the category, salary, place, work mode, and stored tools you choose, after a role is public. Premium sends that search after each search, including the first 24 hours.
+          Public jobs go out Tuesday and Friday, after a role is on the board. You can subscribe here without an account.
+        </p>
+        <p className="mt-1 text-sm text-slate-600 max-w-2xl">
+          Premium sends a match after each search, including roles in their first 24 hours.
         </p>
         <PublicSubscriberNote count={subscriberCount} />
       </div>

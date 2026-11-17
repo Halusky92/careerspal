@@ -87,7 +87,7 @@ export default function HireTalent({ companyNames = [] }: HireTalentProps) {
         </ol>
 
         <ul className="mt-6 space-y-2 text-sm text-slate-700">
-          <li>After review, the listing is on Premium for 24 hours, then on the public board. People apply on your link.</li>
+          <li>After review, your listing is available to Premium members for 24 hours, then becomes public.</li>
           <li>
             Published roles can appear in twice-weekly email alerts. Not a guaranteed send or a promised volume.
             <PublicSubscriberNoteClient className="mt-1 text-sm text-slate-500" />

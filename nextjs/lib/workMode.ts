@@ -37,7 +37,20 @@ export function inferWorkMode(job: WorkModeInput): WorkMode | "" {
   }
   if (location && !/\bremote\b/i.test(location)) return "Onsite";
   if (!location && !policy && remoteCue.test(description)) return "Remote";
+  if (titleCountry(job.title || "") || /[-–(]\s*remote\b/i.test(job.title || "")) return "Remote";
   return "";
+}
+
+/** A title suffix such as "US Remote" names the place. A country mentioned only in the body does not. */
+function titleCountry(title: string): "United States" | "Canada" | "United Kingdom" | null {
+  const text = title.trim();
+  if (!text) return null;
+  if (/\b(?:us|u\.s\.|usa|united states)\s+remote\b/i.test(text) || /\bremote\b(?:\s*[-–—(]\s*|\s+)(?:us|u\.s\.|usa)\b/i.test(text)) {
+    return "United States";
+  }
+  if (/\bcanada\s+remote\b/i.test(text) || /\bremote\b(?:\s*[-–—(]\s*|\s+)canada\b/i.test(text)) return "Canada";
+  if (/\b(?:uk|u\.k\.|united kingdom)\s+remote\b/i.test(text)) return "United Kingdom";
+  return null;
 }
 
 export function workModeLabel(job: WorkModeInput) {
@@ -130,6 +143,8 @@ export function geographyLabel(job: WorkModeInput): string {
     .replace(/\s+/g, " ")
     .trim();
   if (place) return place;
+  const fromTitle = titleCountry(job.title || "");
+  if (fromTitle) return fromTitle;
   const cities = statedRoleCities(job.description || "");
   if (cities) return cities;
   const fromLocation = statedReach(raw);

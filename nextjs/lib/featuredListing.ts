@@ -14,6 +14,9 @@ export const featuredRank = (job: Pick<Job, "planType" | "plan">) => {
   return 0;
 };
 
+/** Public name. The stored plan stays "Elite Managed" so billing does not change. */
+export const employerPlanLabel = (plan?: string | null) => (plan === "Elite Managed" ? "Elite" : plan || "");
+
 export const featuredLabel = (job: Pick<Job, "planType" | "plan">) => {
   const plan = job.planType || job.plan?.type;
   if (plan === "Elite Managed") return "Elite";

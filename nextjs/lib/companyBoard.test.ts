@@ -24,6 +24,15 @@ test("a dated product plan is not shown as what the company does", () => {
   assert.equal(isBoilerplateDescription("Clover Health is a Medicare Advantage company."), false);
 });
 
+test("a product slogan is not shown as the company description", () => {
+  assert.equal(isBoilerplateDescription("Your intelligent orchestration platform for DevSecOps"), true);
+  assert.equal(
+    isBoilerplateDescription("Build Custom Agents and automate busywork. The AI workspace where teams get more done, faster."),
+    true,
+  );
+  assert.equal(isBoilerplateDescription("Samsara provides software and hardware tools for companies that manage fleets."), false);
+});
+
 test("a company's own site blurb is kept", () => {
   const own = "BetterUp helps people grow with coaching at work.";
   assert.equal(isBoilerplateDescription(own), false);

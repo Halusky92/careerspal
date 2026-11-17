@@ -4,6 +4,7 @@ import { applyLiveBoardFilter, isLiveBoardJob } from "./liveBoard";
 import { isOnNicheJob } from "./nicheScope";
 import { getCategoryHub, jobMatchesHub, resolveCategoryParam } from "./categories";
 import { mapSupabaseJob, type SupabaseJobRow } from "./supabaseJobs";
+import { publicLocationLabel } from "./workMode";
 import { boardCap, boardPageForTier, type BoardTier } from "./boardAccess";
 
 export const PUBLIC_JOB_SELECT =
@@ -18,6 +19,15 @@ export type PublicBoardFilters = {
 };
 
 type AdminSb = SupabaseClient<any, "public", any>;
+
+/** The list uses the same place as the detail. A bare Remote stays until a country is confirmed. */
+export function withPublicLocation(job: Job): Job {
+  const raw = (job.location || "").trim();
+  if (raw && !/^(remote|hybrid)$/i.test(raw)) return job;
+  const shown = publicLocationLabel(job);
+  if (!shown || shown === raw) return job;
+  return { ...job, location: shown };
+}
 
 export async function loadPublishedBoardJobs(sb: AdminSb, filters: PublicBoardFilters = {}): Promise<Job[]> {
   const categoryParam = resolveCategoryParam(filters.category || undefined);
@@ -37,6 +47,7 @@ export async function loadPublishedBoardJobs(sb: AdminSb, filters: PublicBoardFi
     jobs.push(
       ...rows
         .map(mapSupabaseJob)
+        .map(withPublicLocation)
         .filter((job) => isOnNicheJob(job) && (!categoryHub || jobMatchesHub(job, categoryHub))),
     );
     if (rows.length < pageSize) break;

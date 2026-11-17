@@ -39,9 +39,21 @@ export const isBoilerplateDescription = (value?: string | null) => {
     /\bgreenhouse\.io\b/.test(t) ||
     t.includes("coming soon") ||
     isStorefrontPromo(t) ||
-    isProductPlanBlurb(t)
+    isProductPlanBlurb(t) ||
+    isHomepageTagline(t)
   );
 };
+
+/** A short product slogan is not an employer description. A factual sentence stays. */
+export function isHomepageTagline(value?: string | null) {
+  const text = (value || "").replace(/\s+/g, " ").trim();
+  if (!text || text.length > 220) return false;
+  if (/\b(is a|is an|we are|we build|we help|provides|founded|company that|helps)\b/i.test(text)) return false;
+  return (
+    /^(your |build |the ai |explore |discover |meet )/i.test(text) ||
+    /\b(ai workspace|orchestration platform|get more done)\b/i.test(text)
+  );
+}
 
 /** A product or plan advertisement is not a company description. */
 export function isProductPlanBlurb(value?: string | null) {

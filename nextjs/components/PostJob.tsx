@@ -7,6 +7,7 @@ import { postingOwnerKey, readPostingItem, writePostingItem } from "../lib/posti
 import { Job, PlanType } from '../types';
 import { CATEGORIES, CATEGORY_FILTER_LABELS } from '../constants';
 import { PLAN_PRICES } from '../lib/plans';
+import { employerPlanLabel } from "../lib/featuredListing";
 import { filterJobTitleSuggestions } from "../lib/jobTitleSuggestions";
 import { toggleTool, toolsForCategory, toolsToKeywords } from "../lib/postingTools";
 import StartPackMeter from "./StartPackMeter";
@@ -585,7 +586,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
       ? "Current plan: Start pack · Free"
       : !isEmployerAccount
         ? "Start pack: 1 free, then $79"
-        : `Current plan: ${selectedPlan.type} · ${formatPrice(selectedPlan.price)} / 30 days`;
+        : `Current plan: ${employerPlanLabel(selectedPlan.type)} · ${formatPrice(selectedPlan.price)} / 30 days`;
 
   const previewPlaceLabel = (() => {
     const policy = (formData.remotePolicy || "").trim();
@@ -1222,7 +1223,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                   id="get"
                   openId={openInfoId}
                   onToggle={toggleInfo}
-                  title={`What you get (${usingStartPack ? "Start pack" : selectedPlan.type})`}
+                  title={`What you get (${usingStartPack ? "Start pack" : employerPlanLabel(selectedPlan.type)})`}
                 >
                   <ul className="space-y-2 text-sm font-medium text-slate-700">
                     {planHighlights.map((x) => (
@@ -1277,7 +1278,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
               ) : (
                 <>
                   <p className="mt-1 text-lg font-semibold text-slate-900">
-                    {selectedPlan.type} · {formatPrice(selectedPlan.price)}
+                    {employerPlanLabel(selectedPlan.type)} · {formatPrice(selectedPlan.price)}
                   </p>
                   <p className="mt-1 text-xs text-slate-600">30 days. Premium for the first 24 hours, then the public board.</p>
                 </>

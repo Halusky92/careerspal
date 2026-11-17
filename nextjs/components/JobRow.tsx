@@ -90,7 +90,10 @@ export default function JobRow({
   const descriptionText = stripHtmlToText(job.description || "").replace(/\s+/g, " ").trim();
   const descriptionPreview =
     descriptionText.length > 520 ? `${descriptionText.slice(0, 520).trim()}…` : descriptionText;
-  const remoteMeta = useMemo(() => getRemoteMeta(job, workMode), [job.location, workMode]);
+  const remoteMeta = useMemo(
+    () => getRemoteMeta(job, workMode),
+    [job.location, job.remotePolicy, job.title, job.description, workMode],
+  );
 
   const chips = useMemo(() => {
     // Scan-first metadata.

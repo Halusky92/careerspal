@@ -71,6 +71,12 @@ test("a short list label becomes a heading and a split language bullet stays one
   );
 });
 
+test("a line between bullets stays a bullet and a space before a period is closed", () => {
+  const text = formatSourcedDescription("- Own the forecast\nReport the weekly variance\n- Keep the close calendar");
+  assert.match(text, /^- Report the weekly variance/m);
+  assert.equal(formatSourcedDescription("The team ships on time ."), "The team ships on time.");
+});
+
 test("named ATS headings become job-detail sections", () => {
   const sections = extractJobDetailSections(
     "About the role\nRun the weekly ops review.\n\nWhat you'll do\n- Build the tracker\n\nRequirements\n- SQL",
