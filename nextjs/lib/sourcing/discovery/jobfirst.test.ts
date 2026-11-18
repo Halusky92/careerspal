@@ -64,6 +64,7 @@ test("new boards exclude seeds, aggregators, and duplicates, and stop at four", 
   const hits = [
     { url: "https://boards.greenhouse.io/gitlab/jobs/1", title: "GitLab" },
     { url: "https://jobs.lever.co/jobgether/abc", title: "Jobgether" },
+    { url: "https://boards.greenhouse.io/monzoreferrals/jobs/1", title: "Referrals Only" },
     { url: "https://jobs.ashbyhq.com/opensesame", title: "OpenSesame" },
     { url: "https://jobs.ashbyhq.com/opensesame/one", title: "again" },
     { url: "https://boards.greenhouse.io/alpha", title: "A" },

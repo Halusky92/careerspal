@@ -24,7 +24,7 @@ import { mentionedPostingTools } from "../../postingTools";
 import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
 import { isBoilerplateDescription, isForeignCompanyBlurb } from "../../companyBoard";
 import { inferWorkMode } from "../../workMode";
-import { discoveryMarketBlockers } from "./discoveryPublishGate";
+import { discoveryMarketBlockers, payBelowBoard } from "./discoveryPublishGate";
 import { isRawAtsSlug } from "../discovery/boardName";
 import { resolveCategoryHub } from "../../categories";
 import { upsertRawJobsByHash } from "./rawIngest";
@@ -758,6 +758,10 @@ export async function autoPublishEligibleCandidates(
     if (candidate.salary_amount_min == null && candidate.salary_amount_max == null)
       ineligibleReasons.push("salary_range_missing");
     if (!String(candidate.salary_currency || "").trim()) ineligibleReasons.push("salary_currency_unconfirmed");
+    if (payBelowBoard(candidate)) ineligibleReasons.push("salary_below_board");
+    if (/referral/i.test(`${src?.ats_identifier || ""} ${candidate.company_name || ""} ${derivedCompanyName || ""}`)) {
+      ineligibleReasons.push("referral_board");
+    }
     if (dupConfidence === "high") ineligibleReasons.push("duplicate_high");
     if (blocking.length > 0) ineligibleReasons.push(`blocking=${blocking.join(",")}`);
     if (!Boolean(candidate.apply_url && candidate.apply_url.trim() && candidate.apply_url.trim() !== "#"))

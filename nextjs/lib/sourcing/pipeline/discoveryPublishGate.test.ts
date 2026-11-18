@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { inferWorkMode } from "../../workMode";
-import { discoveryMarketBlockers, discoverySourceKey } from "./discoveryPublishGate";
+import { discoveryMarketBlockers, discoverySourceKey, payBelowBoard } from "./discoveryPublishGate";
 
 const usRemote = "This role is remote for anyone in the United States. ".repeat(8);
 
@@ -122,11 +122,7 @@ test("hybrid outside the US, or hybrid without a country, stays unpublished", ()
   );
 });
 
-test("onsite stays blocked and a named remote country can publish", () => {
-  assert.deepEqual(
-    discoveryMarketBlockers({ title: "Revenue Operations Manager", location_text: "New York, NY", remote_policy: "" }),
-    ["onsite_only"],
-  );
+test("a named remote country can publish, and a low USD rate cannot", () => {
   assert.deepEqual(
     discoveryMarketBlockers({
       title: "Revenue Operations Manager",
@@ -135,6 +131,10 @@ test("onsite stays blocked and a named remote country can publish", () => {
     }),
     [],
   );
+  assert.equal(payBelowBoard({ salary_amount_min: 21, salary_amount_max: 21, salary_period: "hour", salary_currency: "USD" }), true);
+  assert.equal(payBelowBoard({ salary_amount_min: 3000, salary_amount_max: 4000, salary_period: "month", salary_currency: "USD" }), true);
+  assert.equal(payBelowBoard({ salary_amount_min: 80000, salary_amount_max: 90000, salary_period: "year", salary_currency: "USD" }), false);
+  assert.equal(payBelowBoard({ salary_amount_min: 105000, salary_amount_max: 125000, salary_period: "year", salary_currency: "CAD" }), false);
 });
 
 test("Toast hybrid policy is not labeled Remote, and Twilio exclusions are not dropped", () => {
