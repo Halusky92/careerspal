@@ -276,7 +276,8 @@ export async function runJobFirstDiscovery(args: {
   const notedSkips = new Set<string>();
   const groupList = args.groups ?? DISCOVERY_GROUPS;
 
-  for (let pass = 0; pass < 8 && !stopped && !(typeof args.maxSearches === "number" && searches >= args.maxSearches); pass += 1) {
+  const passLimit = Math.max(1, ...groupList.map((group) => group.phrases.length));
+  for (let pass = 0; pass < passLimit && !stopped && !(typeof args.maxSearches === "number" && searches >= args.maxSearches); pass += 1) {
     let addedSearch = false;
     for (const group of groupList) {
       if (!stopped && typeof args.maxSearches === "number" && searches >= args.maxSearches) stopped = "search_cap";
