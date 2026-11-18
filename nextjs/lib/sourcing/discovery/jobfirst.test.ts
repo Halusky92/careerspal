@@ -7,7 +7,9 @@ import { toPendingSourceRow } from "./review";
 import {
   BOARDS_PER_GROUP,
   DISCOVERY_GROUPS,
+  COOLDOWN_MS,
   MONTHLY_SEARCH_CAP,
+  ZERO_STREAK_TO_COOL,
   claimSearchSlot,
   nextPhraseState,
   phraseForGroup,
@@ -31,9 +33,9 @@ test("a cooled phrase spends no search and the next variant rotates", () => {
   assert.equal(cooled, null);
   const open = phraseForGroup(["one", "two"], { variantIndex: 1, zeroNewStreak: 0, cooledUntil: null }, now);
   assert.equal(open?.phrase, "two");
-  const again = nextPhraseState({ variantIndex: 1, zeroNewStreak: 1, cooledUntil: null }, 1, 2, 0, now);
+  const again = nextPhraseState({ variantIndex: 1, zeroNewStreak: ZERO_STREAK_TO_COOL - 1, cooledUntil: null }, 1, 2, 0, now);
   assert.equal(again.variantIndex, 0);
-  assert.ok(again.cooledUntil);
+  assert.equal(Date.parse(again.cooledUntil || "") - now.getTime(), COOLDOWN_MS);
 });
 
 test("one empty night tries the next phrase and does not cool the group", () => {
@@ -46,7 +48,8 @@ test("one empty night tries the next phrase and does not cool the group", () => 
   assert.equal(second.variantIndex, 2);
   assert.equal(second.cooledUntil, null);
   const nextNight = nextPhraseState(second, 2, 5, 0, new Date("2026-11-19T01:05:00.000Z"));
-  assert.ok(nextNight.cooledUntil);
+  assert.equal(nextNight.zeroNewStreak, 2);
+  assert.equal(nextNight.cooledUntil, null);
 });
 
 test("the monthly counter stops at 900 and does not wrap", () => {
