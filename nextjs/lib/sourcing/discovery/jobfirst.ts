@@ -8,8 +8,8 @@ export const DISCOVERY_CADENCE = "5 1 * * *";
 export const DAILY_SEARCH_CAP = 30;
 export const MONTHLY_SEARCH_CAP = 900;
 export const BOARDS_PER_GROUP = 4;
-export const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
-export const ZERO_STREAK_TO_COOL = 2;
+export const COOLDOWN_MS = 2 * 24 * 60 * 60 * 1000;
+export const ZERO_STREAK_TO_COOL = 6;
 export const STAGING_HOST = "rpwutygkiiphqdphitdg.supabase.co";
 export const PRODUCTION_REF = "uahdliiwhvviinujtyjj";
 
