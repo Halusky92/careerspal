@@ -36,6 +36,19 @@ test("a cooled phrase spends no search and the next variant rotates", () => {
   assert.ok(again.cooledUntil);
 });
 
+test("one empty night tries the next phrase and does not cool the group", () => {
+  const now = new Date("2026-11-18T01:05:00.000Z");
+  const first = nextPhraseState(undefined, 0, 5, 0, now);
+  assert.equal(first.zeroNewStreak, 1);
+  assert.equal(first.cooledUntil, null);
+  const second = nextPhraseState(first, 1, 5, 0, now, true);
+  assert.equal(second.zeroNewStreak, 1);
+  assert.equal(second.variantIndex, 2);
+  assert.equal(second.cooledUntil, null);
+  const nextNight = nextPhraseState(second, 2, 5, 0, new Date("2026-11-19T01:05:00.000Z"));
+  assert.ok(nextNight.cooledUntil);
+});
+
 test("the monthly counter stops at 900 and does not wrap", () => {
   assert.equal(claimSearchSlot(899).ok, true);
   assert.equal(claimSearchSlot(899).next, 900);

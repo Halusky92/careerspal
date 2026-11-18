@@ -31,6 +31,8 @@ export const DISCOVERY_GROUPS = [
       "Revenue Operations Manager remote United States",
       "RevOps Manager remote United States",
       "Revenue Operations Lead remote United States",
+      "Head of Revenue Operations remote United States",
+      "Revenue Operations Analyst remote United States",
     ],
   },
   {
@@ -39,6 +41,8 @@ export const DISCOVERY_GROUPS = [
       "Sales Operations Manager remote United States",
       "Deal Desk Manager remote United States",
       "Sales Operations Lead remote United States",
+      "Senior Sales Operations Manager remote United States",
+      "Sales Operations Analyst remote United States",
     ],
   },
   {
@@ -47,6 +51,8 @@ export const DISCOVERY_GROUPS = [
       "Business Operations Manager remote United States",
       "BizOps Manager remote United States",
       "Business Operations Lead remote United States",
+      "Head of Business Operations remote United States",
+      "Strategy and Operations Manager remote United States",
     ],
   },
   {
@@ -55,6 +61,8 @@ export const DISCOVERY_GROUPS = [
       "Chief of Staff remote United States",
       "Chief of Staff to the CEO remote United States",
       "Head of Staff remote United States",
+      "Chief of Staff to the Founder remote United States",
+      "Chief of Staff to the CTO remote United States",
     ],
   },
   {
@@ -63,6 +71,8 @@ export const DISCOVERY_GROUPS = [
       "Product Operations Manager remote United States",
       "Product Ops Manager remote United States",
       "Product Operations Lead remote United States",
+      "Head of Product Operations remote United States",
+      "Product Operations Analyst remote United States",
     ],
   },
   {
@@ -71,6 +81,8 @@ export const DISCOVERY_GROUPS = [
       "Business Systems Analyst remote United States",
       "Business Systems Manager remote United States",
       "Systems Analyst business systems remote United States",
+      "Business Systems Administrator remote United States",
+      "Internal Tools Manager remote United States",
     ],
   },
   {
@@ -79,6 +91,8 @@ export const DISCOVERY_GROUPS = [
       "Workflow Automation Specialist remote United States",
       "Automation Specialist remote United States",
       "Marketing Automation Manager remote United States",
+      "Marketing Operations Manager remote United States",
+      "Workflow Automation Manager remote United States",
     ],
   },
   {
@@ -87,6 +101,8 @@ export const DISCOVERY_GROUPS = [
       "GTM Operations Manager remote United States",
       "Go-to-market Operations Manager remote United States",
       "GTM Ops Lead remote United States",
+      "Head of GTM Operations remote United States",
+      "Customer Success Operations Manager remote United States",
     ],
   },
 ] as const;
@@ -155,8 +171,16 @@ export function phraseForGroup(phrases: readonly string[], state: PhraseState | 
   return { phrase: phrases[variantIndex], variantIndex };
 }
 
-export function nextPhraseState(previous: PhraseState | undefined, variantIndex: number, phraseCount: number, newBoards: number, now: Date): PhraseState {
-  const streak = newBoards > 0 ? 0 : (previous?.zeroNewStreak || 0) + 1;
+export function nextPhraseState(
+  previous: PhraseState | undefined,
+  variantIndex: number,
+  phraseCount: number,
+  newBoards: number,
+  now: Date,
+  holdMiss = false,
+): PhraseState {
+  const prior = previous?.zeroNewStreak || 0;
+  const streak = newBoards > 0 ? 0 : holdMiss ? prior : prior + 1;
   const cool = streak >= ZERO_STREAK_TO_COOL;
   return {
     variantIndex: (variantIndex + 1) % phraseCount,
@@ -272,7 +296,14 @@ export async function runJobFirstDiscovery(args: {
         qualifying += review.qualifyingJobCount;
         if (review.decision === "pending_approval") pending.push(review);
       }
-      const update = nextPhraseState(livePhrases[group.id], picked.variantIndex, group.phrases.length, boards.length, args.now);
+      const update = nextPhraseState(
+        livePhrases[group.id],
+        picked.variantIndex,
+        group.phrases.length,
+        boards.length,
+        args.now,
+        boards.length === 0 && phraseUpdates[group.id] != null,
+      );
       livePhrases[group.id] = { ...update, updatedAt: args.now.toISOString() };
       phraseUpdates[group.id] = update;
       const info = { id: group.id, phrase: picked.phrase, boards: boards.length, qualifying, skipped: "" };
