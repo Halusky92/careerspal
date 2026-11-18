@@ -7,7 +7,7 @@ import { detectEmploymentType } from "../normalization/employmentType";
 import { salaryTextForSourced } from "../../formatSalary";
 import { roundSalaryAmount, type SalaryPeriod } from "../normalization/salary";
 import { isOnNicheJob } from "../../nicheScope";
-import { discoveryMarketBlockers } from "./discoveryPublishGate";
+import { discoveryMarketBlockers, payBelowBoard } from "./discoveryPublishGate";
 import { inferWorkMode } from "../../workMode";
 import { resolveCategoryHub } from "../../categories";
 import { applyUrlLooksSourcedAts, probeApplyUrl } from "../../jobs/applyLinkHealth";
@@ -123,6 +123,7 @@ export function sourcedPublishBlockers(candidate: CandidateRow, scoreTotal: numb
   if (candidate.salary_present !== true) reasons.push("salary_missing");
   if (candidate.salary_amount_min == null && candidate.salary_amount_max == null) reasons.push("salary_range_missing");
   if (!String(candidate.salary_currency || "").trim()) reasons.push("salary_currency_unconfirmed");
+  if (payBelowBoard(candidate)) reasons.push("salary_below_board");
   const applyUrl = (candidate.apply_url || "").trim();
   if (!applyUrl || applyUrl === "#") reasons.push("apply_missing");
   if (((candidate.description_clean || "").trim().length) < 280) reasons.push("description_thin");

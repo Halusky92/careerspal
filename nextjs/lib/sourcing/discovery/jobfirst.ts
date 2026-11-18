@@ -231,6 +231,7 @@ export function boardFromHit(raw: string): OfficialBoard | null {
   if (provider !== "greenhouse" && provider !== "ashby" && provider !== "lever") return null;
   if (!TOKEN_RE.test(identifier)) return null;
   if (AGGREGATOR_TOKENS.has(identifier.toLowerCase())) return null;
+  if (/referral/i.test(identifier)) return null;
   return { provider, identifier, boardUrl };
 }
 
