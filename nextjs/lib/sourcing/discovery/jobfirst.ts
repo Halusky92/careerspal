@@ -35,6 +35,8 @@ export const DISCOVERY_GROUPS = [
       "Revenue Operations Analyst remote United States",
       "Director of Revenue Operations remote United States",
       "Senior Revenue Operations Manager remote United States",
+      "Revenue Operations Specialist remote United States",
+      "Head of RevOps remote United States",
     ],
   },
   {
@@ -47,6 +49,8 @@ export const DISCOVERY_GROUPS = [
       "Sales Operations Analyst remote United States",
       "Head of Sales Operations remote United States",
       "Deal Desk Analyst remote United States",
+      "Sales Operations Specialist remote United States",
+      "Senior Deal Desk Manager remote United States",
     ],
   },
   {
@@ -59,6 +63,8 @@ export const DISCOVERY_GROUPS = [
       "Strategy and Operations Manager remote United States",
       "Director of Business Operations remote United States",
       "Business Operations Analyst remote United States",
+      "Senior Business Operations Manager remote United States",
+      "Head of Strategy and Operations remote United States",
     ],
   },
   {
@@ -71,6 +77,8 @@ export const DISCOVERY_GROUPS = [
       "Chief of Staff to the CTO remote United States",
       "Founding Chief of Staff remote United States",
       "Chief of Staff, Operations remote United States",
+      "Chief of Staff to the COO remote United States",
+      "GTM Chief of Staff remote United States",
     ],
   },
   {
@@ -83,6 +91,8 @@ export const DISCOVERY_GROUPS = [
       "Product Operations Analyst remote United States",
       "Director of Product Operations remote United States",
       "Product Ops Lead remote United States",
+      "Senior Product Operations Manager remote United States",
+      "Product Operations Specialist remote United States",
     ],
   },
   {
@@ -95,6 +105,8 @@ export const DISCOVERY_GROUPS = [
       "Internal Tools Manager remote United States",
       "Technical Operations Manager remote United States",
       "Support Operations Manager remote United States",
+      "Senior Business Systems Analyst remote United States",
+      "Business Systems Lead remote United States",
     ],
   },
   {
@@ -107,6 +119,8 @@ export const DISCOVERY_GROUPS = [
       "Workflow Automation Manager remote United States",
       "Marketing Ops Manager remote United States",
       "Internal Tools Specialist remote United States",
+      "Marketing Automation Specialist remote United States",
+      "Workflow Automation Lead remote United States",
     ],
   },
   {
@@ -119,6 +133,8 @@ export const DISCOVERY_GROUPS = [
       "Customer Success Operations Manager remote United States",
       "Customer Operations Manager remote United States",
       "Director of GTM Operations remote United States",
+      "GTM Operations Analyst remote United States",
+      "Head of Customer Operations remote United States",
     ],
   },
 ] as const;
