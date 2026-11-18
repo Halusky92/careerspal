@@ -72,7 +72,7 @@ async function searchTavily(key: string, query: string) {
       query,
       search_depth: "basic",
       topic: "general",
-      max_results: 8,
+      max_results: 20,
       include_domains: DISCOVERY_DOMAINS,
     }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
