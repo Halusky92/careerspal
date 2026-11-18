@@ -22,6 +22,14 @@ test("an executive assistant or permit operations role does not pass on the word
   assert.equal(isOnNicheJob({ title: "Administrative Assistant, Operations" }), false);
 });
 
+test("software testing titles do not pass as automation", () => {
+  assert.equal(isOnNicheJob({ title: "QA Automation Engineer" }), false);
+  assert.equal(isOnNicheJob({ title: "Test Automation Engineer" }), false);
+  assert.equal(isOnNicheJob({ title: "SDET" }), false);
+  assert.equal(isOnNicheJob({ title: "Workflow Automation Engineer" }), true);
+  assert.equal(isOnNicheJob({ title: "Marketing Automation Specialist" }), true);
+});
+
 test("revenue, sales, product and GTM operations stay in the niche", () => {
   assert.equal(isOnNicheJob({ title: "Revenue Operations Manager" }), true);
   assert.equal(isOnNicheJob({ title: "Senior Manager, Sales Operations" }), true);
