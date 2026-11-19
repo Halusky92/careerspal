@@ -89,11 +89,24 @@ export function applicantCountries(job: { location?: string | null; remotePolicy
 
 const OTHER_CURRENCY = /\b(?:CAD|AUD|EUR|GBP|NZD|CHF|SGD|HKD|INR|JPY|SEK|NOK|DKK|PLN|CZK)\b|CA\$|A\$|€|£/i;
 
+function placeConfirmsUsd(job: Job) {
+  return applicantCountries(job).length === 1 && applicantCountries(job)[0] === "US";
+}
+
+/** A bare $ is not a named currency. USD is used only when the posting or the place says the United States. */
+function salaryForGoogle(job: Job, parsed: ParsedSalary | null): ParsedSalary | null {
+  if (!parsed?.salary_currency) return null;
+  if (parsed.salary_currency !== "USD") return parsed;
+  const named = /\bUSD\b|US\$/i.test(`${job.salary || ""}\n${job.description || ""}`);
+  if (named || placeConfirmsUsd(job)) return parsed;
+  return null;
+}
+
 function structuredSalary(job: Job): ParsedSalary | null {
   const description = job.description || "";
   const official = chooseOfficialSalary(description, salaryPlaceHint(job));
   if (official.salary_present && official.salary_currency && (official.salary_amount_min != null || official.salary_amount_max != null)) {
-    return official;
+    return salaryForGoogle(job, official);
   }
   const stored = parseSalaryFromText(job.salary || "");
   const oteFloor =
@@ -120,7 +133,7 @@ function structuredSalary(job: Job): ParsedSalary | null {
     if (postingHasRange && sameFloor) return fromPosting;
   }
   if (!stored.salary_present || !stored.salary_currency) return null;
-  return stored;
+  return salaryForGoogle(job, stored);
 }
 
 function postedDate(job: Job): Date | null {
