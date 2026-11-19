@@ -69,6 +69,8 @@ const TITLE_FALSE_FRIENDS = [
   /\bstore operations\b/i,
   /\bflight operations\b/i,
   /\bsecurity operations\b/i,
+  /\bthreat operations\b/i,
+  /\bsecurity automation\b/i,
   /\bnetwork operations\b/i,
   /\bplant operations\b/i,
   /\bmanufacturing operations\b/i,

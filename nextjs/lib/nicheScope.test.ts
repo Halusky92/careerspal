@@ -30,6 +30,8 @@ test("software testing, trading, recruiting, and finance titles stay out", () =>
   assert.equal(isOnNicheJob({ title: "Business Operations Director, Recruiting" }), false);
   assert.equal(isOnNicheJob({ title: "Director, Finance Strategy & Operations" }), false);
   assert.equal(isOnNicheJob({ title: "Sr. Systems Analyst, Finance, Enterprise Apps" }), true);
+  assert.equal(isOnNicheJob({ title: "Security and Threat Operations Engineer" }), false);
+  assert.equal(isOnNicheJob({ title: "Security Automation Engineer" }), false);
   assert.equal(isOnNicheJob({ title: "Workflow Automation Engineer" }), true);
   assert.equal(isOnNicheJob({ title: "Marketing Automation Specialist" }), true);
   assert.equal(isOnNicheJob({ title: "Revenue Operations Manager" }), true);

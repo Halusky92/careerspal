@@ -27,7 +27,8 @@ const norm = (v: string | null | undefined) =>
 export function computeTitleCompanyKey(c: { title: string | null; company_name: string | null }): string {
   const t = norm(c.title);
   const co = norm(c.company_name);
-  return `${co}::${t}`.trim();
+  if (!t || !co) return "";
+  return `${co}::${t}`;
 }
 
 export function dedupeAgainst(
