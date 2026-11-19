@@ -94,13 +94,13 @@ export default function AlertsClient({ initialCategory, subscriberCount = null }
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Job alerts</p>
         <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Stay in the loop</h1>
         <p className="mt-2 text-sm text-slate-600 max-w-2xl">
-          This page emails public jobs on Tuesday and Friday. No account is required.
+          The email uses the category, salary floor, and tools you choose.
         </p>
         <p className="mt-1 text-sm text-slate-600 max-w-2xl">
-          A free account saves one search and uses that same Tuesday and Friday email.
+          No account is required. That email goes out Tuesday and Friday, after a role is public. A free account saves one of those searches.
         </p>
         <p className="mt-1 text-sm text-slate-600 max-w-2xl">
-          Premium emails after each search and includes roles in their first 24 hours.
+          Premium sends that search after each search and includes roles in their first 24 hours.
         </p>
         <PublicSubscriberNote count={subscriberCount} />
       </div>

@@ -2,6 +2,9 @@
  * CareersPal category hubs. Title is the source of truth; DB category is a fallback.
  */
 
+import type { BoardTier } from "./boardAccess";
+import { isEarlyAccessListing, listingsForViewer } from "./listingWindow";
+
 export type CategorySlug =
   | "operations"
   | "systems"
@@ -133,6 +136,31 @@ export function categoryCountsForJobs(jobs: Array<{ title?: string | null; categ
     if (slug) counts[slug] += 1;
   }
   return counts;
+}
+
+type CountedJob = {
+  title?: string | null;
+  category?: string | null;
+  timestamp?: number | null;
+  publishedAt?: string | null;
+  published_at?: string | null;
+  createdAt?: string | null;
+  created_at?: string | null;
+};
+
+/** Open roles for this tier, plus roles still inside the first 24 hours when this tier cannot see them. */
+export function categoryAvailability(jobs: CountedJob[], tier: BoardTier, now = Date.now()) {
+  const open = categoryCountsForJobs(listingsForViewer(jobs, tier, now));
+  const early: Record<string, number> = {};
+  for (const hub of CATEGORY_HUBS) early[hub.slug] = 0;
+  if (tier !== "paid") {
+    for (const job of jobs) {
+      if (!isEarlyAccessListing(job, now)) continue;
+      const slug = resolveCategoryHub(job)?.slug;
+      if (slug) early[slug] += 1;
+    }
+  }
+  return { open, early };
 }
 
 export function resolveCategoryParam(raw?: string | null): string {

@@ -41,7 +41,7 @@ const Footer = () => {
               <li><Link href="/post-a-job" className="hover:text-indigo-600">Post a job</Link></li>
               <li><Link href="/pricing" className="hover:text-indigo-600">Pricing</Link></li>
               <li><Link href="/about" className="hover:text-indigo-600">About</Link></li>
-              <li><a href="mailto:info@careerspal.com" className="hover:text-indigo-600">Support</a></li>
+              <li><Link href="/support" className="hover:text-indigo-600">Support</Link></li>
             </ul>
           </div>
           <div>

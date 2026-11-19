@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CATEGORY_HUBS } from "../../lib/categories";
+import { CATEGORY_HUBS, categoryAvailability } from "../../lib/categories";
 import { getCanonicalSiteUrl } from "../../lib/alerts/siteUrl";
+import { supabaseAdmin } from "../../lib/supabaseAdmin";
+import { loadPublishedBoardJobs } from "../../lib/publicJobBoard";
+import { viewerTier } from "../../lib/viewerTier";
 
 const getBaseUrl = () => getCanonicalSiteUrl();
 
@@ -83,7 +86,18 @@ const ICON_TINT: Record<string, string> = {
   "chief-of-staff": "bg-teal-50 text-teal-700",
 };
 
-export default function CategoriesPage() {
+export default async function CategoriesPage() {
+  const tier = await viewerTier();
+  let open: Record<string, number> = {};
+  let early: Record<string, number> = {};
+  if (supabaseAdmin) {
+    const jobs = await loadPublishedBoardJobs(supabaseAdmin);
+    const counts = categoryAvailability(jobs, tier);
+    open = counts.open;
+    early = counts.early;
+  }
+  const roleLabel = (count: number) => `${count} ${count === 1 ? "role" : "roles"}`;
+
   return (
     <div className="bg-[#F8F9FD] pb-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
@@ -91,7 +105,11 @@ export default function CategoriesPage() {
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Categories</p>
             <h1 className="mt-2 text-2xl font-semibold text-slate-900 tracking-tight">Explore roles</h1>
-            <p className="mt-1 text-sm text-slate-600">Find your focus</p>
+            <p className="mt-1 text-sm text-slate-600">
+              {tier === "paid"
+                ? "Counts include roles from their first 24 hours."
+                : "Counts are the roles you can open now. The first 24 hours are on Premium."}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Link
@@ -116,10 +134,20 @@ export default function CategoriesPage() {
                   <CategoryIcon slug={hub.slug} />
                 </div>
                 <div className="mt-3 text-sm font-semibold text-slate-900">{hub.label}</div>
+                <div className="mt-1 text-xs text-slate-500">{roleLabel(open[hub.slug] || 0)}</div>
+                {(early[hub.slug] || 0) > 0 ? (
+                  <div className="mt-0.5 text-xs text-slate-500">{early[hub.slug]} in the first 24 hours</div>
+                ) : null}
               </Link>
             );
           })}
         </div>
+        <p className="mt-4 text-sm text-slate-600">
+          <Link href="/alerts" className="font-medium text-indigo-700 hover:text-indigo-800">Email alerts</Link>
+          {" follow a category. "}
+          <Link href="/salary-insights" className="font-medium text-indigo-700 hover:text-indigo-800">Pay on the board</Link>
+          {" is the observed midpoint of the USD listings."}
+        </p>
       </div>
     </div>
   );

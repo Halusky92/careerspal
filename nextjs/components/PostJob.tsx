@@ -204,23 +204,23 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
 
   const planHighlights = useMemo(() => {
     const base = [
-      "Listing reviewed before publish",
-      "30 days. Premium for the first 24 hours, then the public board",
-      "Included in search + filters",
-      "Support via info@careerspal.com",
+      "Reviewed before it is published",
+      "Premium for 24 hours, then the public board, for 30 days",
+      "Candidates apply on your link",
+      "Views, apply clicks, and where they came from",
     ];
     if (selectedPlan.type === "Featured Pro") {
       return [
         ...base,
-        "Featured zone on the board",
-        "Pro badge on the listing",
+        "Featured zone above the regular list for those 30 days",
+        "Pro label on the listing",
       ];
     }
     if (selectedPlan.type === "Elite Managed") {
       return [
         ...base,
         "First in the featured zone",
-        "Elite badge on the listing",
+        "Elite label on the listing",
       ];
     }
     return base;
@@ -560,7 +560,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
       type: "Standard",
       price: foundingEligible ? PLAN_PRICES.startPack : PLAN_PRICES.standard,
       label: foundingEligible ? "Start pack · Free" : `Standard · ${formatPrice(PLAN_PRICES.standard)}`,
-      note: "On the board for 30 days",
+      note: "Premium for 24 hours, then the public list",
     });
   }
   if (selectedPlan.type !== "Featured Pro") {
@@ -568,15 +568,7 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
       type: "Featured Pro",
       price: PLAN_PRICES.pro,
       label: `Featured Pro · ${formatPrice(PLAN_PRICES.pro)}`,
-      note: "Featured zone on the board",
-    });
-  }
-  if (selectedPlan.type !== "Elite Managed") {
-    otherPlans.push({
-      type: "Elite Managed",
-      price: PLAN_PRICES.elite,
-      label: `Elite · ${formatPrice(PLAN_PRICES.elite)}`,
-      note: "First in the featured zone",
+      note: "Featured zone above the list, plus a Pro label",
     });
   }
   const isEmployerAccount = profile?.role === "employer" || profile?.role === "admin";
@@ -1272,8 +1264,14 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                 </>
               ) : !isEmployerAccount ? (
                 <>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">1 free, then $79</p>
-                  <p className="mt-1 text-xs text-slate-600">One Standard listing per company and account. Sign in as an employer to use it.</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {employerPlanLabel(selectedPlan.type)} · {formatPrice(selectedPlan.price)}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {selectedPlan.type === "Featured Pro"
+                      ? "Featured zone above the list, plus a Pro label. Sign in as an employer to post it."
+                      : "One Standard listing per company and account is free, then $79. Sign in as an employer to use it."}
+                  </p>
                 </>
               ) : (
                 <>

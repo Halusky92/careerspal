@@ -1335,8 +1335,11 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   return (
     <div className="bg-[#F8F9FD]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 sm:py-3">
-        <div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 sm:py-3 lg:grid lg:grid-cols-12 lg:items-start lg:gap-4">
+        <aside className="hidden lg:col-span-3 lg:row-span-2 lg:block">
+          {FilterContent({ variant: "sidebar" })}
+        </aside>
+        <div className="lg:col-span-9">
           <div className="cp-search rounded-xl px-3 sm:px-4 py-2">
             {boardAccess !== "paid" ? (
               <div className="mb-2 flex items-center justify-end gap-2">
@@ -1495,12 +1498,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <aside className="hidden lg:block lg:col-span-3">
-            {FilterContent({ variant: "sidebar" })}
-          </aside>
-
-          <div className="lg:col-span-5 space-y-3">
+          <div className="mt-4 lg:col-span-5 lg:mt-0 space-y-3">
             <FeaturedBoardZone count={featuredJobs.length}>
                 {visibleFeatured.map((job) => {
                   const isSaved = user?.savedJobIds?.includes(job.id);
@@ -1724,7 +1722,6 @@ const FindJobs: React.FC<FindJobsProps> = ({
             />
           </aside>
         </div>
-      </div>
 
       {isFilterOpen && (
         <div

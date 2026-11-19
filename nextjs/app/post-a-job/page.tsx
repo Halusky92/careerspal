@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PostJob from "../../components/PostJob";
 import { Job, PlanType } from "../../types";
@@ -69,14 +69,17 @@ const PostJobPageInner = () => {
     }
   }, [selectedPlan.price, selectedPlan.type, showTestPlan, foundingEligible, owner]);
 
-  useEffect(() => {
-    if (authLoading) return;
-    const stored = getStoredPlan(owner);
-    if (stored?.type) setSelectedPlan(stored);
-  }, [authLoading, owner]);
+  const hydratedOwner = useRef<string | null>(null);
 
+  // Read the plan chosen on pricing before the default Standard is written back over it.
   useEffect(() => {
     if (authLoading) return;
+    if (hydratedOwner.current !== owner) {
+      const stored = getStoredPlan(owner);
+      hydratedOwner.current = owner;
+      if (stored?.type) setSelectedPlan(stored);
+      return;
+    }
     writePostingItem(PLAN_KEY, owner, JSON.stringify(selectedPlan));
     removePostingItem("cp_test_plan_price", owner);
     if (showTestPlan && selectedPlan.type === "Standard" && selectedPlan.price === 1) {
