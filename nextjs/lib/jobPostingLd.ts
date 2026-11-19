@@ -130,7 +130,7 @@ function structuredSalary(job: Job): ParsedSalary | null {
       fromPosting.salary_amount_max != null &&
       fromPosting.salary_amount_min !== fromPosting.salary_amount_max;
     const sameFloor = stored.salary_amount_min == null || stored.salary_amount_min === fromPosting.salary_amount_min;
-    if (postingHasRange && sameFloor) return fromPosting;
+    if (postingHasRange && sameFloor) return salaryForGoogle(job, fromPosting);
   }
   if (!stored.salary_present || !stored.salary_currency) return null;
   return salaryForGoogle(job, stored);
