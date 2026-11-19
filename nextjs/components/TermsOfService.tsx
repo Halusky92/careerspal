@@ -58,7 +58,8 @@ const TermsOfService: React.FC = () => {
           <h2 className="text-base font-semibold text-slate-900">6. Employer fees and billing</h2>
           <p className="mt-2">
             The first Standard listing per employer is free (Start pack). After that: Standard $79 / 30 days,
-            Featured Pro $149, Elite $249 (USD). Elite is first in the featured zone. It is not a managed hiring service. Paid listings go through Stripe. Stripe emails the receipt
+            Featured Pro $149 (USD). Featured Pro is the zone above the regular list, with a Pro label, for those 30 days.
+            Elite is not offered right now. Paid listings go through Stripe. Stripe emails the receipt
             for that payment.
           </p>
           <p className="mt-2">

@@ -15,7 +15,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         <p className="mt-2 text-sm text-slate-600">{PLAN_PRICE_LINE}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex flex-col">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800">Start pack</p>
           <h2 className="mt-1 text-base font-semibold text-slate-900">First listing</h2>
@@ -23,9 +23,9 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
             Free <span className="text-sm font-medium text-emerald-700">/ 1 Standard</span>
           </p>
           <ul className="mt-3 space-y-1.5 text-sm text-slate-700 flex-1">
-            <li>One Standard role, then paid plans</li>
-            <li>Views, apply clicks, traffic source</li>
-            <li>30 days live</li>
+            <li>The same Standard listing, free once</li>
+            <li>Premium for 24 hours, then the public board</li>
+            <li>Your apply link, views, and apply clicks</li>
           </ul>
           <button
             type="button"
@@ -42,9 +42,9 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
             ${PLAN_PRICES.standard} <span className="text-sm font-medium text-slate-500">/ 30 days</span>
           </p>
           <ul className="mt-3 space-y-1.5 text-sm text-slate-700 flex-1">
-            <li>Premium for 24 hours, then the public board</li>
-            <li>Views, apply clicks, traffic source</li>
+            <li>Premium for 24 hours, then the public list</li>
             <li>Your apply link</li>
+            <li>Views, apply clicks, and where they came from</li>
           </ul>
           <button
             type="button"
@@ -55,15 +55,15 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
           </button>
         </div>
 
-        <div className="rounded-xl border border-indigo-200 bg-indigo-600 p-4 flex flex-col text-white">
+        <div className="rounded-xl border border-indigo-200 bg-indigo-600 p-4 flex flex-col text-white sm:col-span-2 lg:col-span-1">
           <h2 className="text-base font-semibold">Featured Pro</h2>
           <p className="mt-2 text-3xl font-semibold">
             ${PLAN_PRICES.pro} <span className="text-sm font-medium text-indigo-100">/ 30 days</span>
           </p>
           <ul className="mt-3 space-y-1.5 text-sm text-indigo-50 flex-1">
-            <li>Featured zone on the board</li>
-            <li>Views, apply clicks, traffic source</li>
-            <li>Paid placement for 30 days</li>
+            <li>Everything on Standard</li>
+            <li>Featured zone above the list for 30 days</li>
+            <li>Pro label on the listing</li>
           </ul>
           <button
             type="button"
@@ -71,25 +71,6 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
             className="mt-4 h-10 rounded-lg bg-white text-indigo-700 text-sm font-semibold hover:bg-indigo-50"
           >
             Select Pro
-          </button>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-slate-900 p-4 flex flex-col text-white">
-          <h2 className="text-base font-semibold">Elite</h2>
-          <p className="mt-2 text-3xl font-semibold">
-            ${PLAN_PRICES.elite} <span className="text-sm font-medium text-slate-300">/ 30 days</span>
-          </p>
-          <ul className="mt-3 space-y-1.5 text-sm text-slate-200 flex-1">
-            <li>First in the featured zone</li>
-            <li>Views, apply clicks, traffic source</li>
-            <li>Paid placement for 30 days</li>
-          </ul>
-          <button
-            type="button"
-            onClick={() => onSelectPlan("Elite Managed", PLAN_PRICES.elite)}
-            className="mt-4 h-10 rounded-lg border border-white/30 text-sm font-semibold hover:bg-white/10"
-          >
-            Select Elite
           </button>
         </div>
       </div>

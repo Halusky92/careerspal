@@ -185,9 +185,9 @@ const Navbar: React.FC = () => {
                           {item.label}
                         </Link>
                       ))}
-                      <a href="mailto:info@careerspal.com" className="block px-4 py-2 text-slate-700 hover:bg-slate-50">
+                      <Link href="/support" className="block px-4 py-2 text-slate-700 hover:bg-slate-50">
                         Help
-                      </a>
+                      </Link>
                       <button
                         type="button"
                         onClick={() => signOut()}

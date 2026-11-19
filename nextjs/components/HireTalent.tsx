@@ -92,7 +92,7 @@ export default function HireTalent({ companyNames = [] }: HireTalentProps) {
             Published roles can appear in twice-weekly email alerts. Not a guaranteed send or a promised volume.
             <PublicSubscriberNoteClient className="mt-1 text-sm text-slate-500" />
           </li>
-          <li>Pro and Elite sit in a labeled featured zone on the same board.</li>
+          <li>Featured Pro stays in a labeled zone above the regular list for 30 days. Standard stays in the list after its first 24 hours.</li>
         </ul>
 
         <div className="mt-8 flex flex-col items-center">

@@ -73,9 +73,13 @@ const CompanyLogo: React.FC<CompanyLogoProps> = ({
       {shouldShowImage ? (
         <img
           src={src}
-          alt={name}
+          alt=""
           className={imageClassName}
           onError={() => setIndex((current) => current + 1)}
+          onLoad={(event) => {
+            if (event.currentTarget.naturalWidth > 0) return;
+            setIndex((current) => current + 1);
+          }}
           loading="lazy"
         />
       ) : (
