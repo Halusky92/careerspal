@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSupabaseAuth } from "./Providers";
 import BrandMark from "./BrandMark";
 
@@ -17,8 +17,15 @@ const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const { profile, signOut } = useSupabaseAuth();
   const accountRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    for (const href of ["/jobs", "/categories", "/companies", "/alerts", "/pricing"]) {
+      router.prefetch(href);
+    }
+  }, [router]);
 
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? "hidden" : "unset";
@@ -255,7 +262,7 @@ const Navbar: React.FC = () => {
             ×
           </button>
         </div>
-        <div className="px-4 py-3 space-y-1 text-base">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 space-y-1 text-base">
           {!profile?.email && (
             <Link href={`/auth?from=${encodeURIComponent(pathname || "/")}`} onClick={closeMobile} className="block py-3 border-b border-slate-100">
               Sign in
@@ -337,19 +344,21 @@ const Navbar: React.FC = () => {
           <Link href={hireHref} onClick={closeMobile} className="block py-3 border-b border-slate-100">
             {hireLabel}
           </Link>
-          {profile?.email && (
+        </div>
+        {profile?.email ? (
+          <div className="shrink-0 border-t border-slate-200 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <button
               type="button"
               onClick={() => {
                 closeMobile();
                 signOut();
               }}
-              className="block w-full text-left py-3 text-indigo-700"
+              className="h-11 w-full rounded-lg bg-slate-900 text-sm font-medium text-white"
             >
               Sign out
             </button>
-          )}
-        </div>
+          </div>
+        ) : null}
       </div>
     </>
   );

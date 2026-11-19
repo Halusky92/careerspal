@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { extractJobDetailSections, formatSourcedDescription } from "./description";
+import { extractJobDetailSections, formatSourcedDescription, rolePreviewBullets } from "./description";
 
 test("Greenhouse vendor copy is dropped from sourced descriptions", () => {
   const text = formatSourcedDescription(
@@ -84,4 +84,15 @@ test("named ATS headings become job-detail sections", () => {
   assert.equal(sections.length >= 2, true);
   assert.equal(sections[0]?.heading, "About the role");
   assert.equal(sections.some((s) => s.heading === "What you'll do"), true);
+});
+
+test("a card preview keeps the duties and leaves the company intro out", () => {
+  const bullets = rolePreviewBullets(
+    "About Equip\nEquip is the leading virtual treatment program.\n\nWhat you'll do\n- Map the revenue process from lead to cash\n- Write requirements the sales team can follow\n- Keep the weekly operating review\n\nBenefits\n- Medical, dental, and vision\n\nWe are an equal opportunity employer.",
+  );
+  assert.deepEqual(bullets, [
+    "Map the revenue process from lead to cash",
+    "Write requirements the sales team can follow",
+    "Keep the weekly operating review",
+  ]);
 });

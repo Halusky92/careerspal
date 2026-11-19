@@ -443,3 +443,47 @@ export function formatSourcedDescription(input: string, opts: FormatOpts = {}): 
   return finishDisplayedDescription(out, maxLen);
 }
 
+const PREVIEW_SKIP =
+  /equal opportunity|e-verify|background check|accommodation|criminal histor|we (still )?encourage you to apply|all qualified applicants/i;
+
+function previewLine(raw: string): string | null {
+  const line = raw.replace(/^[-•–—]\s*/, "").replace(/\s+/g, " ").trim();
+  if (line.length < 28 || line.length > 400 || PREVIEW_SKIP.test(line)) return null;
+  if (/^(about|who we are|our mission|join us|we are|we're)\b/i.test(line)) return null;
+  return line.length > 140 ? `${line.slice(0, 137).trim()}…` : line;
+}
+
+/** Short duties taken from the posting. Nothing is written that is not already in the text. */
+export function rolePreviewBullets(input: string, limit = 4): string[] {
+  const text = formatSourcedDescription(input || "");
+  if (!text.trim()) return [];
+  const sections = extractJobDetailSections(text);
+  const order = ["What you'll do", "Requirements", "About the role"];
+  const picked: string[] = [];
+  const add = (raw: string) => {
+    const line = previewLine(raw);
+    if (!line) return;
+    if (picked.some((item) => item.toLowerCase() === line.toLowerCase())) return;
+    picked.push(line);
+  };
+  for (const heading of order) {
+    const section = sections.find((item) => item.heading === heading);
+    if (!section) continue;
+    for (const line of section.body.split("\n")) {
+      if (!/^[-•–—]\s+\S/.test(line.trim())) continue;
+      add(line);
+      if (picked.length >= limit) return picked;
+    }
+  }
+  if (picked.length >= 2) return picked.slice(0, limit);
+  const source =
+    sections.find((item) => item.heading === "What you'll do") ||
+    sections.find((item) => item.heading === "About the role");
+  if (!source) return picked;
+  for (const sentence of source.body.replace(/\n+/g, " ").split(/(?<=[.!?])\s+/)) {
+    add(sentence);
+    if (picked.length >= limit) break;
+  }
+  return picked.slice(0, limit);
+}
+

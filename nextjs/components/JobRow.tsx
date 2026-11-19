@@ -2,11 +2,10 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Job } from "../types";
 import CompanyLogo from "./CompanyLogo";
 import { createCompanySlug, createJobSlug } from "../lib/jobs";
-import { stripHtmlToText } from "../lib/sourcing/normalization/text";
+import { rolePreviewBullets } from "../lib/sourcing/normalization/description";
 import { formatJobSalary } from "../lib/formatSalary";
 import { visiblePostingTools } from "../lib/postingTools";
 import { inferWorkMode, publicLocationLabel } from "../lib/workMode";
@@ -64,7 +63,6 @@ export default function JobRow({
   onOpenCompany,
   onOpenRole,
 }: JobRowProps) {
-  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const rawSlug = (job.companySlug || "").toString().trim();
@@ -85,10 +83,10 @@ export default function JobRow({
   const detailHref = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
 
   const isHome = variant === "home";
-  const maxTags = 2;
-  const descriptionText = stripHtmlToText(job.description || "").replace(/\s+/g, " ").trim();
-  const descriptionPreview =
-    descriptionText.length > 520 ? `${descriptionText.slice(0, 520).trim()}…` : descriptionText;
+  const previewBullets = useMemo(
+    () => (expanded ? rolePreviewBullets(job.description || "") : []),
+    [expanded, job.description],
+  );
   const remoteMeta = useMemo(
     () => getRemoteMeta(job, workMode),
     [job.location, job.remotePolicy, job.title, job.description, workMode],
@@ -361,69 +359,27 @@ export default function JobRow({
           </div>
 
           {expanded && (
-            <div className="sm:hidden mt-3 pt-3 border-t border-[#efe6d4]">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-700">
-                <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1">
-                  {workMode}
-                </span>
-                <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1">
-                  {job.type}
-                </span>
-                <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1">
-                  {publicCategoryLabel(job) || job.category}
-                </span>
-                {job.companyVerified && (
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2 py-1 text-emerald-700">
-                    Verified
-                  </span>
-                )}
-              </div>
-
-              {toolList.length > 0 && (
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {toolList.slice(0, 6).map((tool) => (
-                    <span
-                      key={tool}
-                      className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200 px-2 py-1 text-[11px] font-bold text-slate-700"
-                    >
-                      {tool}
-                    </span>
+            <div className="mt-3 border-t border-slate-200 pt-3 sm:hidden">
+              {previewBullets.length > 0 ? (
+                <ul className="space-y-1.5">
+                  {previewBullets.map((line) => (
+                    <li key={line} className="flex gap-2 text-[13px] font-normal leading-5 text-slate-700">
+                      <span className="mt-[0.55rem] h-1 w-1 shrink-0 rounded-full bg-slate-400" aria-hidden="true" />
+                      <span>{line}</span>
+                    </li>
                   ))}
-                  {toolList.length > 6 && (
-                    <span className="text-[11px] font-semibold text-slate-600">+{toolList.length - 6}</span>
-                  )}
-                </div>
-              )}
-
-              {descriptionPreview && (
-                <p className="mt-3 text-sm font-medium text-slate-700 leading-relaxed">
-                  {descriptionPreview}
-                </p>
-              )}
-
-              <div className="mt-4 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenRole?.();
-                    router.push(detailHref);
-                  }}
-                  className="h-11 flex-1 rounded-2xl border border-slate-200/80 bg-white text-[10px] font-semibold uppercase tracking-wide text-slate-700 hover:border-indigo-200 hover:text-indigo-700"
-                >
-                  View role
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelect();
-                  }}
-                  className="h-11 px-4 rounded-2xl border border-slate-200/80 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-600 hover:bg-slate-100"
-                >
-                  Close
-                </button>
-              </div>
+                </ul>
+              ) : null}
+              <Link
+                href={detailHref}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenRole?.();
+                }}
+                className="mt-3 inline-flex text-sm font-medium text-indigo-700 hover:text-indigo-800"
+              >
+                View role
+              </Link>
             </div>
           )}
         </div>
