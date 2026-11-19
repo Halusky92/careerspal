@@ -873,8 +873,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
       setFeaturedOpen(true);
     }
     if (isDesktop) setSelectedJobId(jobId);
-    else setExpandedJobId(jobId);
-    window.setTimeout(() => scrollToJob(jobId), 0);
+    else {
+      setExpandedJobId(jobId);
+      window.setTimeout(() => scrollToJob(jobId), 0);
+    }
   };
 
   useEffect(() => {
@@ -960,7 +962,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const FilterContent = ({ variant }: { variant: "sidebar" | "sheet" }) => (
     <div
       className={[
-        variant === "sidebar" ? "sticky top-16 z-30" : "",
+        variant === "sidebar"
+          ? `sticky top-16 z-30 max-h-[calc(100vh-4.5rem)] ${openWwrDropdown ? "overflow-visible" : "overflow-y-auto"}`
+          : "",
         "rounded-2xl border border-slate-200 bg-white shadow-sm",
       ].join(" ")}
     >
@@ -1336,7 +1340,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   return (
     <div className="bg-[#F8F9FD]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 sm:py-3 lg:grid lg:grid-cols-12 lg:items-start lg:gap-4">
-        <aside className="hidden lg:col-span-3 lg:row-span-2 lg:block">
+        <aside className="hidden lg:col-span-3 lg:row-span-2 lg:block lg:self-stretch">
           {FilterContent({ variant: "sidebar" })}
         </aside>
         <div className="lg:col-span-9">
@@ -1710,7 +1714,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
             )}
           </div>
 
-          <aside className="hidden lg:block lg:col-span-4">
+          <aside className="hidden lg:block lg:col-span-4 lg:self-stretch">
             <JobDetailPanel
               job={selectedJob}
               allJobs={filteredAndSorted}
