@@ -553,6 +553,7 @@ const AccountPageInner = () => {
                           <div className="mt-3">
                             <PlanComparison
                               current={premium ? "premium" : "account"}
+                              memberName={user?.name}
                               onGetPremium={
                                 premium
                                   ? undefined

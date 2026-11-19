@@ -97,6 +97,12 @@ const Navbar: React.FC = () => {
                 Jobs
               </Link>
               <Link
+                href="/categories"
+                className={`text-sm ${pathname.startsWith("/categories") ? "text-indigo-600 font-medium" : "text-slate-600 hover:text-slate-900"}`}
+              >
+                Categories
+              </Link>
+              <Link
                 href="/companies"
                 className={`hidden lg:inline text-sm ${pathname.startsWith("/companies") ? "text-indigo-600 font-medium" : "text-slate-600 hover:text-slate-900"}`}
               >
@@ -196,6 +202,14 @@ const Navbar: React.FC = () => {
             </div>
 
             <div className="md:hidden flex items-center gap-2">
+              {!profile?.email && (
+                <Link
+                  href={`/auth?from=${encodeURIComponent(pathname || "/")}`}
+                  className="text-sm font-medium text-slate-800"
+                >
+                  Sign in
+                </Link>
+              )}
               {profile?.email && (
                 <Link
                   href="/account"
@@ -249,6 +263,9 @@ const Navbar: React.FC = () => {
           )}
           <Link href="/jobs" onClick={closeMobile} className="block py-3 border-b border-slate-100">
             Jobs
+          </Link>
+          <Link href="/categories" onClick={closeMobile} className="block py-3 border-b border-slate-100">
+            Categories
           </Link>
           <Link href="/companies" onClick={closeMobile} className="block py-3 border-b border-slate-100">
             Companies

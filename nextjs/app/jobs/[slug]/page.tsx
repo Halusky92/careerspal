@@ -396,8 +396,8 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
   const alertsHref = alertHub ? `/alerts?category=${encodeURIComponent(alertHub.slug)}` : "/alerts";
 
   return (
-    <div className={hasApplyUrl ? "bg-[#F8F9FD] max-lg:flex max-lg:h-[calc(100dvh-3.5rem)] max-lg:flex-col" : "bg-[#F8F9FD] pb-8"}>
-      <div className={hasApplyUrl ? "max-lg:min-h-0 max-lg:flex-1 max-lg:overflow-y-auto max-lg:pb-6" : ""}>
+    <div className="bg-[#F8F9FD] pb-8 max-lg:pb-28">
+      <div>
       <JobViewTracker jobId={job.id} />
       {jobPostingLd ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingLd) }} />
@@ -604,7 +604,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
 
       </div>
       {hasApplyUrl && (
-        <div className="shrink-0 border-t border-slate-200 bg-white lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white lg:hidden">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
             <div className="min-w-0 flex-1">
               <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate">{job.company}</div>

@@ -36,6 +36,7 @@ interface FindJobsProps {
   boardTotal?: number | null;
   lockedJobs?: LockedBoardPreview[];
   companyCount?: number;
+  categoryTotals?: Record<string, number>;
   canLoadMore?: boolean;
   onLoadMore?: () => void;
   onToggleBookmark: (jobId: string) => void;
@@ -115,6 +116,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   boardTotal,
   lockedJobs = [],
   companyCount = 0,
+  categoryTotals,
   canLoadMore = false,
   onLoadMore,
   onToggleBookmark,
@@ -163,6 +165,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const pendingUrlUpdateRef = useRef(false);
   const titleRef = useRef<HTMLDivElement>(null);
   const filterScrollRef = useRef<HTMLDivElement>(null);
+  const loadSentinelRef = useRef<HTMLDivElement>(null);
   const [showFilterTopShadow, setShowFilterTopShadow] = useState(false);
   const [showFilterBottomShadow, setShowFilterBottomShadow] = useState(false);
   const hydratedRef = useRef(false);
@@ -345,13 +348,27 @@ const FindJobs: React.FC<FindJobsProps> = ({
     router,
   ]);
 
-  // Reset pagination when filters change. The first address read is not a new filter,
-  // and a return to an opened role must keep the list window that was already open.
+  const filtersNarrow =
+    category !== "All Roles" ||
+    query.trim() !== "" ||
+    locationQuery.trim() !== "" ||
+    workMode !== "All" ||
+    employmentType !== "All" ||
+    salaryMin > 0 ||
+    salaryMax > 0 ||
+    selectedTools.length > 0 ||
+    timezone !== "any" ||
+    seniority !== "any" ||
+    verifiedOnly ||
+    showSavedOnly;
+
+  // A filter shows every match. An unfiltered board grows as the reader moves down.
   useEffect(() => {
     if (returnPlaceRef.current || initialJobIdRef.current || restoredJobIdRef.current) return;
-    setVisibleCount(JOBS_PER_PAGE);
     setExpandedJobId(null);
+    if (!filtersNarrow) setVisibleCount(JOBS_PER_PAGE);
   }, [
+    filtersNarrow,
     query,
     locationQuery,
     category,
@@ -474,13 +491,15 @@ const FindJobs: React.FC<FindJobsProps> = ({
     return { label: 'Entry', color: 'bg-slate-300', width: '30%' };
   };
 
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { 'All Roles': jobs.length };
+  const loadedCategoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { "All Roles": jobs.length };
     CATEGORY_HUBS.forEach((hub) => {
       counts[hub.slug] = jobs.filter((j) => jobMatchesHub(j, hub)).length;
     });
     return counts;
   }, [jobs]);
+  const listComplete = typeof boardTotal !== "number" || jobs.length >= boardTotal;
+  const categoryCounts = listComplete || !categoryTotals ? loadedCategoryCounts : categoryTotals;
   const lockedCategoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     CATEGORY_HUBS.forEach((hub) => {
@@ -615,6 +634,11 @@ const FindJobs: React.FC<FindJobsProps> = ({
     () => listedJobs.filter((job) => !isPaidFeaturedListing(job)),
     [listedJobs],
   );
+  useEffect(() => {
+    if (!filtersNarrow) return;
+    if (returnPlaceRef.current || initialJobIdRef.current || restoredJobIdRef.current) return;
+    setVisibleCount(Math.max(boardJobs.length, JOBS_PER_PAGE));
+  }, [filtersNarrow, boardJobs.length]);
   const showSearchLimitCta =
     searchCap != null &&
     ((typeof boardTotal === "number" && boardTotal > searchCap) || filteredAndSorted.length > listedJobs.length) &&
@@ -685,6 +709,20 @@ const FindJobs: React.FC<FindJobsProps> = ({
     if (canLoadMore && next > boardJobs.length) onLoadMore?.();
     setVisibleCount(next);
   };
+
+  useEffect(() => {
+    const node = loadSentinelRef.current;
+    if (!node || filtersNarrow) return;
+    if (boardJobs.length <= visibleCount && !canLoadMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) handleLoadMore();
+      },
+      { rootMargin: "400px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [filtersNarrow, boardJobs.length, visibleCount, canLoadMore]);
 
   const handleApply = async (job: Job) => {
     const isPrivate = job.status === "private" || job.status === "invite_only";
@@ -1549,16 +1587,9 @@ const FindJobs: React.FC<FindJobsProps> = ({
               );
             })}
 
-            {(boardJobs.length > visibleCount || (canLoadMore && visibleCount >= boardJobs.length)) && (
-              <div className="pt-4 pb-2 text-center">
-                <button
-                  onClick={handleLoadMore}
-                  className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:border-indigo-200 hover:text-indigo-700"
-                >
-                  {boardJobs.length > visibleCount
-                    ? `Show more (${boardJobs.length - visibleCount} remaining)`
-                    : "Show more"}
-                </button>
+            {!filtersNarrow && (boardJobs.length > visibleCount || canLoadMore) && (
+              <div ref={loadSentinelRef} className="pt-4 pb-2 text-center text-sm text-slate-400">
+                Loading more roles
               </div>
             )}
 

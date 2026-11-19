@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import FindJobs from "../../components/FindJobs";
 import { Job, UserSession } from "../../types";
@@ -31,6 +31,7 @@ export default function JobsClient({
   initialLocked = [],
   initialCompanies = 0,
   initialTotal,
+  initialCategoryTotals,
   initialQuery,
   initialLocation,
   initialAccess = "guest",
@@ -39,6 +40,7 @@ export default function JobsClient({
   initialLocked?: LockedBoardPreview[];
   initialCompanies?: number;
   initialTotal: number | null;
+  initialCategoryTotals?: Record<string, number>;
   initialQuery: string;
   initialLocation: string;
   initialAccess?: "guest" | "registered" | "paid";
@@ -52,6 +54,7 @@ export default function JobsClient({
   const [boardTotal, setBoardTotal] = useState(initialTotal);
   const [loadingMore, setLoadingMore] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState<string[]>(() => getSaved());
+  const fillingRef = useRef(false);
 
   useEffect(() => {
     const loadSaved = async () => {
@@ -186,6 +189,44 @@ export default function JobsClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, authLoading, initialAccess]);
 
+  // The first paint is one page. Filters and category counts need every role this visitor may open.
+  useEffect(() => {
+    if (authLoading || fillingRef.current) return;
+    if (typeof boardTotal !== "number" || jobs.length >= boardTotal) return;
+    fillingRef.current = true;
+    let cancelled = false;
+    const fill = async () => {
+      let loaded = jobs.length;
+      let guard = 0;
+      try {
+        while (!cancelled && loaded < boardTotal && guard < 40) {
+          guard += 1;
+          const response = accessToken
+            ? await authFetch(`/api/jobs?limit=50&skip=${loaded}`, {}, accessToken)
+            : await fetch(`/api/jobs?limit=50&skip=${loaded}`);
+          const data = (await response.json()) as { jobs?: Job[] };
+          const next = Array.isArray(data.jobs) ? data.jobs : [];
+          if (next.length === 0) return;
+          loaded += next.length;
+          if (cancelled) return;
+          setJobs((prev) => {
+            const seen = new Set(prev.map((job) => job.id));
+            return [...prev, ...next.filter((job) => !seen.has(job.id))];
+          });
+        }
+      } catch {
+        // the first page stays usable
+      } finally {
+        fillingRef.current = false;
+      }
+    };
+    fill();
+    return () => {
+      cancelled = true;
+      fillingRef.current = false;
+    };
+  }, [accessToken, authLoading, boardTotal, jobs.length]);
+
   const loadMore = async () => {
     if (loadingMore || typeof boardTotal !== "number" || jobs.length >= boardTotal) return;
     setLoadingMore(true);
@@ -230,6 +271,7 @@ export default function JobsClient({
         boardTotal={boardTotal}
         lockedJobs={lockedJobs}
         companyCount={companyCount}
+        categoryTotals={initialCategoryTotals}
         canLoadMore={typeof boardTotal === "number" && jobs.length < boardTotal}
         onLoadMore={loadMore}
         onToggleBookmark={handleToggleBookmark}

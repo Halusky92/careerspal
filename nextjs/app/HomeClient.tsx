@@ -28,7 +28,7 @@ export default function HomeClient({
   subscriberCount?: number | null;
 }) {
   const router = useRouter();
-  const { accessToken, loading: authLoading } = useSupabaseAuth();
+  const { accessToken, loading: authLoading, profile } = useSupabaseAuth();
   const [jobs, setJobs] = useState<Job[]>(() => (initialJobs || []).slice(0, 4));
   const [jobsLoading, setJobsLoading] = useState(() => (initialJobs?.length ? false : true));
   const [boardAccess, setBoardAccess] = useState<"guest" | "registered" | "paid">("guest");
@@ -241,6 +241,7 @@ export default function HomeClient({
         <div className="mt-8">
           <PlanComparison
             current={boardAccess === "paid" ? "premium" : boardAccess === "registered" ? "account" : "guest"}
+            memberName={profile?.name}
             onCreateAccount={() => {
               trackFunnel("signup_started", { from: "home_card" });
               router.push(`/auth?from=${encodeURIComponent("/")}`);
