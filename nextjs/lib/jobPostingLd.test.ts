@@ -206,6 +206,25 @@ test("a hybrid role names the cities the posting confirms", () => {
   );
 });
 
+test("a London dollar range is not labeled USD when the posting never names the currency", () => {
+  const london = buildJobPostingLd(
+    job({
+      location: "London, England",
+      remotePolicy: "Remote",
+      salary: "$224k–$280k a year",
+      description: "Lead EMEA sales operations from London. The range is listed as $224,000-$280,000.",
+    }),
+    "https://www.careerspal.com/jobs/temporal",
+  );
+  assert.equal(london?.baseSalary, undefined);
+  assert.equal((london?.applicantLocationRequirements as { name: string }).name, "United Kingdom");
+  const unitedStates = buildJobPostingLd(
+    job({ salary: "$120k–$150k a year", description: "Own the operating cadence." }),
+    "https://www.careerspal.com/jobs/us-dollars",
+  );
+  assert.equal((unitedStates?.baseSalary as { currency: string }).currency, "USD");
+});
+
 test("does not emit JobPosting for expired or unpublished jobs", () => {
   assert.equal(shouldEmitJobPosting(job({ status: "draft" })), false);
   assert.equal(shouldEmitJobPosting(job({ timestamp: Date.now() - 40 * 24 * 60 * 60 * 1000 })), false);
