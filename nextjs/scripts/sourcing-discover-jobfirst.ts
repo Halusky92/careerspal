@@ -1,6 +1,7 @@
 /**
- * Job-first discovery. Eight niche groups, four new boards each, basic Tavily
- * searches, existing ATS review. A new qualifying board can be enabled.
+ * Job-first discovery. Eight niche groups, basic Tavily searches, existing ATS
+ * review. A new qualifying board can be enabled. The morning run reviews every
+ * new board in the results. The one-shot candidate run still stops at four.
  * An existing source is left unchanged. Set DISCOVERY_AUTO_APPROVE=0 to stop.
  *
  *   npx tsx scripts/sourcing-discover-jobfirst.ts --jobfirst --read-only
@@ -11,7 +12,8 @@
  * --production-candidates is the one-shot production entry. It allows at most 30 searches
  * and 4 new sources, inserts them disabled, and does not publish jobs.
  * --production-daily is the daily entry. It rotates all 8 groups, allows at most 30
- * basic searches, and stops when the monthly ledger reaches 900.
+ * basic searches, reviews every new board in those results, and stops when the
+ * monthly ledger reaches 900.
  */
 import fs from "fs";
 import path from "path";
@@ -224,7 +226,7 @@ async function main() {
     known,
     ...(production ? { maxSearches: DAILY_SEARCH_CAP, maxBoards: 4 } : {}),
     ...(productionDaily
-      ? { maxSearches: DAILY_SEARCH_CAP, groups: rotateDiscoveryGroups(DISCOVERY_GROUPS, now), oncePerDay: true }
+      ? { maxSearches: DAILY_SEARCH_CAP, groups: rotateDiscoveryGroups(DISCOVERY_GROUPS, now), oncePerDay: true, boardsPerGroup: 20 }
       : {}),
     claim: sb
       ? async () => {

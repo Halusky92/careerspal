@@ -90,3 +90,46 @@ test("the daily cap uses the next phrase and does not repeat a search", async ()
   assert.equal(seen.size, 30);
   assert.equal(result.stopped, "search_cap");
 });
+
+test("the morning run reviews every new board in the search results", async () => {
+  let reviewed = 0;
+  const hits = Array.from({ length: 6 }, (_, index) => ({
+    url: `https://boards.greenhouse.io/morning${index}`,
+    title: `Morning ${index}`,
+  }));
+  const result = await runJobFirstDiscovery({
+    now: new Date("2026-11-20T00:05:00.000Z"),
+    monthCount: 0,
+    phrases: {},
+    known: new Set(),
+    groups: [{ id: "revops", phrases: ["one phrase"] }],
+    maxSearches: DAILY_SEARCH_CAP,
+    oncePerDay: true,
+    boardsPerGroup: 20,
+    search: async () => hits,
+    review: async () => {
+      reviewed += 1;
+      return {
+        companyName: "Morning",
+        website: "https://boards.greenhouse.io/morning",
+        atsProvider: "greenhouse",
+        atsIdentifier: "morning",
+        boardUrl: "https://boards.greenhouse.io/morning",
+        openJobCount: 1,
+        qualifyingJobCount: 0,
+        qualifyingTitles: [],
+        qualifyingJobs: [],
+        sampledNicheJobs: 0,
+        unsampledNicheJobs: 0,
+        rejectionCounts: {},
+        qualifyingApplyUrls: [],
+        decision: "rejected",
+        reason: "fixture",
+        enabled: false,
+      };
+    },
+  });
+  assert.equal(result.searches, 1);
+  assert.equal(reviewed, 6);
+  assert.equal(result.groups[0].boards, 6);
+});
