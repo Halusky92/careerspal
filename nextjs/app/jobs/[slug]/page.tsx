@@ -416,7 +416,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
           </Link>
           <Link
             href={`/jobs?jobId=${encodeURIComponent(job.id)}`}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
           >
             View on board →
           </Link>
@@ -439,27 +439,27 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   {categoryLabel && (
-                    <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
+                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700">
                       {categoryLabel}
                     </span>
                   )}
                   {displayType && (
-                    <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
+                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
                       {displayType}
                     </span>
                   )}
                   {workMode ? (
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">
                       {workMode}
                     </span>
                   ) : null}
                   {locationLabel && (
-                    <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
+                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
                       {locationLabel}
                     </span>
                   )}
                   {postedLabel ? (
-                    <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500">
                       Posted {postedLabel}
                     </span>
                   ) : null}
@@ -520,7 +520,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
           <div className="p-4 sm:p-6 space-y-5">
             {roleSections.map((section) => (
               <section key={section.heading}>
-                <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">{section.heading}</h2>
+                <h2 className="text-sm font-semibold text-slate-900">{section.heading}</h2>
                 <div className="mt-3">
                   <FormattedDescriptionStatic text={section.body} />
                 </div>
@@ -529,12 +529,12 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
 
             {stack.length > 0 && (
               <section>
-                <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">Tool stack</h2>
+                <h2 className="text-sm font-semibold text-slate-900">Tool stack</h2>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {stack.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700"
+                      className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700"
                     >
                       {tag}
                     </span>
@@ -545,7 +545,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
 
             {benefits.length > 0 && (
               <section>
-                <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">Benefits</h2>
+                <h2 className="text-sm font-semibold text-slate-900">Benefits</h2>
                 <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700 font-medium">
                   {benefits.map((b) => (
                     <li key={b} className="flex items-start gap-2">
@@ -559,7 +559,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
 
             {similarJobs.length > 0 && (
               <section>
-                <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">More in {categoryLabel || "this category"}</h2>
+                <h2 className="text-sm font-semibold text-slate-900">More in {categoryLabel || "this category"}</h2>
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {similarJobs.map((s) => (
                     <Link
@@ -567,11 +567,9 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                       href={`/jobs/${createJobSlug({ id: s.id, title: s.title || "role" })}`}
                       className="rounded-2xl border border-slate-200/60 bg-white px-4 py-4 hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors"
                     >
-                      <div className="text-sm font-black text-slate-900 line-clamp-2">{s.title}</div>
-                      <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500 line-clamp-1">
-                        {s.company}
-                      </div>
-                      <div className="mt-2 text-sm font-black text-slate-900">{formatJobSalary(s)}</div>
+                      <div className="text-sm font-semibold text-slate-900 line-clamp-2">{s.title}</div>
+                      <div className="mt-1 text-xs text-slate-500 line-clamp-1">{s.company}</div>
+                      <div className="mt-2 text-sm font-semibold text-slate-900">{formatJobSalary(s)}</div>
                     </Link>
                   ))}
                 </div>
@@ -583,10 +581,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
         <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Alerts</p>
-              <h2 className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Stay in the loop
-              </h2>
+              <h2 className="text-lg font-semibold text-slate-900">Email for roles like this</h2>
               <p className="mt-2 text-slate-600 font-medium max-w-2xl">
                 Tuesday and Friday for the category, salary floor, and stored tools you choose, after a role is public. Premium sends that search after each search and shows new roles for their first 24 hours.
               </p>
@@ -595,7 +590,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
             <div className="w-full sm:w-auto">
               <Link
                 href={alertsHref}
-                className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-indigo-600 text-white px-7 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-100"
+                className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-indigo-600 px-5 text-sm font-medium text-white hover:bg-indigo-700 sm:w-auto"
               >
                 Get alerts →
               </Link>
@@ -609,14 +604,14 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white lg:hidden">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
             <div className="min-w-0 flex-1">
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate">{job.company}</div>
-              <div className="text-sm font-black text-slate-900 truncate">{job.title}</div>
+              <div className="truncate text-xs text-slate-500">{job.company}</div>
+              <div className="truncate text-sm font-semibold text-slate-900">{job.title}</div>
             </div>
             <ApplyClickLink
               jobId={job.id}
               href={job.applyUrl}
               external={applyExternal}
-              className="h-11 px-5 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors flex items-center justify-center whitespace-nowrap"
+              className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg bg-indigo-600 px-5 text-sm font-medium text-white hover:bg-indigo-700"
             >
               Apply now
             </ApplyClickLink>

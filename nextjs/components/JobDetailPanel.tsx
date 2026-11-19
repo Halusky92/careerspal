@@ -83,9 +83,9 @@ export default function JobDetailPanel({
 
   if (!job) {
     return (
-      <div className="sticky top-16 max-h-[calc(100vh-5rem)] overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
+      <div className="sticky top-16 max-h-[calc(100vh-5rem)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="p-6">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+          <div className="text-xs font-medium text-slate-500">
             Role details
           </div>
           <div className="mt-3 text-sm font-bold text-slate-600">
@@ -99,7 +99,7 @@ export default function JobDetailPanel({
   const saved = isSaved ? isSaved(job.id) : false;
 
   return (
-    <div className="sticky top-16 flex max-h-[calc(100vh-5rem)] flex-col overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
+    <div className="sticky top-16 flex max-h-[calc(100vh-5rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="flex shrink-0 items-start justify-between gap-3 px-6 py-4 border-b border-slate-100">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <div className="w-10 h-10 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 shrink-0">
@@ -113,7 +113,7 @@ export default function JobDetailPanel({
             />
           </div>
           <div className="min-w-0 flex-1 overflow-hidden">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+            <div className="text-xs font-medium text-slate-500">
               Role details
             </div>
             <Link
@@ -166,7 +166,7 @@ export default function JobDetailPanel({
           <div className="flex flex-wrap items-center gap-2">
             {job.type && job.type !== "Unknown" ? (
               <span
-                className={`inline-flex items-center rounded-full border px-3 py-1 text-[9px] font-semibold uppercase tracking-wide ${
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
                   job.type === "Contract"
                     ? "bg-amber-50 border-amber-200 text-amber-800"
                     : "bg-slate-50 border-slate-200/70 text-slate-700"
@@ -182,12 +182,12 @@ export default function JobDetailPanel({
               return (
                 <>
                   {placeLabel ? (
-                    <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-700">
+                    <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200/70 px-3 py-1 text-xs font-medium text-slate-700">
                       {placeLabel}
                     </span>
                   ) : null}
                   {mode ? (
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[9px] font-semibold uppercase tracking-wide text-emerald-700">
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-medium text-emerald-700">
                       {mode}
                     </span>
                   ) : null}
@@ -195,7 +195,7 @@ export default function JobDetailPanel({
               );
             })()}
             {formatPosted(job) ? (
-              <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-[9px] font-medium uppercase tracking-wide text-slate-600">
+              <span className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-3 py-1 text-xs font-medium text-slate-600">
                 Posted {formatPosted(job)}
               </span>
             ) : null}
@@ -228,7 +228,7 @@ export default function JobDetailPanel({
               {stack.slice(0, 10).map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-700"
+                  className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2.5 py-1 text-xs font-medium text-slate-700"
                 >
                   {tag}
                 </span>
@@ -238,7 +238,7 @@ export default function JobDetailPanel({
 
           <div className="mt-5">
             {descriptionOpensWithRole(job.description || "") ? null : (
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+              <div className="text-xs font-medium text-slate-500">
                 About the role
               </div>
             )}
@@ -252,7 +252,7 @@ export default function JobDetailPanel({
 
           {similarJobs.length > 0 && (
             <div className="mt-7">
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+              <div className="text-xs font-medium text-slate-500">
                 Similar roles
               </div>
               <div className="mt-3 space-y-2">
@@ -269,7 +269,7 @@ export default function JobDetailPanel({
                     className="w-full text-left rounded-2xl border border-slate-200/60 bg-white px-4 py-3 hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors"
                   >
                     <div className="text-xs font-bold text-slate-900 truncate">{s.title}</div>
-                    <div className="text-[10px] font-medium uppercase tracking-wide text-slate-600 mt-1 truncate">
+                    <div className="text-xs font-medium text-slate-500 mt-1 truncate">
                       {s.company} • {formatJobSalary(s)}
                     </div>
                   </button>

@@ -50,12 +50,7 @@ export default function HomePreviewCard({
       {featured ? (
         <span aria-hidden className={["absolute inset-y-0 left-0 w-1", elite ? "bg-slate-900" : "bg-indigo-500"].join(" ")} />
       ) : null}
-      {isEarly || isNew ? (
-        <span className="absolute top-1.5 left-1.5 z-10">
-          {isEarly ? <PremiumWindowBadge job={job} /> : <NewListingBadge job={job} />}
-        </span>
-      ) : null}
-      <Link href={href} className={["flex min-w-0 flex-1 items-center gap-3", isEarly || isNew ? "pl-8" : ""].join(" ")}>
+      <Link href={href} className="flex min-w-0 flex-1 items-center gap-3">
         <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
           <CompanyLogo
             name={job.company}
@@ -71,9 +66,10 @@ export default function HomePreviewCard({
             <h3 className="truncate text-sm font-semibold text-slate-900 group-hover:text-indigo-700">
               {job.title}
             </h3>
+            {isEarly ? <PremiumWindowBadge job={job} /> : <NewListingBadge job={job} />}
             <FeaturedBadge job={job} />
           </div>
-          <p className="mt-0.5 truncate text-xs text-slate-500">
+          <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
             {job.company} · {publicLocationLabel(job) || place}
             {timeAgo ? ` · ${timeAgo}` : ""}
           </p>
