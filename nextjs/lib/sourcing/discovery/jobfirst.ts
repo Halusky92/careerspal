@@ -259,6 +259,7 @@ export async function runJobFirstDiscovery(args: {
   cap?: number;
   maxSearches?: number;
   maxBoards?: number;
+  boardsPerGroup?: number;
   groups?: ReadonlyArray<{ id: string; phrases: readonly string[] }>;
   oncePerDay?: boolean;
   claim?: () => Promise<boolean>;
@@ -321,7 +322,8 @@ export async function runJobFirstDiscovery(args: {
       searches += 1;
       addedSearch = true;
       const hits = await args.search(picked.phrase);
-      const room = typeof args.maxBoards === "number" ? Math.min(BOARDS_PER_GROUP, args.maxBoards - reviewed) : BOARDS_PER_GROUP;
+      const perGroup = args.boardsPerGroup ?? BOARDS_PER_GROUP;
+      const room = typeof args.maxBoards === "number" ? Math.min(perGroup, args.maxBoards - reviewed) : perGroup;
       const boards = selectNewBoards(hits, args.known, room);
       reviewed += boards.length;
       let qualifying = 0;
