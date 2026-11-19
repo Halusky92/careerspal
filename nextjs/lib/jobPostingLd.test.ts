@@ -225,6 +225,29 @@ test("a London dollar range is not labeled USD when the posting never names the 
   assert.equal((unitedStates?.baseSalary as { currency: string }).currency, "USD");
 });
 
+test("a stored floor plus a dollar range in the posting still needs a confirmed currency", () => {
+  const london = buildJobPostingLd(
+    job({
+      location: "London, England",
+      remotePolicy: "Remote",
+      salary: "From $224k a year",
+      description: "Lead EMEA sales operations. The range is $224,000-$280,000 a year.",
+    }),
+    "https://www.careerspal.com/jobs/temporal-floor",
+  );
+  assert.equal(london?.baseSalary, undefined);
+  const unitedStates = buildJobPostingLd(
+    job({
+      salary: "From $180k a year",
+      description: "The typical base pay range is $180,000/year -$270,000/year.",
+    }),
+    "https://www.careerspal.com/jobs/us-floor",
+  );
+  const value = (unitedStates?.baseSalary as { currency: string; value: { minValue: number; maxValue: number } }).value;
+  assert.equal(value.minValue, 180000);
+  assert.equal(value.maxValue, 270000);
+});
+
 test("does not emit JobPosting for expired or unpublished jobs", () => {
   assert.equal(shouldEmitJobPosting(job({ status: "draft" })), false);
   assert.equal(shouldEmitJobPosting(job({ timestamp: Date.now() - 40 * 24 * 60 * 60 * 1000 })), false);
