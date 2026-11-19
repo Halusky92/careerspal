@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   }
 
   const email = (body.email || "").trim().toLowerCase();
-  const topic = TOPICS.includes(body.topic as (typeof TOPICS)[number]) ? body.topic : "Something else";
+  const topic = TOPICS.find((item) => item === body.topic) ?? "Something else";
   const message = (body.message || "").trim();
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
