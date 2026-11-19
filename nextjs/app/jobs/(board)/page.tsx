@@ -11,6 +11,7 @@ import { boardAccessHeadline, boardCompanyCount, boardSliceForTier, lockedBoardP
 import { countLivePublishedJobs, loadPublishedBoardJobs } from "../../../lib/publicJobBoard";
 import { listingsForViewer } from "../../../lib/listingWindow";
 import { viewerTier } from "../../../lib/viewerTier";
+import { categoryCountsForJobs } from "../../../lib/categories";
 
 export const dynamic = "force-dynamic";
 
@@ -144,6 +145,7 @@ export default async function JobsPage({ searchParams }: PageProps) {
   const slice = boardSliceForTier(jobs, tier);
   const initialJobs = slice.jobs;
   const initialLocked = lockedBoardPreviews(jobs, slice.cap);
+  const categoryTotals = categoryCountsForJobs(jobs);
 
   return (
     <div className="pt-3">
@@ -156,6 +158,7 @@ export default async function JobsPage({ searchParams }: PageProps) {
         initialCompanies={boardCompanyCount(jobs)}
         initialAccess={tier}
         initialTotal={total}
+        initialCategoryTotals={categoryTotals}
         initialQuery={initialQuery}
         initialLocation={initialLocation}
       />

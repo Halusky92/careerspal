@@ -55,11 +55,27 @@ export default function PlanComparison({
   current = "guest",
   onCreateAccount,
   onGetPremium,
+  memberName,
 }: {
   current?: PlanId;
   onCreateAccount?: () => void;
   onGetPremium?: () => void;
+  memberName?: string | null;
 }) {
+  if (current === "premium") {
+    const greeting = (memberName || "").trim() || "Your Premium account";
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <p className="text-base font-semibold text-slate-900">{greeting}</p>
+        <p className="mt-1 text-sm text-slate-600">Premium is active.</p>
+        <ul className="mt-3 space-y-1.5 text-sm text-slate-700">
+          <li>New roles for their first 24 hours</li>
+          <li>Email after each search when a saved search matches</li>
+          <li>More than one saved search</li>
+        </ul>
+      </div>
+    );
+  }
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       {CARDS.map((card) => {

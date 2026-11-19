@@ -124,6 +124,17 @@ export function jobMatchesHub(job: { title?: string | null; category?: string | 
   return resolveCategoryHub(job)?.slug === hub.slug;
 }
 
+/** Counts for the jobs this visitor can actually open, not the first painted page. */
+export function categoryCountsForJobs(jobs: Array<{ title?: string | null; category?: string | null }>) {
+  const counts: Record<string, number> = { "All Roles": jobs.length };
+  for (const hub of CATEGORY_HUBS) counts[hub.slug] = 0;
+  for (const job of jobs) {
+    const slug = resolveCategoryHub(job)?.slug;
+    if (slug) counts[slug] += 1;
+  }
+  return counts;
+}
+
 export function resolveCategoryParam(raw?: string | null): string {
   const value = (raw || "").trim();
   if (!value || value === "All Roles") return "All Roles";

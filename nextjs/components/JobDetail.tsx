@@ -259,7 +259,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
           <div className="px-5 pt-4 pb-3 border-b border-slate-100">
             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Quick Filters</h3>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overscroll-x-contain">
             <div className="min-w-[520px] sm:min-w-[560px] grid grid-cols-5 gap-2 sm:gap-3 px-4 sm:px-5 py-3 sm:py-4 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400">
               <span className="whitespace-nowrap">Salary Range</span>
               <span className="whitespace-nowrap">Job Type</span>
@@ -367,7 +367,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, allJobs, onBack, onSelectJob
             <div className="lg:col-span-4 space-y-8">
                
                {/* Sticky Card */}
-               <div className="sticky top-40 space-y-8">
+               <div className="lg:sticky lg:top-40 space-y-8">
                   <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_20px_60px_rgba(15,23,42,0.08)] border border-slate-200/60">
                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-6">Job Overview</h3>
                      <ul className="space-y-6">
