@@ -64,16 +64,27 @@ export default function PlanComparison({
 }) {
   if (current === "premium") {
     const greeting = (memberName || "").trim() || "Your Premium account";
+    const owned = [
+      { title: "First 24 hours", text: "New roles as soon as they are published." },
+      { title: "Email after each search", text: "When a saved search matches." },
+      { title: "More than one search", text: "Keep a separate search for each kind of role." },
+    ];
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <p className="text-base font-semibold text-slate-900">{greeting}</p>
-        <p className="mt-1 text-sm text-slate-600">Premium is active.</p>
-        <ul className="mt-3 space-y-1.5 text-sm text-slate-700">
-          <li>New roles for their first 24 hours</li>
-          <li>Email after each search when a saved search matches</li>
-          <li>More than one saved search</li>
+      <section className="overflow-hidden rounded-2xl bg-slate-950 text-white">
+        <div className="border-b border-white/10 px-5 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">Premium</p>
+          <h3 className="mt-1 text-lg font-semibold tracking-tight">{greeting}</h3>
+          <p className="mt-1 text-sm text-slate-300">Premium is active.</p>
+        </div>
+        <ul className="grid grid-cols-1 sm:grid-cols-3">
+          {owned.map((item) => (
+            <li key={item.title} className="border-t border-white/10 px-5 py-4 sm:border-l sm:border-t-0 first:sm:border-l-0">
+              <p className="text-sm font-semibold text-white">{item.title}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-300">{item.text}</p>
+            </li>
+          ))}
         </ul>
-      </div>
+      </section>
     );
   }
   return (

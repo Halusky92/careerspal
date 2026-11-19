@@ -14,6 +14,8 @@ type Profile = {
   role?: string | null;
   isOnboarded?: boolean | null;
   createdAt?: string | null;
+  premiumUntil?: string | null;
+  subscriptionStatus?: string | null;
 };
 
 type AuthRole = "candidate" | "employer";

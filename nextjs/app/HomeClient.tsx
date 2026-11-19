@@ -16,6 +16,26 @@ import { trackFunnel } from "../lib/funnelTrack";
 import { homeSeeAllLabel } from "../lib/boardAccess";
 import PlanComparison from "../components/PlanComparison";
 
+function homePlan(
+  authLoading: boolean,
+  signedIn: boolean,
+  profile: { role?: string | null; premiumUntil?: string | null; subscriptionStatus?: string | null } | null,
+  boardAccess: "guest" | "registered" | "paid",
+): "guest" | "account" | "premium" | null {
+  if (authLoading) return null;
+  if (profile?.role === "admin" || boardAccess === "paid") return "premium";
+  const status = profile?.subscriptionStatus || "";
+  const until = profile?.premiumUntil ? Date.parse(profile.premiumUntil) : 0;
+  const paid =
+    status === "active" ||
+    status === "trialing" ||
+    status === "past_due" ||
+    (Number.isFinite(until) && until > Date.now());
+  if (paid) return "premium";
+  if (signedIn || boardAccess === "registered") return "account";
+  return "guest";
+}
+
 const PENDING_SAVE_KEY = "cp_pending_save_job";
 
 export default function HomeClient({
@@ -122,6 +142,7 @@ export default function HomeClient({
   }, [liveJobs, featuredPreview.length]);
 
   const hasJobs = liveJobs.length > 0;
+  const plan = homePlan(authLoading, Boolean(accessToken), profile, boardAccess);
 
   const handleToggleSave = (jobId: string) => {
     if (!accessToken) {
@@ -239,18 +260,22 @@ export default function HomeClient({
         </div>
 
         <div className="mt-8">
-          <PlanComparison
-            current={boardAccess === "paid" ? "premium" : boardAccess === "registered" ? "account" : "guest"}
-            memberName={profile?.name}
-            onCreateAccount={() => {
-              trackFunnel("signup_started", { from: "home_card" });
-              router.push(`/auth?from=${encodeURIComponent("/")}`);
-            }}
-            onGetPremium={() => {
-              trackFunnel("premium_click", { from: "home_card" });
-              router.push(accessToken ? "/upgrade" : `/auth?from=${encodeURIComponent("/upgrade")}`);
-            }}
-          />
+          {plan === null ? (
+            <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
+          ) : (
+            <PlanComparison
+              current={plan}
+              memberName={profile?.name}
+              onCreateAccount={() => {
+                trackFunnel("signup_started", { from: "home_card" });
+                router.push(`/auth?from=${encodeURIComponent("/")}`);
+              }}
+              onGetPremium={() => {
+                trackFunnel("premium_click", { from: "home_card" });
+                router.push(accessToken ? "/upgrade" : `/auth?from=${encodeURIComponent("/upgrade")}`);
+              }}
+            />
+          )}
         </div>
       </section>
     </>
