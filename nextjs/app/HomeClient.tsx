@@ -15,6 +15,8 @@ import PublicSubscriberNote from "../components/PublicSubscriberNote";
 import { trackFunnel } from "../lib/funnelTrack";
 import { homeSeeAllLabel } from "../lib/boardAccess";
 import PlanComparison from "../components/PlanComparison";
+import EmployerFlipGrid from "../components/EmployerFlipGrid";
+import type { HiringEmployer } from "../lib/companyBoard";
 
 function homePlan(
   authLoading: boolean,
@@ -42,10 +44,12 @@ export default function HomeClient({
   initialJobs,
   initialLiveTotal = null,
   subscriberCount = null,
+  employers = [],
 }: {
   initialJobs: Job[];
   initialLiveTotal?: number | null;
   subscriberCount?: number | null;
+  employers?: HiringEmployer[];
 }) {
   const router = useRouter();
   const { accessToken, loading: authLoading, profile } = useSupabaseAuth();
@@ -276,6 +280,7 @@ export default function HomeClient({
               }}
             />
           )}
+          <EmployerFlipGrid employers={employers} />
         </div>
       </section>
     </>
