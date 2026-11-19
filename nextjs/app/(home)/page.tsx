@@ -70,12 +70,14 @@ function StaticHomeJobs({ jobs }: { jobs: Job[] }) {
 }
 
 export default async function HomePage() {
-  const loaded = await fetchPublishedJobs();
-  const tier = await viewerTier();
+  const [loaded, tier, subscriberCount, counted] = await Promise.all([
+    fetchPublishedJobs(),
+    viewerTier(),
+    getPublicSubscriberCount(),
+    supabaseAdmin ? countLivePublishedJobs(supabaseAdmin) : Promise.resolve(null),
+  ]);
   const jobs = listingsForViewer(loaded, tier);
   const hiddenEarly = loaded.length - jobs.length;
-  const subscriberCount = await getPublicSubscriberCount();
-  const counted = supabaseAdmin ? await countLivePublishedJobs(supabaseAdmin) : null;
   const liveTotal = counted == null ? null : Math.max(0, counted - hiddenEarly);
   return (
     <>

@@ -114,3 +114,34 @@ textarea::placeholder {
 body:has([data-hide-site-footer]) footer[data-site-footer] {
   display: none;
 }
+
+/* Mobile tap: a short press, then it returns. No leftover decoration. */
+@media (hover: none) and (pointer: coarse) {
+  a,
+  button,
+  [role="button"],
+  summary {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:not(:disabled):active,
+  [role="button"]:active,
+  a:active {
+    transition: transform 90ms ease, filter 90ms ease, opacity 90ms ease;
+  }
+
+  button:not(:disabled):active,
+  a.inline-flex:active,
+  a[class*="rounded-"]:active {
+    transform: scale(0.98);
+    filter: brightness(0.96);
+  }
+
+  [role="button"]:active {
+    transform: scale(0.995);
+  }
+
+  a:not(.inline-flex):not([class*="rounded-"]):active {
+    opacity: 0.6;
+  }
+}

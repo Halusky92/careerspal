@@ -87,15 +87,13 @@ const ICON_TINT: Record<string, string> = {
 };
 
 export default async function CategoriesPage() {
-  const tier = await viewerTier();
-  let open: Record<string, number> = {};
-  let early: Record<string, number> = {};
-  if (supabaseAdmin) {
-    const jobs = await loadPublishedBoardJobs(supabaseAdmin);
-    const counts = categoryAvailability(jobs, tier);
-    open = counts.open;
-    early = counts.early;
-  }
+  const [tier, jobs] = await Promise.all([
+    viewerTier(),
+    supabaseAdmin ? loadPublishedBoardJobs(supabaseAdmin) : Promise.resolve([]),
+  ]);
+  const counts = categoryAvailability(jobs, tier);
+  const open = counts.open;
+  const early = counts.early;
   const roleLabel = (count: number) => `${count} ${count === 1 ? "role" : "roles"}`;
 
   return (

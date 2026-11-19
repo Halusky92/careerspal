@@ -137,8 +137,7 @@ export default async function JobsPage({ searchParams }: PageProps) {
   const params = (await searchParams) || {};
   const initialQuery = getParam(params.query);
   const initialLocation = getParam(params.location);
-  const loaded = await fetchPublishedJobs();
-  const tier = await viewerTier();
+  const [loaded, tier] = await Promise.all([fetchPublishedJobs(), viewerTier()]);
   const jobs = listingsForViewer(loaded.jobs, tier);
   const hiddenEarly = loaded.jobs.length - jobs.length;
   const total = loaded.total == null ? null : Math.max(0, loaded.total - hiddenEarly);

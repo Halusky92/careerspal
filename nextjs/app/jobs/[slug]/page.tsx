@@ -365,8 +365,10 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
   }
 
   const early = isEarlyAccessListing(job);
-  const similarJobs = listingsForViewer(await fetchSimilarPublishedJobs(job), tier);
-  const subscriberCount = await getPublicSubscriberCount();
+  const [similarJobs, subscriberCount] = await Promise.all([
+    fetchSimilarPublishedJobs(job).then((jobs) => listingsForViewer(jobs, tier)),
+    getPublicSubscriberCount(),
+  ]);
   const canonicalSlug = createJobSlug({ id: job.id, title: job.title || "role" });
   const canonicalPath = `/jobs/${canonicalSlug}`;
   const canonicalUrl = `${getBaseUrl()}${canonicalPath}`;
