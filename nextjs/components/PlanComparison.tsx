@@ -110,7 +110,7 @@ export default function PlanComparison({
                 Create account
               </button>
             ) : null}
-            {card.id === "premium" && current !== "premium" && onGetPremium ? (
+            {card.id === "premium" && onGetPremium ? (
               <button type="button" onClick={onGetPremium} className="mt-4 h-10 w-full rounded-lg bg-white text-sm font-medium text-indigo-700 hover:bg-indigo-50">
                 Get Premium
               </button>
