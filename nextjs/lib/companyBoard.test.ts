@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isBoilerplateDescription, isForeignCompanyBlurb, landedOnAnotherHost } from "./companyBoard";
+import { isBoilerplateDescription, isForeignCompanyBlurb, landedOnAnotherHost, topHiringEmployers } from "./companyBoard";
 
 const walmart = "Shop Walmart.com today for Every Day Low Prices. Join Walmart+ for unlimited free delivery and free shipping with no order minimum.";
 
@@ -44,4 +44,45 @@ test("a fetch that lands on another site is not used as the company description"
   assert.equal(landedOnAnotherHost("https://betterup.com", "https://www.walmart.com/"), true);
   assert.equal(landedOnAnotherHost("https://betterup.com", "https://www.betterup.com/about"), false);
   assert.equal(landedOnAnotherHost("https://betterup.com", "https://careers.betterup.com/jobs"), false);
+});
+
+test("most relevant employers put a paid Featured Pro company ahead of a larger automatic list", () => {
+  const ranked = topHiringEmployers([
+    { company: "Automatic Co", companySlug: "automatic", logo: "https://automatic.example/logo.png", origin: "greenhouse" },
+    { company: "Automatic Co", companySlug: "automatic", logo: "https://automatic.example/logo.png", origin: "greenhouse" },
+    { company: "Automatic Co", companySlug: "automatic", logo: "https://automatic.example/logo.png", origin: "ashby" },
+    {
+      company: "Pro Co",
+      companySlug: "pro",
+      logo: "https://pro.example/logo.png",
+      origin: "employer",
+      planType: "Featured Pro",
+      plan: { type: "Featured Pro", price: 149 },
+      stripePaymentStatus: "paid",
+    },
+    {
+      company: "Standard Co",
+      companySlug: "standard",
+      logo: "https://standard.example/logo.png",
+      origin: "employer",
+      planType: "Standard",
+      plan: { type: "Standard", price: 79 },
+      stripePaymentStatus: "paid",
+    },
+    {
+      company: "Standard Co",
+      companySlug: "standard",
+      logo: "https://standard.example/logo.png",
+      origin: "employer",
+      planType: "Standard",
+      plan: { type: "Standard", price: 79 },
+      stripePaymentStatus: "paid",
+    },
+    { company: "No Logo", companySlug: "nologo", origin: "lever" },
+    { company: "No Logo", companySlug: "nologo", origin: "lever" },
+  ]);
+  assert.deepEqual(
+    ranked.map((employer) => employer.slug),
+    ["pro", "standard", "automatic"],
+  );
 });

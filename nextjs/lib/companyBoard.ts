@@ -1,6 +1,7 @@
 import { resolveCategoryHub, type CategorySlug } from "./categories";
 import { createCompanySlug } from "./jobs";
-import { isNotCompanyWebsiteHost } from "./companyLogoUrl";
+import { isNotCompanyWebsiteHost, chooseDisplayedLogo, isDirectoryLogo } from "./companyLogoUrl";
+import { isSourcedJobOrigin } from "./sourcing/origin";
 import { jobMatchesLocationQuery } from "./locationFilter";
 
 export type BoardCompany = {
@@ -191,28 +192,75 @@ export type HiringEmployer = {
   roles: number;
 };
 
-/** Companies with the most roles this visitor can open. No invented names. */
-export function topHiringEmployers(
-  jobs: Array<{ company?: string | null; companySlug?: string | null; logo?: string | null }>,
-  limit = 20,
-): HiringEmployer[] {
-  const map = new Map<string, HiringEmployer>();
+type HiringJob = {
+  company?: string | null;
+  companySlug?: string | null;
+  logo?: string | null;
+  companyWebsite?: string | null;
+  origin?: string | null;
+  planType?: string | null;
+  plan?: { type?: string | null; price?: number | null } | null;
+  stripePaymentStatus?: string | null;
+  applyUrl?: string | null;
+};
+
+/** Paid Featured Pro sits above Standard. Both sit above roles added automatically. */
+function employerPlacement(job: HiringJob): number {
+  const sourced =
+    isSourcedJobOrigin(job.origin) ||
+    (!job.origin && /greenhouse\.io|ashbyhq\.com|lever\.co/i.test(job.applyUrl || ""));
+  if (sourced) return 0;
+  const plan = job.planType || job.plan?.type || "";
+  const price = job.plan?.price;
+  const paid =
+    job.stripePaymentStatus === "paid" ||
+    job.stripePaymentStatus === "founding" ||
+    (typeof price === "number" && price > 0);
+  if (plan === "Elite Managed" && paid) return 3;
+  if (plan === "Featured Pro" && paid) return 2;
+  if (plan === "Standard" || paid) return 1;
+  return 0;
+}
+
+function employerLogo(job: HiringJob): string {
+  const chosen = chooseDisplayedLogo([job.logo], job.companyWebsite);
+  if (!chosen || isDirectoryLogo(chosen)) return "";
+  return chosen;
+}
+
+/**
+ * Most relevant employers for the homepage wall.
+ * Featured Pro, then Standard, then automatic listings.
+ * More roles win inside a group. A company needs a real logo.
+ */
+export function topHiringEmployers(jobs: HiringJob[], limit = 20): HiringEmployer[] {
+  const map = new Map<string, HiringEmployer & { tier: number; tierRoles: number }>();
   for (const job of jobs) {
     const name = (job.company || "").trim();
     if (!name) continue;
     const slug = ((job.companySlug || "").trim() || createCompanySlug({ name })).trim();
     if (!slug) continue;
     const key = slug.toLowerCase();
+    const tier = employerPlacement(job);
+    const logo = employerLogo(job);
     const current = map.get(key);
     if (current) {
       current.roles += 1;
-      if (!current.logo && job.logo) current.logo = job.logo;
+      if (tier > current.tier) {
+        current.tier = tier;
+        current.tierRoles = 1;
+      } else if (tier === current.tier) {
+        current.tierRoles += 1;
+      }
+      if (!current.logo && logo) current.logo = logo;
       continue;
     }
-    map.set(key, { name, slug, logo: (job.logo || "").trim(), roles: 1 });
+    map.set(key, { name, slug, logo, roles: 1, tier, tierRoles: 1 });
   }
   const take = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 20;
   return [...map.values()]
-    .sort((a, b) => b.roles - a.roles || a.name.localeCompare(b.name))
-    .slice(0, take);
+    .filter((employer) => employer.logo)
+    .sort((a, b) => b.tier - a.tier || b.tierRoles - a.tierRoles || a.name.localeCompare(b.name))
+    .slice(0, take)
+    .map(({ name, slug, logo, roles }) => ({ name, slug, logo, roles }));
 }

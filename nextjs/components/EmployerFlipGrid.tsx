@@ -11,10 +11,10 @@ const BACK = [
 export default function EmployerFlipGrid({ employers }: { employers: HiringEmployer[] }) {
   if (employers.length === 0) return null;
   return (
-    <section className="mt-8" aria-label="Employers hiring">
-      <h2 className="text-base font-semibold text-slate-900">Employers hiring</h2>
+    <section className="mt-8" aria-label="Most relevant employers">
+      <h2 className="text-base font-semibold text-slate-900">Most relevant</h2>
       <p className="mt-1 text-sm text-slate-600">
-        Open roles on the board. Companies with more roles are listed first.
+        Featured Pro comes first, then Standard, then other companies that have a logo. Inside each group, more open roles come first.
       </p>
       <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {employers.map((employer, index) => {
