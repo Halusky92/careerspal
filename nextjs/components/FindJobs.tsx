@@ -1233,7 +1233,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
               <div className="absolute z-30 mt-2 w-full rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
                 <div className="py-1">
                   {workModes
-                    .filter((mode) => mode === "All" || mode === workMode || (mode !== "All" && facet.workCounts[mode] > 0))
+                    .filter((mode) => {
+                      if (mode === "All" || mode === workMode) return true;
+                      return facet.workCounts[mode] > 0;
+                    })
                     .map((mode) => (
                     <button
                       key={mode}
