@@ -1749,10 +1749,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
             {filteredAndSorted.length === 0 && (
               <div className="bg-white py-8 rounded-xl text-center border border-dashed border-slate-200">
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                  No matches
-                </div>
-                <p className="mt-3 text-slate-700 font-black text-lg">
+                <p className="text-sm font-medium text-slate-500">No matches</p>
+                <p className="mt-2 text-base font-semibold text-slate-900">
                   {showSavedOnly ? "No saved roles yet." : "No roles match your current filters."}
                 </p>
                 <p className="mt-2 text-slate-500 font-medium">
@@ -1815,8 +1813,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
           >
             <div className="px-6 pt-5 pb-4 flex items-center justify-between">
               <div>
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Filters</div>
-                <div className="text-sm font-black text-slate-900 mt-1">{filteredAndSorted.length} roles</div>
+                <div className="text-sm font-semibold text-slate-900">Filters</div>
+                <div className="mt-0.5 text-xs text-slate-500">{filteredAndSorted.length} roles</div>
               </div>
               <button
                 onClick={() => setIsFilterOpen(false)}

@@ -101,7 +101,7 @@ export default async function CategoriesPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="max-w-2xl">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Categories</p>
+            <p className="text-xs font-medium text-slate-500">Categories</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Explore roles</h1>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Operations, Systems, Automation, RevOps, Product Ops, and Chief of Staff.

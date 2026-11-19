@@ -88,8 +88,8 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
           </div>
         </form>
 
-        <div className="mt-4 -mx-4 sm:mx-0">
-          <div className="flex flex-nowrap items-center justify-start sm:justify-center gap-1.5 overflow-x-auto no-scrollbar px-4 sm:px-0">
+        <div className="mt-4">
+          <div className="flex flex-wrap items-center justify-center gap-1.5">
             {CATEGORY_CHIPS.map((chip) => (
               <button
                 key={chip.label}
@@ -113,7 +113,7 @@ const Hero: React.FC<HeroProps> = ({ onBrowse, onGetAlerts }) => {
         <button
           type="button"
           onClick={onGetAlerts}
-          className="mt-4 inline-flex h-10 items-center justify-center rounded-full bg-indigo-600 px-5 text-sm font-medium text-white hover:bg-indigo-700"
+          className="mt-4 inline-flex h-10 items-center justify-center rounded-full border border-indigo-200 bg-white px-5 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
         >
           Email me new roles
         </button>
