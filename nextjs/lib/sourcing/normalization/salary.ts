@@ -420,8 +420,15 @@ export function chooseOfficialSalary(text: string, locationHint = ""): ParsedSal
       resolved.note,
       implausible ? "implausible_salary_amount" : present ? "rounded_for_storage" : null,
     ].filter((note): note is string => Boolean(note));
+    const amount = Math.max(min || 0, max || 0);
+    const countsAsBand =
+      !precedingIsNotBase(clean, start) &&
+      amount > 0 &&
+      ((max != null && max !== min) ||
+        (period ? !isImplausibleSalary(period, min, max) : amount >= MIN_PLAUSIBLE_BY_PERIOD.year));
     return {
       ote: precedingIsNotBase(clean, start),
+      countsAsBand,
       rawMin: min,
       rawMax: max,
       parsed: withRoundedSalaryAmounts({
@@ -439,7 +446,7 @@ export function chooseOfficialSalary(text: string, locationHint = ""): ParsedSal
   });
   const bandKeys = new Set(
     hits
-      .filter((hit) => !hit.ote && (hit.rawMin || hit.rawMax))
+      .filter((hit) => hit.countsAsBand)
       .map((hit) => `${hit.rawMin ?? ""}:${hit.rawMax ?? ""}`),
   );
   if (bandKeys.size > 1) {

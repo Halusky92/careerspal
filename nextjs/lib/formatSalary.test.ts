@@ -39,6 +39,16 @@ test("a long Checkr about section still yields the base salary range", () => {
   assert.match(shown, /a year/);
 });
 
+test("a lunch stipend and a home-office amount do not hide the stored salary", () => {
+  const shown = formatSalaryDisplay(
+    "$135k–$170k a year",
+    "A weekly lunch stipend of $75/£75 or equivalent. Everyone receives a $500 home office stipend.",
+  );
+  assert.match(shown, /\$135k/);
+  assert.match(shown, /\$170k/);
+  assert.equal(shown, "$135k–$170k a year");
+});
+
 test("a dollar range is not shown when the posting also states a Canadian band", () => {
   const shown = formatSalaryDisplay(
     "$109k–$155k a year",
