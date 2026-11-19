@@ -1,4 +1,5 @@
 import { resolveCategoryHub, type CategorySlug } from "./categories";
+import { createCompanySlug } from "./jobs";
 import { isNotCompanyWebsiteHost } from "./companyLogoUrl";
 import { jobMatchesLocationQuery } from "./locationFilter";
 
@@ -181,4 +182,37 @@ export function addJobToCompany(
     locationsBlob: (input.jobLocation || "").trim(),
     remotePolicyBlob: (input.jobRemotePolicy || "").trim(),
   };
+}
+
+export type HiringEmployer = {
+  name: string;
+  slug: string;
+  logo: string;
+  roles: number;
+};
+
+/** Companies with the most roles this visitor can open. No invented names. */
+export function topHiringEmployers(
+  jobs: Array<{ company?: string | null; companySlug?: string | null; logo?: string | null }>,
+  limit = 20,
+): HiringEmployer[] {
+  const map = new Map<string, HiringEmployer>();
+  for (const job of jobs) {
+    const name = (job.company || "").trim();
+    if (!name) continue;
+    const slug = ((job.companySlug || "").trim() || createCompanySlug({ name })).trim();
+    if (!slug) continue;
+    const key = slug.toLowerCase();
+    const current = map.get(key);
+    if (current) {
+      current.roles += 1;
+      if (!current.logo && job.logo) current.logo = job.logo;
+      continue;
+    }
+    map.set(key, { name, slug, logo: (job.logo || "").trim(), roles: 1 });
+  }
+  const take = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 20;
+  return [...map.values()]
+    .sort((a, b) => b.roles - a.roles || a.name.localeCompare(b.name))
+    .slice(0, take);
 }

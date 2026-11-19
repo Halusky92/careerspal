@@ -11,6 +11,7 @@ import { getPublicSubscriberCount } from "../../lib/countAlertSubscribers";
 import { countLivePublishedJobs } from "../../lib/publicJobBoard";
 import { listingsForViewer } from "../../lib/listingWindow";
 import { viewerTier } from "../../lib/viewerTier";
+import { topHiringEmployers } from "../../lib/companyBoard";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +84,7 @@ export default async function HomePage() {
         initialJobs={jobs.slice(0, 4)}
         initialLiveTotal={liveTotal}
         subscriberCount={subscriberCount}
+        employers={topHiringEmployers(jobs, 20)}
       />
     </>
   );
