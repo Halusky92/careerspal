@@ -68,7 +68,7 @@ export async function GET(request: Request) {
   if (url.searchParams.get("mode") === "logos") {
     if (!supabaseAdmin) return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
     try {
-      const summary = await backfillRecentPublishedLogos(supabaseAdmin, { fetchLimit: 20 });
+      const summary = await backfillRecentPublishedLogos(supabaseAdmin, { sinceMs: null, fetchLimit: 20 });
       return NextResponse.json({ ok: true, mode: "logos", done: true, summary });
     } catch (e) {
       return NextResponse.json({ error: e instanceof Error ? e.message : "Logo fill failed" }, { status: 500 });

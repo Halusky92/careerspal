@@ -97,27 +97,31 @@ type RecentJobRow = {
   companies?: { id?: string | null; website?: string | null; logo_url?: string | null } | null;
 };
 
-/** Logos for companies that landed on the board during the New window. Runs on its own after alerts. */
+/** Logos for published companies. The New window is the default; null keeps walking older boards that are still missing a logo or site. */
 export async function backfillRecentPublishedLogos(
   sb: AdminSb,
   opts: {
-    sinceMs?: number;
+    sinceMs?: number | null;
     fetchLimit?: number;
     enrich?: (input: { websiteUrl: string }) => Promise<LogoEnrichment>;
     loadAshbyBrand?: (token: string) => Promise<AshbyBoardBrand>;
   } = {},
 ) {
-  const sinceMs = opts.sinceMs ?? NEW_BADGE_MS;
+  const sinceMs = opts.sinceMs === undefined ? NEW_BADGE_MS : opts.sinceMs;
   const fetchLimit = opts.fetchLimit ?? 20;
   const enrich = opts.enrich ?? enrichCompanyFromWebsite;
   const loadAshbyBrand = opts.loadAshbyBrand ?? fetchAshbyBoardBrand;
-  const since = new Date(Date.now() - sinceMs).toISOString();
-  const { data, error } = await sb
+  let query = sb
     .from("jobs")
     .select("company_id,apply_url,description,logo_url,companies(id,website,logo_url)")
     .eq("status", "published")
-    .or(`published_at.gte.${since},created_at.gte.${since}`)
+    .order("published_at", { ascending: false })
     .limit(400);
+  if (sinceMs !== null) {
+    const since = new Date(Date.now() - sinceMs).toISOString();
+    query = query.or(`published_at.gte.${since},created_at.gte.${since}`);
+  }
+  const { data, error } = await query;
   if (error) throw error;
 
   const byCompany = new Map<string, { website: string | null; logo: string; descriptions: string[]; jobsMissing: boolean; ashbyTokens: Set<string> }>();
@@ -149,16 +153,16 @@ export async function backfillRecentPublishedLogos(
   for (const [id, company] of byCompany) {
     let logo = company.logo;
     const logoIsWeak = !logo || isGenericHostedIcon(logo);
-    if (logoIsWeak) {
-      const storedSite = hostnameFromWebsite(company.website) ? String(company.website).trim() : "";
+    const storedSite = hostnameFromWebsite(company.website) ? String(company.website).trim() : "";
+    const tokens = [...company.ashbyTokens];
+    if (logoIsWeak || (!storedSite && tokens.length === 1)) {
       let website = confirmedLogoWebsite(company.website, company.descriptions);
       let websiteFromBoard = false;
-      const tokens = [...company.ashbyTokens];
-      if (tokens.length === 1 && fetched < fetchLimit) {
+      if (tokens.length === 1 && fetched < fetchLimit && (logoIsWeak || !website)) {
         fetched += 1;
         try {
           const brand = await loadAshbyBrand(tokens[0]);
-          if (brand.logoUrl) logo = brand.logoUrl;
+          if (logoIsWeak && brand.logoUrl) logo = brand.logoUrl;
           if (!website && brand.website) {
             website = brand.website;
             websiteFromBoard = true;
@@ -167,7 +171,7 @@ export async function backfillRecentPublishedLogos(
           logo = logo || "";
         }
       }
-      if (!logo || isGenericHostedIcon(logo)) {
+      if (logoIsWeak && (!logo || isGenericHostedIcon(logo))) {
         if (website && fetched < fetchLimit) {
           fetched += 1;
           try {
@@ -180,18 +184,19 @@ export async function backfillRecentPublishedLogos(
         }
         if ((!logo || isGenericHostedIcon(logo)) && website) logo = publicLogoUrlForWebsite(website) || "";
       }
-      if (!logo) {
+      if (logoIsWeak && !logo) {
         skipped += 1;
         continue;
       }
-      if (logo !== company.logo) {
-        const patch: { logo_url: string; website?: string } = { logo_url: logo };
-        const site = officialWebsiteUrl(website);
-        if (!storedSite && site) {
-          patch.website = site;
-          if (websiteFromBoard) websitesFromBoard += 1;
-          else websitesFromPosting += 1;
-        }
+      const patch: { logo_url?: string; website?: string } = {};
+      if (logoIsWeak && logo !== company.logo) patch.logo_url = logo;
+      const site = officialWebsiteUrl(website);
+      if (!storedSite && site) {
+        patch.website = site;
+        if (websiteFromBoard) websitesFromBoard += 1;
+        else websitesFromPosting += 1;
+      }
+      if (patch.logo_url || patch.website) {
         const write = await sb.from("companies").update(patch).eq("id", id);
         if (write.error) throw new Error(write.error.message || "Company logo update failed.");
         updated += 1;
