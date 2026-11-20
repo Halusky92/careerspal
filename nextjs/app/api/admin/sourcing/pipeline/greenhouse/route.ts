@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseProfile } from "../../../../../../lib/supabaseServerAuth";
 import { getSourcingCronSecret } from "../../../../../../lib/sourcing/config";
 import { runPipelineGreenhouse } from "../../../../../../lib/sourcing/runGreenhousePipeline";
-import { backfillMissingCompanyLogos } from "../../../../../../lib/sourcing/backfillCompanyLogos";
+import { backfillRecentPublishedLogos } from "../../../../../../lib/sourcing/backfillCompanyLogos";
 import { supabaseAdmin } from "../../../../../../lib/supabaseAdmin";
 import { parseSliceMode, sliceBudgetMs } from "../../../../../../lib/sourcing/pipeline/slice";
 
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
   if (url.searchParams.get("mode") === "logos") {
     if (!supabaseAdmin) return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
     try {
-      const summary = await backfillMissingCompanyLogos(supabaseAdmin, 8);
+      const summary = await backfillRecentPublishedLogos(supabaseAdmin, { fetchLimit: 20 });
       return NextResponse.json({ ok: true, mode: "logos", done: true, summary });
     } catch (e) {
       return NextResponse.json({ error: e instanceof Error ? e.message : "Logo fill failed" }, { status: 500 });
