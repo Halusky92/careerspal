@@ -92,6 +92,43 @@ test("three days each week in the office is Hybrid even when the ATS says Remote
   );
 });
 
+test("a hybrid mix of duties stays Remote when the office is not required", () => {
+  assert.equal(
+    inferWorkMode({
+      remotePolicy: "Remote",
+      location: "United States (Remote)",
+      description:
+        "This hybrid role is roughly half research operations and half researcher enablement. Remote-friendly (US).",
+    }),
+    "Remote",
+  );
+  assert.equal(
+    geographyLabel({
+      location: "Remote",
+      remotePolicy: "Remote",
+      description:
+        "We deliver gift cards worldwide. Fully remote. Work from anywhere in the Americas.",
+    }),
+    "Not specified",
+  );
+  assert.equal(
+    geographyLabel({
+      location: "Remote",
+      remotePolicy: "Remote",
+      description: "The team supports international sales motions. Candidates must reside in Denver or DC.",
+    }),
+    "Not specified",
+  );
+  assert.equal(
+    publicLocationLabel({
+      location: "Remote",
+      remotePolicy: "Remote",
+      description: "empowering organizations worldwide with training.",
+    }),
+    "Remote",
+  );
+});
+
 test("a fully remote sentence can fill work mode when location is blank", () => {
   assert.equal(
     inferWorkMode({
