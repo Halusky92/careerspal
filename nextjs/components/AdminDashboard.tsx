@@ -15,6 +15,7 @@ import JobViewCount from "./JobViewCount";
 import ListingPlanBadge from "./ListingPlanBadge";
 import { countCompanyPackUsage } from "../lib/listingPlan";
 import AdminDeskPulse from "./AdminDeskPulse";
+import AdminCompanyAccess from "./AdminCompanyAccess";
 import type { SiteDayTraffic } from "../lib/siteTraffic";
 
 type AnalyticsPeriod = {
@@ -47,7 +48,7 @@ interface AdminDashboardProps {
   onLogout: () => void;
 }
 
-type AdminTab = "review" | "jobs" | "people" | "sourcing" | "more";
+type AdminTab = "review" | "jobs" | "people" | "sourcing" | "access" | "more";
 
 const getLocalJson = <T,>(key: string, fallback: T): T => {
   if (typeof window === "undefined") return fallback;
@@ -669,6 +670,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     { id: "jobs", label: "Jobs", count: jobs.filter((j) => j.status === "published").length },
     { id: "people", label: "Inbox" },
     { id: "sourcing", label: "Pipeline" },
+    { id: "access", label: "Access" },
     { id: "more", label: "Traffic" },
   ];
 
@@ -1023,6 +1025,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       )}
 
       {tab === "people" && <AdminPeopleTab jobs={jobs} />}
+
+      {tab === "access" && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm font-medium text-slate-900">Company access</p>
+          <p className="mt-1 mb-4 text-xs text-slate-500">
+            Approve a verified work email or written authorization. Payment stays closed until you approve. A poster can submit jobs. Only an admin can edit the company profile.
+          </p>
+          <AdminCompanyAccess accessToken={accessToken} />
+        </div>
+      )}
 
       {tab === "sourcing" && (
         <div className="rounded-xl border border-slate-200 overflow-hidden">

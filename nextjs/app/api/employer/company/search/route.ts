@@ -11,12 +11,21 @@ export async function GET(request: Request) {
     return NextResponse.json({ companies: [] });
   }
 
-  const { data } = await supabaseAdmin!
+  let { data, error } = await supabaseAdmin!
     .from("companies")
     .select("id,name,slug,website,claimed_by,created_by,logo_url")
     .ilike("name", `%${q}%`)
     .order("name", { ascending: true })
     .limit(8);
+  if (error) {
+    const fallback = await supabaseAdmin!
+      .from("companies")
+      .select("id,name,slug,website,created_by,logo_url")
+      .ilike("name", `%${q}%`)
+      .order("name", { ascending: true })
+      .limit(8);
+    data = fallback.data as typeof data;
+  }
 
   const companies = (data || []).map((row) => ({
     id: row.id,
@@ -24,8 +33,8 @@ export async function GET(request: Request) {
     slug: row.slug,
     website: row.website,
     logoUrl: row.logo_url,
-    claimed: Boolean(row.claimed_by || row.created_by),
-    owned: row.claimed_by === auth.profileId || row.created_by === auth.profileId,
+    claimed: false,
+    owned: row.created_by === auth.profileId,
   }));
 
   return NextResponse.json({ companies });

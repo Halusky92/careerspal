@@ -438,7 +438,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
   const claimCompany = async (companyId: string) => {
     if (!accessToken) return;
     const res = await authFetch(
-      "/api/employer/company/claim",
+      "/api/employer/company/access",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -446,8 +446,9 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
       },
       accessToken,
     );
-    const data = (await res.json()) as { error?: string; note?: string };
-    setMessage(data.error || data.note || "Company claimed.");
+    const data = (await res.json()) as { error?: string; message?: string };
+    setMessage(data.error || data.message || "Request sent.");
+    setMessageTone(res.ok ? "ok" : "error");
     if (res.ok) {
       setClaimQuery("");
       setClaimHits([]);
@@ -538,10 +539,10 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
       )}
 
       <details className="mb-5 rounded-lg border border-slate-200 bg-white">
-        <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium text-slate-700">Claim an existing company</summary>
+        <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium text-slate-700">Request access to an existing company</summary>
         <div className="px-4 pb-4">
           <p className="text-sm text-slate-500">
-            If a profile already exists from Greenhouse, claim it instead of creating a duplicate.
+            This company is already listed. Request access to post jobs under its existing profile. Payment stays closed until an admin approves it.
           </p>
           <input
             value={claimQuery}
@@ -556,15 +557,15 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onUpgrade, onPost
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-slate-900 truncate">{hit.name}</div>
                     <div className="text-xs text-slate-400">
-                      {hit.owned ? "Already yours" : hit.claimed ? "Claimed" : "Unclaimed"}
+                      {hit.owned ? "Already yours" : "Listed"}
                     </div>
                   </div>
                   <button
-                    disabled={Boolean(hit.claimed)}
+                    disabled={Boolean(hit.owned)}
                     onClick={() => claimCompany(hit.id)}
                     className="h-8 px-3 rounded-lg bg-slate-900 text-white text-xs font-medium disabled:opacity-40"
                   >
-                    Claim
+                    Request access
                   </button>
                 </div>
               ))}

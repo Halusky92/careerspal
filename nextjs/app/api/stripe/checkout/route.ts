@@ -19,6 +19,8 @@ import {
 } from "../../../../lib/boardAccess";
 import { chargeForStoredJob, resolveEmployerStripeKey } from "../../../../lib/employerPlans";
 import { stripeScopeMetadata } from "../../../../lib/stripeWebhookInbox";
+import { checkoutAllowedForCompany } from "../../../../lib/companyAccess";
+import { loadMembership, membershipTableReady } from "../../../../lib/companyAccessDb";
 
 type StripeJobRow = {
   id: string;
@@ -165,7 +167,7 @@ export async function POST(request: Request) {
 
   let jobQuery = await supabaseAdmin
     .from("jobs")
-    .select("id,title,description,salary,apply_url,location,remote_policy,status,plan_price,plan_type,created_by,created_at,published_at,unpublished_at,timestamp,companies(name)")
+    .select("id,title,description,salary,apply_url,location,remote_policy,status,plan_price,plan_type,created_by,company_id,created_at,published_at,unpublished_at,timestamp,companies(name)")
     .eq("id", body.jobId)
     .single();
   if (jobQuery.error) {
@@ -227,6 +229,25 @@ export async function POST(request: Request) {
   }
   if (charge.adminTest && !canUseAdminTestPlan({ role: auth.profile.role, email: auth.profile.email })) {
     return NextResponse.json({ error: "The $1 test plan is for admins." }, { status: 403 });
+  }
+  const companyId = (jobRow as StripeJobRow & { company_id?: string | null }).company_id || "";
+  if (companyId) {
+    const ready = await membershipTableReady(supabaseAdmin);
+    if (ready) {
+      const company = await supabaseAdmin.from("companies").select("created_by").eq("id", companyId).maybeSingle();
+      const membership = await loadMembership(supabaseAdmin, companyId, auth.profile.id);
+      const allowed = checkoutAllowedForCompany({
+        membershipReady: true,
+        membership,
+        createdByProfile: company.data?.created_by === auth.profile.id,
+      });
+      if (!allowed) {
+        return NextResponse.json(
+          { error: "This company is already listed. Request access to post jobs under its existing profile. Payment stays closed until an admin approves it." },
+          { status: 409 },
+        );
+      }
+    }
   }
   const employerKey = resolveEmployerStripeKey();
   if (!employerKey) {
