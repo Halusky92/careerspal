@@ -28,6 +28,7 @@ export default function EmployerFlipGrid({ employers }: { employers: HiringEmplo
                     <CompanyLogo
                       name={employer.name}
                       logoUrl={employer.logo}
+                      website={employer.website}
                       className="h-12 w-full"
                       imageClassName="mx-auto h-12 max-w-[7rem] object-contain"
                       fallbackClassName="text-sm"

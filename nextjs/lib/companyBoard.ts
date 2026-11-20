@@ -1,6 +1,6 @@
 import { resolveCategoryHub, type CategorySlug } from "./categories";
 import { createCompanySlug } from "./jobs";
-import { isNotCompanyWebsiteHost, chooseDisplayedLogo, isDirectoryLogo } from "./companyLogoUrl";
+import { isNotCompanyWebsiteHost, chooseDisplayedLogo, isDirectoryLogo, officialWebsiteUrl } from "./companyLogoUrl";
 import { isSourcedJobOrigin } from "./sourcing/origin";
 import { jobMatchesLocationQuery } from "./locationFilter";
 
@@ -189,6 +189,7 @@ export type HiringEmployer = {
   name: string;
   slug: string;
   logo: string;
+  website: string;
   roles: number;
 };
 
@@ -243,6 +244,7 @@ export function topHiringEmployers(jobs: HiringJob[], limit = 20): HiringEmploye
     const key = slug.toLowerCase();
     const tier = employerPlacement(job);
     const logo = employerLogo(job);
+    const website = officialWebsiteUrl(job.companyWebsite) || "";
     const current = map.get(key);
     if (current) {
       current.roles += 1;
@@ -253,14 +255,15 @@ export function topHiringEmployers(jobs: HiringJob[], limit = 20): HiringEmploye
         current.tierRoles += 1;
       }
       if (!current.logo && logo) current.logo = logo;
+      if (!current.website && website) current.website = website;
       continue;
     }
-    map.set(key, { name, slug, logo, roles: 1, tier, tierRoles: 1 });
+    map.set(key, { name, slug, logo, website, roles: 1, tier, tierRoles: 1 });
   }
   const take = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 20;
   return [...map.values()]
     .filter((employer) => employer.logo)
     .sort((a, b) => b.tier - a.tier || b.tierRoles - a.tierRoles || a.name.localeCompare(b.name))
     .slice(0, take)
-    .map(({ name, slug, logo, roles }) => ({ name, slug, logo, roles }));
+    .map(({ name, slug, logo, website, roles }) => ({ name, slug, logo, website, roles }));
 }
