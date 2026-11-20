@@ -235,31 +235,51 @@ export default function HomeClient({
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => router.push("/jobs")}
-          className="mt-4 w-full h-11 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-800 hover:border-slate-300 hover:bg-slate-50"
-        >
-          {homeSeeAllLabel(hasJobs, liveTotal)}
-        </button>
+        <div className="mt-5 flex justify-center">
+          <button
+            type="button"
+            onClick={() => router.push("/jobs")}
+            className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-900 shadow-sm hover:border-slate-400 hover:bg-slate-50"
+          >
+            {homeSeeAllLabel(hasJobs, liveTotal)}
+            <span aria-hidden="true">→</span>
+          </button>
+        </div>
 
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button
             type="button"
             onClick={() => router.push("/alerts")}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-slate-300 hover:bg-slate-50"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-left shadow-sm hover:border-slate-400 hover:bg-slate-50"
           >
-            <div className="text-sm font-semibold text-slate-900">For candidates</div>
-            <p className="mt-1 text-xs text-slate-600">Browse and apply without an account. An account keeps one saved search.</p>
-            <PublicSubscriberNote count={subscriberCount} className="mt-1 text-xs text-slate-500" />
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700">
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true">
+                  <circle cx="12" cy="8" r="3.25" />
+                  <path d="M5.5 19.25v-.5a4.5 4.5 0 0 1 4.5-4.5h4a4.5 4.5 0 0 1 4.5 4.5v.5" strokeLinecap="round" />
+                </svg>
+              </span>
+              <div className="text-sm font-semibold text-slate-900">For candidates</div>
+            </div>
+            <p className="mt-2 text-sm leading-5 text-slate-600">Browse the board and apply on the company site. An account keeps one saved search.</p>
+            <PublicSubscriberNote count={subscriberCount} className="mt-1.5 text-xs text-slate-500" />
           </button>
           <button
             type="button"
             onClick={() => router.push("/hire-talent")}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-slate-300 hover:bg-slate-50"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-left shadow-sm hover:border-slate-400 hover:bg-slate-50"
           >
-            <div className="text-sm font-semibold text-slate-900">For employers</div>
-            <p className="mt-1 text-xs text-slate-600">Post → review → Premium for 24 hours → public. Candidates apply on your link.</p>
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700">
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true">
+                  <rect x="3.5" y="7.5" width="17" height="12" rx="2" />
+                  <path d="M9 7.5V6.25A2.25 2.25 0 0 1 11.25 4h1.5A2.25 2.25 0 0 1 15 6.25V7.5" strokeLinecap="round" />
+                  <path d="M3.5 12.5h17" />
+                </svg>
+              </span>
+              <div className="text-sm font-semibold text-slate-900">For employers</div>
+            </div>
+            <p className="mt-2 text-sm leading-5 text-slate-600">After review, a role is on Premium for 24 hours, then public. Candidates apply on your link.</p>
           </button>
         </div>
 
