@@ -17,6 +17,8 @@ import { detectNotionSignal } from "../signals/notion";
 import { createCompanySlug } from "../../jobs";
 import { enrichCompanyFromWebsite } from "../../companyEnrichment";
 import { isNotCompanyWebsiteHost, publicLogoUrlForWebsite, soleCompanyWebsiteFromText } from "../../companyLogoUrl";
+import { fetchAshbyBoardBrand, type AshbyBoardBrand } from "../ashbyBrand";
+import { inferAshbyBoardTokenFromUrl } from "../connectors/ashby";
 import { isOnNicheJob } from "../../nicheScope";
 import { probeApplyUrl } from "../../jobs/applyLinkHealth";
 import { salaryTextForSourced } from "../../formatSalary";
@@ -700,6 +702,7 @@ export async function autoPublishEligibleCandidates(
   const deriveFaviconUrl = (website: string | null) => publicLogoUrlForWebsite(website);
 
   const greenhouseSites = new Map<string, string | null>();
+  const ashbyBrands = new Map<string, AshbyBoardBrand | null>();
   const websiteFromGreenhouseBoard = async (token: string) => {
     const key = token.trim().toLowerCase();
     if (!key) return null;
@@ -719,6 +722,20 @@ export async function autoPublishEligibleCandidates(
       return site;
     } catch {
       greenhouseSites.set(key, null);
+      return null;
+    }
+  };
+
+  const brandFromAshbyBoard = async (token: string) => {
+    const key = token.trim().toLowerCase();
+    if (!key) return null;
+    if (ashbyBrands.has(key)) return ashbyBrands.get(key) || null;
+    try {
+      const brand = await fetchAshbyBoardBrand(key);
+      ashbyBrands.set(key, brand);
+      return brand;
+    } catch {
+      ashbyBrands.set(key, null);
       return null;
     }
   };
@@ -864,7 +881,13 @@ export async function autoPublishEligibleCandidates(
     if (!derivedCompanyWebsite && (candidate.source_type || "").toLowerCase() === "greenhouse") {
       derivedCompanyWebsite = await websiteFromGreenhouseBoard(String(src?.ats_identifier || ""));
     }
-    if (derivedCompanyWebsite) derivedLogoUrl = deriveFaviconUrl(derivedCompanyWebsite);
+    if ((candidate.source_type || "").toLowerCase() === "ashby") {
+      const token = String(src?.ats_identifier || "").trim() || inferAshbyBoardTokenFromUrl(applyUrl) || "";
+      const brand = await brandFromAshbyBoard(token);
+      if (!derivedCompanyWebsite && brand?.website) derivedCompanyWebsite = brand.website;
+      if (brand?.logoUrl) derivedLogoUrl = brand.logoUrl;
+    }
+    if (!derivedLogoUrl && derivedCompanyWebsite) derivedLogoUrl = deriveFaviconUrl(derivedCompanyWebsite);
     if (!companyId) {
       const companyName = derivedCompanyName;
       if (!companyName) {
