@@ -1,7 +1,8 @@
 name: CareersPal - Greenhouse daily pipeline
 
 # 01:30, 03:00 and 04:30 Europe/Bratislava. Each run refreshes at most 20 unfinished boards, then salary.
-# After that, logos are copied from a company website already on file. Names are not turned into domains.
+# After the search alerts, a separate logo pass fills companies published in the New window.
+# A logo comes from a site already stored, or from one site written in the posting. Names are not turned into domains.
 # A board already fetched on this Bratislava day is not fetched again. An empty queue returns immediately.
 # Liveness runs from every scheduled start, and the server keeps only the first successful cleanup that day.
 # queue: max waits behind discovery instead of overlapping it. Discovery does not start from this workflow.
@@ -124,19 +125,6 @@ jobs:
               failed=1
               echo "Liveness failed. Google Indexing was not called."
             fi
-            echo "Running logos"
-            body=$(curl -sS -L \
-              --connect-timeout 15 \
-              --max-time 70 \
-              --retry 2 \
-              --retry-delay 2 \
-              --retry-all-errors \
-              --fail \
-              -G "$PIPELINE_URL" \
-              --data-urlencode "secret=$CRON_SECRET" \
-              --data-urlencode "mode=logos")
-            echo "$body" | jq '{ok,mode,updated:.summary.updated,jobs:.summary.jobsUpdated,skipped:.summary.skipped}'
-            echo "$body" | jq -e '.ok == true' >/dev/null || failed=1
             origin=$(printf '%s\n' "$PIPELINE_URL" | sed -E 's#^(https?://[^/]+).*#\1#')
             echo "Premium alerts for roles found in this search"
             body=$(curl -sS -L \
@@ -151,6 +139,19 @@ jobs:
               --data-urlencode "cadence=daily") || failed=1
             echo "$body" | jq '{ok,cadence,sent:.daily.sent}'
             echo "$body" | jq -e '.ok == true and .cadence == "daily"' >/dev/null || failed=1
+            echo "Running logos after alerts"
+            body=$(curl -sS -L \
+              --connect-timeout 15 \
+              --max-time 90 \
+              --retry 2 \
+              --retry-delay 2 \
+              --retry-all-errors \
+              --fail \
+              -G "$PIPELINE_URL" \
+              --data-urlencode "secret=$CRON_SECRET" \
+              --data-urlencode "mode=logos") || failed=1
+            echo "$body" | jq '{ok,mode,updated:.summary.updated,jobs:.summary.jobsUpdated,fromPosting:.summary.websitesFromPosting,skipped:.summary.skipped}'
+            echo "$body" | jq -e '.ok == true and .summary.websitesGuessed == 0' >/dev/null || failed=1
           else
             run_slices refresh || failed=1
           fi

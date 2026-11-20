@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { backfillMissingCompanyLogos } from "./backfillCompanyLogos";
+import { backfillMissingCompanyLogos, confirmedLogoWebsite } from "./backfillCompanyLogos";
 
 type Row = { id: string; website?: string | null; logo_url?: string | null; company_id?: string | null };
 
@@ -99,6 +99,16 @@ test("an ATS address and a company without a website stay blank", async () => {
   assert.equal(result.jobsUpdated, 0);
   assert.equal(db.companies[0].logo_url, null);
   assert.equal(db.jobs[0].logo_url, null);
+});
+
+test("a new company logo comes from one site in the posting, never from the name", () => {
+  assert.equal(
+    confirmedLogoWebsite(null, ["Apply at https://www.kin.com/careers and read the role."]),
+    "https://kin.com",
+  );
+  assert.equal(confirmedLogoWebsite(null, ["https://boards.greenhouse.io/kin/jobs/1"]), null);
+  assert.equal(confirmedLogoWebsite(null, ["https://kin.com https://other.example"]), null);
+  assert.equal(confirmedLogoWebsite("https://www.notion.so", []), "https://www.notion.so");
 });
 
 test("a logo the company already has is copied onto listings that lack one", async () => {
