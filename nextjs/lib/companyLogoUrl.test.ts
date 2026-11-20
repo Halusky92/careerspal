@@ -1,11 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { chooseDisplayedLogo, isDirectoryLogo, officialWebsiteUrl, soleCompanyWebsiteFromText } from "./companyLogoUrl";
+import { chooseDisplayedLogo, isAshbyOrgLogo, isDirectoryLogo, officialWebsiteUrl, soleCompanyWebsiteFromText } from "./companyLogoUrl";
 import { preparedLogoRepairs } from "./companyLogoRepair";
 
 test("a directory favicon is not used as the company logo", () => {
   assert.equal(isDirectoryLogo("https://www.google.com/s2/favicons?domain=g2.com&sz=128"), true);
   assert.equal(isDirectoryLogo("https://www.google.com/s2/favicons?domain=optro.ai&sz=128"), false);
+});
+
+test("an Ashby posting logo is the employer mark, and the board address is not", () => {
+  assert.equal(
+    isDirectoryLogo("https://app.ashbyhq.com/api/images/org-theme-logo/org/theme/logo.png"),
+    false,
+  );
+  assert.equal(isAshbyOrgLogo("https://jobs.ashbyhq.com/clipboard"), false);
+  assert.equal(isDirectoryLogo("https://jobs.ashbyhq.com/clipboard"), true);
 });
 
 test("a directory profile is not the company website", () => {

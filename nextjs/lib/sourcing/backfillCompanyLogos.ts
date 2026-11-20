@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { enrichCompanyFromWebsite } from "../companyEnrichment";
-import { hostnameFromWebsite, publicLogoUrlForWebsite, soleCompanyWebsiteFromText } from "../companyLogoUrl";
+import { hostnameFromWebsite, isGenericHostedIcon, officialWebsiteUrl, publicLogoUrlForWebsite, soleCompanyWebsiteFromText } from "../companyLogoUrl";
 import { NEW_BADGE_MS } from "../listingWindow";
+import { fetchAshbyBoardBrand, type AshbyBoardBrand } from "./ashbyBrand";
+import { inferAshbyBoardTokenFromUrl } from "./connectors/ashby";
 
 type AdminSb = SupabaseClient<any, "public", any>;
 
@@ -89,6 +91,7 @@ export async function backfillMissingCompanyLogos(
 
 type RecentJobRow = {
   company_id?: string | null;
+  apply_url?: string | null;
   description?: string | null;
   logo_url?: string | null;
   companies?: { id?: string | null; website?: string | null; logo_url?: string | null } | null;
@@ -101,21 +104,23 @@ export async function backfillRecentPublishedLogos(
     sinceMs?: number;
     fetchLimit?: number;
     enrich?: (input: { websiteUrl: string }) => Promise<LogoEnrichment>;
+    loadAshbyBrand?: (token: string) => Promise<AshbyBoardBrand>;
   } = {},
 ) {
   const sinceMs = opts.sinceMs ?? NEW_BADGE_MS;
   const fetchLimit = opts.fetchLimit ?? 20;
   const enrich = opts.enrich ?? enrichCompanyFromWebsite;
+  const loadAshbyBrand = opts.loadAshbyBrand ?? fetchAshbyBoardBrand;
   const since = new Date(Date.now() - sinceMs).toISOString();
   const { data, error } = await sb
     .from("jobs")
-    .select("company_id,description,logo_url,companies(id,website,logo_url)")
+    .select("company_id,apply_url,description,logo_url,companies(id,website,logo_url)")
     .eq("status", "published")
     .or(`published_at.gte.${since},created_at.gte.${since}`)
     .limit(400);
   if (error) throw error;
 
-  const byCompany = new Map<string, { website: string | null; logo: string; descriptions: string[]; jobsMissing: boolean }>();
+  const byCompany = new Map<string, { website: string | null; logo: string; descriptions: string[]; jobsMissing: boolean; ashbyTokens: Set<string> }>();
   for (const row of (data || []) as RecentJobRow[]) {
     const company = row.companies;
     const id = String(company?.id || row.company_id || "").trim();
@@ -125,9 +130,12 @@ export async function backfillRecentPublishedLogos(
       logo: String(company?.logo_url || "").trim(),
       descriptions: [],
       jobsMissing: false,
+      ashbyTokens: new Set<string>(),
     };
     if (row.description) current.descriptions.push(String(row.description));
     if (!String(row.logo_url || "").trim()) current.jobsMissing = true;
+    const token = inferAshbyBoardTokenFromUrl(String(row.apply_url || ""));
+    if (token) current.ashbyTokens.add(token);
     byCompany.set(id, current);
   }
 
@@ -136,36 +144,58 @@ export async function backfillRecentPublishedLogos(
   let fetched = 0;
   let skipped = 0;
   let websitesFromPosting = 0;
+  let websitesFromBoard = 0;
 
   for (const [id, company] of byCompany) {
     let logo = company.logo;
-    if (!logo) {
+    const logoIsWeak = !logo || isGenericHostedIcon(logo);
+    if (logoIsWeak) {
       const storedSite = hostnameFromWebsite(company.website) ? String(company.website).trim() : "";
-      const website = confirmedLogoWebsite(company.website, company.descriptions);
-      if (!website || fetched >= fetchLimit) {
-        skipped += 1;
-        continue;
+      let website = confirmedLogoWebsite(company.website, company.descriptions);
+      let websiteFromBoard = false;
+      const tokens = [...company.ashbyTokens];
+      if (tokens.length === 1 && fetched < fetchLimit) {
+        fetched += 1;
+        try {
+          const brand = await loadAshbyBrand(tokens[0]);
+          if (brand.logoUrl) logo = brand.logoUrl;
+          if (!website && brand.website) {
+            website = brand.website;
+            websiteFromBoard = true;
+          }
+        } catch {
+          logo = logo || "";
+        }
       }
-      fetched += 1;
-      try {
-        const enriched = await enrich({ websiteUrl: website });
-        logo = String(enriched.logo_url || "").trim();
-      } catch {
-        logo = "";
+      if (!logo || isGenericHostedIcon(logo)) {
+        if (website && fetched < fetchLimit) {
+          fetched += 1;
+          try {
+            const enriched = await enrich({ websiteUrl: website });
+            const found = String(enriched.logo_url || "").trim();
+            if (found) logo = found;
+          } catch {
+            logo = logo || "";
+          }
+        }
+        if ((!logo || isGenericHostedIcon(logo)) && website) logo = publicLogoUrlForWebsite(website) || "";
       }
-      if (!logo) logo = publicLogoUrlForWebsite(website) || "";
       if (!logo) {
         skipped += 1;
         continue;
       }
-      const patch: { logo_url: string; website?: string } = { logo_url: logo };
-      if (!storedSite) {
-        patch.website = website;
-        websitesFromPosting += 1;
+      if (logo !== company.logo) {
+        const patch: { logo_url: string; website?: string } = { logo_url: logo };
+        const site = officialWebsiteUrl(website);
+        if (!storedSite && site) {
+          patch.website = site;
+          if (websiteFromBoard) websitesFromBoard += 1;
+          else websitesFromPosting += 1;
+        }
+        const write = await sb.from("companies").update(patch).eq("id", id);
+        if (write.error) throw new Error(write.error.message || "Company logo update failed.");
+        updated += 1;
       }
-      const write = await sb.from("companies").update(patch).eq("id", id);
-      if (write.error) throw new Error(write.error.message || "Company logo update failed.");
-      updated += 1;
     }
     if (!company.jobsMissing && !logo) continue;
     const jobs = await sb.from("jobs").update({ logo_url: logo }).eq("company_id", id).is("logo_url", null).select("id");
@@ -180,6 +210,7 @@ export async function backfillRecentPublishedLogos(
     fetched,
     skipped,
     websitesFromPosting,
+    websitesFromBoard,
     websitesGuessed: 0,
   };
 }
