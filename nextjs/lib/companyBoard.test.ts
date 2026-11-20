@@ -86,3 +86,17 @@ test("most relevant employers put a paid Featured Pro company ahead of a larger 
     ["pro", "standard", "automatic"],
   );
 });
+
+test("a homepage card keeps the company site when the stored logo file is gone", () => {
+  const ranked = topHiringEmployers([
+    {
+      company: "Docker",
+      companySlug: "docker",
+      logo: "https://app.ashbyhq.com/api/images/org-theme-logo/a/b/c.png",
+      companyWebsite: "https://www.docker.com",
+      origin: "ashby",
+    },
+  ]);
+  assert.equal(ranked[0]?.website, "https://docker.com");
+  assert.equal(ranked[0]?.logo.includes("org-theme-logo"), true);
+});
