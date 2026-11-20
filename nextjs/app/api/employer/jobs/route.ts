@@ -16,6 +16,8 @@ import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../../lib/nicheScope";
 import { canUseAdminTestPlan, isAdminTestPrice } from "../../../../lib/adminTestPlan";
 import { resolveStoredEmployerPlan } from "../../../../lib/employerPlans";
 import { COMPANY_OWNED_ELSEWHERE_MESSAGE } from "../../../../lib/listingLock";
+import { findJobConflict } from "../../../../lib/companyAccessDb";
+import { isSourcedJobOrigin } from "../../../../lib/sourcing/origin";
 
 const MAX_LIVE_JOBS_PER_HOUR = 12;
 
@@ -82,9 +84,20 @@ export const GET = async (request: Request) => {
     const retry = await fallback;
     data = retry.data as typeof data;
   }
-  const rows = ((data || []) as Array<SupabaseJobRow & { origin?: string | null }>).filter(
-    (row) => (row.origin || "employer") !== "greenhouse",
-  );
+  const loaded = (data || []) as Array<SupabaseJobRow & { origin?: string | null }>;
+  const linkedIds = new Set<string>();
+  if (loaded.length > 0) {
+    const linked = await supabaseAdmin
+      .from("sourcing_sourced_job_candidates")
+      .select("published_job_id")
+      .in("published_job_id", loaded.map((row) => row.id));
+    if (!linked.error) {
+      for (const row of linked.data || []) {
+        if (row.published_job_id) linkedIds.add(row.published_job_id);
+      }
+    }
+  }
+  const rows = loaded.filter((row) => !isSourcedJobOrigin(row.origin) && !linkedIds.has(row.id));
   const mapped = rows.map(mapSupabaseJob);
   const summary = mapped.reduce(
     (acc, job) => {
@@ -171,16 +184,47 @@ export const POST = async (request: Request) => {
       website: normalizeHttpUrl(body.companyWebsite),
       logoUrl: normalizeHttpUrl(body.logo),
       description: body.companyDescription || null,
+      freeListing: storedPlan.startPack || storedPlan.planPrice === 0,
     });
-    if (companyResult.error === "claim_required") {
+    if (companyResult.error === "claim_required" || companyResult.error === "access_required") {
       return NextResponse.json(
-        { error: COMPANY_OWNED_ELSEWHERE_MESSAGE, claimRequired: true },
+        {
+          error: companyResult.error === "access_required"
+            ? "This company is already listed. Request access to post jobs under its existing profile."
+            : COMPANY_OWNED_ELSEWHERE_MESSAGE,
+          claimRequired: true,
+          companyId: companyResult.companyId,
+        },
+        { status: 409 },
+      );
+    }
+    if (companyResult.error === "ambiguous_company") {
+      return NextResponse.json(
+        { error: "More than one company matches this name. An admin has to confirm which profile to use." },
         { status: 409 },
       );
     }
     companyId = companyResult.companyId;
   }
   const company = { id: companyId };
+  const conflict = await findJobConflict(supabaseAdmin, {
+    applyUrl: normalizeApplyUrl(body.applyUrl),
+    title: body.title,
+    location: body.location || "",
+    companyId,
+  });
+  if (conflict.action === "block") {
+    return NextResponse.json(
+      { error: "This role is already on the board. Use the existing listing instead of posting a second card.", jobId: conflict.jobId },
+      { status: 409 },
+    );
+  }
+  if (conflict.action === "review") {
+    return NextResponse.json(
+      { error: "A similar role is already listed for this company. An admin needs to confirm it is a different job.", jobId: conflict.jobId },
+      { status: 409 },
+    );
+  }
 
   const insertPayload: Record<string, unknown> = {
     title: body.title,

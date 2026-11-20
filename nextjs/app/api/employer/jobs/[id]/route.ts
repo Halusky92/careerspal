@@ -151,10 +151,22 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       profileId: auth.profileId,
       name: body.company.trim(),
       website: typeof body.companyWebsite === "string" ? body.companyWebsite : null,
+      freeListing: owned.job.plan_price === 0,
     });
-    if (companyResult.error === "claim_required") {
+    if (companyResult.error === "claim_required" || companyResult.error === "access_required") {
       return NextResponse.json(
-        { error: COMPANY_OWNED_ELSEWHERE_MESSAGE, claimRequired: true },
+        {
+          error: companyResult.error === "access_required"
+            ? "This company is already listed. Request access to post jobs under its existing profile."
+            : COMPANY_OWNED_ELSEWHERE_MESSAGE,
+          claimRequired: true,
+        },
+        { status: 409 },
+      );
+    }
+    if (companyResult.error === "ambiguous_company") {
+      return NextResponse.json(
+        { error: "More than one company matches this name. An admin has to confirm which profile to use." },
         { status: 409 },
       );
     }

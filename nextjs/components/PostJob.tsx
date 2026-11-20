@@ -13,6 +13,7 @@ import { toggleTool, toolsForCategory, toolsToKeywords } from "../lib/postingToo
 import StartPackMeter from "./StartPackMeter";
 import type { StartPackStatus } from "../lib/founding";
 import { DESCRIPTION_MAX, localListingIssues } from "../lib/jobs/listingFieldChecks";
+import { authFetch } from "../lib/authFetch";
 import {
   composeJobDescription,
   EXAMPLE_PAY_AND_BENEFITS,
@@ -120,7 +121,7 @@ const formFromJob = (job?: Partial<Job> | null, draft?: DraftPost | null): JobFo
 };
 
 const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePlan, showTestPlan, foundingEligible, foundingStatus, onCompanyForFounding, initialJob, submitting, submitError, submitIssues }) => {
-  const { user, profile, loading: authLoading } = useSupabaseAuth();
+  const { user, profile, loading: authLoading, accessToken } = useSupabaseAuth();
   const owner = postingOwnerKey(user?.id, profile?.email);
   const [step, setStep] = useState(1);
   const [logoFileName, setLogoFileName] = useState("");
@@ -128,6 +129,8 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   const [titleMenuOpen, setTitleMenuOpen] = useState(false);
   const liveTitles: string[] = [];
   const [screenIssues, setScreenIssues] = useState<ListingScreenIssue[]>([]);
+  const [companyNotice, setCompanyNotice] = useState("");
+  const [companyMatchId, setCompanyMatchId] = useState("");
   const [screening, setScreening] = useState(false);
   const [screenToken, setScreenToken] = useState<string | null>(null);
   const [aiChecking, setAiChecking] = useState(false);
@@ -146,6 +149,32 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
   
   const [formData, setFormData] = useState<JobFormData>(() => formFromJob(initialJob));
   const [draftOwner, setDraftOwner] = useState<string | null>(null);
+
+  useEffect(() => {
+    const name = formData.company.trim();
+    if (!accessToken || name.length < 2) {
+      setCompanyNotice("");
+      setCompanyMatchId("");
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void authFetch(
+        `/api/employer/company/access?name=${encodeURIComponent(name)}&website=${encodeURIComponent(formData.companyWebsite || "")}`,
+        {},
+        accessToken,
+      )
+        .then((response) => response.json())
+        .then((body) => {
+          setCompanyNotice(body.ready === false ? "" : typeof body.message === "string" ? body.message : "");
+          setCompanyMatchId(body.ready === false ? "" : body.match?.companyId || "");
+        })
+        .catch(() => {
+          setCompanyNotice("");
+          setCompanyMatchId("");
+        });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [accessToken, formData.company, formData.companyWebsite]);
 
   useEffect(() => {
     if (!submitIssues?.length) return;
@@ -980,6 +1009,25 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">Company name <Mark field="company" /></label>
                     <input type="text" placeholder="Your Company Name" className={`cp-field w-full h-10 rounded-lg px-3 text-sm outline-none${fieldTone("company")}`} value={formData.company} onChange={e => { setFormData({...formData, company: e.target.value}); setScreenIssues((prev) => prev.filter((issue) => issue.field !== "company")); }} />
+                    {companyNotice ? <p className="text-[11px] leading-5 text-slate-600">{companyNotice}</p> : null}
+                    {companyMatchId && accessToken ? (
+                      <button
+                        type="button"
+                        className="text-[11px] font-medium text-slate-900 underline"
+                        onClick={() => {
+                          void authFetch(
+                            "/api/employer/company/access",
+                            { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: companyMatchId }) },
+                            accessToken,
+                          ).then(async (response) => {
+                            const body = await response.json();
+                            setCompanyNotice(body.message || body.error || companyNotice);
+                          });
+                        }}
+                      >
+                        Request access
+                      </button>
+                    ) : null}
                     {showIssue("company") && <p className="text-[11px] font-semibold text-rose-700">{issueFor("company")}</p>}
                   </div>
                 </div>

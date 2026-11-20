@@ -12,6 +12,8 @@ import { startPackUsage, type StartPackJobRow } from "./startPackQuota";
 import { mergeStartPackUsage, startPackLedgerCounts } from "./startPackLedger";
 import { hostnameDomain, normalizeCompanyKey, workEmailDomain } from "./workEmailDomain";
 import { isBoilerplateDescription } from "./companyBoard";
+import { canEditCompanyProfile, canPostForCompany, employerMayManageJob, legacyEmployerMayPost } from "./companyAccess";
+import { loadMembership, matchExistingCompany, membershipTableReady } from "./companyAccessDb";
 
 export const EMPLOYER_JOB_SELECT =
   "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,origin,company_id,created_by,companies(name,slug,logo_url,website,description)";
@@ -114,16 +116,18 @@ export async function requireEmployer(request: Request) {
 export async function loadEmployerOwnedJob(
   jobId: string,
   profileId: string,
+  client?: NonNullable<typeof supabaseAdmin>,
 ): Promise<{ job: EmployerOwnedJob | null; error: "not_configured" | "not_found" | "forbidden" | "sourced" | null }> {
-  if (!supabaseAdmin) return { job: null, error: "not_configured" };
-  const full = await supabaseAdmin
+  const sb = client || supabaseAdmin;
+  if (!sb) return { job: null, error: "not_configured" };
+  const full = await sb
     .from("jobs")
     .select(EMPLOYER_OWNED_JOB_SELECT)
     .eq("id", jobId)
     .maybeSingle();
   const data = full.error
     ? (
-        await supabaseAdmin
+        await sb
           .from("jobs")
           .select(EMPLOYER_OWNED_JOB_SELECT_FALLBACK)
           .eq("id", jobId)
@@ -132,7 +136,19 @@ export async function loadEmployerOwnedJob(
     : full.data;
   if (!data) return { job: null, error: "not_found" };
   const job = toEmployerOwnedJob(data);
-  if (job.created_by !== profileId) return { job: null, error: "forbidden" };
+  const linked = await sb
+    .from("sourcing_sourced_job_candidates")
+    .select("id")
+    .eq("published_job_id", jobId)
+    .limit(1);
+  const decision = employerMayManageJob({
+    origin: job.origin,
+    createdBy: job.created_by,
+    profileId,
+    linkedToSourcing: !linked.error && (linked.data || []).length > 0,
+  });
+  if (decision === "sourced") return { job: null, error: "sourced" };
+  if (decision === "forbidden") return { job: null, error: "forbidden" };
   return { job, error: null };
 }
 
@@ -142,15 +158,79 @@ export async function resolveEmployerCompany(args: {
   website?: string | null;
   logoUrl?: string | null;
   description?: string | null;
+  freeListing?: boolean;
+  client?: NonNullable<typeof supabaseAdmin>;
 }) {
-  if (!supabaseAdmin) return { companyId: null as string | null, error: "not_configured" as const, existing: null as Record<string, unknown> | null };
+  const sb = args.client || supabaseAdmin;
+  if (!sb) return { companyId: null as string | null, error: "not_configured" as const, existing: null as Record<string, unknown> | null };
   const name = args.name.trim();
-  const { data: existing } = await supabaseAdmin
+  const ready = await membershipTableReady(sb);
+  if (ready) {
+    const matched = await matchExistingCompany(sb, { name, website: args.website });
+    const match = "match" in matched ? matched.match : null;
+    if (match?.status === "ambiguous") {
+      return { companyId: null, error: "ambiguous_company" as const, existing: null };
+    }
+    if (match?.status === "match") {
+      if (args.freeListing) {
+        return { companyId: match.companyId, error: "access_required" as const, existing: { id: match.companyId, name: match.name } };
+      }
+      const membership = await loadMembership(sb, match.companyId, args.profileId);
+      const companyRow = await sb.from("companies").select("created_by").eq("id", match.companyId).maybeSingle();
+      const ownJobs = await sb
+        .from("jobs")
+        .select("plan_price,stripe_payment_status,created_by")
+        .eq("company_id", match.companyId)
+        .eq("created_by", args.profileId)
+        .limit(20);
+      const hasOwnPricedJob = (ownJobs.data || []).some((job) =>
+        typeof job.plan_price === "number" || job.stripe_payment_status === "paid" || job.stripe_payment_status === "founding",
+      );
+      const allowed = legacyEmployerMayPost({
+        membership,
+        createdCompany: companyRow.data?.created_by === args.profileId,
+        hasOwnPricedJob,
+      });
+      if (!allowed) {
+        return { companyId: match.companyId, error: "access_required" as const, existing: { id: match.companyId, name: match.name } };
+      }
+      if (!canPostForCompany(membership)) {
+        await sb.from("company_memberships").upsert(
+          {
+            company_id: match.companyId,
+            profile_id: args.profileId,
+            role: "admin",
+            status: "active",
+            granted_by: args.profileId,
+          },
+          { onConflict: "company_id,profile_id" },
+        );
+      }
+      if (canEditCompanyProfile(membership) || (!membership && companyRow.data?.created_by === args.profileId)) {
+        await fillEmptyCompanyProfile(match.companyId, {
+          website: args.website,
+          logoUrl: args.logoUrl,
+          description: args.description,
+        }, sb);
+      }
+      return { companyId: match.companyId, error: null, existing: { id: match.companyId, name: match.name } };
+    }
+  }
+  let existingQuery = await sb
     .from("companies")
     .select("id,name,claimed_by,created_by,website,logo_url,description")
     .ilike("name", name)
     .limit(1)
     .maybeSingle();
+  if (existingQuery.error) {
+    existingQuery = await sb
+      .from("companies")
+      .select("id,name,created_by,website,logo_url,description")
+      .ilike("name", name)
+      .limit(1)
+      .maybeSingle();
+  }
+  const existing = existingQuery.data;
 
   if (existing?.id) {
     const claimedBy = (existing as { claimed_by?: string | null }).claimed_by;
@@ -163,7 +243,7 @@ export async function resolveEmployerCompany(args: {
       website: args.website,
       logoUrl: args.logoUrl,
       description: args.description,
-    });
+    }, sb);
     return { companyId: existing.id, error: null, existing };
   }
 
@@ -175,10 +255,10 @@ export async function resolveEmployerCompany(args: {
     created_by: args.profileId,
     claimed_by: args.profileId,
   };
-  let { data: created, error } = await supabaseAdmin.from("companies").insert(payload).select("id").single();
+  let { data: created, error } = await sb.from("companies").insert(payload).select("id").single();
   if (error) {
     const { claimed_by: _claimed, ...withoutClaim } = payload;
-    const retry = await supabaseAdmin.from("companies").insert(withoutClaim).select("id").single();
+    const retry = await sb.from("companies").insert(withoutClaim).select("id").single();
     created = retry.data;
     error = retry.error;
   }
@@ -186,15 +266,29 @@ export async function resolveEmployerCompany(args: {
   if (error || !created?.id) {
     return { companyId: null, error: "create_failed" as const, existing: null };
   }
+  if (ready) {
+    await sb.from("company_memberships").upsert(
+      {
+        company_id: created.id,
+        profile_id: args.profileId,
+        role: "admin",
+        status: "active",
+        granted_by: args.profileId,
+      },
+      { onConflict: "company_id,profile_id" },
+    );
+  }
   return { companyId: created.id, error: null, existing: created };
 }
 
 export async function fillEmptyCompanyProfile(
   companyId: string,
   fields: { website?: string | null; logoUrl?: string | null; description?: string | null },
+  client?: NonNullable<typeof supabaseAdmin>,
 ) {
-  if (!supabaseAdmin) return;
-  const { data } = await supabaseAdmin
+  const sb = client || supabaseAdmin;
+  if (!sb) return;
+  const { data } = await sb
     .from("companies")
     .select("website,logo_url,description")
     .eq("id", companyId)
@@ -207,7 +301,7 @@ export async function fillEmptyCompanyProfile(
     patch.description = fields.description;
   }
   if (Object.keys(patch).length === 0) return;
-  await supabaseAdmin.from("companies").update(patch).eq("id", companyId);
+  await sb.from("companies").update(patch).eq("id", companyId);
 }
 
 const emptyStartPack = (reason: string, extra?: Partial<StartPackStatus>): StartPackStatus => ({

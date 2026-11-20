@@ -11,6 +11,7 @@ import { discoveryMarketBlockers, payBelowBoard } from "./discoveryPublishGate";
 import { inferWorkMode } from "../../workMode";
 import { resolveCategoryHub } from "../../categories";
 import { applyUrlLooksSourcedAts, probeApplyUrl } from "../../jobs/applyLinkHealth";
+import { sourcingMayOverwrite } from "../../jobDuplicate";
 import { isSourcedJobOrigin, sourcedOriginFromSourceType } from "../origin";
 
 type AdminSb = SupabaseClient<any, "public", any>;
@@ -256,7 +257,11 @@ export async function syncPublishedSourcedJobs(
       status?: string | null;
     } | null;
     if (!jobRow?.id) continue;
-    if (isPaidEmployerJob(jobRow) || jobRow.plan_price === 0 || jobRow.stripe_payment_status === "founding") {
+    if (!sourcingMayOverwrite({
+      origin: jobRow.origin,
+      planPrice: jobRow.plan_price,
+      stripePaymentStatus: jobRow.stripe_payment_status,
+    })) {
       skippedPaid += 1;
       continue;
     }
