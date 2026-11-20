@@ -2,7 +2,7 @@ name: CareersPal - Greenhouse daily pipeline
 
 # 01:30, 03:00 and 04:30 Europe/Bratislava. Each run refreshes at most 20 unfinished boards, then salary.
 # After the search alerts, a separate logo pass fills companies published in the New window.
-# A logo comes from a site already stored, or from one site written in the posting. Names are not turned into domains.
+# A logo comes from a site already stored, one site written in the posting, or the logo on the company's own Ashby board. Names are not turned into domains.
 # A board already fetched on this Bratislava day is not fetched again. An empty queue returns immediately.
 # Liveness runs from every scheduled start, and the server keeps only the first successful cleanup that day.
 # queue: max waits behind discovery instead of overlapping it. Discovery does not start from this workflow.

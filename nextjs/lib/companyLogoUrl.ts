@@ -104,10 +104,35 @@ export function publicLogoUrlForWebsite(website?: string | null): string | null 
   return googleFaviconUrl(host);
 }
 
+/** The square mark or wordmark Ashby shows above the employer's own posting. */
+export function isAshbyOrgLogo(url?: string | null): boolean {
+  const raw = (url || "").trim();
+  if (!raw) return false;
+  try {
+    const parsed = new URL(raw);
+    const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+    return host === "app.ashbyhq.com" && /^\/api\/images\/org-theme-(?:logo|wordmark)\//.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
+/** A favicon from a search engine, used only when the employer has not given a logo. */
+export function isGenericHostedIcon(url?: string | null): boolean {
+  const raw = (url || "").trim();
+  if (!raw) return false;
+  try {
+    const host = new URL(raw).hostname.replace(/^www\./i, "").toLowerCase();
+    return host === "google.com" || host.endsWith(".google.com") || host === "gstatic.com" || host.endsWith("duckduckgo.com");
+  } catch {
+    return false;
+  }
+}
+
 /** A favicon or image that points at G2, LinkedIn, or another directory is not the company logo. */
 export function isDirectoryLogo(url?: string | null): boolean {
   const raw = (url || "").trim();
-  if (!raw) return false;
+  if (!raw || isAshbyOrgLogo(raw)) return false;
   try {
     const parsed = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
     const domain = parsed.searchParams.get("domain") || "";
