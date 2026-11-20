@@ -154,6 +154,7 @@ export async function backfillRecentPublishedLogos(
     let logo = company.logo;
     const logoIsWeak = !logo || isGenericHostedIcon(logo);
     const storedSite = hostnameFromWebsite(company.website) ? String(company.website).trim() : "";
+    let siteForJobs = storedSite;
     const tokens = [...company.ashbyTokens];
     if (logoIsWeak || (!storedSite && tokens.length === 1)) {
       let website = confirmedLogoWebsite(company.website, company.descriptions);
@@ -184,15 +185,16 @@ export async function backfillRecentPublishedLogos(
         }
         if ((!logo || isGenericHostedIcon(logo)) && website) logo = publicLogoUrlForWebsite(website) || "";
       }
-      if (logoIsWeak && !logo) {
+      if (logoIsWeak && !logo && !officialWebsiteUrl(website)) {
         skipped += 1;
         continue;
       }
       const patch: { logo_url?: string; website?: string } = {};
-      if (logoIsWeak && logo !== company.logo) patch.logo_url = logo;
+      if (logo && logoIsWeak && logo !== company.logo) patch.logo_url = logo;
       const site = officialWebsiteUrl(website);
       if (!storedSite && site) {
         patch.website = site;
+        siteForJobs = site;
         if (websiteFromBoard) websitesFromBoard += 1;
         else websitesFromPosting += 1;
       }
@@ -202,10 +204,20 @@ export async function backfillRecentPublishedLogos(
         updated += 1;
       }
     }
-    if (!company.jobsMissing && !logo) continue;
-    const jobs = await sb.from("jobs").update({ logo_url: logo }).eq("company_id", id).is("logo_url", null).select("id");
-    if (jobs.error) throw new Error(jobs.error.message || "Job logo update failed.");
-    jobsUpdated += Array.isArray(jobs.data) ? jobs.data.length : 0;
+    if (logo) {
+      const jobs = await sb.from("jobs").update({ logo_url: logo }).eq("company_id", id).is("logo_url", null).select("id");
+      if (jobs.error) throw new Error(jobs.error.message || "Job logo update failed.");
+      jobsUpdated += Array.isArray(jobs.data) ? jobs.data.length : 0;
+      if (company.logo && isGenericHostedIcon(company.logo) && logo !== company.logo) {
+        const replaced = await sb.from("jobs").update({ logo_url: logo }).eq("company_id", id).eq("logo_url", company.logo).select("id");
+        if (replaced.error) throw new Error(replaced.error.message || "Job logo update failed.");
+        jobsUpdated += Array.isArray(replaced.data) ? replaced.data.length : 0;
+      }
+    }
+    if (siteForJobs) {
+      const sites = await sb.from("jobs").update({ company_website: siteForJobs }).eq("company_id", id).is("company_website", null);
+      if (sites.error) throw new Error(sites.error.message || "Job website update failed.");
+    }
   }
 
   return {
