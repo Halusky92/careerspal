@@ -1,9 +1,9 @@
 "use client";
 
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSupabaseAuth } from "./Providers";
-import { postingOwnerKey, readPostingItem, writePostingItem } from "../lib/postingSession";
+import { claimGuestPosting, postingOwnerKey, readPostingItem, writePostingItem } from "../lib/postingSession";
 import { Job, PlanType } from '../types';
 import { CATEGORIES, CATEGORY_FILTER_LABELS } from '../constants';
 import { PLAN_PRICES } from '../lib/plans';
@@ -184,8 +184,9 @@ const PostJob: React.FC<PostJobProps> = ({ onComplete, selectedPlan, onUpgradePl
     setStep(needsRole || !needsCompany ? 1 : 2);
   }, [submitIssues]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (authLoading) return;
+    if (owner !== "guest") claimGuestPosting(owner);
     if (initialJob?.id) {
       setFormData(formFromJob(initialJob));
       setLogoFileName("");

@@ -148,6 +148,12 @@ export default async function JobsPage({ searchParams }: PageProps) {
 
   return (
     <div className="pt-3">
+      <style>{`html.cp-restore-jobs body{visibility:hidden}`}</style>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `try{var p=JSON.parse(sessionStorage.getItem("cp_jobs_return")||"null");if(p&&p.scrollY>0)document.documentElement.classList.add("cp-restore-jobs")}catch(e){}`,
+        }}
+      />
       <noscript>
         <StaticJobsList jobs={initialJobs} total={total} companies={boardCompanyCount(jobs)} />
       </noscript>

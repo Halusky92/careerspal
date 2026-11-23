@@ -51,8 +51,13 @@ export function isPriorityListing(job: Stamp, now = Date.now()): boolean {
   return now - seen < PRIORITY_WINDOW_MS;
 }
 
+/** The date printed on the card. New follows that date, not the later moment the role was added here. */
+export function shownPostedAtMs(job: Stamp): number | null {
+  return instantMs(job.timestamp) ?? listedAtMs(job);
+}
+
 export function isNewListing(job: Stamp, now = Date.now()): boolean {
-  const seen = listedAtMs(job);
+  const seen = shownPostedAtMs(job);
   if (seen == null) return false;
   return now - seen < NEW_BADGE_MS;
 }
