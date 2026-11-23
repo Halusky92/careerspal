@@ -276,8 +276,19 @@ function promoteStrayListLines(out: string) {
     .join("\n");
 }
 
+function dropRedundantAboutHeading(out: string): string {
+  const lines = (out || "").split("\n");
+  const first = lines.findIndex((line) => line.trim());
+  if (first < 0) return out;
+  const label = lines[first].trim().replace(/:$/, "").toLowerCase();
+  if (label !== "about the role" && label !== "about this job" && label !== "the role") return out;
+  const next = lines.slice(first + 1).find((line) => line.trim()) || "";
+  if (!/^(about\b|who we are$)/i.test(next.trim().replace(/:$/, ""))) return out;
+  return lines.slice(first + 1).join("\n").replace(/^\n+/, "");
+}
+
 function finishDisplayedDescription(out: string, maxLen: number) {
-  const tidy = promoteStrayListLines(out.replace(/[ \t]+([.,;:!?])/g, "$1"))
+  const tidy = dropRedundantAboutHeading(promoteStrayListLines(out.replace(/[ \t]+([.,;:!?])/g, "$1")))
     .replace(/\n{3,}/g, "\n\n")
     .trim();
   return tidy.length > maxLen ? `${tidy.slice(0, maxLen).trim()}…` : tidy;
@@ -355,8 +366,25 @@ export function extractJobDetailSections(input: string): Array<{ heading: string
     const body = merged.get(s.heading);
     return body ? { heading: s.heading, body } : null;
   }).filter((s): s is { heading: string; body: string } => Boolean(s));
-  if (!sawNamed || ordered.length < 2) return [{ heading: "About the role", body: text }];
-  return ordered;
+  const sections = !sawNamed || ordered.length < 2 ? [{ heading: "About the role", body: text }] : ordered;
+  return sections.map(liftLeadingAbout).filter((section) => section.body.trim());
+}
+
+function liftLeadingAbout(section: { heading: string; body: string }) {
+  let heading = section.heading;
+  let body = section.body;
+  for (let pass = 0; pass < 4; pass += 1) {
+    const lines = body.split("\n");
+    const index = lines.findIndex((line) => line.trim());
+    if (index < 0) break;
+    const first = lines[index].trim().replace(/:$/, "");
+    const generic = /^(about the role|about this job|the role)$/i.test(heading);
+    const same = first.toLowerCase() === heading.toLowerCase();
+    if (!/^(about\b|who we are$)/i.test(first) || (!generic && !same)) break;
+    if (!same) heading = first;
+    body = lines.slice(index + 1).join("\n").trim();
+  }
+  return { heading, body };
 }
 
 export function formatSourcedDescription(input: string, opts: FormatOpts = {}): string {

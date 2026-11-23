@@ -77,6 +77,16 @@ test("a line between bullets stays a bullet and a space before a period is close
   assert.equal(formatSourcedDescription("The team ships on time ."), "The team ships on time.");
 });
 
+test("a leading About the role heading is dropped when the company about follows", () => {
+  const text = formatSourcedDescription("About the role\n\nAbout Equip\nEquip builds treatment programs.\n\nWhat you'll do\n- Map the revenue process");
+  assert.equal(text.startsWith("About the role"), false);
+  assert.match(text, /^About Equip/);
+  const sections = extractJobDetailSections(text);
+  assert.equal(sections[0]?.heading, "About Equip");
+  assert.equal(sections[0]?.body.includes("About Equip"), false);
+  assert.match(sections[0]?.body || "", /treatment programs/);
+});
+
 test("named ATS headings become job-detail sections", () => {
   const sections = extractJobDetailSections(
     "About the role\nRun the weekly ops review.\n\nWhat you'll do\n- Build the tracker\n\nRequirements\n- SQL",

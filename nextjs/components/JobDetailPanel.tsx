@@ -17,6 +17,7 @@ import NewListingBadge from "./NewListingBadge";
 import { isEarlyAccessListing } from "../lib/listingWindow";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import { trackJobView } from "../lib/trackJobEvent";
+import { formatSourcedDescription } from "../lib/sourcing/normalization/description";
 
 type JobDetailPanelProps = {
   job: Job | null;
@@ -32,11 +33,10 @@ type JobDetailPanelProps = {
 
 const formatPosted = (job: Job) => publicPostedLabel(job.timestamp, job.postedAt);
 
-const ROLE_HEADINGS = new Set(["about the role", "about this job", "the role"]);
-
-function descriptionOpensWithRole(text: string) {
-  const first = text.replace(/\r\n/g, "\n").split("\n").map((line) => line.trim()).find(Boolean) || "";
-  return ROLE_HEADINGS.has(first.replace(/:$/, "").trim().toLowerCase());
+function descriptionOpensWithAbout(text: string) {
+  const formatted = formatSourcedDescription(text);
+  const first = formatted.split("\n").map((line) => line.trim()).find(Boolean) || "";
+  return /^(about\b|who we are$)/i.test(first.replace(/:$/, ""));
 }
 
 export default function JobDetailPanel({
@@ -237,12 +237,12 @@ export default function JobDetailPanel({
           )}
 
           <div className="mt-5">
-            {descriptionOpensWithRole(job.description || "") ? null : (
+            {descriptionOpensWithAbout(job.description || "") ? null : (
               <div className="text-xs font-medium text-slate-500">
                 About the role
               </div>
             )}
-            <div className={descriptionOpensWithRole(job.description || "") ? "" : "mt-3"}>
+            <div className={descriptionOpensWithAbout(job.description || "") ? "" : "mt-3"}>
               <FormattedDescription text={job.description} maxLen={3600} className="space-y-3" />
               {!job.description ? (
                 <p className="text-sm font-medium text-slate-700 leading-relaxed">Description is being updated.</p>

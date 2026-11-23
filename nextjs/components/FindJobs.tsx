@@ -849,6 +849,24 @@ const FindJobs: React.FC<FindJobsProps> = ({
     }
   };
 
+  const clearField = (label: string, clear: () => void) => (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        preserveFilterPosition(() => {
+          clear();
+          setOpenWwrDropdown(null);
+        });
+      }}
+      className="absolute right-1.5 top-1/2 z-10 flex h-7 w-7 items-center justify-center rounded-full text-base leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+    >
+      ×
+    </button>
+  );
+
   const clearAllFilters = () => {
     setQuery('');
     setLocationQuery('');
@@ -1099,15 +1117,18 @@ const FindJobs: React.FC<FindJobsProps> = ({
               </svg>
               Job Categories
             </div>
+            <div className="relative mt-2">
             <button
               type="button"
               onClick={() => setOpenWwrDropdown((prev) => (prev === "category" ? null : "category"))}
-              className="cp-field mt-2 w-full h-10 rounded-xl bg-white px-3 text-left text-sm font-medium text-slate-900"
+              className="cp-field w-full h-10 rounded-xl bg-white pl-3 pr-9 text-left text-sm font-medium text-slate-900"
             >
               <span className={category !== "All Roles" ? "" : "text-slate-400"}>
                 {category !== "All Roles" ? getCategoryHub(category)?.label || category : "Any category"}
               </span>
             </button>
+            {category !== "All Roles" ? clearField("Clear category", () => setCategory("All Roles")) : null}
+            </div>
             {openWwrDropdown === "category" && (
               <div className="absolute left-0 right-0 z-40 mt-2 rounded-xl border border-slate-200 bg-white shadow-lg">
                 <div className="py-1">
@@ -1227,7 +1248,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     className="w-full h-10 rounded-lg border border-slate-200 px-3 text-[16px] font-medium text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
                   />
                 </div>
-                <div className="max-h-[6.75rem] overflow-y-auto overscroll-contain py-1">
+                <div className="max-h-[9rem] overflow-y-auto overscroll-contain py-1">
                   <button
                     type="button"
                     onClick={() =>
@@ -1277,15 +1298,18 @@ const FindJobs: React.FC<FindJobsProps> = ({
               </svg>
               Work mode
             </div>
+            <div className="relative mt-2">
             <button
               type="button"
               onClick={() => setOpenWwrDropdown((prev) => (prev === "work" ? null : "work"))}
-              className="cp-field mt-2 w-full h-10 rounded-xl bg-white px-3 text-left text-sm font-medium text-slate-900"
+              className="cp-field w-full h-10 rounded-xl bg-white pl-3 pr-9 text-left text-sm font-medium text-slate-900"
             >
               <span className={workMode === "All" ? "text-slate-400" : ""}>
                 {workMode === "All" ? "Any" : workMode}
               </span>
             </button>
+            {workMode !== "All" ? clearField("Clear work mode", () => setWorkMode("All")) : null}
+            </div>
             {openWwrDropdown === "work" && (
               <div className="absolute z-30 mt-2 w-full rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
                 <div className="py-1">
@@ -1326,6 +1350,15 @@ const FindJobs: React.FC<FindJobsProps> = ({
               setSalaryMin(nextMin);
               setSalaryMax(nextMax);
             }}
+            onClear={
+              salaryMin > 0 || salaryMax > 0
+                ? () =>
+                    preserveFilterPosition(() => {
+                      setSalaryMin(0);
+                      setSalaryMax(0);
+                    })
+                : undefined
+            }
           />
 
           {/* Skills */}
@@ -1336,15 +1369,18 @@ const FindJobs: React.FC<FindJobsProps> = ({
               </svg>
               Tools
             </div>
+            <div className="relative mt-2">
             <button
               type="button"
               onClick={() => setOpenWwrDropdown((prev) => (prev === "skills" ? null : "skills"))}
-              className="cp-field mt-2 w-full h-10 rounded-xl bg-white px-3 text-left text-sm font-medium text-slate-900"
+              className="cp-field w-full h-10 rounded-xl bg-white pl-3 pr-9 text-left text-sm font-medium text-slate-900"
             >
               <span className={skillsSummary ? "" : "text-slate-400"}>
                 {skillsSummary || "Any tool"}
               </span>
             </button>
+            {selectedTools.length > 0 ? clearField("Clear tools", () => setSelectedTools([])) : null}
+            </div>
             {openWwrDropdown === "skills" && (
               <div className="absolute left-0 right-0 bottom-full z-30 mb-1 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
                 <div className="p-2 border-b border-slate-100">
@@ -1355,7 +1391,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     className="w-full h-10 rounded-lg border border-slate-200 px-3 text-[16px] font-medium text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
                   />
                 </div>
-                <div className="max-h-[6.75rem] overflow-y-auto overscroll-contain py-1">
+                <div className="max-h-[9rem] overflow-y-auto overscroll-contain py-1">
                   {skillOptions.filter((t) => t.toLowerCase().includes(wwrSkillQuery.trim().toLowerCase())).length === 0 && (
                     <div className="px-3 py-2 text-sm text-slate-500">No matching tools on the board.</div>
                   )}
