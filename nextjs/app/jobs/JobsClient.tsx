@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import FindJobs from "../../components/FindJobs";
 import { Job, UserSession } from "../../types";
 import type { LockedBoardPreview } from "../../lib/boardAccess";
@@ -45,7 +44,6 @@ export default function JobsClient({
   initialLocation: string;
   initialAccess?: "guest" | "registered" | "paid";
 }) {
-  const router = useRouter();
   const { profile, accessToken, loading: authLoading } = useSupabaseAuth();
   const [jobs, setJobs] = useState<Job[]>(() => initialJobs || []);
   const [lockedJobs, setLockedJobs] = useState<LockedBoardPreview[]>(() => initialLocked);
@@ -54,7 +52,6 @@ export default function JobsClient({
   const [boardTotal, setBoardTotal] = useState(initialTotal);
   const [loadingMore, setLoadingMore] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState<string[]>(() => getSaved());
-  const fillingRef = useRef(false);
 
   useEffect(() => {
     const loadSaved = async () => {
@@ -189,13 +186,13 @@ export default function JobsClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, authLoading, initialAccess]);
 
-  // The first paint is one page. Filters and category counts need every role this visitor may open.
+  // The first paint is one page. The rest arrives in one update so the count does not tick 50, 100, 131.
   useEffect(() => {
-    if (authLoading || fillingRef.current) return;
+    if (authLoading) return;
     if (typeof boardTotal !== "number" || jobs.length >= boardTotal) return;
-    fillingRef.current = true;
     let cancelled = false;
     const fill = async () => {
+      const extra: Job[] = [];
       let loaded = jobs.length;
       let guard = 0;
       try {
@@ -206,24 +203,22 @@ export default function JobsClient({
             : await fetch(`/api/jobs?limit=50&skip=${loaded}`);
           const data = (await response.json()) as { jobs?: Job[] };
           const next = Array.isArray(data.jobs) ? data.jobs : [];
-          if (next.length === 0) return;
+          if (next.length === 0) break;
+          extra.push(...next);
           loaded += next.length;
-          if (cancelled) return;
-          setJobs((prev) => {
-            const seen = new Set(prev.map((job) => job.id));
-            return [...prev, ...next.filter((job) => !seen.has(job.id))];
-          });
         }
       } catch {
         // the first page stays usable
-      } finally {
-        fillingRef.current = false;
       }
+      if (cancelled || extra.length === 0) return;
+      setJobs((prev) => {
+        const seen = new Set(prev.map((job) => job.id));
+        return [...prev, ...extra.filter((job) => !seen.has(job.id))];
+      });
     };
     fill();
     return () => {
       cancelled = true;
-      fillingRef.current = false;
     };
   }, [accessToken, authLoading, boardTotal, jobs.length]);
 

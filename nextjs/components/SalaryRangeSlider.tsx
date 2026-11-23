@@ -1,11 +1,18 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 export const SALARY_SLIDER_CAP = 500000;
 export const SALARY_SLIDER_STEP = 10000;
 
 function money(value: number) {
   if (value <= 0) return "Any";
   return `$${Math.round(value / 1000)}k`;
+}
+
+function snap(value: number) {
+  const stepped = Math.round(value / SALARY_SLIDER_STEP) * SALARY_SLIDER_STEP;
+  return Math.min(SALARY_SLIDER_CAP, Math.max(0, stepped));
 }
 
 export default function SalaryRangeSlider({
@@ -17,52 +24,129 @@ export default function SalaryRangeSlider({
   max: number;
   onChange: (min: number, max: number) => void;
 }) {
-  const right = max > 0 ? Math.min(max, SALARY_SLIDER_CAP) : SALARY_SLIDER_CAP;
-  const left = Math.min(Math.max(0, min), right);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<"min" | "max" | null>(null);
+  const [left, setLeft] = useState(() => Math.min(Math.max(0, min), SALARY_SLIDER_CAP));
+  const [right, setRight] = useState(() => (max > 0 ? Math.min(max, SALARY_SLIDER_CAP) : SALARY_SLIDER_CAP));
+  const leftRef = useRef(left);
+  const rightRef = useRef(right);
+  leftRef.current = left;
+  rightRef.current = right;
+
+  useEffect(() => {
+    if (dragRef.current) return;
+    const nextRight = max > 0 ? Math.min(max, SALARY_SLIDER_CAP) : SALARY_SLIDER_CAP;
+    setLeft(Math.min(Math.max(0, min), nextRight));
+    setRight(nextRight);
+  }, [min, max]);
+
   const openEnded = right >= SALARY_SLIDER_CAP;
   const capLabel = `$${Math.round(SALARY_SLIDER_CAP / 1000)}k`;
   const label =
     left <= 0 && openEnded ? "Any listed salary" : `${money(left)} – ${openEnded ? `${capLabel}+` : money(right)}`;
 
+  const commit = (nextLeft: number, nextRight: number) => {
+    onChange(nextLeft, nextRight >= SALARY_SLIDER_CAP ? 0 : nextRight);
+  };
+
+  const valueFromClientX = (clientX: number) => {
+    const rect = trackRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return 0;
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    return snap(ratio * SALARY_SLIDER_CAP);
+  };
+
+  const moveThumb = (which: "min" | "max", clientX: number) => {
+    const next = valueFromClientX(clientX);
+    if (which === "min") {
+      const value = Math.min(next, rightRef.current);
+      leftRef.current = value;
+      setLeft(value);
+      return;
+    }
+    const value = Math.max(next, leftRef.current);
+    rightRef.current = value;
+    setRight(value);
+  };
+
+  const endDrag = () => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    commit(leftRef.current, rightRef.current);
+  };
+
+  const onThumbKey = (which: "min" | "max") => (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const direction = event.key === "ArrowRight" || event.key === "ArrowUp" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowDown" ? -1 : 0;
+    if (!direction) return;
+    event.preventDefault();
+    if (which === "min") {
+      const next = Math.min(right, Math.max(0, left + direction * SALARY_SLIDER_STEP));
+      setLeft(next);
+      commit(next, right);
+      return;
+    }
+    const next = Math.max(left, Math.min(SALARY_SLIDER_CAP, right + direction * SALARY_SLIDER_STEP));
+    setRight(next);
+    commit(left, next);
+  };
+
+  const leftPct = (left / SALARY_SLIDER_CAP) * 100;
+  const rightPct = (right / SALARY_SLIDER_CAP) * 100;
+
   return (
     <div>
       <div className="text-[11px] font-medium text-slate-700">Salary range</div>
       <div className="mt-2 text-sm font-medium text-slate-900">{label}</div>
-      <div className="relative mt-3 h-6">
-        <style>{`
-          .cp-salary-range { pointer-events: none; appearance: none; background: transparent; }
-          .cp-salary-range::-webkit-slider-runnable-track { height: 4px; background: #cbd5e1; border-radius: 999px; }
-          .cp-salary-range::-moz-range-track { height: 4px; background: #cbd5e1; border-radius: 999px; }
-          .cp-salary-range::-webkit-slider-thumb { pointer-events: auto; appearance: none; height: 16px; width: 16px; margin-top: -6px; border-radius: 999px; background: #4f46e5; border: 2px solid white; box-shadow: 0 0 0 1px #c7d2fe; cursor: pointer; }
-          .cp-salary-range::-moz-range-thumb { pointer-events: auto; height: 16px; width: 16px; border-radius: 999px; background: #4f46e5; border: 2px solid white; cursor: pointer; }
-        `}</style>
-        <input
-          className="cp-salary-range absolute inset-x-0 top-1 w-full"
-          type="range"
-          min={0}
-          max={SALARY_SLIDER_CAP}
-          step={SALARY_SLIDER_STEP}
-          value={left}
-          aria-label="Minimum salary"
-          aria-valuetext={money(left)}
-          onChange={(event) => {
-            const next = Math.min(Number(event.target.value), right);
-            onChange(next, openEnded ? 0 : right);
-          }}
+      <div
+        ref={trackRef}
+        className="relative mt-3 h-8 touch-none"
+        onPointerMove={(event) => {
+          if (!dragRef.current) return;
+          moveThumb(dragRef.current, event.clientX);
+        }}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      >
+        <div className="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-slate-300" />
+        <div
+          className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-600"
+          style={{ left: `${leftPct}%`, right: `${100 - rightPct}%` }}
         />
-        <input
-          className="cp-salary-range absolute inset-x-0 top-1 w-full"
-          type="range"
-          min={0}
-          max={SALARY_SLIDER_CAP}
-          step={SALARY_SLIDER_STEP}
-          value={right}
-          aria-label="Maximum salary"
-          aria-valuetext={openEnded ? `${capLabel} or more` : money(right)}
-          onChange={(event) => {
-            const next = Math.max(Number(event.target.value), left);
-            onChange(left, next >= SALARY_SLIDER_CAP ? 0 : next);
+        <button
+          type="button"
+          role="slider"
+          aria-label="Minimum salary"
+          aria-valuemin={0}
+          aria-valuemax={SALARY_SLIDER_CAP}
+          aria-valuenow={left}
+          aria-valuetext={money(left)}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            dragRef.current = "min";
+            event.currentTarget.setPointerCapture(event.pointerId);
           }}
+          onLostPointerCapture={endDrag}
+          onKeyDown={onThumbKey("min")}
+          className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-indigo-600 shadow-[0_0_0_1px_#c7d2fe]"
+          style={{ left: `${leftPct}%`, zIndex: dragRef.current === "min" ? 2 : 1 }}
+        />
+        <button
+          type="button"
+          role="slider"
+          aria-label="Maximum salary"
+          aria-valuemin={0}
+          aria-valuemax={SALARY_SLIDER_CAP}
+          aria-valuenow={right}
+          aria-valuetext={openEnded ? `${capLabel} or more` : money(right)}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            dragRef.current = "max";
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }}
+          onLostPointerCapture={endDrag}
+          onKeyDown={onThumbKey("max")}
+          className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-indigo-600 shadow-[0_0_0_1px_#c7d2fe]"
+          style={{ left: `${rightPct}%`, zIndex: dragRef.current === "max" ? 2 : 1 }}
         />
       </div>
     </div>
