@@ -1906,39 +1906,39 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     <div className="text-sm font-semibold leading-5 text-slate-900">Filters</div>
                     <div className="mt-0.5 text-xs text-slate-500">{searchSummary}</div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        clearAllFilters();
-                        setOpenWwrDropdown(null);
-                      }}
-                      className="text-xs font-medium text-slate-500 hover:text-slate-900"
-                    >
-                      Clear
-                    </button>
-                    <button
-                      onClick={() => setIsFilterOpen(false)}
-                      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200/70 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
-                      aria-label="Close filters"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsFilterOpen(false)}
+                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200/70 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
+                    aria-label="Close filters"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
                 <div data-filter-scroll className="min-h-0 flex-1 overflow-y-auto px-3 pb-2">
                   {FilterContent({ variant: "sheet" })}
                 </div>
-                <div className="shrink-0 border-t border-slate-200 bg-[#F8F9FD] px-3 py-2">
+                <div className="flex shrink-0 items-center gap-2 border-t border-slate-200 bg-[#F8F9FD] px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearAllFilters();
+                      setOpenWwrDropdown(null);
+                    }}
+                    disabled={activeFilterChips.length === 0}
+                    className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 hover:border-slate-400 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                  >
+                    Clear all
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
                       setOpenWwrDropdown(null);
                       setIsFilterOpen(false);
                     }}
-                    className="h-11 w-full rounded-lg bg-slate-900 text-sm font-medium text-white hover:bg-black"
+                    className="h-11 min-w-0 flex-1 rounded-lg bg-slate-900 text-sm font-medium text-white hover:bg-black"
                   >
                     {showRolesLabel}
                   </button>
