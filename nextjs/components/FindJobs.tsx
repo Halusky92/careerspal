@@ -149,6 +149,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filterFrame, setFilterFrame] = useState<{ top: number; height: number } | null>(null);
+  const [showMobileFilterBar, setShowMobileFilterBar] = useState(false);
   const [openWwrDropdown, setOpenWwrDropdown] = useState<null | "category" | "salary" | "skills" | "country" | "work">(null);
   const [wwrSkillQuery, setWwrSkillQuery] = useState("");
   const [wwrLocationQuery, setWwrLocationQuery] = useState("");
@@ -178,11 +179,15 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   useEffect(() => {
     if (!isFilterOpen || typeof window === "undefined") return;
+    const openedHeight = window.visualViewport?.height ?? window.innerHeight;
     const fit = () => {
       const viewport = window.visualViewport;
+      const height = viewport?.height ?? window.innerHeight;
+      // The keyboard shrinks the visible area. Following that crush makes the whole dialog jump.
+      if (height < openedHeight - 80) return;
       setFilterFrame({
         top: viewport?.offsetTop ?? 0,
-        height: viewport?.height ?? window.innerHeight,
+        height,
       });
     };
     const y = window.scrollY;
@@ -205,6 +210,21 @@ const FindJobs: React.FC<FindJobsProps> = ({
       body.style.width = "";
       setFilterFrame(null);
       window.scrollTo(0, y);
+    };
+  }, [isFilterOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const update = () => {
+      const phone = window.matchMedia("(max-width: 1023px)").matches;
+      setShowMobileFilterBar(phone && window.scrollY > 240 && !isFilterOpen);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
     };
   }, [isFilterOpen]);
 
@@ -961,6 +981,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
       apply();
       return;
     }
+    if (isFilterOpen) {
+      startTransition(apply);
+      return;
+    }
     const pageY = window.scrollY;
     const filterY = filterScrollRef.current?.scrollTop ?? null;
     startTransition(apply);
@@ -1044,7 +1068,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     <div
       className={[
         variant === "sidebar"
-          ? `sticky top-16 z-30 max-h-[calc(100vh-4.5rem)] ${openWwrDropdown === "category" || openWwrDropdown === "work" ? "overflow-visible" : "overflow-y-auto"}`
+          ? `sticky top-16 z-30 max-h-[calc(100vh-4.5rem)] ${openWwrDropdown ? "overflow-visible" : "overflow-y-auto"}`
           : "",
         "rounded-2xl border border-slate-200 bg-white shadow-sm",
       ].join(" ")}
@@ -1194,14 +1218,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
               ) : null}
             </div>
             {openWwrDropdown === "country" && (
-              <div className="mt-2 w-full rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+              <div className="absolute left-0 right-0 top-full z-30 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
                 <div className="p-2 border-b border-slate-100">
                   <input
                     value={wwrLocationQuery}
                     onChange={(e) => setWwrLocationQuery(e.target.value)}
                     placeholder="City or country"
                     className="w-full h-10 rounded-lg border border-slate-200 px-3 text-[16px] font-medium text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
-                    autoFocus
                   />
                 </div>
                 <div className="max-h-[6.75rem] overflow-y-auto overscroll-contain py-1">
@@ -1323,14 +1346,13 @@ const FindJobs: React.FC<FindJobsProps> = ({
               </span>
             </button>
             {openWwrDropdown === "skills" && (
-              <div className="mt-2 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+              <div className="absolute left-0 right-0 bottom-full z-30 mb-1 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
                 <div className="p-2 border-b border-slate-100">
                   <input
                     value={wwrSkillQuery}
                     onChange={(e) => setWwrSkillQuery(e.target.value)}
                     placeholder="Search tools..."
                     className="w-full h-10 rounded-lg border border-slate-200 px-3 text-[16px] font-medium text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 placeholder:text-slate-400"
-                    autoFocus
                   />
                 </div>
                 <div className="max-h-[6.75rem] overflow-y-auto overscroll-contain py-1">
@@ -1450,7 +1472,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                 </span>
               </div>
             ) : null}
-            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_minmax(0,11rem)_auto] gap-2 lg:gap-3 lg:items-end">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_minmax(0,11rem)_auto] lg:items-end lg:gap-3">
               <div ref={titleRef} className="relative">
                   <label className="text-[10px] font-medium text-slate-500">
                     Search
@@ -1516,6 +1538,15 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   >
                     Reset
                   </button>
+                  {activeFilterChips.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={clearAllFilters}
+                      className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-700 lg:hidden"
+                    >
+                      Clear
+                    </button>
+                  ) : null}
                   <button
                     onClick={() => setIsFilterOpen(true)}
                     className="lg:hidden inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white hover:bg-black"
@@ -1821,15 +1852,44 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </aside>
         </div>
 
+      {showMobileFilterBar ? (
+        <div className="fixed inset-x-0 top-14 z-40 border-b border-slate-200 bg-[#F8F9FD] px-4 py-2 lg:hidden">
+          <div className="flex items-center gap-2">
+            <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-slate-800">{searchSummary}</p>
+            {activeFilterChips.length > 0 ? (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="inline-flex h-9 shrink-0 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700"
+              >
+                Clear
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setIsFilterOpen(true)}
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-sm font-medium text-white"
+            >
+              Filters
+              {activeFilterChips.length > 0 ? (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[11px] font-semibold text-slate-900">
+                  {activeFilterChips.length}
+                </span>
+              ) : null}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {isFilterOpen && typeof document !== "undefined"
         ? createPortal(
             <div
-              className="fixed inset-x-0 z-[120] flex items-center justify-center px-4"
+              className="fixed inset-x-0 z-[120] flex items-start justify-center px-3"
               style={{
                 top: filterFrame?.top ?? 0,
                 height: filterFrame?.height ?? "100svh",
-                paddingTop: "max(12px, env(safe-area-inset-top))",
-                paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+                paddingTop: "max(8px, env(safe-area-inset-top))",
+                paddingBottom: "max(8px, env(safe-area-inset-bottom))",
               }}
               role="dialog"
               aria-modal="true"
@@ -1841,7 +1901,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                 className="relative flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-[#F8F9FD] shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex shrink-0 items-center justify-between px-5 pb-3 pt-4">
+                <div className="flex shrink-0 items-center justify-between px-4 pb-2 pt-3">
                   <div>
                     <div className="text-sm font-semibold leading-5 text-slate-900">Filters</div>
                     <div className="mt-0.5 text-xs text-slate-500">{searchSummary}</div>
@@ -1868,10 +1928,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     </button>
                   </div>
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2">
+                <div data-filter-scroll className="min-h-0 flex-1 overflow-y-auto px-3 pb-2">
                   {FilterContent({ variant: "sheet" })}
                 </div>
-                <div className="shrink-0 border-t border-slate-200 bg-[#F8F9FD] px-3 py-3">
+                <div className="shrink-0 border-t border-slate-200 bg-[#F8F9FD] px-3 py-2">
                   <button
                     type="button"
                     onClick={() => {
