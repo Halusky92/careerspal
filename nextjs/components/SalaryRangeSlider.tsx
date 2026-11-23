@@ -19,10 +19,12 @@ export default function SalaryRangeSlider({
   min,
   max,
   onChange,
+  onClear,
 }: {
   min: number;
   max: number;
   onChange: (min: number, max: number) => void;
+  onClear?: () => void;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<"min" | "max" | null>(null);
@@ -96,7 +98,19 @@ export default function SalaryRangeSlider({
   return (
     <div>
       <div className="text-[11px] font-medium text-slate-700">Salary range</div>
-      <div className="mt-2 text-sm font-medium text-slate-900">{label}</div>
+      <div className="relative mt-2 pr-9 text-sm font-medium text-slate-900">
+        {label}
+        {onClear ? (
+          <button
+            type="button"
+            aria-label="Clear salary"
+            onClick={onClear}
+            className="absolute right-0 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-base leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          >
+            ×
+          </button>
+        ) : null}
+      </div>
       <div
         ref={trackRef}
         className="relative mt-3 h-8 touch-none"
