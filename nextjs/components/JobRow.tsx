@@ -150,12 +150,12 @@ export default function JobRow({
           {isEarly ? <PremiumWindowBadge job={job} /> : <NewListingBadge job={job} />}
         </span>
       ) : null}
-      <div className={["flex items-start gap-2.5", isHome ? "px-3 py-2" : "px-3 py-2"].join(" ")}>
+      <div className="flex items-start gap-2 px-3 py-1.5 lg:gap-2.5 lg:py-2">
         <div
           className={[
-            "rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0",
-            isEarly || isNew ? "mt-5" : "mt-0.5",
-            isHome ? "w-10 h-10" : "w-11 h-11",
+            "rounded-xl overflow-hidden bg-white border border-slate-200/70 p-0.5 flex-shrink-0 lg:rounded-2xl lg:p-1",
+            isEarly || isNew ? "mt-4 lg:mt-5" : "mt-0.5",
+            isHome ? "w-9 h-9 lg:w-10 lg:h-10" : "w-9 h-9 lg:w-11 lg:h-11",
           ].join(" ")}
         >
           <CompanyLogo
@@ -244,7 +244,7 @@ export default function JobRow({
                     onToggleSave();
                   }}
                   className={[
-                    "flex h-11 w-11 items-center justify-center bg-transparent",
+                    "flex h-8 w-8 items-center justify-center bg-transparent lg:h-11 lg:w-11",
                     isSaved ? "text-red-700" : "text-slate-400 hover:text-red-700",
                   ].join(" ")}
                   aria-pressed={isSaved ? "true" : "false"}
@@ -274,7 +274,7 @@ export default function JobRow({
                     e.stopPropagation();
                     setMenuOpen((prev) => !prev);
                   }}
-                  className="h-11 w-11 rounded-2xl border border-slate-200/70 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-colors flex items-center justify-center"
+                  className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200/70 bg-white text-slate-500 transition-colors hover:border-indigo-200 hover:text-indigo-600 lg:h-11 lg:w-11 lg:rounded-2xl"
                   aria-haspopup="menu"
                   aria-expanded={menuOpen ? "true" : "false"}
                   aria-label="More actions"
@@ -323,16 +323,19 @@ export default function JobRow({
             </div>
           </div>
 
-          <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="mt-1.5 flex items-center justify-between gap-2 lg:mt-3">
             <div className="min-w-0 flex items-center gap-2 flex-wrap">
               {chips.slice(0, 3).map((chip) => (
                 <span
                   key={chip}
-                  className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-1 text-[11px] font-bold text-slate-700"
+                  className="inline-flex items-center rounded-full bg-white border border-slate-200/70 px-2 py-0.5 text-[11px] font-bold text-slate-700 lg:py-1"
                 >
                   {chip}
                 </span>
               ))}
+              <span className="truncate text-[12px] font-bold text-slate-900 lg:hidden">
+                {formatJobSalary(job)}
+              </span>
               {variant !== "board" && toolList.length > 2 && (
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                   +{toolList.length - 2}
@@ -340,18 +343,16 @@ export default function JobRow({
               )}
             </div>
 
-            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-start">
-              <div className="flex-1 min-w-0">
-                <span className="block truncate text-[12px] sm:text-sm font-bold text-slate-900">
-                  {formatJobSalary(job)}
-                </span>
-              </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="hidden truncate text-sm font-bold text-slate-900 lg:block">
+                {formatJobSalary(job)}
+              </span>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onApply();
                 }}
-                className="h-9 px-4 flex-shrink-0 whitespace-nowrap rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 active:bg-indigo-800 transition-colors"
+                className="h-8 flex-shrink-0 whitespace-nowrap rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white transition-colors hover:bg-indigo-700 active:bg-indigo-800 lg:h-9 lg:px-4"
               >
                 Apply
               </button>
