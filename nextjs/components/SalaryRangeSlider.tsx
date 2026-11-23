@@ -20,11 +20,13 @@ export default function SalaryRangeSlider({
   max,
   onChange,
   onClear,
+  marked = false,
 }: {
   min: number;
   max: number;
   onChange: (min: number, max: number) => void;
   onClear?: () => void;
+  marked?: boolean;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<"min" | "max" | null>(null);
@@ -98,7 +100,7 @@ export default function SalaryRangeSlider({
   return (
     <div>
       <div className="text-[11px] font-medium text-slate-700">Salary range</div>
-      <div className="relative mt-2 pr-9 text-sm font-medium text-slate-900">
+      <div className={["relative mt-2 pr-9 text-sm font-medium text-slate-900", marked ? "rounded-xl border border-indigo-500 px-3 py-2 shadow-[0_0_0_3px_rgba(79,70,229,0.14)]" : ""].join(" ")}>
         {label}
         {onClear ? (
           <button
