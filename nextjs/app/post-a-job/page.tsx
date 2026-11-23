@@ -10,6 +10,7 @@ import { PLAN_PRICES } from "../../lib/plans";
 import type { StartPackStatus } from "../../lib/founding";
 import type { ListingScreenIssue } from "../../components/PostJob";
 import {
+  claimGuestPosting,
   postingOwnerKey,
   readPostingItem,
   removePostingItem,
@@ -74,6 +75,7 @@ const PostJobPageInner = () => {
   // Read the plan chosen on pricing before the default Standard is written back over it.
   useEffect(() => {
     if (authLoading) return;
+    if (owner !== "guest") claimGuestPosting(owner);
     if (hydratedOwner.current !== owner) {
       const stored = getStoredPlan(owner);
       hydratedOwner.current = owner;

@@ -162,6 +162,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const [urlUpdateTick, setUrlUpdateTick] = useState(0);
   const initialJobIdRef = useRef<string | null>(null);
   const restoredJobIdRef = useRef<string | null>(null);
+  const restoredByScrollRef = useRef(false);
+  const pauseLoadRef = useRef(false);
   const returnPlaceRef = useRef<JobsReturnPlace | null>(null);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const suppressUrlUpdateRef = useRef(false);
@@ -316,7 +318,11 @@ const FindJobs: React.FC<FindJobsProps> = ({
     const params = new URLSearchParams(window.location.search);
     const restoreId = jobIdToRestore(params.get("jobId"), stored);
     if (restoreId) initialJobIdRef.current = restoreId;
-    if (!place) return;
+    if (!place) {
+      document.documentElement.classList.remove("cp-restore-jobs");
+      return;
+    }
+    document.documentElement.classList.add("cp-restore-jobs");
     returnPlaceRef.current = place;
     if (place.visibleCount > JOBS_PER_PAGE) {
       setVisibleCount((current) => Math.max(current, place.visibleCount));
@@ -328,19 +334,27 @@ const FindJobs: React.FC<FindJobsProps> = ({
     if (!place || place.scrollY <= 0) return;
     if (place.visibleCount > visibleCount) return;
     const jobId = initialJobIdRef.current || place.jobId;
-    if (jobId && jobs.some((job) => job.id === jobId) && !rowRefs.current[jobId]) return;
+    if (jobId && !rowRefs.current[jobId]) return;
     if (place.scrollY > window.innerHeight && document.documentElement.scrollHeight < place.scrollY + 200) return;
     const top = place.scrollY;
     window.scrollTo({ top, left: 0, behavior: "instant" });
-    const timer = window.setTimeout(() => window.scrollTo({ top, left: 0, behavior: "instant" }), 60);
+    if (Math.abs(window.scrollY - top) > 80) return;
+    restoredByScrollRef.current = true;
+    pauseLoadRef.current = true;
     returnPlaceRef.current = null;
+    document.documentElement.classList.remove("cp-restore-jobs");
+    initialJobIdRef.current = null;
     try {
       window.sessionStorage.removeItem(JOBS_RETURN_KEY);
     } catch {
       // the address still has the job id
     }
-    return () => window.clearTimeout(timer);
   }, [jobs, visibleCount]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => document.documentElement.classList.remove("cp-restore-jobs"), 1200);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const reset = () => {
@@ -428,7 +442,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   // A filter shows every match. An unfiltered board grows as the reader moves down.
   useEffect(() => {
-    if (returnPlaceRef.current || initialJobIdRef.current || restoredJobIdRef.current) return;
+    if (returnPlaceRef.current || pauseLoadRef.current || restoredByScrollRef.current || initialJobIdRef.current || restoredJobIdRef.current) return;
     setExpandedJobId(null);
     if (!filtersNarrow) setVisibleCount(JOBS_PER_PAGE);
   }, [
@@ -778,8 +792,21 @@ const FindJobs: React.FC<FindJobsProps> = ({
   };
 
   useEffect(() => {
+    if (!pauseLoadRef.current) return;
+    const mark = window.scrollY;
+    const release = () => {
+      if (Math.abs(window.scrollY - mark) < 48) return;
+      pauseLoadRef.current = false;
+      window.removeEventListener("scroll", release);
+    };
+    window.addEventListener("scroll", release, { passive: true });
+    return () => window.removeEventListener("scroll", release);
+  }, [visibleCount]);
+
+  useEffect(() => {
     const node = loadSentinelRef.current;
     if (!node || filtersNarrow) return;
+    if (returnPlaceRef.current || pauseLoadRef.current) return;
     if (boardJobs.length <= visibleCount && !canLoadMore) return;
     const observer = new IntersectionObserver(
       (entries) => {
@@ -921,8 +948,12 @@ const FindJobs: React.FC<FindJobsProps> = ({
   };
 
   useEffect(() => {
+    if (returnPlaceRef.current) return;
     const initial = initialJobIdRef.current;
-    if (!initial) return;
+    if (!initial || restoredByScrollRef.current) {
+      initialJobIdRef.current = null;
+      return;
+    }
     const exists = filteredAndSorted.some((j) => j.id === initial);
     if (!exists) return;
 
@@ -1664,7 +1695,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </div>
         </div>
 
-          <div className="mt-3 space-y-2 lg:col-span-5 lg:mt-0 lg:space-y-3">
+          <div className="mt-3 space-y-2 lg:col-span-5 lg:mt-0 lg:space-y-3 [overflow-anchor:none]">
             <FeaturedBoardZone count={featuredJobs.length}>
                 {visibleFeatured.map((job) => {
                   const isSaved = user?.savedJobIds?.includes(job.id);

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import FindJobs from "../../components/FindJobs";
 import { Job, UserSession } from "../../types";
 import type { LockedBoardPreview } from "../../lib/boardAccess";
 import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
+import { rememberBoardCache, peekBoardCache } from "../../lib/jobsBoardCache";
 import { JOBS_RETURN_KEY, readJobsReturnPlace } from "../../lib/jobsReturn";
 
 const STORAGE_KEY = "cp_saved_jobs";
@@ -52,6 +53,17 @@ export default function JobsClient({
   const [boardTotal, setBoardTotal] = useState(initialTotal);
   const [loadingMore, setLoadingMore] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState<string[]>(() => getSaved());
+
+  useLayoutEffect(() => {
+    const cached = peekBoardCache(initialAccess);
+    if (!cached || cached.jobs.length <= jobs.length) return;
+    setJobs(cached.jobs);
+    if (typeof cached.total === "number") setBoardTotal(cached.total);
+  }, [initialAccess, jobs.length]);
+
+  useEffect(() => {
+    rememberBoardCache({ access: boardAccess, jobs, total: boardTotal });
+  }, [boardAccess, jobs, boardTotal]);
 
   useEffect(() => {
     const loadSaved = async () => {

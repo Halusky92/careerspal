@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
+import BackToBoard from "../../../components/BackToBoard";
 import CompanyLogo from "../../../components/CompanyLogo";
 import FormattedDescriptionStatic from "../../../components/FormattedDescriptionStatic";
 import { extractJobDetailSections } from "../../../lib/sourcing/normalization/description";
@@ -407,19 +408,18 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
         <div className="flex items-center justify-between gap-3">
-          <Link
-            href={`/jobs?jobId=${encodeURIComponent(job.id)}`}
-            scroll={false}
+          <BackToBoard
+            jobId={job.id}
             className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-indigo-700"
           >
             <span aria-hidden="true">←</span> Back to jobs
-          </Link>
-          <Link
-            href={`/jobs?jobId=${encodeURIComponent(job.id)}`}
+          </BackToBoard>
+          <BackToBoard
+            jobId={job.id}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
           >
             View on board →
-          </Link>
+          </BackToBoard>
         </div>
 
         <div className={["mt-3 rounded-xl border bg-white overflow-hidden", early ? "border-[#c6a15b]" : "border-slate-200"].join(" ")}>
