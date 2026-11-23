@@ -1121,7 +1121,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
             <button
               type="button"
               onClick={() => setOpenWwrDropdown((prev) => (prev === "category" ? null : "category"))}
-              className="cp-field w-full h-10 rounded-xl bg-white pl-3 pr-9 text-left text-sm font-medium text-slate-900"
+              className={["cp-field w-full h-10 rounded-xl bg-white pl-3 pr-9 text-left text-sm font-medium text-slate-900", variant === "sheet" && category !== "All Roles" ? "border-indigo-500 shadow-[0_0_0_3px_rgba(79,70,229,0.14)]" : ""].join(" ")}
             >
               <span className={category !== "All Roles" ? "" : "text-slate-400"}>
                 {category !== "All Roles" ? getCategoryHub(category)?.label || category : "Any category"}
@@ -1142,7 +1142,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     }
                     className={[
                       "w-full flex items-center justify-between px-3 py-2 text-sm font-medium hover:bg-slate-50",
-                      category === "All Roles" ? "bg-indigo-50 text-indigo-700" : "text-slate-900",
+                      category === "All Roles" ? "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200" : "text-slate-900",
                     ].join(" ")}
                   >
                     <span>All categories</span>
@@ -1162,7 +1162,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                         }
                         className={[
                           "w-full flex items-center justify-between px-3 py-2 text-sm font-medium hover:bg-slate-50",
-                          category === c ? "bg-indigo-50 text-indigo-700" : "text-slate-900",
+                          category === c ? "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200" : "text-slate-900",
                         ].join(" ")}
                       >
                         <span>{getCategoryHub(c)?.label || c}</span>
@@ -1213,7 +1213,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     return next;
                   })
                 }
-                className="cp-field w-full h-10 rounded-xl bg-white pl-3 pr-9 text-left text-sm font-medium text-slate-900"
+                className={["cp-field w-full h-10 rounded-xl bg-white pl-3 pr-9 text-left text-sm font-medium text-slate-900", variant === "sheet" && locationQuery.trim() ? "border-indigo-500 shadow-[0_0_0_3px_rgba(79,70,229,0.14)]" : ""].join(" ")}
               >
                 <span className={locationQuery.trim() ? "" : "text-slate-400"}>
                   {locationQuery.trim() || "Any location"}
@@ -1258,7 +1258,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                         setOpenWwrDropdown(null);
                       })
                     }
-                    className="w-full text-left px-3 py-2 text-sm font-medium hover:bg-slate-50 text-slate-500"
+                    className={["w-full text-left px-3 py-2 text-sm font-medium hover:bg-slate-50", locationQuery.trim() ? "text-slate-500" : "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200"].join(" ")}
                   >
                     Any location
                   </button>
@@ -1277,7 +1277,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                         }
                         className={[
                           "w-full text-left px-3 py-2 text-sm font-medium hover:bg-slate-50",
-                          locationQuery === c ? "bg-indigo-50 text-indigo-700" : "text-slate-900",
+                          locationQuery === c ? "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200" : "text-slate-900",
                         ].join(" ")}
                       >
                         {c}
@@ -1302,7 +1302,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
             <button
               type="button"
               onClick={() => setOpenWwrDropdown((prev) => (prev === "work" ? null : "work"))}
-              className="cp-field w-full h-10 rounded-xl bg-white pl-3 pr-9 text-left text-sm font-medium text-slate-900"
+              className={["cp-field w-full h-10 rounded-xl bg-white pl-3 pr-9 text-left text-sm font-medium text-slate-900", variant === "sheet" && workMode !== "All" ? "border-indigo-500 shadow-[0_0_0_3px_rgba(79,70,229,0.14)]" : ""].join(" ")}
             >
               <span className={workMode === "All" ? "text-slate-400" : ""}>
                 {workMode === "All" ? "Any" : workMode}
@@ -1330,7 +1330,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                       }
                       className={[
                         "w-full text-left px-3 py-2 text-sm font-medium hover:bg-slate-50",
-                        workMode === mode ? "bg-indigo-50 text-indigo-700" : mode === "All" ? "text-slate-500" : "text-slate-900",
+                        workMode === mode ? "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200" : mode === "All" ? "text-slate-500" : "text-slate-900",
                       ].join(" ")}
                     >
                       {mode === "All" ? "Any" : mode}
@@ -1350,6 +1350,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               setSalaryMin(nextMin);
               setSalaryMax(nextMax);
             }}
+            marked={variant === "sheet" && (salaryMin > 0 || salaryMax > 0)}
             onClear={
               salaryMin > 0 || salaryMax > 0
                 ? () =>
@@ -1373,7 +1374,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
             <button
               type="button"
               onClick={() => setOpenWwrDropdown((prev) => (prev === "skills" ? null : "skills"))}
-              className="cp-field w-full h-10 rounded-xl bg-white pl-3 pr-9 text-left text-sm font-medium text-slate-900"
+              className={["cp-field w-full h-10 rounded-xl bg-white pl-3 pr-9 text-left text-sm font-medium text-slate-900", variant === "sheet" && selectedTools.length > 0 ? "border-indigo-500 shadow-[0_0_0_3px_rgba(79,70,229,0.14)]" : ""].join(" ")}
             >
               <span className={skillsSummary ? "" : "text-slate-400"}>
                 {skillsSummary || "Any tool"}
@@ -1408,7 +1409,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                             );
                           })
                         }
-                        className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium hover:bg-slate-50"
+                        className={["w-full flex items-center justify-between px-3 py-2 text-sm font-medium hover:bg-slate-50", active ? "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200" : ""].join(" ")}
                       >
                         <span className="text-slate-900">{tool}</span>
                         <span
@@ -1452,7 +1453,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="cp-field mt-2 w-full h-10 rounded-xl bg-white px-3 text-sm font-medium text-slate-900 outline-none"
+                className={["cp-field mt-2 w-full h-10 rounded-xl bg-white px-3 text-sm font-medium text-slate-900 outline-none", sortBy !== "relevant" ? "border-indigo-500 shadow-[0_0_0_3px_rgba(79,70,229,0.14)]" : ""].join(" ")}
               >
                 <option value="relevant">Most relevant</option>
                 <option value="newest">Newest</option>
