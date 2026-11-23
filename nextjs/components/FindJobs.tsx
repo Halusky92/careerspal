@@ -1394,7 +1394,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
           </>
           ) : null}
 
-          {activeFilterChips.length > 0 ? (
+          {variant !== "sheet" && activeFilterChips.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {activeFilterChips.map((chip, index) => (
                 <button
