@@ -11,7 +11,7 @@ export default function BrandMark({ size = 32, className = "" }: BrandMarkProps)
       alt=""
       width={size}
       height={size}
-      className={`rounded-[22%] ${className}`.trim()}
+      className={`object-contain ${className}`.trim()}
     />
   );
 }
