@@ -55,6 +55,12 @@ export interface Job {
   keywords?: string;
   stripePaymentStatus?: string;
   stripeSessionId?: string;
+  /** Duties already taken from the posting. The board list does not carry the full description. */
+  preview?: string[];
+  /** Timezone bucket taken from the posting before the description is dropped. */
+  boardTz?: "eu" | "us";
+  updatedAt?: string;
+  companyLocation?: string;
 }
 
 export interface RemoteDNA {

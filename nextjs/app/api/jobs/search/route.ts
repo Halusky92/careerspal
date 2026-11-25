@@ -2,8 +2,15 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { publicListTierFromRequest } from "../../../../lib/boardAccessServer";
 import { listingsForViewer } from "../../../../lib/listingWindow";
-import { PAID_JOBS_PAGE_MAX } from "../../../../lib/boardAccess";
-import { loadPublishedBoardJobs, pagePublishedBoard } from "../../../../lib/publicJobBoard";
+import { descriptionMatchIds, getBoardCatalog } from "../../../../lib/publicBoardCatalog";
+import { applyStoredBoardFilters } from "../../../../lib/publicJobBoard";
+import {
+  filterAndSortBoard,
+  filtersFromSearchParams,
+  pageBoard,
+  publicBoardCacheControl,
+  requestHasCookie,
+} from "../../../../lib/boardListQuery";
 
 export async function GET(request: Request) {
   if (!supabaseAdmin) {
@@ -12,26 +19,28 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const limitParam = Number(searchParams.get("limit") || "0");
   const skipParam = Number(searchParams.get("skip") || "0");
-  const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, PAID_JOBS_PAGE_MAX) : PAID_JOBS_PAGE_MAX;
-  const skip = Number.isFinite(skipParam) && skipParam > 0 ? skipParam : 0;
   const tier = await publicListTierFromRequest(request);
-  const jobs = listingsForViewer(await loadPublishedBoardJobs(supabaseAdmin, {
-    category: searchParams.get("category"),
-    type: searchParams.get("type"),
-    planType: searchParams.get("planType"),
-    remote: searchParams.get("remote"),
-  }), tier);
-  const location = (searchParams.get("location") || "").trim().toLowerCase();
-  const query = (searchParams.get("q") || "").trim().toLowerCase();
-  const filtered = jobs.filter((job) => {
-    if (location && !(job.location || "").toLowerCase().includes(location)) return false;
-    if (!query) return true;
-    const hay = `${job.title || ""} ${job.description || ""} ${job.company || ""} ${job.keywords || ""}`.toLowerCase();
-    return hay.includes(query);
-  });
-  const page = pagePublishedBoard(filtered, tier, { skip, limit });
+  const filters = filtersFromSearchParams(searchParams);
+  if (!filters.query && searchParams.get("q")) filters.query = searchParams.get("q") || "";
+  const catalog = listingsForViewer(
+    applyStoredBoardFilters(await getBoardCatalog(), {
+      category: searchParams.get("category"),
+      type: searchParams.get("type"),
+      planType: searchParams.get("planType"),
+      remote: searchParams.get("remote"),
+    }),
+    tier,
+  );
+  const descriptionIds = filters.query ? await descriptionMatchIds(filters.query) : undefined;
+  const filtered = filterAndSortBoard(catalog, filters, Date.now(), descriptionIds);
+  const page = pageBoard(filtered, skipParam, limitParam);
   return NextResponse.json(
-    { jobs: page.jobs, total: page.total, visible: page.visible, access: page.access },
-    { headers: { "Cache-Control": "private, no-store" } },
+    { jobs: page.jobs, total: page.total, visible: page.visible, access: tier },
+    {
+      headers: {
+        "Cache-Control": publicBoardCacheControl({ tier, hasCookie: requestHasCookie(request), personalized: filters.saved }),
+        Vary: "Cookie, Authorization",
+      },
+    },
   );
 }

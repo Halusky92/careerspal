@@ -7,8 +7,17 @@ import { isOnNicheJob, NICHE_REJECT_MESSAGE } from "../../../lib/nicheScope";
 import { formatSalaryForStorage } from "../../../lib/formatSalary";
 import { publicListTierFromRequest } from "../../../lib/boardAccessServer";
 import { listingsForViewer } from "../../../lib/listingWindow";
-import { countLivePublishedJobs, loadPublishedBoardJobs, pagePublishedBoard } from "../../../lib/publicJobBoard";
 import { boardCap, boardCompanyCount, lockedBoardPreviews, PAID_JOBS_PAGE_MAX } from "../../../lib/boardAccess";
+import { categoryCountsForJobs } from "../../../lib/categories";
+import {
+  filterAndSortBoard,
+  filtersFromSearchParams,
+  pageBoard,
+  publicBoardCacheControl,
+  requestHasCookie,
+  SAVED_FILTER_MAX,
+} from "../../../lib/boardListQuery";
+import { getBoardCatalog } from "../../../lib/publicBoardCatalog";
 
 const isValidApplyUrl = (value: string) => {
   if (value === "#" || value.startsWith("/")) return true;
@@ -33,31 +42,61 @@ export const GET = async (request: Request) => {
   const requestedStatus = searchParams.get("status");
   const status = requestedStatus === "invite_only" ? "invite_only" : "published";
   const company = searchParams.get("company");
-  const category = searchParams.get("category");
   const type = searchParams.get("type");
   const planType = searchParams.get("planType");
   const remote = searchParams.get("remote");
   if (status === "published") {
     const tier = await publicListTierFromRequest(request);
-    const filters = { company, category, type, planType, remote };
-    const [loaded, counted] = await Promise.all([
-      loadPublishedBoardJobs(supabaseAdmin, filters),
-      countLivePublishedJobs(supabaseAdmin, filters),
-    ]);
-    const jobs = listingsForViewer(loaded, tier);
-    const hiddenEarly = loaded.length - jobs.length;
-    const total = counted == null ? null : Math.max(0, counted - hiddenEarly);
-    const page = pagePublishedBoard(jobs, tier, { skip, limit });
+    const filters = filtersFromSearchParams(searchParams);
+    if (remote && filters.workMode === "All" && /remote/i.test(remote)) filters.workMode = "Remote";
+    let savedIds = filters.savedIds;
+    if (filters.saved) {
+      const auth = await getSupabaseProfile(request);
+      const profileId = auth?.profile?.id;
+      if (profileId) {
+        const serverIds: string[] = [];
+        for (let from = 0; from < SAVED_FILTER_MAX; from += 1000) {
+          const { data } = await supabaseAdmin
+            .from("saved_jobs")
+            .select("job_id")
+            .eq("user_id", profileId)
+            .range(from, from + 999);
+          const page = (data || []).map((row) => String(row.job_id || "")).filter(Boolean);
+          serverIds.push(...page);
+          if (page.length < 1000) break;
+        }
+        savedIds = Array.from(new Set([...serverIds, ...savedIds])).slice(0, SAVED_FILTER_MAX);
+      }
+    }
+    const visible = listingsForViewer(await getBoardCatalog(), tier);
+    let filtered = filterAndSortBoard(visible, { ...filters, savedIds });
+    if (company) {
+      const needle = company.toLowerCase();
+      filtered = filtered.filter((job) => (job.company || "").toLowerCase().includes(needle));
+    }
+    if (planType) filtered = filtered.filter((job) => (job.planType || "") === planType);
+    const page = pageBoard(filtered, skip, limit);
+    const personalized = filters.saved || savedIds.length > 0;
     return NextResponse.json(
       {
         jobs: page.jobs,
-        total,
+        total: page.total,
         visible: page.visible,
-        access: page.access,
-        locked: lockedBoardPreviews(jobs, boardCap(tier)),
-        companies: boardCompanyCount(jobs),
+        access: tier,
+        locked: lockedBoardPreviews(filtered, boardCap(tier)),
+        companies: boardCompanyCount(filtered),
+        categoryTotals: categoryCountsForJobs(filtered),
       },
-      { headers: { "Cache-Control": "private, no-store" } },
+      {
+        headers: {
+          "Cache-Control": publicBoardCacheControl({
+            tier,
+            hasCookie: requestHasCookie(request),
+            personalized,
+          }),
+          Vary: "Cookie, Authorization",
+        },
+      },
     );
   }
   let query = supabaseAdmin

@@ -76,17 +76,23 @@ export default function JobRow({
   const isPrivate = job.status === "private" || job.status === "invite_only";
   const workMode = useMemo(() => getWorkMode(job), [job]);
   const timeAgo = useMemo(() => formatTimeAgo(job), [job.timestamp, job.postedAt]);
-  const stack = useMemo(() => visiblePostingTools(job.tools, job.description || ""), [job.description, job.tools]);
+  const stack = useMemo(() => {
+    const fromText = visiblePostingTools(job.tools, job.description || "");
+    if (fromText.length || (job.description || "").trim()) return fromText;
+    return (job.tools || []).filter(Boolean).slice(0, 12);
+  }, [job.description, job.tools]);
 
   // Keep board panel UX (query param) intact, but canonicalize share/open links.
   const boardHref = `/jobs?jobId=${encodeURIComponent(job.id)}`;
   const detailHref = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
 
   const isHome = variant === "home";
-  const previewBullets = useMemo(
-    () => (expanded ? rolePreviewBullets(job.description || "") : []),
-    [expanded, job.description],
-  );
+  const previewBullets = useMemo(() => {
+    if (!expanded) return [];
+    const fromText = rolePreviewBullets(job.description || "");
+    if (fromText.length || (job.description || "").trim()) return fromText;
+    return job.preview || [];
+  }, [expanded, job.description, job.preview]);
   const remoteMeta = useMemo(
     () => getRemoteMeta(job, workMode),
     [job.location, job.remotePolicy, job.title, job.description, workMode],

@@ -18,6 +18,7 @@ import { startApply } from "../lib/startApply";
 import { inferWorkMode } from "../lib/workMode";
 import FeaturedBoardZone from "./FeaturedBoardZone";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
+import type { BoardListFilters } from "../lib/boardListQuery";
 import { isPriorityListing } from "../lib/listingWindow";
 import SalaryRangeSlider from "./SalaryRangeSlider";
 import { jobMatchesLocationQuery, locationLabelsForJobs, workModeFromPlaceLabel } from "../lib/locationFilter";
@@ -41,6 +42,8 @@ interface FindJobsProps {
   canLoadMore?: boolean;
   onLoadMore?: () => void;
   onToggleBookmark: (jobId: string) => void;
+  serverFiltered?: boolean;
+  onBoardQuery?: (filters: BoardListFilters) => void;
 }
 
 const JOBS_PER_PAGE = 7;
@@ -121,6 +124,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
   canLoadMore = false,
   onLoadMore,
   onToggleBookmark,
+  serverFiltered = false,
+  onBoardQuery,
 }) => {
   const router = useRouter();
   const { accessToken } = useSupabaseAuth();
@@ -440,11 +445,11 @@ const FindJobs: React.FC<FindJobsProps> = ({
     verifiedOnly ||
     showSavedOnly;
 
-  // A filter shows every match. An unfiltered board grows as the reader moves down.
+  // The server already matched the whole board. This list grows as the reader moves down.
   useEffect(() => {
     if (returnPlaceRef.current || pauseLoadRef.current || restoredByScrollRef.current || initialJobIdRef.current || restoredJobIdRef.current) return;
     setExpandedJobId(null);
-    if (!filtersNarrow) setVisibleCount(JOBS_PER_PAGE);
+    if (serverFiltered || !filtersNarrow) setVisibleCount(JOBS_PER_PAGE);
   }, [
     filtersNarrow,
     query,
@@ -460,6 +465,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     seniority,
     verifiedOnly,
     showSavedOnly,
+    serverFiltered,
   ]);
 
   useEffect(() => {
@@ -598,9 +604,50 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   const savedIds = useMemo(() => new Set(user?.savedJobIds || []), [user?.savedJobIds]);
   const savedCount = savedIds.size;
+
+  useEffect(() => {
+    if (!serverFiltered || !onBoardQuery || !hydratedRef.current) return;
+    const handle = window.setTimeout(() => {
+      onBoardQuery({
+        query,
+        location: locationQuery,
+        category,
+        workMode,
+        type: employmentType,
+        sort: sortBy,
+        salaryMin,
+        salaryMax,
+        tools: selectedTools,
+        tz: timezone,
+        seniority,
+        verified: verifiedOnly,
+        saved: showSavedOnly,
+        savedIds: showSavedOnly ? Array.from(savedIds) : [],
+      });
+    }, 200);
+    return () => window.clearTimeout(handle);
+  }, [
+    serverFiltered,
+    onBoardQuery,
+    query,
+    locationQuery,
+    category,
+    workMode,
+    employmentType,
+    sortBy,
+    salaryMin,
+    salaryMax,
+    selectedTools,
+    timezone,
+    seniority,
+    verifiedOnly,
+    showSavedOnly,
+    savedIds,
+  ]);
   const canUseSaved = user?.role !== "employer";
 
   const filteredAndSorted = useMemo(() => {
+    if (serverFiltered) return jobs;
     let result = jobs.filter(j => {
       if (!isOnNicheJob(j)) return false;
       const q = query.trim().toLowerCase();
@@ -700,6 +747,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     verifiedOnly,
     showSavedOnly,
     advancedOk,
+    serverFiltered,
   ]);
 
   const FEATURED_ZONE_CAP = 4;
@@ -716,10 +764,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
     [listedJobs],
   );
   useEffect(() => {
-    if (!filtersNarrow || isFilterOpen) return;
+    if (serverFiltered || !filtersNarrow || isFilterOpen) return;
     if (returnPlaceRef.current || initialJobIdRef.current || restoredJobIdRef.current) return;
     setVisibleCount(Math.max(boardJobs.length, JOBS_PER_PAGE));
-  }, [filtersNarrow, boardJobs.length, isFilterOpen]);
+  }, [serverFiltered, filtersNarrow, boardJobs.length, isFilterOpen]);
   const showSearchLimitCta =
     searchCap != null &&
     ((typeof boardTotal === "number" && boardTotal > searchCap) || filteredAndSorted.length > listedJobs.length) &&
@@ -805,7 +853,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   useEffect(() => {
     const node = loadSentinelRef.current;
-    if (!node || filtersNarrow) return;
+    if (!node || (filtersNarrow && !serverFiltered)) return;
     if (returnPlaceRef.current || pauseLoadRef.current) return;
     if (boardJobs.length <= visibleCount && !canLoadMore) return;
     const observer = new IntersectionObserver(
@@ -816,7 +864,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [filtersNarrow, boardJobs.length, visibleCount, canLoadMore]);
+  }, [filtersNarrow, serverFiltered, boardJobs.length, visibleCount, canLoadMore]);
 
   const handleApply = async (job: Job) => {
     const isPrivate = job.status === "private" || job.status === "invite_only";
@@ -1784,7 +1832,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
               );
             })}
 
-            {!filtersNarrow && (boardJobs.length > visibleCount || canLoadMore) && (
+            {(!filtersNarrow || serverFiltered) && (boardJobs.length > visibleCount || canLoadMore) && (
               <div ref={loadSentinelRef} className="pt-4 pb-2 text-center text-sm text-slate-400">
                 Loading more roles
               </div>

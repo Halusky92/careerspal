@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../../lib/supabaseAdmin";
-import { mapSupabaseJob, type SupabaseJobRow } from "../../../../../lib/supabaseJobs";
-import { applyLiveBoardFilter } from "../../../../../lib/liveBoard";
-import { isOnNicheJob } from "../../../../../lib/nicheScope";
 import { resolveCategoryHub } from "../../../../../lib/categories";
-import { buildPublicList, listCacheHeaders, PUBLIC_RELATED_JOB_LIMIT } from "../../../../../lib/publicListPreview";
+import { buildPublicList, PUBLIC_RELATED_JOB_LIMIT } from "../../../../../lib/publicListPreview";
 import { publicListTierFromRequest } from "../../../../../lib/boardAccessServer";
 import { listingsForViewer } from "../../../../../lib/listingWindow";
+import { getBoardCatalog } from "../../../../../lib/publicBoardCatalog";
+import { publicBoardCacheControl, requestHasCookie } from "../../../../../lib/boardListQuery";
 
 export const dynamic = "force-dynamic";
 
@@ -15,35 +14,24 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
   }
-  const { data: current } = await supabaseAdmin
-    .from("jobs")
-    .select("id,title,category,description,status")
-    .eq("id", id)
-    .maybeSingle();
-  const hub = current ? resolveCategoryHub({ title: current.title, category: current.category }) : null;
-  if (!hub) {
-    return NextResponse.json({ jobs: [], total: 0, access: "guest" }, { headers: listCacheHeaders() });
-  }
-
-  const { data } = await applyLiveBoardFilter(
-    supabaseAdmin
-      .from("jobs")
-      .select(
-        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
-      )
-      .eq("status", "published")
-      .neq("id", id),
-  )
-    .order("timestamp", { ascending: false })
-    .range(0, 39);
-
   const tier = await publicListTierFromRequest(_request);
+  const catalog = await getBoardCatalog();
+  let current = catalog.find((job) => job.id === id);
+  if (!current) {
+    const { data } = await supabaseAdmin.from("jobs").select("id,title,category").eq("id", id).maybeSingle();
+    if (data) current = { id: data.id, title: data.title || "", category: data.category || "" } as typeof catalog[number];
+  }
+  const hub = current ? resolveCategoryHub(current) : null;
+  const headers = {
+    "Cache-Control": publicBoardCacheControl({ tier, hasCookie: requestHasCookie(_request), personalized: false }),
+    Vary: "Cookie, Authorization",
+  };
+  if (!hub) {
+    return NextResponse.json({ jobs: [], total: 0, access: tier }, { headers });
+  }
   const jobs = listingsForViewer(
-    ((data as unknown as SupabaseJobRow[] | null) || [])
-      .map(mapSupabaseJob)
-      .filter((job) => isOnNicheJob(job) && resolveCategoryHub(job)?.slug === hub.slug),
+    catalog.filter((job) => job.id !== id && resolveCategoryHub(job)?.slug === hub.slug),
     tier,
   );
-  const list = buildPublicList(jobs, tier, PUBLIC_RELATED_JOB_LIMIT);
-  return NextResponse.json(list, { headers: listCacheHeaders() });
+  return NextResponse.json(buildPublicList(jobs, tier, PUBLIC_RELATED_JOB_LIMIT), { headers });
 }

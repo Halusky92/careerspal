@@ -4,14 +4,14 @@ import JobsClient from "../JobsClient";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
 import { Job } from "../../../types";
 import { createJobSlug } from "../../../lib/jobs";
-import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { formatJobSalary } from "../../../lib/formatSalary";
 import { ApplyClickLink } from "../../../components/JobAnalytics";
-import { boardAccessHeadline, boardCompanyCount, boardSliceForTier, lockedBoardPreviews } from "../../../lib/boardAccess";
-import { countLivePublishedJobs, loadPublishedBoardJobs } from "../../../lib/publicJobBoard";
+import { boardAccessHeadline, boardCap, boardCompanyCount, lockedBoardPreviews } from "../../../lib/boardAccess";
 import { listingsForViewer } from "../../../lib/listingWindow";
 import { viewerTier } from "../../../lib/viewerTier";
 import { categoryCountsForJobs } from "../../../lib/categories";
+import { filterAndSortBoard, filtersFromSearchParams, pageBoard, boardFilterKey } from "../../../lib/boardListQuery";
+import { getBoardCatalog } from "../../../lib/publicBoardCatalog";
 
 export const dynamic = "force-dynamic";
 
@@ -35,13 +35,13 @@ type PageProps = {
 
 const getParam = (value: string | string[] | undefined) => (typeof value === "string" ? value : "");
 
-async function fetchPublishedJobs(): Promise<{ jobs: Job[]; total: number | null }> {
-  if (!supabaseAdmin) return { jobs: [], total: null };
-  const [jobs, total] = await Promise.all([
-    loadPublishedBoardJobs(supabaseAdmin),
-    countLivePublishedJobs(supabaseAdmin),
-  ]);
-  return { jobs, total };
+async function fetchPublishedJobs(filters: ReturnType<typeof filtersFromSearchParams>): Promise<{ jobs: Job[]; total: number | null }> {
+  try {
+    const jobs = filterAndSortBoard(await getBoardCatalog(), filters);
+    return { jobs, total: jobs.length };
+  } catch {
+    return { jobs: [], total: null };
+  }
 }
 
 function StaticJobsList({ jobs, total, companies }: { jobs: Job[]; total: number | null; companies: number }) {
@@ -135,15 +135,15 @@ function StaticJobsList({ jobs, total, companies }: { jobs: Job[]; total: number
 
 export default async function JobsPage({ searchParams }: PageProps) {
   const params = (await searchParams) || {};
-  const initialQuery = getParam(params.query);
-  const initialLocation = getParam(params.location);
-  const [loaded, tier] = await Promise.all([fetchPublishedJobs(), viewerTier()]);
+  const filters = filtersFromSearchParams(params);
+  const initialQuery = filters.query || getParam(params.query);
+  const initialLocation = filters.location || getParam(params.location);
+  const [loaded, tier] = await Promise.all([fetchPublishedJobs(filters), viewerTier()]);
   const jobs = listingsForViewer(loaded.jobs, tier);
-  const hiddenEarly = loaded.jobs.length - jobs.length;
-  const total = loaded.total == null ? null : Math.max(0, loaded.total - hiddenEarly);
-  const slice = boardSliceForTier(jobs, tier);
-  const initialJobs = slice.jobs;
-  const initialLocked = lockedBoardPreviews(jobs, slice.cap);
+  const total = jobs.length;
+  const page = pageBoard(jobs, 0);
+  const initialJobs = page.jobs;
+  const initialLocked = lockedBoardPreviews(jobs, boardCap(tier));
   const categoryTotals = categoryCountsForJobs(jobs);
 
   return (
@@ -166,6 +166,7 @@ export default async function JobsPage({ searchParams }: PageProps) {
         initialCategoryTotals={categoryTotals}
         initialQuery={initialQuery}
         initialLocation={initialLocation}
+        initialFilterKey={boardFilterKey(filters)}
       />
     </div>
   );

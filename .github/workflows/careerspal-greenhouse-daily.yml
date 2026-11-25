@@ -24,6 +24,11 @@ on:
         options:
           - refresh
           - salary
+      indexing:
+        description: Run the Google Indexing dry-run. Live sending stays off. Scheduled runs do not call it.
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: careerspal-nightly-sourcing
@@ -39,6 +44,7 @@ jobs:
           PIPELINE_URL: ${{ secrets.CAREERSPAL_PIPELINE_URL }}
           CRON_SECRET: ${{ secrets.CAREERSPAL_CRON_SECRET }}
           MODE_INPUT: ${{ github.event.inputs.mode }}
+          INDEXING_INPUT: ${{ github.event.inputs.indexing }}
           EVENT_SCHEDULE: ${{ github.event.schedule }}
         run: |
           if [ -z "$PIPELINE_URL" ]; then
@@ -113,18 +119,13 @@ jobs:
           failed=0
           if [ -n "$MODE_INPUT" ]; then
             run_slices "$MODE_INPUT" || failed=1
+            if [ "$INDEXING_INPUT" = "true" ]; then
+              run_indexing_dry_run || failed=1
+            fi
           elif [ -n "$EVENT_SCHEDULE" ]; then
             run_slices refresh || failed=1
             run_slices salary || failed=1
-            # Liveness changes job state. Call it once, then dry-run only if that call succeeded.
-            liveness_status=0
-            run_liveness || liveness_status=$?
-            if [ "$liveness_status" -eq 0 ]; then
-              run_indexing_dry_run || failed=1
-            else
-              failed=1
-              echo "Liveness failed. Google Indexing was not called."
-            fi
+            run_liveness || failed=1
             origin=$(printf '%s\n' "$PIPELINE_URL" | sed -E 's#^(https?://[^/]+).*#\1#')
             echo "Premium alerts for roles found in this search"
             body=$(curl -sS -L \
