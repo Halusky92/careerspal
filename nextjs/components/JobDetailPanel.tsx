@@ -75,7 +75,9 @@ export default function JobDetailPanel({
       });
     return () => controller.abort();
   }, [job?.id, job?.description]);
-  const description = job?.description || (fetchedDescription?.id === job?.id ? fetchedDescription.description : "");
+  const description =
+    job?.description ||
+    (fetchedDescription && fetchedDescription.id === job?.id ? fetchedDescription.description : "");
   const descriptionPending = Boolean(job && !job.description && fetchedDescription?.id !== job.id);
 
   const rawSlug = (job?.companySlug || "").toString().trim();
