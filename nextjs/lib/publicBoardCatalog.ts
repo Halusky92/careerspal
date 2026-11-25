@@ -1,15 +1,15 @@
-import { unstable_cache } from "next/cache";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { randomUUID } from "crypto";
 import type { Job } from "../types";
+import { coordinateBoardBuild } from "./boardIndexCoordinator";
 import { addJobToCompany, type BoardCompany } from "./companyBoard";
 import { createCompanySlug } from "./jobs";
 import { applyLiveBoardFilter, isLiveBoardJob } from "./liveBoard";
 import { isOnNicheJob } from "./nicheScope";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { mapSupabaseJob, type SupabaseJobRow } from "./supabaseJobs";
-import { BOARD_INDEX_REVALIDATE_SECONDS, toBoardCard } from "./boardListQuery";
+import { toBoardCard } from "./boardListQuery";
 
-type AdminSb = SupabaseClient<any, "public", any>;
+type AdminSb = NonNullable<typeof supabaseAdmin>;
 
 const INDEX_PAGE = 200;
 const INDEX_MAX_ROWS = 20000;
@@ -67,18 +67,159 @@ export async function loadBoardIndex(sb: AdminSb): Promise<Job[]> {
   return cards;
 }
 
-const readCachedBoardIndex = unstable_cache(
-  async () => {
-    if (!supabaseAdmin) return [] as Job[];
-    return loadBoardIndex(supabaseAdmin);
-  },
-  ["public-board-index-v1"],
-  { revalidate: BOARD_INDEX_REVALIDATE_SECONDS },
-);
+const SNAPSHOT_ID = "public";
+
+type SnapshotMeta = {
+  builtAt: number;
+  sourceUpdatedAt: string | null;
+  leaseUntil: number;
+  payload: Job[] | null;
+};
+
+let leaseMode: "unknown" | "on" | "off" = "unknown";
+let localCards: { builtAt: number; cards: Job[] } | null = null;
+let localFlight: Promise<Job[]> | null = null;
+
+const missingLease = (error: { code?: string; message?: string } | null) => {
+  const code = error?.code || "";
+  const message = (error?.message || "").toLowerCase();
+  return code === "42P01" || code === "PGRST202" || code === "PGRST205" || message.includes("board_index");
+};
+
+async function latestJobUpdate(sb: AdminSb) {
+  const { data, error } = await sb.from("jobs").select("updated_at").order("updated_at", { ascending: false }).limit(1);
+  if (error) throw new Error(error.message);
+  const value = data?.[0]?.updated_at;
+  return typeof value === "string" && value ? value : null;
+}
+
+function metaFrom(row: {
+  built_at?: string | null;
+  source_updated_at?: string | null;
+  lease_until?: string | null;
+  payload?: Job[] | null;
+} | null): SnapshotMeta {
+  return {
+    builtAt: row?.built_at ? Date.parse(row.built_at) || 0 : 0,
+    sourceUpdatedAt: row?.source_updated_at || null,
+    leaseUntil: row?.lease_until ? Date.parse(row.lease_until) || 0 : 0,
+    payload: Array.isArray(row?.payload) ? row.payload : null,
+  };
+}
+
+async function readSnapshot(sb: AdminSb, withPayload: boolean): Promise<SnapshotMeta | "off"> {
+  const select = withPayload ? "payload,built_at,source_updated_at,lease_until" : "built_at,source_updated_at,lease_until";
+  const { data, error } = await sb.from("board_index_snapshot").select(select).eq("id", SNAPSHOT_ID).maybeSingle();
+  if (error) {
+    if (missingLease(error)) {
+      leaseMode = "off";
+      return "off";
+    }
+    throw new Error(error.message);
+  }
+  leaseMode = "on";
+  return metaFrom((data || null) as Parameters<typeof metaFrom>[0]);
+}
+
+function localSingleFlight(sb: AdminSb) {
+  if (localCards && Date.now() - localCards.builtAt < 300_000) return Promise.resolve(localCards.cards);
+  if (!localFlight) {
+    localFlight = loadBoardIndex(sb)
+      .then((cards) => {
+        localCards = { builtAt: Date.now(), cards };
+        return cards;
+      })
+      .finally(() => {
+        localFlight = null;
+      });
+  }
+  return localFlight;
+}
+
+async function buildSharedIndex(sb: AdminSb, source: string | null) {
+  const owner = randomUUID();
+  const result = await coordinateBoardBuild<Job[]>({
+    now: Date.now(),
+    sourceUpdatedAt: source,
+    read: async () => {
+      const meta = await readSnapshot(sb, true);
+      if (meta === "off") return { payload: null, builtAt: 0, sourceUpdatedAt: null, leaseUntil: 0 };
+      return meta;
+    },
+    claim: async () => {
+      const { data, error } = await sb.rpc("board_index_claim", { owner, seconds: 45 });
+      if (error) throw error;
+      return data === true;
+    },
+    build: () => loadBoardIndex(sb),
+    write: async (cards, builtAt, sourceUpdatedAt) => {
+      const { error } = await sb
+        .from("board_index_snapshot")
+        .update({
+          payload: cards,
+          built_at: new Date(builtAt).toISOString(),
+          source_updated_at: sourceUpdatedAt,
+        })
+        .eq("id", SNAPSHOT_ID)
+        .eq("lease_owner", owner);
+      if (error) throw new Error(error.message);
+      localCards = { builtAt, cards };
+    },
+    release: async () => {
+      await sb.rpc("board_index_release", { owner });
+    },
+    wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  });
+  return result.value;
+}
 
 /** Shared public index. Early-access rows stay in it; each request removes them for non-Premium viewers. */
-export function getBoardCatalog() {
-  return readCachedBoardIndex();
+export async function getBoardCatalog() {
+  if (!supabaseAdmin) return [] as Job[];
+  const sb = supabaseAdmin;
+  if (leaseMode === "off") return localSingleFlight(sb);
+  try {
+    const source = await latestJobUpdate(sb);
+    const meta = await readSnapshot(sb, false);
+    if (meta === "off") return localSingleFlight(sb);
+    const now = Date.now();
+    const covers = (meta.sourceUpdatedAt || "") >= (source || "");
+    const age = now - meta.builtAt;
+    const fresh = meta.builtAt > 0 && age < 300_000 && covers;
+    const coalesced = meta.builtAt > 0 && age < 15_000 && !covers;
+    if ((fresh || coalesced) && localCards?.builtAt === meta.builtAt) return localCards.cards;
+    if (fresh || coalesced) {
+      const full = await readSnapshot(sb, true);
+      const cards = full === "off" ? [] : full.payload || [];
+      localCards = { builtAt: meta.builtAt, cards };
+      return cards;
+    }
+    return buildSharedIndex(sb, source);
+  } catch (error) {
+    if (missingLease(error as { code?: string; message?: string })) return localSingleFlight(sb);
+    throw error;
+  }
+}
+
+/** Description matches for the search route. The board response still omits the posting body. */
+export async function descriptionMatchIds(query: string) {
+  const ids = new Set<string>();
+  if (!supabaseAdmin) return ids;
+  const safe = query.replace(/[%_\\]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+  if (safe.length < 2) return ids;
+  for (let from = 0; from < 2000; from += 500) {
+    const { data, error } = await supabaseAdmin
+      .from("jobs")
+      .select("id")
+      .eq("status", "published")
+      .ilike("description", `%${safe}%`)
+      .range(from, from + 499);
+    if (error) return ids;
+    for (const row of data || []) ids.add(String(row.id || ""));
+    if (!data || data.length < 500) break;
+  }
+  ids.delete("");
+  return ids;
 }
 
 export function companiesFromBoard(jobs: Job[]): BoardCompany[] {

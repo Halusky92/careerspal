@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { publicListTierFromRequest } from "../../../../lib/boardAccessServer";
 import { listingsForViewer } from "../../../../lib/listingWindow";
-import { getBoardCatalog } from "../../../../lib/publicBoardCatalog";
+import { descriptionMatchIds, getBoardCatalog } from "../../../../lib/publicBoardCatalog";
 import { applyStoredBoardFilters } from "../../../../lib/publicJobBoard";
 import {
   filterAndSortBoard,
@@ -31,7 +31,8 @@ export async function GET(request: Request) {
     }),
     tier,
   );
-  const filtered = filterAndSortBoard(catalog, filters);
+  const descriptionIds = filters.query ? await descriptionMatchIds(filters.query) : undefined;
+  const filtered = filterAndSortBoard(catalog, filters, Date.now(), descriptionIds);
   const page = pageBoard(filtered, skipParam, limitParam);
   return NextResponse.json(
     { jobs: page.jobs, total: page.total, visible: page.visible, access: tier },

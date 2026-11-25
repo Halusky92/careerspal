@@ -36,6 +36,7 @@ function role(partial: Partial<Job> & { id: string }): Job {
     createdAt: partial.createdAt,
     status: "published",
     companyVerified: partial.companyVerified,
+    keywords: partial.keywords,
     boardTz: partial.boardTz,
     preview: partial.preview,
   };
@@ -108,9 +109,37 @@ test("early access stays off the public page and on Premium", () => {
 test("expired roles are outside the live window and cards drop the description", () => {
   const expired = { timestamp: now - 40 * 24 * 60 * 60 * 1000, published_at: new Date(now - 40 * 24 * 60 * 60 * 1000).toISOString() };
   assert.equal(isLiveBoardJob(expired, now), false);
-  const card = toBoardCard(role({ id: "card", description: "Must work from the USA.\n- Own the weekly operations review for the team.", location: "Remote" }));
+  const card = toBoardCard(role({
+    id: "card",
+    description: "Must work from the USA.\n- Own the weekly operations review for the team.",
+    location: "Remote",
+    tools: ["Notion", "Slack"],
+  }));
   assert.equal(card.description, "");
   assert.equal(card.preview && card.preview.length > 0, true);
+  assert.deepEqual(card.tools, ["Notion", "Slack"]);
+});
+
+test("search keeps keywords, description matches, and a stored tool", () => {
+  const hidden = role({
+    id: "body",
+    title: "Operations Manager",
+    keywords: "handoff",
+    tools: ["Notion", "Slack"],
+    description: "The posting body mentions a ledger that is not in the title.",
+  });
+  const card = toBoardCard(hidden);
+  assert.equal(card.description, "");
+  const byKeyword = filterAndSortBoard([card], { ...EMPTY_BOARD_FILTERS, query: "handoff" }, now);
+  assert.equal(byKeyword.length, 1);
+  const byTool = filterAndSortBoard([card], { ...EMPTY_BOARD_FILTERS, tools: ["Notion"] }, now);
+  assert.equal(byTool.length, 1);
+  const byDescription = filterAndSortBoard([card], { ...EMPTY_BOARD_FILTERS, query: "ledger" }, now, new Set(["body"]));
+  assert.equal(byDescription.length, 1);
+  const params = new URLSearchParams();
+  params.set("saved", "1");
+  params.set("savedIds", Array.from({ length: 120 }, (_, index) => `saved-${index}`).join(","));
+  assert.equal(filtersFromSearchParams(params).savedIds.length, 120);
 });
 
 test("simulated boards transfer less data after one shared index", () => {

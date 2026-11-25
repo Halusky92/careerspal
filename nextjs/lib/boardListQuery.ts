@@ -5,12 +5,13 @@ import { getCategoryHub, jobMatchesHub, resolveCategoryParam } from "./categorie
 import { isPriorityListing } from "./listingWindow";
 import { jobMatchesLocationQuery, workModeFromPlaceLabel } from "./locationFilter";
 import { isOnNicheJob } from "./nicheScope";
-import { visiblePostingTools } from "./postingTools";
 import { rolePreviewBullets } from "./sourcing/normalization/description";
 import { inferWorkMode, publicLocationLabel } from "./workMode";
 
 export const BOARD_PAGE_SIZE = PAID_JOBS_PAGE_MAX;
 export const BOARD_INDEX_REVALIDATE_SECONDS = 300;
+export const BOARD_CDN_SECONDS = 15;
+export const SAVED_FILTER_MAX = 2000;
 
 export type BoardListFilters = {
   query: string;
@@ -73,7 +74,7 @@ export function filtersFromSearchParams(
     .split(",")
     .map((id) => id.trim())
     .filter((id) => id.length > 0 && id.length <= 80)
-    .slice(0, 100);
+    .slice(0, SAVED_FILTER_MAX);
   return {
     query: get("query") || get("q"),
     location: moved ? "" : locationRaw,
@@ -191,7 +192,12 @@ const jobHasSelectedTools = (job: Job, tools: string[]) => {
 };
 
 /** Same rules as the board filters. Runs on the full catalog, then the caller pages the result. */
-export function filterAndSortBoard(jobs: Job[], filters: BoardListFilters, now = Date.now()): Job[] {
+export function filterAndSortBoard(
+  jobs: Job[],
+  filters: BoardListFilters,
+  now = Date.now(),
+  descriptionIds?: ReadonlySet<string>,
+): Job[] {
   const q = filters.query.trim().toLowerCase();
   const tokens = q ? q.split(/\s+/).filter(Boolean) : [];
   const hub = filters.category === "All Roles" ? null : getCategoryHub(filters.category);
@@ -200,8 +206,10 @@ export function filterAndSortBoard(jobs: Job[], filters: BoardListFilters, now =
     if (!isOnNicheJob(job)) return false;
     const matchesQuery =
       !q ||
+      descriptionIds?.has(job.id) ||
       job.title.toLowerCase().includes(q) ||
       job.company.toLowerCase().includes(q) ||
+      (job.keywords || "").toLowerCase().includes(q) ||
       (job.tags || []).some((tag) => tag.toLowerCase().includes(q)) ||
       (job.tools || []).some((tool) => tool.toLowerCase().includes(q));
     if (!matchesQuery) return false;
@@ -230,7 +238,7 @@ export function filterAndSortBoard(jobs: Job[], filters: BoardListFilters, now =
       const score = (job: Job) => {
         const base = job.matchScore ?? 0;
         if (tokens.length === 0) return base;
-        const hay = `${job.title} ${job.company} ${(job.tags || []).join(" ")} ${(job.tools || []).join(" ")}`.toLowerCase();
+        const hay = `${job.title} ${job.company} ${(job.tags || []).join(" ")} ${(job.tools || []).join(" ")} ${job.keywords || ""}`.toLowerCase();
         const hit = tokens.reduce((acc, token) => (hay.includes(token) ? acc + 10 : acc), 0);
         const toolBonus = filters.tools.reduce((acc, tool) => {
           const signals = toolSignals(job);
@@ -258,19 +266,17 @@ const timezoneBucket = (job: Job): "eu" | "us" | undefined => {
   return undefined;
 };
 
-/** The place, tools, and short duties the card needs, without the rest of the posting. */
+/** The place, stored tools, and short duties the card needs, without the posting body. */
 export function toBoardCard(job: Job): Job {
   const rawLocation = (job.location || "").trim();
   const shown = !rawLocation || /^(remote|hybrid)$/i.test(rawLocation) ? publicLocationLabel(job) : rawLocation;
   const mode = inferWorkMode(job);
-  const tools = (job.description || "").trim()
-    ? visiblePostingTools(job.tools, job.description || "")
-    : (job.tools || []).map((tool) => tool.trim()).filter(Boolean).slice(0, 12);
+  const tools = (job.tools || []).map((tool) => tool.trim()).filter(Boolean).slice(0, 12);
   return {
     ...job,
     location: shown || job.location,
     remotePolicy: mode || job.remotePolicy,
-    tools: tools.length ? tools : job.tools || [],
+    tools,
     preview: rolePreviewBullets(job.description || ""),
     boardTz: timezoneBucket(job),
     description: "",
@@ -286,10 +292,10 @@ export function pageBoard<T>(jobs: T[], skip = 0, limit = BOARD_PAGE_SIZE) {
   return { jobs: page, total: jobs.length, visible: page.length, skip: safeSkip, limit: safeLimit };
 }
 
-/** Anonymous responses can be shared. A cookie, Premium, or a saved-job filter stays on this user. */
+/** Anonymous responses can be shared for a short edge window. A cookie, Premium, or a saved-job filter stays on this user. */
 export function publicBoardCacheControl(input: { tier: BoardTier; hasCookie: boolean; personalized: boolean }) {
   if (input.tier === "paid" || input.hasCookie || input.personalized) return "private, no-store";
-  return `public, s-maxage=${BOARD_INDEX_REVALIDATE_SECONDS}, stale-while-revalidate=${BOARD_INDEX_REVALIDATE_SECONDS}`;
+  return `public, max-age=0, s-maxage=${BOARD_CDN_SECONDS}, stale-while-revalidate=${BOARD_CDN_SECONDS}`;
 }
 
 export function requestHasCookie(request: Request) {

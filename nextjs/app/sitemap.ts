@@ -5,9 +5,8 @@ import { getCanonicalSiteUrl } from "../lib/alerts/siteUrl";
 import { isNonProductionDeployment } from "../lib/siteIndexing";
 import { isEarlyAccessListing } from "../lib/listingWindow";
 import { getBoardCatalog } from "../lib/publicBoardCatalog";
-import { BOARD_INDEX_REVALIDATE_SECONDS } from "../lib/boardListQuery";
 
-export const revalidate = BOARD_INDEX_REVALIDATE_SECONDS;
+export const revalidate = 300;
 
 function lastmodFromTimestamp(timestamp?: number | null): Date | undefined {
   if (typeof timestamp !== "number" || !Number.isFinite(timestamp) || timestamp <= 0) return undefined;

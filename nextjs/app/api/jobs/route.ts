@@ -15,6 +15,7 @@ import {
   pageBoard,
   publicBoardCacheControl,
   requestHasCookie,
+  SAVED_FILTER_MAX,
 } from "../../../lib/boardListQuery";
 import { getBoardCatalog } from "../../../lib/publicBoardCatalog";
 
@@ -41,7 +42,6 @@ export const GET = async (request: Request) => {
   const requestedStatus = searchParams.get("status");
   const status = requestedStatus === "invite_only" ? "invite_only" : "published";
   const company = searchParams.get("company");
-  const category = searchParams.get("category");
   const type = searchParams.get("type");
   const planType = searchParams.get("planType");
   const remote = searchParams.get("remote");
@@ -54,9 +54,18 @@ export const GET = async (request: Request) => {
       const auth = await getSupabaseProfile(request);
       const profileId = auth?.profile?.id;
       if (profileId) {
-        const { data } = await supabaseAdmin.from("saved_jobs").select("job_id").eq("user_id", profileId).limit(100);
-        const serverIds = (data || []).map((row) => String(row.job_id || "")).filter(Boolean);
-        savedIds = Array.from(new Set([...serverIds, ...savedIds])).slice(0, 100);
+        const serverIds: string[] = [];
+        for (let from = 0; from < SAVED_FILTER_MAX; from += 1000) {
+          const { data } = await supabaseAdmin
+            .from("saved_jobs")
+            .select("job_id")
+            .eq("user_id", profileId)
+            .range(from, from + 999);
+          const page = (data || []).map((row) => String(row.job_id || "")).filter(Boolean);
+          serverIds.push(...page);
+          if (page.length < 1000) break;
+        }
+        savedIds = Array.from(new Set([...serverIds, ...savedIds])).slice(0, SAVED_FILTER_MAX);
       }
     }
     const visible = listingsForViewer(await getBoardCatalog(), tier);

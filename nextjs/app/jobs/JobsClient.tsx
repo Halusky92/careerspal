@@ -142,7 +142,7 @@ export default function JobsClient({
     }
   };
 
-  const readPage = async (filters: BoardListFilters, skip: number) => {
+  const readPage = useCallback(async (filters: BoardListFilters, skip: number) => {
     const qs = boardQueryString({ ...filters, savedIds: filters.saved ? savedJobIds : [] }, skip, 50);
     const response = accessToken ? await authFetch(`/api/jobs?${qs}`, {}, accessToken) : await fetch(`/api/jobs?${qs}`);
     return (await response.json()) as {
@@ -153,7 +153,7 @@ export default function JobsClient({
       companies?: number;
       categoryTotals?: Record<string, number>;
     };
-  };
+  }, [accessToken, savedJobIds]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -255,7 +255,7 @@ export default function JobsClient({
       }
     };
     load();
-  }, [accessToken, savedJobIds]);
+  }, [readPage, savedJobIds]);
 
   const handleToggleBookmark = (jobId: string) => {
     setSavedJobIds((prev) => {
