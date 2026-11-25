@@ -1,11 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Job } from "../types";
-import { applyLiveBoardFilter, isLiveBoardJob } from "./liveBoard";
+import { isLiveBoardJob } from "./liveBoard";
 import { isOnNicheJob } from "./nicheScope";
 import { getCategoryHub, jobMatchesHub, resolveCategoryParam } from "./categories";
-import { mapSupabaseJob, type SupabaseJobRow } from "./supabaseJobs";
 import { publicLocationLabel } from "./workMode";
 import { boardCap, boardPageForTier, type BoardTier } from "./boardAccess";
+import { getBoardCatalog } from "./publicBoardCatalog";
 
 export const PUBLIC_JOB_SELECT =
   "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)";
@@ -29,38 +29,32 @@ export function withPublicLocation(job: Job): Job {
   return { ...job, location: shown };
 }
 
-export async function loadPublishedBoardJobs(sb: AdminSb, filters: PublicBoardFilters = {}): Promise<Job[]> {
+export function applyStoredBoardFilters(jobs: Job[], filters: PublicBoardFilters = {}): Job[] {
   const categoryParam = resolveCategoryParam(filters.category || undefined);
   const categoryHub = categoryParam !== "All Roles" ? getCategoryHub(categoryParam) : null;
-  const pageSize = 200;
-  const jobs: Job[] = [];
-  for (let offset = 0; offset < 2000; offset += pageSize) {
-    let query = sb.from("jobs").select(PUBLIC_JOB_SELECT).eq("status", "published").order("timestamp", { ascending: false });
-    query = applyLiveBoardFilter(query);
-    if (filters.type) query = query.eq("type", filters.type);
-    if (filters.planType) query = query.eq("plan_type", filters.planType);
-    if (filters.remote) query = query.ilike("remote_policy", `%${filters.remote}%`);
-    if (filters.company) query = query.ilike("companies.name", `%${filters.company}%`);
-    const { data, error } = await query.range(offset, offset + pageSize - 1);
-    if (error) throw new Error(error.message);
-    const rows = (data as unknown as SupabaseJobRow[] | null) || [];
-    jobs.push(
-      ...rows
-        .map(mapSupabaseJob)
-        .map(withPublicLocation)
-        .filter((job) => isOnNicheJob(job) && (!categoryHub || jobMatchesHub(job, categoryHub))),
-    );
-    if (rows.length < pageSize) break;
-  }
-  return jobs;
+  const company = (filters.company || "").trim().toLowerCase();
+  const type = (filters.type || "").trim();
+  const planType = (filters.planType || "").trim();
+  const remote = (filters.remote || "").trim().toLowerCase();
+  return jobs.filter((job) => {
+    if (categoryHub && !jobMatchesHub(job, categoryHub)) return false;
+    if (type && job.type !== type) return false;
+    if (planType && (job.planType || "") !== planType) return false;
+    if (remote && !(job.remotePolicy || "").toLowerCase().includes(remote)) return false;
+    if (company && !(job.company || "").toLowerCase().includes(company)) return false;
+    return true;
+  });
+}
+
+/** The shared slim index. `sb` is accepted so older callers keep their signature. */
+export async function loadPublishedBoardJobs(_sb: AdminSb, filters: PublicBoardFilters = {}): Promise<Job[]> {
+  const jobs = await getBoardCatalog();
+  return applyStoredBoardFilters(jobs, filters);
 }
 
 export function pagePublishedBoard(jobs: Job[], tier: BoardTier, opts: { skip?: number; limit?: number }) {
   return boardPageForTier(jobs, tier, opts);
 }
-
-const LIVE_COUNT_PAGE = 200;
-const LIVE_COUNT_MAX_ROWS = 20000;
 
 export type LiveCountRow = {
   status?: string | null;
@@ -107,37 +101,14 @@ export function totalFromCountPages(
   return pages.length === 0 ? 0 : null;
 }
 
-/** Same published + live + niche rules as the public board. Null when the count cannot be finished. */
+/** Same published + live + niche rules as the public board. Null when the index cannot be read. */
 export async function countLivePublishedJobs(
-  sb: AdminSb,
+  _sb: AdminSb,
   filters: PublicBoardFilters = {},
 ): Promise<number | null> {
-  const categoryParam = resolveCategoryParam(filters.category || undefined);
-  const categoryHub = categoryParam !== "All Roles" ? getCategoryHub(categoryParam) : null;
-  const pages: Array<{ fetched: number; counted: number }> = [];
-  const now = Date.now();
   try {
-    for (let offset = 0; offset < LIVE_COUNT_MAX_ROWS; offset += LIVE_COUNT_PAGE) {
-      let query = sb
-        .from("jobs")
-        .select("status,title,category,description,timestamp,published_at,created_at,companies(name)")
-        .eq("status", "published")
-        .order("timestamp", { ascending: false });
-      query = applyLiveBoardFilter(query);
-      if (filters.type) query = query.eq("type", filters.type);
-      if (filters.planType) query = query.eq("plan_type", filters.planType);
-      if (filters.remote) query = query.ilike("remote_policy", `%${filters.remote}%`);
-      if (filters.company) query = query.ilike("companies.name", `%${filters.company}%`);
-      const { data, error } = await query.range(offset, offset + LIVE_COUNT_PAGE - 1);
-      if (error) return null;
-      const rows = (data as LiveCountRow[] | null) || [];
-      const counted = rows.filter(
-        (row) => isCountedLiveJob(row, now) && (!categoryHub || jobMatchesHub(row, categoryHub)),
-      ).length;
-      pages.push({ fetched: rows.length, counted });
-      if (rows.length < LIVE_COUNT_PAGE) return totalFromCountPages(pages, LIVE_COUNT_PAGE);
-    }
-    return null;
+    const jobs = await getBoardCatalog();
+    return applyStoredBoardFilters(jobs, filters).length;
   } catch {
     return null;
   }

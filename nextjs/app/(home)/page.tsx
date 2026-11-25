@@ -2,37 +2,23 @@ import Link from "next/link";
 import HomeClient from "../HomeClient";
 import { Job } from "../../types";
 import { createJobSlug } from "../../lib/jobs";
-import { supabaseAdmin } from "../../lib/supabaseAdmin";
-import { mapSupabaseJob, SupabaseJobRow } from "../../lib/supabaseJobs";
-import { isOnNicheJob } from "../../lib/nicheScope";
-import { applyLiveBoardFilter } from "../../lib/liveBoard";
 import { formatJobSalary } from "../../lib/formatSalary";
 import { getPublicSubscriberCount } from "../../lib/countAlertSubscribers";
-import { countLivePublishedJobs } from "../../lib/publicJobBoard";
 import { listingsForViewer } from "../../lib/listingWindow";
 import { viewerTier } from "../../lib/viewerTier";
 import { topHiringEmployers } from "../../lib/companyBoard";
+import { getBoardCatalog } from "../../lib/publicBoardCatalog";
 
 export const dynamic = "force-dynamic";
 
 const planWeight = { "Elite Managed": 3, "Featured Pro": 2, Standard: 1 };
 
 async function fetchPublishedJobs(): Promise<Job[]> {
-  if (!supabaseAdmin) return [];
-
-  const query = applyLiveBoardFilter(
-    supabaseAdmin
-      .from("jobs")
-      .select(
-        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,companies(name,slug,logo_url,website,description,verified)",
-      )
-      .eq("status", "published"),
-  )
-    .order("timestamp", { ascending: false })
-    .range(0, 499);
-
-  const { data } = await query;
-  return (data as SupabaseJobRow[] | null || []).map(mapSupabaseJob).filter((job) => isOnNicheJob(job));
+  try {
+    return await getBoardCatalog();
+  } catch {
+    return [];
+  }
 }
 
 function StaticHomeJobs({ jobs }: { jobs: Job[] }) {
@@ -70,15 +56,13 @@ function StaticHomeJobs({ jobs }: { jobs: Job[] }) {
 }
 
 export default async function HomePage() {
-  const [loaded, tier, subscriberCount, counted] = await Promise.all([
+  const [loaded, tier, subscriberCount] = await Promise.all([
     fetchPublishedJobs(),
     viewerTier(),
     getPublicSubscriberCount(),
-    supabaseAdmin ? countLivePublishedJobs(supabaseAdmin) : Promise.resolve(null),
   ]);
   const jobs = listingsForViewer(loaded, tier);
-  const hiddenEarly = loaded.length - jobs.length;
-  const liveTotal = counted == null ? null : Math.max(0, counted - hiddenEarly);
+  const liveTotal = jobs.length;
   return (
     <>
       <StaticHomeJobs jobs={jobs} />

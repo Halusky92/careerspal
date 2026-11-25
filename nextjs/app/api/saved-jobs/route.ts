@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json(
     { savedJobs: (data || []).map((row) => ({ jobId: row.job_id, createdAt: row.created_at })) },
-    { headers: { "Cache-Control": "s-maxage=30, stale-while-revalidate=120" } },
+    { headers: { "Cache-Control": "private, no-store", Vary: "Cookie, Authorization" } },
   );
 }
 

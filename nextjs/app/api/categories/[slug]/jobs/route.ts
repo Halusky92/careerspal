@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCategoryHub, jobMatchesHub } from "../../../../../lib/categories";
-import { supabaseAdmin } from "../../../../../lib/supabaseAdmin";
-import { mapSupabaseJob, type SupabaseJobRow } from "../../../../../lib/supabaseJobs";
-import { isOnNicheJob } from "../../../../../lib/nicheScope";
-import { applyLiveBoardFilter } from "../../../../../lib/liveBoard";
 import { publicListTierFromRequest } from "../../../../../lib/boardAccessServer";
 import { listingsForViewer } from "../../../../../lib/listingWindow";
-import { buildPublicList, listCacheHeaders } from "../../../../../lib/publicListPreview";
+import { buildPublicList } from "../../../../../lib/publicListPreview";
+import { getBoardCatalog } from "../../../../../lib/publicBoardCatalog";
+import { publicBoardCacheControl, requestHasCookie } from "../../../../../lib/boardListQuery";
 
 export const dynamic = "force-dynamic";
 
@@ -16,29 +14,21 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   if (!hub) {
     return NextResponse.json({ error: "Category not found" }, { status: 404 });
   }
-  if (!supabaseAdmin) {
-    return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
-  }
-  const { data, error } = await applyLiveBoardFilter(
-    supabaseAdmin
-      .from("jobs")
-      .select(
-        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
-      )
-      .eq("status", "published"),
-  )
-    .order("timestamp", { ascending: false })
-    .range(0, 499);
-
-  if (error) {
+  const tier = await publicListTierFromRequest(request);
+  let catalog;
+  try {
+    catalog = await getBoardCatalog();
+  } catch {
     return NextResponse.json({ error: "Category is unavailable." }, { status: 500 });
   }
-  const tier = await publicListTierFromRequest(request);
   const jobs = listingsForViewer(
-    ((data as unknown as SupabaseJobRow[] | null) || [])
-      .map(mapSupabaseJob)
-      .filter((job) => isOnNicheJob(job) && jobMatchesHub(job, hub)),
+    catalog.filter((job) => jobMatchesHub(job, hub)),
     tier,
   );
-  return NextResponse.json(buildPublicList(jobs, tier, jobs.length), { headers: listCacheHeaders() });
+  return NextResponse.json(buildPublicList(jobs, tier, jobs.length), {
+    headers: {
+      "Cache-Control": publicBoardCacheControl({ tier, hasCookie: requestHasCookie(request), personalized: false }),
+      Vary: "Cookie, Authorization",
+    },
+  });
 };

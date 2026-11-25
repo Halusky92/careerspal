@@ -2,11 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCategoryHub, jobMatchesHub } from "../../../lib/categories";
-import { supabaseAdmin } from "../../../lib/supabaseAdmin";
-import { mapSupabaseJob, type SupabaseJobRow } from "../../../lib/supabaseJobs";
 import type { Job } from "../../../types";
-import { isOnNicheJob } from "../../../lib/nicheScope";
-import { applyLiveBoardFilter } from "../../../lib/liveBoard";
+import { getBoardCatalog } from "../../../lib/publicBoardCatalog";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
 import { previewListedJobs, toPublicJobCard, withoutHiddenStatuses } from "../../../lib/publicListPreview";
 import { publicPostedLabel } from "../../../lib/formatPosted";
@@ -30,24 +27,12 @@ async function fetchPublishedJobsForHub(hubSlug: string): Promise<{ hubLabel: st
   const hub = getCategoryHub(hubSlug);
   if (!hub) return null;
 
-  if (!supabaseAdmin) {
-    return { hubLabel: hub.label, intro: hub.intro, jobs: [], preference: hub.dbCategories[0] || "All" };
+  let jobs: Job[] = [];
+  try {
+    jobs = (await getBoardCatalog()).filter((job) => jobMatchesHub(job, hub));
+  } catch {
+    jobs = [];
   }
-
-  const { data } = await applyLiveBoardFilter(
-    supabaseAdmin
-      .from("jobs")
-      .select(
-        "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,companies(name,slug,logo_url,website,description,verified)",
-      )
-      .eq("status", "published"),
-  )
-    .order("timestamp", { ascending: false })
-    .range(0, 499);
-
-  const jobs = (data as SupabaseJobRow[] | null || [])
-    .map(mapSupabaseJob)
-    .filter((job) => isOnNicheJob(job) && jobMatchesHub(job, hub));
   return { hubLabel: hub.label, intro: hub.intro, jobs, preference: hub.slug };
 }
 

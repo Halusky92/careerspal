@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
-import { listCacheHeaders, publicSuggestionLabels } from "../../../../lib/publicListPreview";
-
-type SuggestionJobRow = {
-  title: string | null;
-  tags: unknown;
-  companies?: { name?: string | null } | Array<{ name?: string | null }> | null;
-};
+import { getBoardCatalog } from "../../../../lib/publicBoardCatalog";
+import { listingsForViewer } from "../../../../lib/listingWindow";
+import { publicListTierFromRequest } from "../../../../lib/boardAccessServer";
+import { publicSuggestionLabels } from "../../../../lib/publicListPreview";
+import { publicBoardCacheControl, requestHasCookie } from "../../../../lib/boardListQuery";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -14,31 +11,25 @@ export async function GET(request: Request) {
   const limitParam = Number(searchParams.get("limit") || "8");
   const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 20) : 8;
   if (!q) return NextResponse.json({ suggestions: [] });
-  if (!supabaseAdmin) {
-    return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
-  }
 
-  const { data: jobs } = await supabaseAdmin
-    .from("jobs")
-    .select("title,tags,companies(name)")
-    .eq("status", "published")
-    .limit(50);
-
+  const tier = await publicListTierFromRequest(request);
+  const jobs = listingsForViewer(await getBoardCatalog(), tier);
   const suggestions = new Set<string>();
-  (jobs as SuggestionJobRow[] | null || []).forEach((job) => {
-    const companyName = Array.isArray(job.companies) ? job.companies[0]?.name : job.companies?.name;
+  for (const job of jobs) {
     if (job.title && job.title.toLowerCase().includes(q)) suggestions.add(job.title);
-    if (companyName && companyName.toLowerCase().includes(q)) {
-      suggestions.add(companyName);
-    }
-    const tags = (job.tags as string[]) || [];
-    tags.forEach((tag) => {
+    if (job.company && job.company.toLowerCase().includes(q)) suggestions.add(job.company);
+    for (const tag of job.tags || []) {
       if (tag.toLowerCase().includes(q)) suggestions.add(tag);
-    });
-  });
+    }
+  }
 
   return NextResponse.json(
     { suggestions: publicSuggestionLabels(Array.from(suggestions).sort((a, b) => a.localeCompare(b)), limit) },
-    { headers: listCacheHeaders() },
+    {
+      headers: {
+        "Cache-Control": publicBoardCacheControl({ tier, hasCookie: requestHasCookie(request), personalized: false }),
+        Vary: "Cookie, Authorization",
+      },
+    },
   );
 }

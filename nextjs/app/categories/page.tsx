@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CATEGORY_HUBS, categoryAvailability } from "../../lib/categories";
 import { getCanonicalSiteUrl } from "../../lib/alerts/siteUrl";
-import { supabaseAdmin } from "../../lib/supabaseAdmin";
-import { loadPublishedBoardJobs } from "../../lib/publicJobBoard";
+import { getBoardCatalog } from "../../lib/publicBoardCatalog";
 import { viewerTier } from "../../lib/viewerTier";
 
 const getBaseUrl = () => getCanonicalSiteUrl();
@@ -89,7 +88,7 @@ const ICON_TINT: Record<string, string> = {
 export default async function CategoriesPage() {
   const [tier, jobs] = await Promise.all([
     viewerTier(),
-    supabaseAdmin ? loadPublishedBoardJobs(supabaseAdmin) : Promise.resolve([]),
+    getBoardCatalog().catch(() => []),
   ]);
   const counts = categoryAvailability(jobs, tier);
   const open = counts.open;

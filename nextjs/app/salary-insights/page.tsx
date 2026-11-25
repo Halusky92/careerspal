@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import SalaryInsights from "../../components/SalaryInsights";
-import { supabaseAdmin } from "../../lib/supabaseAdmin";
-import { salaryBucketsFromJobs } from "../../lib/salaryBoardSummary";
-import { isOnNicheJob } from "../../lib/nicheScope";
-import { applyLiveBoardFilter } from "../../lib/liveBoard";
+import { salaryBucketsForBoard } from "../../lib/salaryBoardCache";
 import { getCanonicalSiteUrl } from "../../lib/alerts/siteUrl";
 
 export const dynamic = "force-dynamic";
@@ -23,24 +20,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function SalaryInsightsPage() {
-  let buckets: ReturnType<typeof salaryBucketsFromJobs> = [];
-  if (supabaseAdmin) {
-    const { data } = await applyLiveBoardFilter(
-      supabaseAdmin.from("jobs").select("title,description,salary,category,timestamp,location,remote_policy").eq("status", "published"),
-    )
-      .order("timestamp", { ascending: false })
-      .range(0, 499);
-    const jobs = (data || [])
-      .filter((job) => isOnNicheJob({ title: job.title, category: job.category, description: job.description }))
-      .map((job) => ({
-        title: job.title,
-        description: job.description,
-        salary: job.salary,
-        category: job.category,
-        location: job.location || "",
-        remotePolicy: job.remote_policy || "",
-      }));
-    buckets = salaryBucketsFromJobs(jobs);
+  let buckets: Awaited<ReturnType<typeof salaryBucketsForBoard>> = [];
+  try {
+    buckets = await salaryBucketsForBoard();
+  } catch {
+    buckets = [];
   }
   return (
     <div className="pt-6">

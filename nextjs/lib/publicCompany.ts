@@ -33,7 +33,7 @@ const COMPANY_FIELDS =
   "id,name,slug,website,description,long_description,logo_url,location,employee_count,verified,updated_at";
 
 const JOB_FIELDS =
-  "id,title,description,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description)";
+  "id,title,location,remote_policy,type,salary,posted_at_text,timestamp,published_at,created_at,category,apply_url,company_description,company_website,logo_url,tags,tools,benefits,keywords,match_score,is_featured,status,plan_type,plan_price,plan_currency,views,matches,stripe_payment_status,stripe_session_id,companies(name,slug,logo_url,website,description)";
 
 function mapCompany(row: CompanyRow): Company & { verified?: boolean } {
   return {

@@ -1,59 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createCompanySlug } from "../../lib/jobs";
-import { supabaseAdmin } from "../../lib/supabaseAdmin";
-import { isOnNicheJob } from "../../lib/nicheScope";
-import { applyLiveBoardFilter, isLiveBoardJob } from "../../lib/liveBoard";
-import { addJobToCompany, type BoardCompany } from "../../lib/companyBoard";
+import { companiesFromBoard, getBoardCatalog } from "../../lib/publicBoardCatalog";
 import CompaniesClient from "./CompaniesClient";
 import { getCanonicalSiteUrl } from "../../lib/alerts/siteUrl";
 
 const getBaseUrl = () => getCanonicalSiteUrl();
 
-async function fetchCompaniesWithLiveRoles(): Promise<BoardCompany[]> {
-  if (!supabaseAdmin) return [];
-
-  const { data } = await applyLiveBoardFilter(
-    supabaseAdmin
-      .from("jobs")
-      .select(
-        "company_id,title,category,description,timestamp,published_at,created_at,location,remote_policy,companies(id,name,slug,logo_url,website,description,location,verified)",
-      )
-      .eq("status", "published")
-      .not("company_id", "is", null)
-      .order("timestamp", { ascending: false })
-      .range(0, 499),
-  );
-
-  const map = new Map<string, BoardCompany>();
-
-  (data as any[] | null || []).forEach((row) => {
-    if (!isOnNicheJob({ title: row?.title, category: row?.category, description: row?.description })) return;
-    if (!isLiveBoardJob(row)) return;
-    const c = row?.companies;
-    const id = (c?.id || row?.company_id || "").toString();
-    const name = (c?.name || "").toString().trim();
-    if (!id || !name) return;
-    const slug = ((c?.slug || "").toString().trim() || createCompanySlug({ name })).trim();
-    if (!slug) return;
-    const next = addJobToCompany(map.get(id), {
-      id,
-      name,
-      slug,
-      logoUrl: c?.logo_url || null,
-      website: c?.website || null,
-      description: c?.description || null,
-      location: c?.location || null,
-      verified: c?.verified ?? null,
-      jobTitle: row?.title,
-      jobCategory: row?.category,
-      jobLocation: row?.location,
-      jobRemotePolicy: row?.remote_policy,
-    });
-    map.set(id, next);
-  });
-
-  return [...map.values()].sort((a, b) => b.liveRoles - a.liveRoles || a.name.localeCompare(b.name));
+async function fetchCompaniesWithLiveRoles() {
+  try {
+    return companiesFromBoard(await getBoardCatalog());
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata(): Promise<Metadata> {
