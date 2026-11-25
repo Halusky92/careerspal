@@ -147,13 +147,13 @@ async function buildSharedIndex(sb: AdminSb, source: string | null) {
       return meta;
     },
     claim: async () => {
-      const { data, error } = await sb.rpc("board_index_claim", { owner, seconds: 45 });
+      const { data, error } = await sb.rpc("board_index_claim", { owner, seconds: 180 });
       if (error) throw error;
       return data === true;
     },
     build: () => loadBoardIndex(sb),
     write: async (cards, builtAt, sourceUpdatedAt) => {
-      const { error } = await sb
+      const { data, error } = await sb
         .from("board_index_snapshot")
         .update({
           payload: cards,
@@ -161,8 +161,10 @@ async function buildSharedIndex(sb: AdminSb, source: string | null) {
           source_updated_at: sourceUpdatedAt,
         })
         .eq("id", SNAPSHOT_ID)
-        .eq("lease_owner", owner);
+        .eq("lease_owner", owner)
+        .select("id");
       if (error) throw new Error(error.message);
+      if (!data?.length) throw new Error("Board index lease was lost before the snapshot was saved.");
       localCards = { builtAt, cards };
     },
     release: async () => {

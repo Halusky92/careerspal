@@ -18,8 +18,10 @@ on conflict (id) do nothing;
 create index if not exists jobs_updated_at_desc_idx on public.jobs (updated_at desc);
 
 alter table public.board_index_snapshot enable row level security;
+alter table public.board_index_snapshot force row level security;
 
-revoke all on table public.board_index_snapshot from anon, authenticated;
+revoke all on table public.board_index_snapshot from public, anon, authenticated;
+grant select, update on table public.board_index_snapshot to service_role;
 
 create or replace function public.board_index_claim(owner text, seconds integer)
 returns boolean
