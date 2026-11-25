@@ -60,7 +60,9 @@ function countriesInDescription(text?: string | null): string[] {
   if (
     /\b(?:within|anywhere in|based in|located in|authorized to work in|eligible to work in)\s+the\s+united states\b/i.test(t) ||
     /\bremote\s+(?:within|in|across)\s+the\s+united states\b/i.test(t) ||
-    /\b(?:united states|u\.s\.|usa)\s+only\b/i.test(t)
+    /\b(?:united states|u\.s\.|usa)\s+only\b/i.test(t) ||
+    /\bmust work from the (?:usa|u\.s\.a?\.?|united states)\b/i.test(t) ||
+    /\bauthorized to work for any u\.s\. employer\b/i.test(t)
   ) {
     found.push("US");
   }
