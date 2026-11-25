@@ -143,6 +143,16 @@ test("a confirmed remote restriction in the posting becomes the applicant countr
     "https://www.careerspal.com/jobs/customers",
   );
   assert.equal(customers, null);
+  const america = buildJobPostingLd(
+    job({
+      location: "Remote",
+      remotePolicy: "Remote",
+      description:
+        "Owning a home is a foundational part of building financial security and wealth in America. The tools that support homeownership are antiquated.",
+    }),
+    "https://www.careerspal.com/jobs/vesta",
+  );
+  assert.equal(america, null);
 
   const both = buildJobPostingLd(
     job({ location: "Remote - USA or Canada", remotePolicy: "Remote" }),
