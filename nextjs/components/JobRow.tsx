@@ -13,8 +13,7 @@ import { publicCategoryLabel } from "../lib/categories";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
 import NewListingBadge from "./NewListingBadge";
-import PremiumWindowBadge from "./PremiumWindowBadge";
-import { isEarlyAccessListing, isNewListing } from "../lib/listingWindow";
+import { isNewListing } from "../lib/listingWindow";
 import { publicPostedLabel } from "../lib/formatPosted";
 
 export type JobRowAction = "copy_link" | "open_new_tab";
@@ -71,7 +70,6 @@ export default function JobRow({
 
   const isElite = job.planType === "Elite Managed";
   const isBoosted = isPaidFeaturedListing(job);
-  const isEarly = isEarlyAccessListing(job);
   const isNew = isNewListing(job);
   const isPrivate = job.status === "private" || job.status === "invite_only";
   const workMode = useMemo(() => getWorkMode(job), [job]);
@@ -122,11 +120,9 @@ export default function JobRow({
           ? isElite
             ? "bg-white border-slate-900/20 shadow-sm"
             : "bg-white border-indigo-200 shadow-sm"
-          : isEarly
-            ? "bg-[#fbf8f2] border-[#c6a15b]"
-            : isNew
-              ? "bg-[#fbf8f2] border-[#efe6d4]"
-              : "bg-white border-slate-200",
+          : isNew
+            ? "bg-[#fbf8f2] border-[#efe6d4]"
+            : "bg-white border-slate-200",
         selected ? "ring-2 ring-indigo-600 ring-offset-2 ring-offset-[#F8F9FD]" : "hover:shadow-sm",
         isPrivate ? "opacity-80" : "",
       ].join(" ")}
@@ -151,16 +147,16 @@ export default function JobRow({
           className={["absolute inset-y-0 left-0 w-1", isElite ? "bg-slate-900" : "bg-indigo-500"].join(" ")}
         />
       )}
-      {isEarly || isNew ? (
+      {isNew ? (
         <span className="absolute top-2 left-2 z-10">
-          {isEarly ? <PremiumWindowBadge job={job} /> : <NewListingBadge job={job} />}
+          <NewListingBadge job={job} />
         </span>
       ) : null}
       <div className="flex items-start gap-2 px-3 py-1.5 lg:gap-2.5 lg:py-2">
         <div
           className={[
             "rounded-xl overflow-hidden bg-white border border-slate-200/70 p-0.5 flex-shrink-0 lg:rounded-2xl lg:p-1",
-            isEarly || isNew ? "mt-4 lg:mt-5" : "mt-0.5",
+            isNew ? "mt-4 lg:mt-5" : "mt-0.5",
             isHome ? "w-9 h-9 lg:w-10 lg:h-10" : "w-9 h-9 lg:w-11 lg:h-11",
           ].join(" ")}
         >
