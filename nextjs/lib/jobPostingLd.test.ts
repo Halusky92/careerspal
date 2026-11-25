@@ -122,6 +122,16 @@ test("a confirmed remote restriction in the posting becomes the applicant countr
     "https://www.careerspal.com/jobs/vetcove",
   );
   assert.equal((vetcove?.applicantLocationRequirements as { name: string }).name, "USA");
+  const nova = buildJobPostingLd(
+    job({
+      location: "Remote",
+      remotePolicy: "Remote",
+      description: "Work Location and Hours. Work from home. Must work from the USA and be authorized to work for any U.S. employer.",
+    }),
+    "https://www.careerspal.com/jobs/nova",
+  );
+  assert.equal((nova?.applicantLocationRequirements as { name: string }).name, "USA");
+  assert.equal(nova?.jobLocationType, "TELECOMMUTE");
   assert.equal(vetcove?.validThrough, undefined);
   assert.equal(vetcove?.jobLocation, undefined);
 
