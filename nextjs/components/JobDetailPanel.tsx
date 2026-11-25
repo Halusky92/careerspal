@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Job } from "../types";
@@ -57,6 +57,27 @@ export default function JobDetailPanel({
     detailScrollRef.current?.scrollTo({ top: 0 });
   }, [job?.id]);
 
+  const [fetchedDescription, setFetchedDescription] = useState<{ id: string; description: string } | null>(null);
+  useEffect(() => {
+    if (!job?.id || job.description) return;
+    const id = job.id;
+    const controller = new AbortController();
+    fetch(`/api/jobs/${encodeURIComponent(id)}`, { credentials: "include", signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: { job?: { description?: string } } | null) => {
+        setFetchedDescription({
+          id,
+          description: typeof body?.job?.description === "string" ? body.job.description : "",
+        });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setFetchedDescription({ id, description: "" });
+      });
+    return () => controller.abort();
+  }, [job?.id, job?.description]);
+  const description = job?.description || (fetchedDescription?.id === job?.id ? fetchedDescription.description : "");
+  const descriptionPending = Boolean(job && !job.description && fetchedDescription?.id !== job.id);
+
   const rawSlug = (job?.companySlug || "").toString().trim();
   const safeSlug = rawSlug && rawSlug !== "undefined" && rawSlug !== "null" ? rawSlug : "";
   const companyPath = job
@@ -66,7 +87,7 @@ export default function JobDetailPanel({
   const roleHref = detailPath;
   const companyHref = companyPath;
 
-  const stack = useMemo(() => (job ? visiblePostingTools(job.tools, job.description || "") : []), [job]);
+  const stack = useMemo(() => (job ? visiblePostingTools(job.tools, description) : []), [job, description]);
 
   const similarJobs = useMemo(() => {
     if (!job) return [];
@@ -235,14 +256,14 @@ export default function JobDetailPanel({
           )}
 
           <div className="mt-5">
-            {descriptionOpensWithAbout(job.description || "") ? null : (
+            {descriptionOpensWithAbout(description) ? null : (
               <div className="text-xs font-medium text-slate-500">
                 About the role
               </div>
             )}
-            <div className={descriptionOpensWithAbout(job.description || "") ? "" : "mt-3"}>
-              <FormattedDescription text={job.description} maxLen={3600} className="space-y-3" />
-              {!job.description ? (
+            <div className={descriptionOpensWithAbout(description) ? "" : "mt-3"}>
+              <FormattedDescription text={description} maxLen={3600} className="space-y-3" />
+              {!description && !descriptionPending ? (
                 <p className="text-sm font-medium text-slate-700 leading-relaxed">Description is being updated.</p>
               ) : null}
             </div>
