@@ -1,10 +1,10 @@
 import { isLiveBoardJob } from "../liveBoard";
 import { isOnNicheJob } from "../nicheScope";
-import { shouldEmitJobPosting } from "../jobPostingLd";
+import { publicJobPostingLd } from "../jobPostingLd";
 import { inferWorkMode } from "../workMode";
 import { parseSalaryFromText } from "../sourcing/normalization/salary";
 import type { Job } from "../../types";
-import { indexVisibility, type IndexJobSnapshot } from "./plan";
+import { canonicalJobUrl, indexVisibility, type IndexJobSnapshot } from "./plan";
 import { isEarlyAccessListing } from "../listingWindow";
 
 export type IndexJobRow = {
@@ -67,7 +67,7 @@ export function toIndexSnapshot(row: IndexJobRow): IndexJobSnapshot {
       onNiche: isOnNicheJob(job),
       live: isLiveBoardJob(job),
       early: isEarlyAccessListing(job),
-      jobPosting: shouldEmitJobPosting(job),
+      jobPosting: Boolean(publicJobPostingLd(job, canonicalJobUrl({ id: row.id, title: row.title || "" }))),
     }),
   };
 }

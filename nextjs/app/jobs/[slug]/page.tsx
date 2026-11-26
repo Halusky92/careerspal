@@ -22,7 +22,7 @@ import { isEarlyAccessListing, listingsForViewer } from "../../../lib/listingWin
 import { viewerTier } from "../../../lib/viewerTier";
 import NewListingBadge from "../../../components/NewListingBadge";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
-import { buildJobPostingLd } from "../../../lib/jobPostingLd";
+import { publicJobPostingLd } from "../../../lib/jobPostingLd";
 import { ApplyClickLink, JobViewTracker } from "../../../components/JobAnalytics";
 import FeaturedBadge from "../../../components/FeaturedBadge";
 import { isPaidFeaturedListing } from "../../../lib/featuredListing";
@@ -372,7 +372,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
   const canonicalPath = `/jobs/${canonicalSlug}`;
   const canonicalUrl = `${getBaseUrl()}${canonicalPath}`;
 
-  const jobPostingLd = isEarlyAccessListing(job) ? null : buildJobPostingLd(
+  const jobPostingLd = publicJobPostingLd(
     { ...job, description: sanitizeDescription(job.description) || job.description },
     canonicalUrl,
   );

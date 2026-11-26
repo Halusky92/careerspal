@@ -6,7 +6,6 @@ import {
   googleIndexingLiveEnabled,
   indexFingerprint,
   indexVisibility,
-  LIVE_SENDING_RELEASED,
   planIndexNotifications,
   type IndexJobSnapshot,
   type SentNotice,
@@ -57,8 +56,7 @@ test("visibility follows the public job page", () => {
   );
 });
 
-test("live sending stays off in this release", () => {
-  assert.equal(LIVE_SENDING_RELEASED, false);
+test("live sending stays off until it is explicitly enabled", () => {
   assert.equal(googleIndexingLiveEnabled(), false);
   const route = readFileSync(new URL("../../app/api/cron/google-indexing/route.ts", import.meta.url), "utf8");
   assert.equal(route.includes(".insert("), false);
@@ -66,6 +64,7 @@ test("live sending stays off in this release", () => {
   assert.equal(route.includes(".delete("), false);
   assert.equal(route.includes("indexing.googleapis"), false);
   assert.equal(route.includes("searchParams.get(\"secret\")"), false);
+  assert.match(route, /searchParams.get\("live"\) === "1"/);
   assert.match(route, /Bearer /);
   const workflow = readFileSync(new URL("../../../.github/workflows/careerspal-greenhouse-daily.yml", import.meta.url), "utf8");
   const indexing = workflow.slice(workflow.indexOf("run_indexing_dry_run()"), workflow.indexOf("failed=0"));

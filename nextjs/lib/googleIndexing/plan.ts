@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import { CANONICAL_ORIGIN } from "../alerts/siteUrl";
+import { indexingLiveEnabled } from "./credentials";
 import { createJobSlug } from "../jobs";
 
 export const GOOGLE_INDEXING_DEFAULT_DAILY_QUOTA = 200;
 export const GOOGLE_INDEXING_PER_RUN_CAP = 40;
-export const LIVE_SENDING_RELEASED = false;
 
 export type NoticeType = "URL_UPDATED" | "URL_DELETED";
 export type IndexVisibility = "job_posting" | "noindex" | "gone" | "public_without_posting";
@@ -23,6 +23,7 @@ export type IndexJobSnapshot = {
   salaryPeriod: string;
   applyUrl: string;
   description: string;
+  descriptionSha?: string;
   contentHash: string;
   visibility: IndexVisibility;
 };
@@ -51,8 +52,8 @@ export type IndexPlan = {
   deleted: Array<{ url: string; jobId: string | null; fingerprint: string }>;
 };
 
-export function googleIndexingLiveEnabled(): false {
-  return LIVE_SENDING_RELEASED;
+export function googleIndexingLiveEnabled(): boolean {
+  return indexingLiveEnabled();
 }
 
 export function indexVisibility(input: {
@@ -72,6 +73,10 @@ export function canonicalJobUrl(job: Pick<IndexJobSnapshot, "id" | "title">): st
   return `${CANONICAL_ORIGIN}/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
 }
 
+export function descriptionSha(description: string): string {
+  return createHash("sha256").update(description.replace(/\s+/g, " ").trim()).digest("hex");
+}
+
 export function indexFingerprint(job: IndexJobSnapshot): string {
   const payload = {
     url: canonicalJobUrl(job),
@@ -86,10 +91,23 @@ export function indexFingerprint(job: IndexJobSnapshot): string {
     salaryCurrency: job.salaryCurrency.trim().toUpperCase(),
     salaryPeriod: job.salaryPeriod.trim().toLowerCase(),
     applyUrl: job.applyUrl.trim(),
-    description: job.description.replace(/\s+/g, " ").trim(),
+    descriptionSha: job.descriptionSha || descriptionSha(job.description || ""),
     contentHash: job.contentHash.trim(),
   };
   return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+}
+
+/**
+ * URL_DELETED is only for a URL we already announced that the public site no longer
+ * offers as an indexable job. `gone` is the 404 path (unpublished, off-niche, or missing).
+ * `noindex` is the robots path (expired live window). A slug alias that still returns
+ * the role stays up: the page canonical points at the current slug, so the old URL is
+ * not deleted.
+ */
+export function deleteReason(visibility: IndexVisibility): "noindex" | "gone" | null {
+  if (visibility === "noindex") return "noindex";
+  if (visibility === "gone") return "gone";
+  return null;
 }
 
 function latestByUrl(history: SentNotice[]): Map<string, SentNotice> {
@@ -183,7 +201,7 @@ export function planIndexNotifications(input: {
         const job = notice.jobId ? jobsById.get(notice.jobId) : undefined;
         const stillPosted = job?.visibility === "job_posting" && canonicalJobUrl(job) === notice.url;
         if (stillPosted) continue;
-        const removed = !job || job.visibility === "gone" || job.visibility === "noindex";
+        const removed = !job || deleteReason(job.visibility) != null;
         if (!removed || seenDelete.has(notice.url)) continue;
         seenDelete.add(notice.url);
         deleted.push({ url: notice.url, jobId: notice.jobId, fingerprint: notice.fingerprint });
