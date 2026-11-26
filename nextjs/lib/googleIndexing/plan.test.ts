@@ -234,6 +234,21 @@ test("a failed or empty read never queues a deletion", () => {
   }
 });
 
+test("an incomplete description scan still queues updates and skips deletes", () => {
+  const plan = planIndexNotifications({
+    jobs: [job(), job({ id: "job-2", title: "Closed role", visibility: "gone" })],
+    jobsReadOk: true,
+    scanComplete: false,
+    history: [sent({ jobId: "job-2", url: "https://www.careerspal.com/jobs/closed-role--job-2" })],
+    historyReadOk: true,
+    sentToday: 0,
+  });
+  assert.equal(plan.aborted, null);
+  assert.equal(plan.totalUpdated, 1);
+  assert.equal(plan.totalDeleted, 0);
+  assert.equal(plan.liveSending, false);
+});
+
 test("missing notification history is not a successful backfill", () => {
   const plan = planIndexNotifications({
     jobs: [job()],

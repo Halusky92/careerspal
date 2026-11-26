@@ -163,7 +163,7 @@ export function planIndexNotifications(input: {
     updated: [] as IndexPlan["updated"],
     deleted: [] as IndexPlan["deleted"],
   };
-  if (!input.jobsReadOk || !input.jobs || !input.scanComplete) {
+  if (!input.jobsReadOk || !input.jobs) {
     return { ...empty, aborted: "jobs_unreadable" };
   }
   if (!input.historyReadOk) {
