@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Hero from "../components/Hero";
 import HomePreviewCard from "../components/HomePreviewCard";
@@ -8,6 +8,7 @@ import { Job } from "../types";
 import { isOnNicheJob } from "../lib/nicheScope";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
 import { isPriorityListing } from "../lib/listingWindow";
+import { acceptHomeResponse, homeViewerTier, jobsForHomeViewer, nextHomeSync, type HomeSync } from "../lib/homeBoardSync";
 import FeaturedBoardZone from "../components/FeaturedBoardZone";
 import { useSupabaseAuth } from "../components/Providers";
 import { authFetch } from "../lib/authFetch";
@@ -43,23 +44,26 @@ const PENDING_SAVE_KEY = "cp_pending_save_job";
 export default function HomeClient({
   initialJobs,
   initialLiveTotal = null,
+  initialAccess = "guest",
   subscriberCount = null,
   employers = [],
 }: {
   initialJobs: Job[];
   initialLiveTotal?: number | null;
+  initialAccess?: "guest" | "registered" | "paid";
   subscriberCount?: number | null;
   employers?: HiringEmployer[];
 }) {
   const router = useRouter();
   const { accessToken, loading: authLoading, profile } = useSupabaseAuth();
-  const [jobs, setJobs] = useState<Job[]>(() => (initialJobs || []).slice(0, 4));
+  const [jobs, setJobs] = useState<Job[]>(() => initialJobs || []);
   const [jobsLoading, setJobsLoading] = useState(() => (initialJobs?.length ? false : true));
-  const [boardAccess, setBoardAccess] = useState<"guest" | "registered" | "paid">("guest");
   const [liveTotal, setLiveTotal] = useState<number | null>(
     typeof initialLiveTotal === "number" && Number.isFinite(initialLiveTotal) ? initialLiveTotal : null,
   );
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
+  const syncRef = useRef<HomeSync>({ tier: null, request: 0 });
+  const tier = authLoading ? initialAccess : homeViewerTier(accessToken, profile);
 
   useEffect(() => {
     const loadSaved = async () => {
@@ -97,47 +101,58 @@ export default function HomeClient({
   }, [accessToken, authLoading]);
 
   useEffect(() => {
+    if (authLoading) return;
+    const decision = nextHomeSync(syncRef.current, tier, initialAccess);
+    syncRef.current = decision.sync;
+    if (!decision.fetch) return;
+    const request = decision.sync.request;
+    const requestedTier = tier;
+    const controller = new AbortController();
     const loadJobs = async () => {
       try {
-        const response = accessToken
-          ? await authFetch("/api/jobs", {}, accessToken)
-          : await fetch("/api/jobs");
+        const response = requestedTier === "guest"
+          ? await fetch("/api/jobs", { signal: controller.signal, credentials: "omit", cache: "no-store" })
+          : await authFetch("/api/jobs", { signal: controller.signal }, accessToken);
         const data = (await response.json()) as {
           jobs?: Job[];
           total?: number;
           access?: "guest" | "registered" | "paid";
         };
+        if (!acceptHomeResponse(syncRef.current, request, requestedTier)) return;
+        const access = data.access === "paid" || data.access === "registered" || data.access === "guest" ? data.access : requestedTier;
+        const visibleTier = syncRef.current.tier ?? requestedTier;
         if (Array.isArray(data.jobs)) {
-          setJobs(data.jobs);
+          setJobs(visibleTier === "paid" && access === "paid" ? data.jobs : jobsForHomeViewer(data.jobs, visibleTier === "paid" ? access : visibleTier));
         }
-        if (typeof data.total === "number" && Number.isFinite(data.total)) {
-          setLiveTotal(data.total);
-        }
-        if (data.access) setBoardAccess(data.access);
+        if (typeof data.total === "number" && Number.isFinite(data.total) && access === visibleTier) setLiveTotal(data.total);
       } catch {
-        // keep fallback
+        // A newer sign-in or sign-out owns the list.
       } finally {
-        setJobsLoading(false);
+        if (acceptHomeResponse(syncRef.current, request, requestedTier)) setJobsLoading(false);
       }
     };
     loadJobs();
-  }, [accessToken]);
+    return () => controller.abort();
+  }, [accessToken, authLoading, initialAccess, tier]);
 
   const liveJobs = useMemo(
     () =>
-      [...jobs]
-        .filter((job) => isOnNicheJob(job))
-        .sort((a, b) => {
-          const priority = Number(isPriorityListing(b)) - Number(isPriorityListing(a));
-          if (priority !== 0) return priority;
-          return (b.timestamp ?? 0) - (a.timestamp ?? 0);
-        }),
-    [jobs],
+      jobsForHomeViewer(
+        [...jobs]
+          .filter((job) => isOnNicheJob(job))
+          .sort((a, b) => {
+            const priority = Number(isPriorityListing(b)) - Number(isPriorityListing(a));
+            if (priority !== 0) return priority;
+            return (b.timestamp ?? 0) - (a.timestamp ?? 0);
+          }),
+        tier,
+      ),
+    [jobs, tier],
   );
   const featuredPreview = useMemo(() => {
-    const take = boardAccess === "paid" ? 3 : Math.min(3, liveJobs.length);
+    const take = tier === "paid" ? 3 : Math.min(3, liveJobs.length);
     return sortFeaturedJobs(liveJobs.filter(isPaidFeaturedListing)).slice(0, take);
-  }, [liveJobs, boardAccess]);
+  }, [liveJobs, tier]);
   const previewJobs = useMemo(() => {
     const rest = liveJobs.filter((job) => !isPaidFeaturedListing(job));
     const take = 4;
@@ -146,7 +161,7 @@ export default function HomeClient({
   }, [liveJobs, featuredPreview.length]);
 
   const hasJobs = liveJobs.length > 0;
-  const plan = homePlan(authLoading, Boolean(accessToken), profile, boardAccess);
+  const plan = homePlan(authLoading, Boolean(accessToken), profile, tier);
 
   const handleToggleSave = (jobId: string) => {
     if (!accessToken) {
