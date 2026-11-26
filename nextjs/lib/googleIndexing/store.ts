@@ -24,11 +24,11 @@ export async function recordIndexNotice(notice: PlannedNotice, result: PublishRe
 
 export async function claimIndexingLock(owner: string): Promise<boolean> {
   if (!supabaseAdmin) return false;
-  const result = await supabaseAdmin.rpc("google_index_claim", { owner, seconds: 50 });
+  const result = await supabaseAdmin.rpc("google_index_claim", { lease_owner: owner, seconds: 50 });
   return !result.error && result.data === true;
 }
 
 export async function releaseIndexingLock(owner: string): Promise<void> {
   if (!supabaseAdmin) return;
-  await supabaseAdmin.rpc("google_index_release", { owner });
+  await supabaseAdmin.rpc("google_index_release", { lease_owner: owner });
 }

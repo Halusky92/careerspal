@@ -39,7 +39,7 @@ alter table public.google_index_run force row level security;
 revoke all on table public.google_index_run from public, anon, authenticated;
 grant select, update on table public.google_index_run to service_role;
 
-create or replace function public.google_index_claim(owner text, seconds integer)
+create or replace function public.google_index_claim(lease_owner text, seconds integer)
 returns boolean
 language plpgsql
 security definer
@@ -49,7 +49,7 @@ declare
   claimed integer;
 begin
   update public.google_index_run
-  set owner = google_index_claim.owner,
+  set owner = lease_owner,
       lease_until = now() + make_interval(secs => greatest(seconds, 1))
   where id = 'indexing'
     and (lease_until is null or lease_until < now());
@@ -58,7 +58,7 @@ begin
 end;
 $$;
 
-create or replace function public.google_index_release(owner text)
+create or replace function public.google_index_release(lease_owner text)
 returns boolean
 language plpgsql
 security definer
@@ -71,7 +71,7 @@ begin
   set owner = null,
       lease_until = null
   where id = 'indexing'
-    and owner = google_index_release.owner;
+    and owner = lease_owner;
   get diagnostics released = row_count;
   return released = 1;
 end;
