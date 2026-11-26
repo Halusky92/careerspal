@@ -43,19 +43,21 @@ const PENDING_SAVE_KEY = "cp_pending_save_job";
 export default function HomeClient({
   initialJobs,
   initialLiveTotal = null,
+  initialAccess = "guest",
   subscriberCount = null,
   employers = [],
 }: {
   initialJobs: Job[];
   initialLiveTotal?: number | null;
+  initialAccess?: "guest" | "registered" | "paid";
   subscriberCount?: number | null;
   employers?: HiringEmployer[];
 }) {
   const router = useRouter();
   const { accessToken, loading: authLoading, profile } = useSupabaseAuth();
-  const [jobs, setJobs] = useState<Job[]>(() => (initialJobs || []).slice(0, 4));
+  const [jobs, setJobs] = useState<Job[]>(() => initialJobs || []);
   const [jobsLoading, setJobsLoading] = useState(() => (initialJobs?.length ? false : true));
-  const [boardAccess, setBoardAccess] = useState<"guest" | "registered" | "paid">("guest");
+  const [boardAccess, setBoardAccess] = useState<"guest" | "registered" | "paid">(initialAccess);
   const [liveTotal, setLiveTotal] = useState<number | null>(
     typeof initialLiveTotal === "number" && Number.isFinite(initialLiveTotal) ? initialLiveTotal : null,
   );
@@ -97,31 +99,31 @@ export default function HomeClient({
   }, [accessToken, authLoading]);
 
   useEffect(() => {
+    if (authLoading || initialAccess !== "guest" || !accessToken) return;
+    let cancelled = false;
     const loadJobs = async () => {
       try {
-        const response = accessToken
-          ? await authFetch("/api/jobs", {}, accessToken)
-          : await fetch("/api/jobs");
+        const response = await authFetch("/api/jobs", {}, accessToken);
         const data = (await response.json()) as {
           jobs?: Job[];
           total?: number;
           access?: "guest" | "registered" | "paid";
         };
-        if (Array.isArray(data.jobs)) {
-          setJobs(data.jobs);
-        }
-        if (typeof data.total === "number" && Number.isFinite(data.total)) {
-          setLiveTotal(data.total);
-        }
+        if (cancelled) return;
+        if (Array.isArray(data.jobs)) setJobs(data.jobs);
+        if (typeof data.total === "number" && Number.isFinite(data.total)) setLiveTotal(data.total);
         if (data.access) setBoardAccess(data.access);
       } catch {
-        // keep fallback
+        // keep the server list
       } finally {
-        setJobsLoading(false);
+        if (!cancelled) setJobsLoading(false);
       }
     };
     loadJobs();
-  }, [accessToken]);
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, authLoading, initialAccess]);
 
   const liveJobs = useMemo(
     () =>

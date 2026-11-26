@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useSupabaseAuth } from "./Providers";
 import BrandMark from "./BrandMark";
 
@@ -179,15 +179,8 @@ const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const pathname = usePathname();
-  const router = useRouter();
   const { profile, signOut } = useSupabaseAuth();
   const accountRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    for (const href of ["/jobs", "/categories", "/companies", "/alerts", "/pricing"]) {
-      router.prefetch(href);
-    }
-  }, [router]);
 
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? "hidden" : "unset";
@@ -319,7 +312,7 @@ const Navbar: React.FC = () => {
               )}
 
               {!profile?.email ? (
-                <Link href={`/auth?from=${encodeURIComponent(pathname || "/")}`} className="inline-flex h-9 items-center justify-center px-3 rounded-lg border border-slate-200 text-sm font-medium leading-none text-slate-800 hover:bg-slate-50 shrink-0">
+                <Link href={`/auth?from=${encodeURIComponent(pathname || "/")}`} prefetch={false} className="inline-flex h-9 items-center justify-center px-3 rounded-lg border border-slate-200 text-sm font-medium leading-none text-slate-800 hover:bg-slate-50 shrink-0">
                   Sign in
                 </Link>
               ) : (
@@ -381,6 +374,7 @@ const Navbar: React.FC = () => {
               {!profile?.email && (
                 <Link
                   href={`/auth?from=${encodeURIComponent(pathname || "/")}`}
+                  prefetch={false}
                   className="text-sm font-medium text-slate-800"
                 >
                   Sign in
@@ -433,7 +427,7 @@ const Navbar: React.FC = () => {
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-base">
           {!profile?.email && (
-            <Link href={`/auth?from=${encodeURIComponent(pathname || "/")}`} onClick={closeMobile} className="flex items-center gap-3 border-b border-slate-100 py-3 text-slate-800">
+            <Link href={`/auth?from=${encodeURIComponent(pathname || "/")}`} prefetch={false} onClick={closeMobile} className="flex items-center gap-3 border-b border-slate-100 py-3 text-slate-800">
               <span className="text-slate-400"><NavIcon name="sign-in" /></span>
               Sign in
             </Link>

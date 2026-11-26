@@ -4,7 +4,9 @@ import { Job } from "../../types";
 import { createJobSlug } from "../../lib/jobs";
 import { formatJobSalary } from "../../lib/formatSalary";
 import { getPublicSubscriberCount } from "../../lib/countAlertSubscribers";
-import { listingsForViewer } from "../../lib/listingWindow";
+import { isPriorityListing, listingsForViewer } from "../../lib/listingWindow";
+import { isPaidFeaturedListing, sortFeaturedJobs } from "../../lib/featuredListing";
+import { isOnNicheJob } from "../../lib/nicheScope";
 import { viewerTier } from "../../lib/viewerTier";
 import { topHiringEmployers } from "../../lib/companyBoard";
 import { getBoardCatalog } from "../../lib/publicBoardCatalog";
@@ -55,6 +57,19 @@ function StaticHomeJobs({ jobs }: { jobs: Job[] }) {
   );
 }
 
+function selectHomeCards(jobs: Job[], tier: "guest" | "registered" | "paid") {
+  const live = jobs.filter((job) => isOnNicheJob(job)).sort((a, b) => {
+    const priority = Number(isPriorityListing(b)) - Number(isPriorityListing(a));
+    if (priority !== 0) return priority;
+    return (b.timestamp ?? 0) - (a.timestamp ?? 0);
+  });
+  const featuredTake = tier === "paid" ? 3 : Math.min(3, live.length);
+  const featured = sortFeaturedJobs(live.filter(isPaidFeaturedListing)).slice(0, featuredTake);
+  const featuredIds = new Set(featured.map((job) => job.id));
+  const rest = live.filter((job) => !featuredIds.has(job.id)).slice(0, Math.max(0, 4 - featured.length));
+  return [...featured, ...rest];
+}
+
 export default async function HomePage() {
   const [loaded, tier, subscriberCount] = await Promise.all([
     fetchPublishedJobs(),
@@ -67,8 +82,9 @@ export default async function HomePage() {
     <>
       <StaticHomeJobs jobs={jobs} />
       <HomeClient
-        initialJobs={jobs.slice(0, 4)}
+        initialJobs={selectHomeCards(jobs, tier)}
         initialLiveTotal={liveTotal}
+        initialAccess={tier}
         subscriberCount={subscriberCount}
         employers={topHiringEmployers(jobs, 20)}
       />
