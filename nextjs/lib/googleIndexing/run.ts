@@ -13,9 +13,18 @@ export type IndexingRunResult = {
   aborted: string | null;
   plan: IndexPlan;
   sent: PlannedNotice[];
+  confirmed: PlannedNotice[];
+  unconfirmed: PlannedNotice[];
   failed: PlannedNotice[];
   unrecorded: PlannedNotice[];
+  rejected: PlannedNotice[];
   attempts: number;
+};
+
+export type ApprovalItem = {
+  url: string;
+  fingerprint: string;
+  type: NoticeType;
 };
 
 export async function executeIndexingRun(input: {
@@ -28,6 +37,7 @@ export async function executeIndexingRun(input: {
   dailyQuota: number;
   perRunCap: number;
   live: boolean;
+  approved?: ApprovalItem[] | null;
   claim?: () => Promise<boolean>;
   release?: () => Promise<void>;
   publish?: (notice: PlannedNotice, canAttempt: () => boolean, noteAttempt: () => void) => Promise<PublishResult>;
@@ -48,23 +58,41 @@ export async function executeIndexingRun(input: {
     aborted: plan.aborted,
     plan,
     sent: [] as PlannedNotice[],
+    confirmed: [] as PlannedNotice[],
+    unconfirmed: [] as PlannedNotice[],
     failed: [] as PlannedNotice[],
     unrecorded: [] as PlannedNotice[],
+    rejected: [] as PlannedNotice[],
     attempts: 0,
   };
   if (!input.live || plan.aborted) return { ...empty, dryRun: true };
-  if (!input.claim || !input.publish || !input.record) return { ...empty, dryRun: true, aborted: "live_not_configured" };
+  const approved = input.approved || [];
+  if (approved.length === 0) return { ...empty, dryRun: true, aborted: "approval_required" };
+  const eligible = new Map<string, PlannedNotice>();
+  for (const item of plan.candidates) eligible.set(`${item.url}\nURL_UPDATED\n${item.fingerprint}`, { ...item, type: "URL_UPDATED" });
+  for (const item of plan.deleted) eligible.set(`${item.url}\nURL_DELETED\n${item.fingerprint}`, { ...item, type: "URL_DELETED" });
+  const notices: PlannedNotice[] = [];
+  const rejected: PlannedNotice[] = [];
+  const seen = new Set<string>();
+  for (const item of approved) {
+    const key = `${item.url}\n${item.type}\n${item.fingerprint}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const notice = eligible.get(key);
+    if (!notice) rejected.push({ url: item.url, jobId: null, type: item.type, fingerprint: item.fingerprint });
+    else notices.push(notice);
+  }
+  if (notices.length === 0) return { ...empty, dryRun: true, aborted: "approval_mismatch", rejected };
+  if (!input.claim || !input.publish || !input.record) return { ...empty, dryRun: true, aborted: "live_not_configured", rejected };
   const claimed = await input.claim();
-  if (!claimed) return { ...empty, dryRun: true, aborted: "lock_unavailable" };
+  if (!claimed) return { ...empty, dryRun: true, aborted: "lock_unavailable", rejected };
   let used = input.quotaUsed;
   const sent: PlannedNotice[] = [];
+  const confirmed: PlannedNotice[] = [];
+  const unconfirmed: PlannedNotice[] = [];
   const failed: PlannedNotice[] = [];
   const unrecorded: PlannedNotice[] = [];
   let attempts = 0;
-  const notices: PlannedNotice[] = [
-    ...plan.updated.map((item) => ({ ...item, type: "URL_UPDATED" as const })),
-    ...plan.deleted.map((item) => ({ url: item.url, jobId: item.jobId, type: "URL_DELETED" as const, fingerprint: item.fingerprint })),
-  ];
   try {
     for (const notice of notices) {
       if (used >= input.dailyQuota) break;
@@ -84,12 +112,18 @@ export async function executeIndexingRun(input: {
       }
       const recorded = await input.record(notice, result);
       if (!recorded) unrecorded.push(notice);
-      else sent.push(notice);
+      else if (result.notifyTime) {
+        confirmed.push(notice);
+        sent.push(notice);
+      } else {
+        unconfirmed.push(notice);
+        sent.push(notice);
+      }
     }
   } finally {
     await input.release?.();
   }
-  return { dryRun: false, aborted: null, plan, sent, failed, unrecorded, attempts };
+  return { dryRun: false, aborted: null, plan, sent, confirmed, unconfirmed, failed, unrecorded, rejected, attempts };
 }
 
 export async function recordWithRetry(

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { CANONICAL_ORIGIN } from "../alerts/siteUrl";
 import { indexingLiveEnabled } from "./credentials";
 import { createJobSlug } from "../jobs";
+import { compareIndexQueue } from "./select";
 
 export const GOOGLE_INDEXING_DEFAULT_DAILY_QUOTA = 200;
 export const GOOGLE_INDEXING_PER_RUN_CAP = 40;
@@ -26,6 +27,7 @@ export type IndexJobSnapshot = {
   descriptionSha?: string;
   contentHash: string;
   visibility: IndexVisibility;
+  publishedAt?: string | null;
 };
 
 export type SentNotice = {
@@ -49,11 +51,35 @@ export type IndexPlan = {
   dailyQuota: number;
   remainingQuota: number;
   updated: Array<{ url: string; jobId: string; fingerprint: string }>;
+  candidates: Array<{ url: string; jobId: string; fingerprint: string }>;
   deleted: Array<{ url: string; jobId: string | null; fingerprint: string }>;
 };
 
 export function googleIndexingLiveEnabled(): boolean {
   return indexingLiveEnabled();
+}
+
+export type ApprovalItem = {
+  url: string;
+  fingerprint: string;
+  type: NoticeType;
+};
+
+export function parseApproval(body: unknown): ApprovalItem[] | null {
+  if (!body || typeof body !== "object") return null;
+  const items = (body as { items?: unknown }).items;
+  if (!Array.isArray(items) || items.length < 1 || items.length > GOOGLE_INDEXING_PER_RUN_CAP) return null;
+  const parsed: ApprovalItem[] = [];
+  for (const item of items) {
+    if (!item || typeof item !== "object") return null;
+    const row = item as Record<string, unknown>;
+    const url = typeof row.url === "string" ? row.url.trim() : "";
+    const fingerprint = typeof row.fingerprint === "string" ? row.fingerprint.trim().toLowerCase() : "";
+    const type = row.type === "URL_DELETED" ? "URL_DELETED" : row.type === "URL_UPDATED" ? "URL_UPDATED" : null;
+    if (!url.startsWith(`${CANONICAL_ORIGIN}/jobs/`) || !/^[a-f0-9]{64}$/.test(fingerprint) || !type) return null;
+    parsed.push({ url, fingerprint, type });
+  }
+  return parsed;
 }
 
 export function indexVisibility(input: {
@@ -161,6 +187,7 @@ export function planIndexNotifications(input: {
     dailyQuota,
     remainingQuota,
     updated: [] as IndexPlan["updated"],
+    candidates: [] as IndexPlan["candidates"],
     deleted: [] as IndexPlan["deleted"],
   };
   if (!input.jobsReadOk || !input.jobs) {
@@ -174,12 +201,13 @@ export function planIndexNotifications(input: {
   }
 
   const history = input.historyReadOk && input.history ? input.history : [];
+  const queuedJobs = [...input.jobs].sort(compareIndexQueue);
   const deletesAllowed = input.historyReadOk && input.scanComplete;
   const latest = latestByUrl(history);
   const updatedUrls = new Map<string, { url: string; jobId: string; fingerprint: string }>();
   let skippedUnchanged = 0;
 
-  for (const job of input.jobs) {
+  for (const job of queuedJobs) {
     if (job.visibility !== "job_posting") continue;
     const url = canonicalJobUrl(job);
     const fingerprint = indexFingerprint(job);
@@ -209,16 +237,16 @@ export function planIndexNotifications(input: {
     }
   }
 
-  const updated = [...updatedUrls.values()];
+  const allUpdated = [...updatedUrls.values()];
   const ordered = [
-    ...updated.map((item) => ({ kind: "updated" as const, item })),
+    ...allUpdated.map((item) => ({ kind: "updated" as const, item })),
     ...deleted.map((item) => ({ kind: "deleted" as const, item })),
   ];
   const batch = ordered.slice(0, room);
   return {
     aborted: null,
     liveSending: false,
-    totalUpdated: updated.length,
+    totalUpdated: allUpdated.length,
     totalDeleted: deleted.length,
     batchUpdated: batch.filter((item) => item.kind === "updated").length,
     batchDeleted: batch.filter((item) => item.kind === "deleted").length,
@@ -228,6 +256,7 @@ export function planIndexNotifications(input: {
     dailyQuota,
     remainingQuota,
     updated: batch.filter((item) => item.kind === "updated").map((item) => item.item),
+    candidates: allUpdated,
     deleted: batch.filter((item) => item.kind === "deleted").map((item) => item.item),
   };
 }

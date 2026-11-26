@@ -71,10 +71,25 @@ export function digestIsCurrent(row: SlimIndexRow, digest: IndexDigest | undefin
   return true;
 }
 
+/** Oldest public role first, then id. Empty dates wait behind dated roles. */
+export function compareIndexQueue(
+  a: { id: string; publishedAt?: string | null; published_at?: string | null },
+  b: { id: string; publishedAt?: string | null; published_at?: string | null },
+): number {
+  const aAt = a.publishedAt || a.published_at || "";
+  const bAt = b.publishedAt || b.published_at || "";
+  if (aAt !== bAt) {
+    if (!aAt) return 1;
+    if (!bAt) return -1;
+    return aAt < bAt ? -1 : 1;
+  }
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
 /** Descriptions are read only for live public roles whose saved digest is stale. */
 export function descriptionIdsForRun(rows: SlimIndexRow[], digests: Map<string, IndexDigest>, now: number, cap: number): string[] {
   const ids: string[] = [];
-  const ordered = [...rows].sort((a, b) => (b.published_at || "").localeCompare(a.published_at || ""));
+  const ordered = [...rows].sort(compareIndexQueue);
   for (const row of ordered) {
     if (ids.length >= cap) break;
     const job = stamp(row);

@@ -72,6 +72,8 @@ test("rate limits retry and a later success is accepted", async () => {
   assert.deepEqual(slept, [1000]);
   assert.equal(result.ok, true);
   assert.equal(result.attempts, 2);
+  assert.equal(result.confirmed, false);
+  assert.equal(result.notifyTime, null);
 });
 
 test("the quota stops another attempt", async () => {
@@ -95,4 +97,28 @@ test("the quota stops another attempt", async () => {
   assert.equal(used, 1);
   assert.equal(result.attempts, 1);
   assert.equal(result.error, "quota_exhausted");
+});
+
+test("HTTP 200 with notifyTime is confirmed and a bare 200 is not", async () => {
+  resetIndexingTokenCache();
+  const confirmed = await publishIndexNotification({
+    url: "https://www.careerspal.com/jobs/role--1",
+    type: "URL_UPDATED",
+    email: "indexing@example.iam.gserviceaccount.com",
+    privateKey: pem,
+    sleep: async () => {},
+    fetchImpl: async (url) => {
+      if (url.includes("oauth2.googleapis.com")) return jsonResponse(200, { access_token: "ya29.test", expires_in: 3600 });
+      return jsonResponse(200, {
+        urlNotificationMetadata: {
+          url: "https://www.careerspal.com/jobs/role--1",
+          latestUpdate: { type: "URL_UPDATED", notifyTime: "2026-11-26T22:00:00.000Z" },
+        },
+      });
+    },
+  });
+  assert.equal(confirmed.ok, true);
+  assert.equal(confirmed.confirmed, true);
+  assert.equal(confirmed.notifyTime, "2026-11-26T22:00:00.000Z");
+  assert.equal(JSON.stringify(confirmed).includes("ya29"), false);
 });
