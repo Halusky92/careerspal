@@ -179,17 +179,19 @@ const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const pathname = usePathname();
+  const [menuPath, setMenuPath] = useState(pathname);
   const { profile, signOut } = useSupabaseAuth();
   const accountRef = useRef<HTMLDivElement>(null);
+
+  if (menuPath !== pathname) {
+    setMenuPath(pathname);
+    setIsMenuOpen(false);
+    setIsAccountOpen(false);
+  }
 
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? "hidden" : "unset";
   }, [isMenuOpen]);
-
-  useEffect(() => {
-    setIsMenuOpen(false);
-    setIsAccountOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
