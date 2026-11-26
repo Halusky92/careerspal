@@ -1,3 +1,4 @@
+import { isEarlyAccessListing } from "./listingWindow";
 import { chooseOfficialSalary, parseSalaryFromText, type ParsedSalary, type SalaryPeriod } from "./sourcing/normalization/salary";
 import { salaryPlaceHint } from "./formatSalary";
 import { geographyLabel, inferWorkMode } from "./workMode";
@@ -203,6 +204,12 @@ export function shouldEmitJobPosting(job: Job): boolean {
   if (!job.title?.trim() || !job.company?.trim()) return false;
   if (!jobPostingDescription(job.description || "")) return false;
   return isHttpApply(job.applyUrl);
+}
+
+/** The JSON-LD the public page emits. Early-access roles stay out of Google. */
+export function publicJobPostingLd(job: Job, canonicalUrl: string) {
+  if (isEarlyAccessListing(job)) return null;
+  return buildJobPostingLd(job, canonicalUrl);
 }
 
 export function buildJobPostingLd(job: Job, canonicalUrl: string) {
