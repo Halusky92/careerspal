@@ -16,6 +16,8 @@ import NewListingBadge from "./NewListingBadge";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import { trackJobView } from "../lib/trackJobEvent";
 import { formatSourcedDescription } from "../lib/sourcing/normalization/description";
+import { authFetch } from "../lib/authFetch";
+import { useSupabaseAuth } from "./Providers";
 
 type JobDetailPanelProps = {
   job: Job | null;
@@ -48,6 +50,7 @@ export default function JobDetailPanel({
 }: JobDetailPanelProps) {
   const router = useRouter();
   const detailScrollRef = useRef<HTMLDivElement>(null);
+  const { accessToken, loading: authLoading } = useSupabaseAuth();
 
   useEffect(() => {
     if (job?.id) trackJobView(job.id);
@@ -59,10 +62,10 @@ export default function JobDetailPanel({
 
   const [fetchedDescription, setFetchedDescription] = useState<{ id: string; description: string } | null>(null);
   useEffect(() => {
-    if (!job?.id || job.description) return;
+    if (!job?.id || job.description || authLoading) return;
     const id = job.id;
     const controller = new AbortController();
-    fetch(`/api/jobs/${encodeURIComponent(id)}`, { credentials: "include", signal: controller.signal })
+    authFetch(`/api/jobs/${encodeURIComponent(id)}`, { signal: controller.signal }, accessToken)
       .then((response) => (response.ok ? response.json() : null))
       .then((body: { job?: { description?: string } } | null) => {
         setFetchedDescription({
@@ -74,11 +77,13 @@ export default function JobDetailPanel({
         if (!controller.signal.aborted) setFetchedDescription({ id, description: "" });
       });
     return () => controller.abort();
-  }, [job?.id, job?.description]);
+  }, [job?.id, job?.description, accessToken, authLoading]);
   const description =
     job?.description ||
     (fetchedDescription && fetchedDescription.id === job?.id ? fetchedDescription.description : "");
-  const descriptionPending = Boolean(job && !job.description && fetchedDescription?.id !== job.id);
+  const descriptionPending = Boolean(
+    job && !job.description && (authLoading || fetchedDescription?.id !== job.id),
+  );
 
   const rawSlug = (job?.companySlug || "").toString().trim();
   const safeSlug = rawSlug && rawSlug !== "undefined" && rawSlug !== "null" ? rawSlug : "";
