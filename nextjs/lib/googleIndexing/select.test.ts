@@ -52,6 +52,15 @@ test("descriptions are skipped for early roles and fresh digests", () => {
   assert.deepEqual(ids, ["stale"]);
 });
 
+test("description reads follow the oldest published role", () => {
+  const ids = descriptionIdsForRun([
+    row({ id: "newer", published_at: "2026-11-20T00:00:00.000Z" }),
+    row({ id: "older", published_at: "2026-11-01T00:00:00.000Z" }),
+    row({ id: "same", published_at: "2026-11-01T00:00:00.000Z" }),
+  ], new Map(), now, 10);
+  assert.deepEqual(ids, ["older", "same", "newer"]);
+});
+
 test("a role without a real JobPosting is not indexed", () => {
   const posted = toIndexSnapshot({
     ...row(),

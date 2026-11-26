@@ -7,6 +7,7 @@ import {
   indexFingerprint,
   indexVisibility,
   planIndexNotifications,
+  parseApproval,
   type IndexJobSnapshot,
   type SentNotice,
 } from "./plan";
@@ -65,12 +66,15 @@ test("live sending stays off until it is explicitly enabled", () => {
   assert.equal(route.includes("indexing.googleapis"), false);
   assert.equal(route.includes("searchParams.get(\"secret\")"), false);
   assert.match(route, /searchParams.get\("live"\) === "1"/);
+  assert.match(route, /export async function POST/);
+  assert.match(route, /approval_required/);
   assert.match(route, /Bearer /);
   const workflow = readFileSync(new URL("../../../.github/workflows/careerspal-greenhouse-daily.yml", import.meta.url), "utf8");
   const indexing = workflow.slice(workflow.indexOf("run_indexing_dry_run()"), workflow.indexOf("failed=0"));
   assert.equal((workflow.match(/run_liveness \|\|/g) || []).length, 1);
   assert.match(indexing, /Authorization: Bearer \$CRON_SECRET/);
   assert.equal(indexing.includes("secret="), false);
+  assert.equal(indexing.includes("live=1"), false);
   assert.match(workflow, /api\/cron\/stale-jobs/);
 });
 
@@ -109,6 +113,31 @@ test("an unchanged posting is not queued again", () => {
   assert.equal(plan.totalUpdated, 0);
   assert.equal(plan.totalDeleted, 0);
   assert.equal(plan.skippedUnchanged, 1);
+});
+
+test("the queue follows published_at and then id", () => {
+  const plan = planIndexNotifications({
+    jobs: [
+      job({ id: "newer", title: "Newer role", publishedAt: "2026-11-20T00:00:00.000Z" }),
+      job({ id: "b", title: "Same day b", publishedAt: "2026-11-01T00:00:00.000Z" }),
+      job({ id: "a", title: "Same day a", publishedAt: "2026-11-01T00:00:00.000Z" }),
+    ],
+    jobsReadOk: true,
+    scanComplete: true,
+    history: [],
+    historyReadOk: true,
+    sentToday: 0,
+    perRunCap: 10,
+  });
+  assert.deepEqual(plan.updated.map((item) => item.jobId), ["a", "b", "newer"]);
+});
+
+test("approval accepts only canonical job URLs and fingerprints", () => {
+  const fingerprint = indexFingerprint(job());
+  const url = canonicalJobUrl(job());
+  assert.equal(parseApproval({ items: [{ url, fingerprint, type: "URL_UPDATED" }] })?.length, 1);
+  assert.equal(parseApproval({ items: [{ url: "https://example.com/jobs/role", fingerprint, type: "URL_UPDATED" }] }), null);
+  assert.equal(parseApproval({ items: [] }), null);
 });
 
 test("salary, location, work mode, and slug changes queue a new update", () => {

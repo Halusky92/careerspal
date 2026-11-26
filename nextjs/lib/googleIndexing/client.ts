@@ -13,6 +13,8 @@ export type PublishResult = {
   attempts: number;
   retryable: boolean;
   error: string | null;
+  notifyTime: string | null;
+  confirmed: boolean;
 };
 
 type TokenCache = { token: string; expiresAt: number };
@@ -47,6 +49,24 @@ function safeError(status: number): string {
 
 function retryable(status: number): boolean {
   return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+function unfinished(status: number, attempts: number, error: string | null, retryable: boolean): PublishResult {
+  return { ok: false, status, attempts, retryable, error, notifyTime: null, confirmed: false };
+}
+
+export function notifyTimeFromPublishBody(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const root = body as Record<string, unknown>;
+  const meta = root.urlNotificationMetadata;
+  const source = meta && typeof meta === "object" ? meta as Record<string, unknown> : root;
+  const update = source.latestUpdate || source.latest_update;
+  if (!update || typeof update !== "object") return null;
+  const raw = (update as Record<string, unknown>).notifyTime || (update as Record<string, unknown>).notify_time;
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  const parsed = Date.parse(raw);
+  if (!Number.isFinite(parsed)) return null;
+  return new Date(parsed).toISOString();
 }
 
 function retryDelay(attempt: number, retryAfter: string | null): number {
@@ -106,7 +126,7 @@ export async function publishIndexNotification(input: {
   let lastError: string | null = null;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     if (input.canAttempt && !input.canAttempt()) {
-      return { ok: false, status: lastStatus, attempts, retryable: false, error: "quota_exhausted" };
+      return unfinished(lastStatus, attempts, "quota_exhausted", false);
     }
     attempts += 1;
     input.noteAttempt?.();
@@ -122,18 +142,21 @@ export async function publishIndexNotification(input: {
         signal: AbortSignal.timeout(10_000),
       });
       lastStatus = response.status;
-      if (response.ok) return { ok: true, status: response.status, attempts, retryable: false, error: null };
+      if (response.ok) {
+        const notifyTime = notifyTimeFromPublishBody(await response.json().catch(() => null));
+        return { ok: true, status: response.status, attempts, retryable: false, error: null, notifyTime, confirmed: Boolean(notifyTime) };
+      }
       lastError = safeError(response.status);
       if (!retryable(response.status) || attempt === 2) {
-        return { ok: false, status: response.status, attempts, retryable: retryable(response.status), error: lastError };
+        return unfinished(response.status, attempts, lastError, retryable(response.status));
       }
       await sleep(retryDelay(attempt, response.headers.get("retry-after")));
     } catch {
       lastError = "google_timeout";
       lastStatus = 0;
-      if (attempt === 2) return { ok: false, status: 0, attempts, retryable: true, error: lastError };
+      if (attempt === 2) return unfinished(0, attempts, lastError, true);
       await sleep(retryDelay(attempt, null));
     }
   }
-  return { ok: false, status: lastStatus, attempts, retryable: true, error: lastError };
+  return unfinished(lastStatus, attempts, lastError, true);
 }

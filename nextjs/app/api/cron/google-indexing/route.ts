@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { publishIndexNotification } from "../../../../lib/googleIndexing/client";
 import { indexingCredentials, indexingLiveEnabled } from "../../../../lib/googleIndexing/credentials";
-import { GOOGLE_INDEXING_DEFAULT_DAILY_QUOTA } from "../../../../lib/googleIndexing/plan";
+import { GOOGLE_INDEXING_DEFAULT_DAILY_QUOTA, parseApproval, type ApprovalItem } from "../../../../lib/googleIndexing/plan";
 import { prepareIndexing } from "../../../../lib/googleIndexing/prepare";
 import { batchCap, descriptionReadCap } from "../../../../lib/googleIndexing/quota";
 import { executeIndexingRun } from "../../../../lib/googleIndexing/run";
@@ -36,17 +36,18 @@ function requestedBatch(request: Request): number | null {
   return Math.floor(raw);
 }
 
-export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+function approvalPayload(items: ApprovalItem[]) {
+  return items.map((item) => ({ url: item.url, fingerprint: item.fingerprint, type: item.type }));
+}
+
+async function runIndexing(request: Request, approved: ApprovalItem[] | null) {
   const url = new URL(request.url);
-  const liveRequested = indexingLiveEnabled() && url.searchParams.get("live") === "1";
+  const live = approved != null && indexingLiveEnabled() && url.searchParams.get("live") === "1";
   const credentials = indexingCredentials();
-  if (liveRequested && !credentials) {
+  if (live && !credentials) {
     return NextResponse.json({ ok: false, dryRun: true, liveSending: false, aborted: "credentials_missing" }, { status: 503 });
   }
-  const cap = batchCap({ live: liveRequested, requested: requestedBatch(request) });
+  const cap = batchCap({ live, requested: requestedBatch(request) });
   const prepared = await prepareIndexing({
     now: new Date(),
     descriptionCap: descriptionReadCap(cap),
@@ -75,11 +76,12 @@ export async function GET(request: Request) {
     quotaUsed: prepared.quotaUsed,
     dailyQuota: dailyQuota(request),
     perRunCap: cap,
-    live: liveRequested,
+    live,
+    approved,
     claim: () => claimIndexingLock(owner),
     release: () => releaseIndexingLock(owner),
     publish: async (notice, canAttempt, noteAttempt) => {
-      if (!credentials) return { ok: false, status: 0, attempts: 0, retryable: false, error: "credentials_missing" };
+      if (!credentials) return { ok: false, status: 0, attempts: 0, retryable: false, error: "credentials_missing", notifyTime: null, confirmed: false };
       const result = await publishIndexNotification({
         url: notice.url,
         type: notice.type,
@@ -93,11 +95,16 @@ export async function GET(request: Request) {
     },
     record: (notice, result) => recordIndexNotice(notice, result),
   });
+  const approval = [
+    ...run.plan.updated.map((item) => ({ url: item.url, fingerprint: item.fingerprint, type: "URL_UPDATED" as const })),
+    ...run.plan.deleted.map((item) => ({ url: item.url, fingerprint: item.fingerprint, type: "URL_DELETED" as const })),
+  ];
   return NextResponse.json({
     ok: run.aborted == null,
     dryRun: run.dryRun,
-    liveSending: liveRequested && run.dryRun === false && run.aborted == null,
+    liveSending: live && run.dryRun === false && run.aborted == null,
     aborted: run.aborted,
+    approvalRequired: approved == null,
     totalUpdated: run.plan.totalUpdated,
     totalDeleted: run.plan.totalDeleted,
     batchUpdated: run.plan.batchUpdated,
@@ -107,15 +114,43 @@ export async function GET(request: Request) {
     sentToday: run.plan.sentToday,
     dailyQuota: run.plan.dailyQuota,
     remainingQuota: run.plan.remainingQuota,
+    approval: approvalPayload(approval),
     updated: run.plan.updated.map((item) => item.url),
     deleted: run.plan.deleted.map((item) => item.url),
     sent: run.sent.map((item) => item.url),
+    confirmed: run.confirmed.map((item) => item.url),
+    unconfirmed: run.unconfirmed.map((item) => item.url),
     failed: run.failed.map((item) => item.url),
     unrecorded: run.unrecorded.map((item) => item.url),
+    rejected: run.rejected.map((item) => item.url),
     attempts: run.attempts,
     descriptionsRead: prepared.descriptionsRead,
     digestAvailable: prepared.digestAvailable,
     scanComplete: prepared.scanComplete,
     hourlyAutomation: HOURLY_EARLY_ACCESS_AUTOMATION,
   });
+}
+
+export async function GET(request: Request) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return runIndexing(request, null);
+}
+
+export async function POST(request: Request) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const url = new URL(request.url);
+  const liveRequested = indexingLiveEnabled() && url.searchParams.get("live") === "1";
+  if (!liveRequested) {
+    return NextResponse.json({ ok: false, dryRun: true, liveSending: false, aborted: "live_disabled", hourlyAutomation: HOURLY_EARLY_ACCESS_AUTOMATION }, { status: 409 });
+  }
+  const body = await request.json().catch(() => null);
+  const approved = parseApproval(body);
+  if (!approved) {
+    return NextResponse.json({ ok: false, dryRun: true, liveSending: false, aborted: "approval_required", hourlyAutomation: HOURLY_EARLY_ACCESS_AUTOMATION }, { status: 400 });
+  }
+  return runIndexing(request, approved);
 }

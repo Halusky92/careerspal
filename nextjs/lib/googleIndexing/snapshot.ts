@@ -62,6 +62,7 @@ export function toIndexSnapshot(row: IndexJobRow): IndexJobSnapshot {
     applyUrl: (row.apply_url || "").trim(),
     description: row.description || "",
     contentHash: row.content_hash || "",
+    publishedAt: row.published_at || "",
     visibility: indexVisibility({
       status: row.status,
       onNiche: isOnNicheJob(job),

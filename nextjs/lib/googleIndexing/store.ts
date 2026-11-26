@@ -17,6 +17,8 @@ export async function recordIndexNotice(notice: PlannedNotice, result: PublishRe
       state: result.ok ? "sent" : "failed",
       last_error: result.ok ? null : result.error,
       sent_at: result.ok ? new Date().toISOString() : null,
+      notify_time: result.notifyTime || null,
+      confirmed: Boolean(result.notifyTime),
     });
     return !saved.error;
   });
