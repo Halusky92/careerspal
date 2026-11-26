@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isEarlyAccessListing, isNewListing, isPriorityListing, listingsForViewer } from "./listingWindow";
+import { isEarlyAccessListing, isNewListing, isPriorityListing, listingAgeBadge, listingsForViewer } from "./listingWindow";
 
 const now = Date.parse("2026-11-16T12:00:00.000Z");
 
@@ -35,6 +35,22 @@ test("an older source date does not stay New after the role is added to the boar
   const job = { publishedAt: "2026-11-16T02:00:00.000Z", timestamp: Date.parse("2026-11-10T00:00:00.000Z") };
   assert.equal(isNewListing(job, now), false);
   assert.equal(isNewListing({ timestamp: Date.parse("2026-11-15T12:00:00.000Z") }, now), true);
+});
+
+test("the card label switches from Premium to New and then disappears", () => {
+  const fresh = { publishedAt: "2026-11-16T02:00:00.000Z", timestamp: Date.parse("2026-11-16T02:00:00.000Z") };
+  assert.equal(listingAgeBadge(fresh, now), "premium");
+  assert.equal(listingsForViewer([fresh], "guest", now).length, 0);
+  assert.equal(listingsForViewer([fresh], "paid", now).length, 1);
+  const dayTwo = { publishedAt: "2026-11-15T10:00:00.000Z", timestamp: Date.parse("2026-11-15T10:00:00.000Z") };
+  assert.equal(listingAgeBadge(dayTwo, now), "new");
+  const lastNewHour = { publishedAt: "2026-11-13T13:00:00.000Z", timestamp: Date.parse("2026-11-13T13:00:00.000Z") };
+  assert.equal(listingAgeBadge(lastNewHour, now), "new");
+  const quiet = { publishedAt: "2026-11-13T11:00:00.000Z", timestamp: Date.parse("2026-11-13T11:00:00.000Z") };
+  assert.equal(listingAgeBadge(quiet, now), null);
+  const oldSource = { publishedAt: "2026-11-16T02:00:00.000Z", timestamp: Date.parse("2026-11-10T00:00:00.000Z") };
+  assert.equal(listingAgeBadge(oldSource, now), "premium");
+  assert.equal(listingAgeBadge(oldSource, now + 25 * 60 * 60 * 1000), null);
 });
 
 test("after 7 days it is a normal public role", () => {

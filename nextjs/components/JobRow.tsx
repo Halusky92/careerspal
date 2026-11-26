@@ -13,7 +13,7 @@ import { publicCategoryLabel } from "../lib/categories";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
 import NewListingBadge from "./NewListingBadge";
-import { isNewListing } from "../lib/listingWindow";
+import { isNewListing, listingAgeBadge } from "../lib/listingWindow";
 import { publicPostedLabel } from "../lib/formatPosted";
 
 export type JobRowAction = "copy_link" | "open_new_tab";
@@ -71,6 +71,7 @@ export default function JobRow({
   const isElite = job.planType === "Elite Managed";
   const isBoosted = isPaidFeaturedListing(job);
   const isNew = isNewListing(job);
+  const ageBadge = listingAgeBadge(job);
   const isPrivate = job.status === "private" || job.status === "invite_only";
   const workMode = useMemo(() => getWorkMode(job), [job]);
   const timeAgo = useMemo(() => formatTimeAgo(job), [job.timestamp, job.postedAt]);
@@ -147,7 +148,7 @@ export default function JobRow({
           className={["absolute inset-y-0 left-0 w-1", isElite ? "bg-slate-900" : "bg-indigo-500"].join(" ")}
         />
       )}
-      {isNew ? (
+      {ageBadge ? (
         <span className="absolute top-2 left-2 z-10">
           <NewListingBadge job={job} />
         </span>
@@ -156,7 +157,7 @@ export default function JobRow({
         <div
           className={[
             "rounded-xl overflow-hidden bg-white border border-slate-200/70 p-0.5 flex-shrink-0 lg:rounded-2xl lg:p-1",
-            isNew ? "mt-4 lg:mt-5" : "mt-0.5",
+            ageBadge ? "mt-4 lg:mt-5" : "mt-0.5",
             isHome ? "w-9 h-9 lg:w-10 lg:h-10" : "w-9 h-9 lg:w-11 lg:h-11",
           ].join(" ")}
         >

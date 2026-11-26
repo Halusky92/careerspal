@@ -62,6 +62,13 @@ export function isNewListing(job: Stamp, now = Date.now()): boolean {
   return now - seen < NEW_BADGE_MS;
 }
 
+/** Card label only. Early access stays Premium for its first day, then New until the card date is three days old. */
+export function listingAgeBadge(job: Stamp, now = Date.now()): "premium" | "new" | null {
+  if (isEarlyAccessListing(job, now)) return "premium";
+  if (isNewListing(job, now)) return "new";
+  return null;
+}
+
 export function viewerCanSeeListing(job: Stamp, tier: BoardTier | null | undefined, now = Date.now()): boolean {
   if (!isEarlyAccessListing(job, now)) return true;
   return tier === "paid";
