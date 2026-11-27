@@ -219,18 +219,25 @@ export default function JobsClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, authLoading, initialAccess]);
 
-  const loadMore = async () => {
+  const showAll = async () => {
     if (loadingMore || typeof boardTotal !== "number" || jobs.length >= boardTotal) return;
     setLoadingMore(true);
     const seq = requestSeq.current;
     try {
-      const data = await readPage(filtersRef.current, jobs.length);
+      let list = jobs;
+      let guard = 0;
+      while (list.length < boardTotal && guard < 8) {
+        guard += 1;
+        const data = await readPage(filtersRef.current, list.length);
+        if (seq !== requestSeq.current) return;
+        const next = Array.isArray(data.jobs) ? data.jobs : [];
+        const seen = new Set(list.map((job) => job.id));
+        const fresh = next.filter((job) => !seen.has(job.id));
+        if (fresh.length === 0) break;
+        list = [...list, ...fresh];
+      }
       if (seq !== requestSeq.current) return;
-      const next = Array.isArray(data.jobs) ? data.jobs : [];
-      setJobs((prev) => {
-        const seen = new Set(prev.map((job) => job.id));
-        return [...prev, ...next.filter((job) => !seen.has(job.id))];
-      });
+      setJobs(list);
     } catch {
       // keep the page already loaded
     } finally {
@@ -290,7 +297,8 @@ export default function JobsClient({
         categoryTotals={categoryTotals}
         serverFacets={facets}
         canLoadMore={typeof boardTotal === "number" && jobs.length < boardTotal}
-        onLoadMore={loadMore}
+        loadingMore={loadingMore}
+        onShowAll={showAll}
         onToggleBookmark={handleToggleBookmark}
         serverFiltered
         onBoardQuery={onBoardQuery}
