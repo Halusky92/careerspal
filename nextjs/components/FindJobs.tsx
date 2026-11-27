@@ -938,9 +938,11 @@ const FindJobs: React.FC<FindJobsProps> = ({
           setOpenWwrDropdown(null);
         });
       }}
-      className="absolute right-1.5 top-1/2 z-10 flex h-7 w-7 items-center justify-center rounded-full text-base leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+      className="absolute right-1.5 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
     >
-      ×
+      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+        <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
     </button>
   );
 
@@ -1350,9 +1352,11 @@ const FindJobs: React.FC<FindJobsProps> = ({
                       setOpenWwrDropdown(null);
                     });
                   }}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  className="absolute right-1.5 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                 >
-                  ×
+                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                    <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
                 </button>
               ) : null}
             </div>
@@ -1604,10 +1608,12 @@ const FindJobs: React.FC<FindJobsProps> = ({
                   key={`${chip.label}-${index}`}
                   type="button"
                   onClick={() => preserveFilterPosition(chip.onClear)}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-indigo-200 hover:text-indigo-600"
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
                 >
                   {chip.label}
-                  <span className="text-[10px]">×</span>
+                  <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" aria-hidden="true">
+                    <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
                 </button>
               ))}
             </div>
@@ -1693,8 +1699,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900"
                         aria-label="Clear search"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                          <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
                       </button>
                     )}
