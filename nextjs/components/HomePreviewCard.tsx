@@ -9,7 +9,8 @@ import { inferWorkMode, publicLocationLabel } from "../lib/workMode";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
 import NewListingBadge from "./NewListingBadge";
-import { isNewListing } from "../lib/listingWindow";
+import PremiumWindowBadge from "./PremiumWindowBadge";
+import { isEarlyAccessListing } from "../lib/listingWindow";
 import { publicPostedLabel } from "../lib/formatPosted";
 
 const getWorkMode = (job: Job) => inferWorkMode(job);
@@ -25,7 +26,7 @@ export default function HomePreviewCard({
 }) {
   const href = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
   const featured = isPaidFeaturedListing(job);
-  const isNew = isNewListing(job);
+  const isEarly = isEarlyAccessListing(job);
   const elite = job.planType === "Elite Managed";
   const place = getWorkMode(job);
   const timeAgo = publicPostedLabel(job.timestamp, job.postedAt);
@@ -38,8 +39,8 @@ export default function HomePreviewCard({
           ? elite
             ? "border-slate-900/20 bg-white"
             : "border-indigo-200 bg-white"
-          : isNew
-            ? "border-[#efe6d4] bg-[#fbf8f2]"
+          : isEarly
+            ? "border-[#c6a15b] bg-[#fbf8f2]"
             : "border-slate-200 bg-white hover:border-slate-300",
       ].join(" ")}
     >
@@ -62,7 +63,7 @@ export default function HomePreviewCard({
             <h3 className="truncate text-sm font-semibold text-slate-900 group-hover:text-indigo-700">
               {job.title}
             </h3>
-            <NewListingBadge job={job} />
+            {isEarly ? <PremiumWindowBadge job={job} /> : <NewListingBadge job={job} />}
             <FeaturedBadge job={job} />
           </div>
           <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">

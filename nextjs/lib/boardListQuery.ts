@@ -262,7 +262,11 @@ export type BoardFacets = {
   categories: Record<string, number>;
   work: { Remote: number; Hybrid: number };
   locations: string[];
+  locationCounts: Record<string, number>;
   tools: string[];
+  toolCounts: Record<string, number>;
+  seniority: Record<"junior" | "mid" | "senior" | "lead", number>;
+  salaryInRange: number;
 };
 
 const canonicalFacetTool = (label: string) => {
@@ -274,7 +278,12 @@ const canonicalFacetTool = (label: string) => {
 export function boardFacets(jobs: Job[], filters: BoardListFilters, now = Date.now()): BoardFacets {
   const categories = categoryCountsForJobs(filterAndSortBoard(jobs, { ...filters, category: "All Roles" }, now));
   const workJobs = filterAndSortBoard(jobs, { ...filters, workMode: "All" }, now);
-  const locations = locationLabelsForJobs(filterAndSortBoard(jobs, { ...filters, location: "" }, now));
+  const locationJobs = filterAndSortBoard(jobs, { ...filters, location: "" }, now);
+  const locations = locationLabelsForJobs(locationJobs);
+  const locationCounts: Record<string, number> = {};
+  for (const label of locations) {
+    locationCounts[label] = locationJobs.filter((job) => jobMatchesLocationQuery(job, label)).length;
+  }
   const toolJobs = filterAndSortBoard(jobs, { ...filters, tools: [] }, now);
   const seen = new Set<string>();
   const tools: string[] = [];
@@ -294,6 +303,22 @@ export function boardFacets(jobs: Job[], filters: BoardListFilters, now = Date.n
     }
   }
   tools.sort((a, b) => a.localeCompare(b));
+  const toolCounts: Record<string, number> = {};
+  for (const tool of tools) toolCounts[tool] = toolJobs.filter((job) => jobHasSelectedTools(job, [tool])).length;
+  const seniorityJobs = filterAndSortBoard(jobs, { ...filters, seniority: "any" }, now);
+  const seniority = { junior: 0, mid: 0, senior: 0, lead: 0 };
+  for (const job of seniorityJobs) {
+    const level = inferSeniority(job);
+    if (level !== "unknown") seniority[level] += 1;
+  }
+  const salaryJobs = filterAndSortBoard(jobs, { ...filters, salaryMin: 0, salaryMax: 0 }, now);
+  const salaryInRange = salaryJobs.filter((job) => {
+    const salary = parseSalaryRange(job.salary || "");
+    if (salary.max <= 0) return false;
+    if (filters.salaryMin > 0 && salary.max < filters.salaryMin) return false;
+    if (filters.salaryMax > 0 && salary.min > filters.salaryMax) return false;
+    return true;
+  }).length;
   return {
     categories,
     work: {
@@ -301,7 +326,11 @@ export function boardFacets(jobs: Job[], filters: BoardListFilters, now = Date.n
       Hybrid: workJobs.filter((job) => inferWorkMode(job) === "Hybrid").length,
     },
     locations,
+    locationCounts,
     tools,
+    toolCounts,
+    seniority,
+    salaryInRange,
   };
 }
 

@@ -160,6 +160,9 @@ test("facet counts use the whole catalog, not the first page", () => {
   assert.equal(facets.categories["All Roles"], 60);
   assert.ok((facets.categories["chief-of-staff"] || 0) >= 8);
   assert.equal(facets.work.Remote + facets.work.Hybrid, 60);
+  assert.equal((facets.locationCounts["United States"] || 0) > 0, true);
+  assert.equal((facets.toolCounts.Notion || 0) > 0, true);
+  assert.equal(facets.seniority.senior + facets.seniority.lead + facets.seniority.mid + facets.seniority.junior >= 0, true);
   const narrowed = boardFacets(jobs, { ...EMPTY_BOARD_FILTERS, category: "chief-of-staff" }, now);
   assert.equal(narrowed.categories["All Roles"], 60);
   assert.equal(filterAndSortBoard(jobs, { ...EMPTY_BOARD_FILTERS, category: "chief-of-staff" }, now).length, facets.categories["chief-of-staff"]);
