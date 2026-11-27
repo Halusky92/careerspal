@@ -41,7 +41,8 @@ interface FindJobsProps {
   categoryTotals?: Record<string, number>;
   serverFacets?: BoardFacets | null;
   canLoadMore?: boolean;
-  onLoadMore?: () => void;
+  loadingMore?: boolean;
+  onShowAll?: () => Promise<void> | void;
   onToggleBookmark: (jobId: string) => void;
   serverFiltered?: boolean;
   onBoardQuery?: (filters: BoardListFilters) => void;
@@ -124,7 +125,8 @@ const FindJobs: React.FC<FindJobsProps> = ({
   categoryTotals,
   serverFacets = null,
   canLoadMore = false,
-  onLoadMore,
+  loadingMore = false,
+  onShowAll,
   onToggleBookmark,
   serverFiltered = false,
   onBoardQuery,
@@ -177,7 +179,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   const pendingUrlUpdateRef = useRef(false);
   const titleRef = useRef<HTMLDivElement>(null);
   const filterScrollRef = useRef<HTMLDivElement>(null);
-  const loadSentinelRef = useRef<HTMLDivElement>(null);
+  const showAllLock = useRef(false);
   const [showFilterTopShadow, setShowFilterTopShadow] = useState(false);
   const [showFilterBottomShadow, setShowFilterBottomShadow] = useState(false);
   const hydratedRef = useRef(false);
@@ -449,7 +451,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
 
   // The server already matched the whole board. This list grows as the reader moves down.
   useEffect(() => {
-    if (returnPlaceRef.current || pauseLoadRef.current || restoredByScrollRef.current || initialJobIdRef.current || restoredJobIdRef.current) return;
+    if (returnPlaceRef.current || restoredByScrollRef.current || initialJobIdRef.current || restoredJobIdRef.current) return;
     setExpandedJobId(null);
     if (serverFiltered || !filtersNarrow) setVisibleCount(JOBS_PER_PAGE);
   }, [
@@ -835,38 +837,16 @@ const FindJobs: React.FC<FindJobsProps> = ({
     }
   };
 
-  const handleLoadMore = () => {
-    const next = visibleCount + JOBS_PER_PAGE;
-    if (canLoadMore && next > boardJobs.length) onLoadMore?.();
-    setVisibleCount(next);
+  const showAllRoles = async () => {
+    if (showAllLock.current) return;
+    showAllLock.current = true;
+    try {
+      if (canLoadMore) await onShowAll?.();
+    } finally {
+      setVisibleCount(100000);
+      showAllLock.current = false;
+    }
   };
-
-  useEffect(() => {
-    if (!pauseLoadRef.current) return;
-    const mark = window.scrollY;
-    const release = () => {
-      if (Math.abs(window.scrollY - mark) < 48) return;
-      pauseLoadRef.current = false;
-      window.removeEventListener("scroll", release);
-    };
-    window.addEventListener("scroll", release, { passive: true });
-    return () => window.removeEventListener("scroll", release);
-  }, [visibleCount]);
-
-  useEffect(() => {
-    const node = loadSentinelRef.current;
-    if (!node || (filtersNarrow && !serverFiltered)) return;
-    if (returnPlaceRef.current || pauseLoadRef.current) return;
-    if (boardJobs.length <= visibleCount && !canLoadMore) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) handleLoadMore();
-      },
-      { rootMargin: "400px" },
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [filtersNarrow, serverFiltered, boardJobs.length, visibleCount, canLoadMore]);
 
   const handleApply = async (job: Job) => {
     const isPrivate = job.status === "private" || job.status === "invite_only";
@@ -1924,8 +1904,15 @@ const FindJobs: React.FC<FindJobsProps> = ({
             })}
 
             {(!filtersNarrow || serverFiltered) && (boardJobs.length > visibleCount || canLoadMore) && (
-              <div ref={loadSentinelRef} className="pt-4 pb-2 text-center text-sm text-slate-400">
-                Loading more roles
+              <div className="pt-3 pb-2">
+                <button
+                  type="button"
+                  onClick={showAllRoles}
+                  disabled={loadingMore}
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-700 disabled:opacity-60"
+                >
+                  {loadingMore ? "Loading roles" : typeof boardTotal === "number" ? `Show all ${boardTotal} roles` : "Show all roles"}
+                </button>
               </div>
             )}
 
