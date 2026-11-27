@@ -18,7 +18,7 @@ import { startApply } from "../lib/startApply";
 import { inferWorkMode } from "../lib/workMode";
 import FeaturedBoardZone from "./FeaturedBoardZone";
 import { isPaidFeaturedListing, sortFeaturedJobs } from "../lib/featuredListing";
-import type { BoardListFilters } from "../lib/boardListQuery";
+import type { BoardFacets, BoardListFilters } from "../lib/boardListQuery";
 import { isPriorityListing } from "../lib/listingWindow";
 import SalaryRangeSlider from "./SalaryRangeSlider";
 import { jobMatchesLocationQuery, locationLabelsForJobs, workModeFromPlaceLabel } from "../lib/locationFilter";
@@ -39,6 +39,7 @@ interface FindJobsProps {
   lockedJobs?: LockedBoardPreview[];
   companyCount?: number;
   categoryTotals?: Record<string, number>;
+  serverFacets?: BoardFacets | null;
   canLoadMore?: boolean;
   onLoadMore?: () => void;
   onToggleBookmark: (jobId: string) => void;
@@ -121,6 +122,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   lockedJobs = [],
   companyCount = 0,
   categoryTotals,
+  serverFacets = null,
   canLoadMore = false,
   onLoadMore,
   onToggleBookmark,
@@ -1095,6 +1097,14 @@ const FindJobs: React.FC<FindJobsProps> = ({
   };
 
   const facet = useMemo(() => {
+    if (serverFiltered && serverFacets) {
+      return {
+        counts: serverFacets.categories,
+        locations: serverFacets.locations,
+        workCounts: serverFacets.work,
+        toolJobs: [] as Job[],
+      };
+    }
     const match = (job: Job, skip: "category" | "location" | "work" | null) => {
       if (!isOnNicheJob(job)) return false;
       const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -1128,11 +1138,12 @@ const FindJobs: React.FC<FindJobsProps> = ({
       },
       toolJobs: jobs.filter((job) => match(job, null)),
     };
-  }, [jobs, query, locationQuery, category, workMode, employmentType, showSavedOnly, savedIds, advancedOk, selectedTools]);
+  }, [jobs, query, locationQuery, category, workMode, employmentType, showSavedOnly, savedIds, advancedOk, selectedTools, serverFiltered, serverFacets]);
 
   const categoryOptions = CATEGORY_HUBS.map((hub) => hub.slug);
 
   const skillOptions = useMemo(() => {
+    if (serverFiltered && serverFacets) return serverFacets.tools;
     const seen = new Set<string>();
     const out: string[] = [];
     const known = new Set(KNOWN_TOOL_LABELS.map((tool) => tool.toLowerCase()));
@@ -1153,7 +1164,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
       }
     }
     return out.sort((a, b) => a.localeCompare(b));
-  }, [facet.toolJobs]);
+  }, [facet.toolJobs, serverFiltered, serverFacets]);
 
   const skillsSummary = useMemo(() => {
     if (selectedTools.length === 0) return "";
@@ -1547,12 +1558,10 @@ const FindJobs: React.FC<FindJobsProps> = ({
   );
 
   const matchingCount = filteredAndSorted.length;
-  const openRoles = typeof boardTotal === "number" ? boardTotal : matchingCount;
-  const roleWord = openRoles === 1 ? "role" : "roles";
-  const searchSummary = !filtersNarrow
-    ? `${openRoles} ${roleWord}`
-    : `${matchingCount} of ${openRoles} ${roleWord}`;
-  const showRolesLabel = `Show ${matchingCount} ${matchingCount === 1 ? "role" : "roles"}`;
+  const listedCount = serverFiltered && typeof boardTotal === "number" ? boardTotal : matchingCount;
+  const roleWord = listedCount === 1 ? "role" : "roles";
+  const searchSummary = `${listedCount} ${roleWord}`;
+  const showRolesLabel = `Show ${listedCount} ${roleWord}`;
   const activeSummary = activeFilterChips
     .map((chip) => chip.label.replace(/^Search: |^Location: |^Tools: |^Seniority: /, ""))
     .join(" · ");

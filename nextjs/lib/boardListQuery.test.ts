@@ -6,6 +6,7 @@ import { isLiveBoardJob } from "./liveBoard";
 import {
   BOARD_PAGE_SIZE,
   EMPTY_BOARD_FILTERS,
+  boardFacets,
   filterAndSortBoard,
   filtersFromSearchParams,
   pageBoard,
@@ -140,6 +141,28 @@ test("search keeps keywords, description matches, and a stored tool", () => {
   params.set("saved", "1");
   params.set("savedIds", Array.from({ length: 120 }, (_, index) => `saved-${index}`).join(","));
   assert.equal(filtersFromSearchParams(params).savedIds.length, 120);
+});
+
+test("facet counts use the whole catalog, not the first page", () => {
+  const jobs = Array.from({ length: 60 }, (_, index) =>
+    role({
+      id: `role-${index}`,
+      title: index < 8 ? "Chief of Staff" : "Operations Manager",
+      category: index < 8 ? "Executive & Staff" : "Operations",
+      location: index % 2 === 0 ? "Remote" : "New York, United States",
+      remotePolicy: index % 2 === 0 ? "Remote" : "Hybrid",
+      tools: index % 3 === 0 ? ["Notion"] : [],
+    }),
+  );
+  const page = pageBoard(jobs, 0);
+  assert.equal(page.jobs.length, 50);
+  const facets = boardFacets(jobs, EMPTY_BOARD_FILTERS, now);
+  assert.equal(facets.categories["All Roles"], 60);
+  assert.ok((facets.categories["chief-of-staff"] || 0) >= 8);
+  assert.equal(facets.work.Remote + facets.work.Hybrid, 60);
+  const narrowed = boardFacets(jobs, { ...EMPTY_BOARD_FILTERS, category: "chief-of-staff" }, now);
+  assert.equal(narrowed.categories["All Roles"], 60);
+  assert.equal(filterAndSortBoard(jobs, { ...EMPTY_BOARD_FILTERS, category: "chief-of-staff" }, now).length, facets.categories["chief-of-staff"]);
 });
 
 test("simulated boards transfer less data after one shared index", () => {

@@ -1,9 +1,10 @@
 import type { Job } from "../types";
 import type { BoardTier } from "./boardAccess";
 import { PAID_JOBS_PAGE_MAX } from "./boardAccess";
-import { getCategoryHub, jobMatchesHub, resolveCategoryParam } from "./categories";
+import { categoryCountsForJobs, getCategoryHub, jobMatchesHub, resolveCategoryParam } from "./categories";
+import { KNOWN_TOOL_LABELS } from "./postingTools";
 import { isPriorityListing } from "./listingWindow";
-import { jobMatchesLocationQuery, workModeFromPlaceLabel } from "./locationFilter";
+import { jobMatchesLocationQuery, locationLabelsForJobs, workModeFromPlaceLabel } from "./locationFilter";
 import { isOnNicheJob } from "./nicheScope";
 import { rolePreviewBullets } from "./sourcing/normalization/description";
 import { inferWorkMode, publicLocationLabel } from "./workMode";
@@ -255,6 +256,53 @@ export function filterAndSortBoard(
     return (b.timestamp ?? 0) - (a.timestamp ?? 0);
   });
   return matched;
+}
+
+export type BoardFacets = {
+  categories: Record<string, number>;
+  work: { Remote: number; Hybrid: number };
+  locations: string[];
+  tools: string[];
+};
+
+const canonicalFacetTool = (label: string) => {
+  const key = label.trim().toLowerCase();
+  return KNOWN_TOOL_LABELS.find((tool) => tool.toLowerCase() === key) || label.trim();
+};
+
+/** Counts for the whole filtered catalog. Each menu ignores its own selection so the other options stay visible. */
+export function boardFacets(jobs: Job[], filters: BoardListFilters, now = Date.now()): BoardFacets {
+  const categories = categoryCountsForJobs(filterAndSortBoard(jobs, { ...filters, category: "All Roles" }, now));
+  const workJobs = filterAndSortBoard(jobs, { ...filters, workMode: "All" }, now);
+  const locations = locationLabelsForJobs(filterAndSortBoard(jobs, { ...filters, location: "" }, now));
+  const toolJobs = filterAndSortBoard(jobs, { ...filters, tools: [] }, now);
+  const seen = new Set<string>();
+  const tools: string[] = [];
+  const known = new Set(KNOWN_TOOL_LABELS.map((tool) => tool.toLowerCase()));
+  const add = (label: string) => {
+    const trimmed = label.trim();
+    const key = trimmed.toLowerCase();
+    if (!trimmed || trimmed.length > 28 || seen.has(key) || workModeFromPlaceLabel(trimmed)) return;
+    seen.add(key);
+    tools.push(trimmed);
+  };
+  for (const job of toolJobs) {
+    for (const raw of job.tools || []) add(canonicalFacetTool(raw));
+    for (const raw of job.tags || []) {
+      const label = canonicalFacetTool(raw);
+      if (known.has(label.toLowerCase())) add(label);
+    }
+  }
+  tools.sort((a, b) => a.localeCompare(b));
+  return {
+    categories,
+    work: {
+      Remote: workJobs.filter((job) => inferWorkMode(job) === "Remote").length,
+      Hybrid: workJobs.filter((job) => inferWorkMode(job) === "Hybrid").length,
+    },
+    locations,
+    tools,
+  };
 }
 
 const timezoneBucket = (job: Job): "eu" | "us" | undefined => {

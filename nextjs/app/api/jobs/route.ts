@@ -13,6 +13,7 @@ import {
   filterAndSortBoard,
   filtersFromSearchParams,
   pageBoard,
+  boardFacets,
   publicBoardCacheControl,
   requestHasCookie,
   SAVED_FILTER_MAX,
@@ -69,12 +70,14 @@ export const GET = async (request: Request) => {
       }
     }
     const visible = listingsForViewer(await getBoardCatalog(), tier);
-    let filtered = filterAndSortBoard(visible, { ...filters, savedIds });
+    let pool = visible;
     if (company) {
       const needle = company.toLowerCase();
-      filtered = filtered.filter((job) => (job.company || "").toLowerCase().includes(needle));
+      pool = pool.filter((job) => (job.company || "").toLowerCase().includes(needle));
     }
-    if (planType) filtered = filtered.filter((job) => (job.planType || "") === planType);
+    if (planType) pool = pool.filter((job) => (job.planType || "") === planType);
+    const applied = { ...filters, savedIds };
+    const filtered = filterAndSortBoard(pool, applied);
     const page = pageBoard(filtered, skip, limit);
     const personalized = filters.saved || savedIds.length > 0;
     return NextResponse.json(
@@ -86,6 +89,7 @@ export const GET = async (request: Request) => {
         locked: lockedBoardPreviews(filtered, boardCap(tier)),
         companies: boardCompanyCount(filtered),
         categoryTotals: categoryCountsForJobs(filtered),
+        facets: boardFacets(pool, applied),
       },
       {
         headers: {
