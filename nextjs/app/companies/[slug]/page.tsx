@@ -351,7 +351,7 @@ export default async function CompanyPage({ params, searchParams }: PageProps) {
             <section id="roles" className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Roles</div>
               <h2 className="mt-1 text-base font-semibold text-slate-900">{companyName} roles on the board</h2>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-slate-600" data-company-role-count data-company-role-note={jobs.length === 0 ? "No roles live on the board right now." : filtersOn ? `${visibleJobs.length} of ${jobs.length} live ${jobs.length === 1 ? "role matches" : "roles match"}.` : "Live on CareersPal for the last 30 days. Same window as the job board."}>
                 {jobs.length === 0
                   ? "No roles live on the board right now."
                   : filtersOn
@@ -363,7 +363,7 @@ export default async function CompanyPage({ params, searchParams }: PageProps) {
                 <>
                   <ul className="mt-3 space-y-2">
                     {previewJobs.map((job) => (
-                      <li key={job.id} className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 hover:border-indigo-200">
+                      <li key={job.id} data-company-role={job.title} className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 hover:border-indigo-200">
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <Link href={job.href} className="block text-sm font-semibold text-slate-900 hover:text-indigo-700 truncate">

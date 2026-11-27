@@ -13,6 +13,7 @@ type PredictiveFieldProps = {
   placeholder?: string;
   ariaLabel?: string;
   inputClassName?: string;
+  localItems?: SuggestItem[];
   name?: string;
 };
 
@@ -24,6 +25,7 @@ export default function PredictiveField({
   placeholder,
   ariaLabel,
   inputClassName,
+  localItems,
   name,
 }: PredictiveFieldProps) {
   const listId = useId();
@@ -34,6 +36,7 @@ export default function PredictiveField({
   const [box, setBox] = useState<DOMRect | null>(null);
 
   useEffect(() => {
+    if (localItems) return;
     const q = value.trim();
     if (q.length < 2) {
       setItems([]);
@@ -56,7 +59,14 @@ export default function PredictiveField({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [value, kind]);
+  }, [value, kind, localItems]);
+
+  const shown = useMemo(() => {
+    if (!localItems) return items;
+    const q = value.trim().toLowerCase();
+    if (q.length < 1) return [];
+    return localItems.filter((item) => item.label.toLowerCase().includes(q)).slice(0, 8);
+  }, [localItems, items, value]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -70,7 +80,7 @@ export default function PredictiveField({
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
     };
-  }, [open, items.length, value]);
+  }, [open, shown.length, value]);
 
   useEffect(() => {
     const onDoc = (event: MouseEvent) => {
@@ -86,11 +96,11 @@ export default function PredictiveField({
 
   const ghost = useMemo(() => {
     const typed = value;
-    if (!typed || items.length === 0) return "";
-    const match = items.find((item) => item.label.toLowerCase().startsWith(typed.toLowerCase()));
+    if (!typed || shown.length === 0) return "";
+    const match = shown.find((item) => item.label.toLowerCase().startsWith(typed.toLowerCase()));
     if (!match) return "";
     return match.label.slice(typed.length);
-  }, [items, value]);
+  }, [shown, value]);
 
   const apply = (label: string) => {
     onChange(label);
@@ -115,7 +125,7 @@ export default function PredictiveField({
           aria-label={ariaLabel}
           aria-autocomplete="list"
           aria-controls={listId}
-          aria-expanded={open && items.length > 0}
+          aria-expanded={open && shown.length > 0}
           autoComplete="off"
           spellCheck={false}
           className={inputClassName}
@@ -130,24 +140,24 @@ export default function PredictiveField({
               setOpen(false);
               return;
             }
-            if (!open || items.length === 0) return;
+            if (!open || shown.length === 0) return;
             if (e.key === "ArrowDown") {
               e.preventDefault();
-              setActive((i) => (i + 1) % items.length);
+              setActive((i) => (i + 1) % shown.length);
             } else if (e.key === "ArrowUp") {
               e.preventDefault();
-              setActive((i) => (i - 1 + items.length) % items.length);
+              setActive((i) => (i - 1 + shown.length) % shown.length);
             } else if (e.key === "Tab" && ghost) {
               e.preventDefault();
               apply(value + ghost);
-            } else if (e.key === "Enter" && open && items[active]) {
+            } else if (e.key === "Enter" && open && shown[active]) {
               e.preventDefault();
-              apply(items[active].label);
+              apply(shown[active].label);
             }
           }}
         />
       </div>
-      {open && items.length > 0 && box && typeof document !== "undefined"
+      {open && shown.length > 0 && box && typeof document !== "undefined"
         ? createPortal(
             <ul
               id={listId}
@@ -155,7 +165,7 @@ export default function PredictiveField({
               className="fixed z-[220] max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
               style={{ top: box.bottom + 6, left: box.left, width: Math.max(box.width, 240) }}
             >
-              {items.map((item, index) => (
+              {shown.map((item, index) => (
                 <li key={item.id} role="option" aria-selected={index === active}>
                   <button
                     type="button"

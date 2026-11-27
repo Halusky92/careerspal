@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactNode } from "react";
 import Link from "next/link";
 
@@ -67,10 +69,28 @@ export default function CompanyRoleFilters({ slug, query, place, category, work,
       </div>
       <input
         id="company-role-search"
-        name="q"
         defaultValue={query}
         placeholder="Title"
         aria-label="Search roles"
+        autoComplete="off"
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.preventDefault();
+        }}
+        onChange={(event) => {
+          const needle = event.target.value.trim().toLowerCase();
+          const rows = document.querySelectorAll<HTMLElement>("[data-company-role]");
+          let shown = 0;
+          rows.forEach((row) => {
+            const title = (row.dataset.companyRole || "").toLowerCase();
+            const match = !needle || title.includes(needle);
+            row.hidden = !match;
+            if (match) shown += 1;
+          });
+          const note = document.querySelector<HTMLElement>("[data-company-role-count]");
+          if (!note) return;
+          const idle = note.dataset.companyRoleNote || "";
+          note.textContent = needle ? `${shown} of ${rows.length} live roles match.` : idle;
+        }}
         className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none"
       />
       {place ? <input type="hidden" name="place" value={place} /> : null}
