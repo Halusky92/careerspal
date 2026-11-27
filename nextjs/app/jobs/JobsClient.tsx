@@ -8,7 +8,7 @@ import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 import { rememberBoardCache, peekBoardCache } from "../../lib/jobsBoardCache";
 import { JOBS_RETURN_KEY, readJobsReturnPlace } from "../../lib/jobsReturn";
-import { boardFilterKey, boardQueryString, EMPTY_BOARD_FILTERS, type BoardFacets, type BoardListFilters } from "../../lib/boardListQuery";
+import { boardFacets, boardFilterKey, boardQueryString, EMPTY_BOARD_FILTERS, filterAndSortBoard, type BoardFacets, type BoardListFilters } from "../../lib/boardListQuery";
 
 const STORAGE_KEY = "cp_saved_jobs";
 
@@ -52,6 +52,7 @@ export default function JobsClient({
 }) {
   const { profile, accessToken, loading: authLoading } = useSupabaseAuth();
   const [jobs, setJobs] = useState<Job[]>(() => initialJobs || []);
+  const [sourceJobs, setSourceJobs] = useState<Job[]>(() => initialJobs || []);
   const [lockedJobs, setLockedJobs] = useState<LockedBoardPreview[]>(() => initialLocked);
   const [companyCount, setCompanyCount] = useState(initialCompanies);
   const [boardAccess, setBoardAccess] = useState<"guest" | "registered" | "paid">(initialAccess);
@@ -72,6 +73,20 @@ export default function JobsClient({
   );
   const requestSeq = useRef(0);
   const loadedKey = useRef(initialFilterKey);
+  const catalogRef = useRef<Job[] | null>(null);
+
+  const applyCatalog = useCallback((filters: BoardListFilters) => {
+    const catalog = catalogRef.current;
+    if (!catalog) return false;
+    const filtered = filterAndSortBoard(catalog, filters);
+    const nextFacets = boardFacets(catalog, filters);
+    setJobs(filtered);
+    setBoardTotal(filtered.length);
+    setFacets(nextFacets);
+    setCategoryTotals(nextFacets.categories);
+    setCompanyCount(new Set(filtered.map((job) => job.companySlug || job.company)).size);
+    return true;
+  }, []);
 
   useLayoutEffect(() => {
     const cached = peekBoardCache(initialAccess, loadedKey.current);
@@ -161,29 +176,36 @@ export default function JobsClient({
 
   useEffect(() => {
     if (authLoading) return;
-    // The server already rendered this signed-in tier. Fetch again only when a guest
-    // session appears, so Premium can see the first 24 hours.
-    if (initialAccess !== "guest" || !accessToken) return;
-    const seq = ++requestSeq.current;
-    const load = async () => {
-      try {
-        const data = await readPage(filtersRef.current, 0);
-        if (seq !== requestSeq.current) return;
-        if (Array.isArray(data.jobs)) setJobs(data.jobs);
-        if (Array.isArray(data.locked)) setLockedJobs(data.locked);
-        if (typeof data.companies === "number") setCompanyCount(data.companies);
-        if (typeof data.total === "number") setBoardTotal(data.total);
-        if (data.categoryTotals) setCategoryTotals(data.categoryTotals);
-        if (data.facets) setFacets(data.facets);
-        if (data.access) setBoardAccess(data.access);
-      } catch {
-        // keep the guest slice from the server
+    let cancelled = false;
+    const loadCatalog = async () => {
+      let list: Job[] = [];
+      let total = 1;
+      let guard = 0;
+      while (list.length < total && guard < 8) {
+        guard += 1;
+        const data = await readPage(EMPTY_BOARD_FILTERS, list.length);
+        if (cancelled) return;
+        if (guard === 1) {
+          if (Array.isArray(data.locked)) setLockedJobs(data.locked);
+          if (data.access) setBoardAccess(data.access);
+        }
+        total = typeof data.total === "number" ? data.total : list.length;
+        const next = Array.isArray(data.jobs) ? data.jobs : [];
+        const seen = new Set(list.map((job) => job.id));
+        const fresh = next.filter((job) => !seen.has(job.id));
+        if (fresh.length === 0) break;
+        list = [...list, ...fresh];
       }
+      if (cancelled || list.length === 0) return;
+      catalogRef.current = list;
+      setSourceJobs(list);
+      applyCatalog(filtersRef.current);
     };
-    load();
-    // saved ids are applied by the filter callback, not by this one-time tier refresh
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken, authLoading, initialAccess]);
+    loadCatalog();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, authLoading, applyCatalog]);
 
   useEffect(() => {
     if (authLoading || initialAccess === "guest") return;
@@ -220,6 +242,7 @@ export default function JobsClient({
   }, [accessToken, authLoading, initialAccess]);
 
   const showAll = async () => {
+    if (catalogRef.current) return;
     if (loadingMore || typeof boardTotal !== "number" || jobs.length >= boardTotal) return;
     setLoadingMore(true);
     const seq = requestSeq.current;
@@ -249,8 +272,9 @@ export default function JobsClient({
     const withSaved = { ...filters, savedIds: filters.saved ? savedJobIds : [] };
     const key = boardFilterKey(withSaved);
     filtersRef.current = withSaved;
-    if (key === loadedKey.current) return;
+    if (key === loadedKey.current && catalogRef.current) return;
     loadedKey.current = key;
+    if (applyCatalog(withSaved)) return;
     const seq = ++requestSeq.current;
     const load = async () => {
       try {
@@ -268,7 +292,7 @@ export default function JobsClient({
       }
     };
     load();
-  }, [readPage, savedJobIds]);
+  }, [applyCatalog, readPage, savedJobIds]);
 
   const handleToggleBookmark = (jobId: string) => {
     setSavedJobIds((prev) => {
@@ -301,6 +325,7 @@ export default function JobsClient({
         onShowAll={showAll}
         onToggleBookmark={handleToggleBookmark}
         serverFiltered
+        suggestionJobs={sourceJobs}
         onBoardQuery={onBoardQuery}
       />
     </>

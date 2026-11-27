@@ -45,6 +45,7 @@ interface FindJobsProps {
   onShowAll?: () => Promise<void> | void;
   onToggleBookmark: (jobId: string) => void;
   serverFiltered?: boolean;
+  suggestionJobs?: Job[];
   onBoardQuery?: (filters: BoardListFilters) => void;
 }
 
@@ -129,6 +130,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
   onShowAll,
   onToggleBookmark,
   serverFiltered = false,
+  suggestionJobs,
   onBoardQuery,
 }) => {
   const router = useRouter();
@@ -628,7 +630,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
         saved: showSavedOnly,
         savedIds: showSavedOnly ? Array.from(savedIds) : [],
       });
-    }, 200);
+    }, 0);
     return () => window.clearTimeout(handle);
   }, [
     serverFiltered,
@@ -801,17 +803,24 @@ const FindJobs: React.FC<FindJobsProps> = ({
   }, [showSearchLimitCta, boardAccess, filteredAndSorted.length]);
   const visibleFeatured = featuredOpen ? featuredJobs : featuredJobs.slice(0, FEATURED_ZONE_CAP);
 
-  const suggestions = useMemo(() => {
-    if (!query.trim() || query.length < 1) return [];
-    const lowQuery = query.toLowerCase();
-    
-    const titles = jobs.filter(j => j.title.toLowerCase().includes(lowQuery)).map(j => j.title);
-    const companies = jobs.filter(j => j.company.toLowerCase().includes(lowQuery)).map(j => j.company);
-    const tags = jobs.flatMap(j => j.tags || []).filter(t => t.toLowerCase().includes(lowQuery));
-    const tools = jobs.flatMap(j => j.tools || []).filter(t => t.toLowerCase().includes(lowQuery));
-    
-    return Array.from(new Set([...titles, ...companies, ...tags, ...tools])).slice(0, 5);
-  }, [query, jobs]);
+  const localSearchItems = useMemo(() => {
+    const source = suggestionJobs && suggestionJobs.length > 0 ? suggestionJobs : jobs;
+    const seen = new Set<string>();
+    const items: Array<{ id: string; label: string; hint: string }> = [];
+    const push = (label: string, hint: string) => {
+      const trimmed = label.trim();
+      const key = `${hint}:${trimmed.toLowerCase()}`;
+      if (!trimmed || seen.has(key)) return;
+      seen.add(key);
+      items.push({ id: key, label: trimmed, hint });
+    };
+    for (const job of source) {
+      if (job.title) push(job.title, "Role");
+      if (job.company) push(job.company, "Company");
+      for (const tool of job.tools || []) push(tool, "Tool");
+    }
+    return items;
+  }, [suggestionJobs, jobs]);
 
   const locationSuggestions = useMemo(() => {
     if (!locationQuery.trim() || locationQuery.length < 1) return [];
@@ -1668,6 +1677,7 @@ const FindJobs: React.FC<FindJobsProps> = ({
                     <PredictiveField
                       value={query}
                       onChange={setQuery}
+                      localItems={localSearchItems}
                       placeholder="Role, company, tool…"
                       ariaLabel="Role, company, tool…"
                       inputClassName="cp-field w-full h-10 rounded-lg px-3 pr-9 text-[16px] sm:text-sm text-slate-900 outline-none bg-white"
