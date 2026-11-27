@@ -10,7 +10,7 @@ import { isPaidFeaturedListing } from "../lib/featuredListing";
 import FeaturedBadge from "./FeaturedBadge";
 import NewListingBadge from "./NewListingBadge";
 import PremiumWindowBadge from "./PremiumWindowBadge";
-import { isEarlyAccessListing } from "../lib/listingWindow";
+import { isEarlyAccessListing, isNewListing } from "../lib/listingWindow";
 import { publicPostedLabel } from "../lib/formatPosted";
 
 const getWorkMode = (job: Job) => inferWorkMode(job);
@@ -27,6 +27,7 @@ export default function HomePreviewCard({
   const href = `/jobs/${createJobSlug({ id: job.id, title: job.title || "role" })}`;
   const featured = isPaidFeaturedListing(job);
   const isEarly = isEarlyAccessListing(job);
+  const isNew = isNewListing(job);
   const elite = job.planType === "Elite Managed";
   const place = getWorkMode(job);
   const timeAgo = publicPostedLabel(job.timestamp, job.postedAt);
@@ -41,7 +42,9 @@ export default function HomePreviewCard({
             : "border-indigo-200 bg-white"
           : isEarly
             ? "border-[#c6a15b] bg-[#fbf8f2]"
-            : "border-slate-200 bg-white hover:border-slate-300",
+            : isNew
+              ? "border-[#efe6d4] bg-[#fefcf6]"
+              : "border-slate-200 bg-white hover:border-slate-300",
       ].join(" ")}
     >
       {featured ? (

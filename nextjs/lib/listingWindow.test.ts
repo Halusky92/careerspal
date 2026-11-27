@@ -49,7 +49,7 @@ test("the card mark is Premium, then New, then nothing", () => {
   assert.equal(listingsForViewer([premium], "paid", now).length, 1);
 });
 
-test("premium cards keep the original gold treatment and New stays on a standard card", () => {
+test("premium cards keep the gold treatment and New cards use a lighter tint", () => {
   const badge = readFileSync(new URL("../components/PremiumWindowBadge.tsx", import.meta.url), "utf8");
   const row = readFileSync(new URL("../components/JobRow.tsx", import.meta.url), "utf8");
   const home = readFileSync(new URL("../components/HomePreviewCard.tsx", import.meta.url), "utf8");
@@ -57,9 +57,9 @@ test("premium cards keep the original gold treatment and New stays on a standard
   assert.match(badge, /bg-\[#e4c56a\].*text-slate-950/s);
   assert.match(badge, />\s*Premium\s*</);
   assert.match(row, /bg-\[#fbf8f2\] border-\[#c6a15b\]/);
-  assert.equal(row.includes("border-[#efe6d4]"), false);
+  assert.match(row, /bg-\[#fefcf6\] border-\[#efe6d4\]/);
   assert.match(home, /border-\[#c6a15b\] bg-\[#fbf8f2\]/);
-  assert.equal(home.includes("border-[#efe6d4]"), false);
+  assert.match(home, /border-\[#efe6d4\] bg-\[#fefcf6\]/);
   assert.match(detail, /early \? "border-\[#c6a15b\]" : "border-slate-200"/);
 });
 

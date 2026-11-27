@@ -124,7 +124,9 @@ export default function JobRow({
             : "bg-white border-indigo-200 shadow-sm"
           : isEarly
             ? "bg-[#fbf8f2] border-[#c6a15b]"
-            : "bg-white border-slate-200",
+            : isNew
+              ? "bg-[#fefcf6] border-[#efe6d4]"
+              : "bg-white border-slate-200",
         selected ? "ring-2 ring-indigo-600 ring-offset-2 ring-offset-[#F8F9FD]" : "hover:shadow-sm",
         isPrivate ? "opacity-80" : "",
       ].join(" ")}
