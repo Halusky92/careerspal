@@ -8,7 +8,7 @@ import { useSupabaseAuth } from "../../components/Providers";
 import { authFetch } from "../../lib/authFetch";
 import { rememberBoardCache, peekBoardCache } from "../../lib/jobsBoardCache";
 import { JOBS_RETURN_KEY, readJobsReturnPlace } from "../../lib/jobsReturn";
-import { boardFilterKey, boardQueryString, EMPTY_BOARD_FILTERS, type BoardListFilters } from "../../lib/boardListQuery";
+import { boardFilterKey, boardQueryString, EMPTY_BOARD_FILTERS, type BoardFacets, type BoardListFilters } from "../../lib/boardListQuery";
 
 const STORAGE_KEY = "cp_saved_jobs";
 
@@ -33,6 +33,7 @@ export default function JobsClient({
   initialCompanies = 0,
   initialTotal,
   initialCategoryTotals,
+  initialFacets,
   initialQuery,
   initialLocation,
   initialAccess = "guest",
@@ -43,6 +44,7 @@ export default function JobsClient({
   initialCompanies?: number;
   initialTotal: number | null;
   initialCategoryTotals?: Record<string, number>;
+  initialFacets?: BoardFacets;
   initialQuery: string;
   initialLocation: string;
   initialAccess?: "guest" | "registered" | "paid";
@@ -55,6 +57,7 @@ export default function JobsClient({
   const [boardAccess, setBoardAccess] = useState<"guest" | "registered" | "paid">(initialAccess);
   const [boardTotal, setBoardTotal] = useState(initialTotal);
   const [categoryTotals, setCategoryTotals] = useState(initialCategoryTotals);
+  const [facets, setFacets] = useState(initialFacets);
   const [loadingMore, setLoadingMore] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState<string[]>(() => getSaved());
   const filtersRef = useRef<BoardListFilters>(
@@ -71,14 +74,14 @@ export default function JobsClient({
   const loadedKey = useRef(initialFilterKey);
 
   useLayoutEffect(() => {
-    const cached = peekBoardCache(initialAccess);
+    const cached = peekBoardCache(initialAccess, loadedKey.current);
     if (!cached || cached.jobs.length <= jobs.length) return;
     setJobs(cached.jobs);
     if (typeof cached.total === "number") setBoardTotal(cached.total);
   }, [initialAccess, jobs.length]);
 
   useEffect(() => {
-    rememberBoardCache({ access: boardAccess, jobs, total: boardTotal });
+    rememberBoardCache({ access: boardAccess, key: loadedKey.current, jobs, total: boardTotal });
   }, [boardAccess, jobs, boardTotal]);
 
   useEffect(() => {
@@ -152,6 +155,7 @@ export default function JobsClient({
       locked?: LockedBoardPreview[];
       companies?: number;
       categoryTotals?: Record<string, number>;
+      facets?: BoardFacets;
     };
   }, [accessToken, savedJobIds]);
 
@@ -170,6 +174,7 @@ export default function JobsClient({
         if (typeof data.companies === "number") setCompanyCount(data.companies);
         if (typeof data.total === "number") setBoardTotal(data.total);
         if (data.categoryTotals) setCategoryTotals(data.categoryTotals);
+        if (data.facets) setFacets(data.facets);
         if (data.access) setBoardAccess(data.access);
       } catch {
         // keep the guest slice from the server
@@ -248,6 +253,7 @@ export default function JobsClient({
         if (typeof data.total === "number") setBoardTotal(data.total);
         if (typeof data.companies === "number") setCompanyCount(data.companies);
         if (data.categoryTotals) setCategoryTotals(data.categoryTotals);
+        if (data.facets) setFacets(data.facets);
         if (Array.isArray(data.locked)) setLockedJobs(data.locked);
         if (data.access) setBoardAccess(data.access);
       } catch {
@@ -282,6 +288,7 @@ export default function JobsClient({
         lockedJobs={lockedJobs}
         companyCount={companyCount}
         categoryTotals={categoryTotals}
+        serverFacets={facets}
         canLoadMore={typeof boardTotal === "number" && jobs.length < boardTotal}
         onLoadMore={loadMore}
         onToggleBookmark={handleToggleBookmark}

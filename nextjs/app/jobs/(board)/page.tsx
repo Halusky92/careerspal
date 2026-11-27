@@ -10,7 +10,7 @@ import { boardAccessHeadline, boardCap, boardCompanyCount, lockedBoardPreviews }
 import { listingsForViewer } from "../../../lib/listingWindow";
 import { viewerTier } from "../../../lib/viewerTier";
 import { categoryCountsForJobs } from "../../../lib/categories";
-import { filterAndSortBoard, filtersFromSearchParams, pageBoard, boardFilterKey } from "../../../lib/boardListQuery";
+import { filterAndSortBoard, filtersFromSearchParams, pageBoard, boardFilterKey, boardFacets } from "../../../lib/boardListQuery";
 import { getBoardCatalog } from "../../../lib/publicBoardCatalog";
 
 export const dynamic = "force-dynamic";
@@ -35,12 +35,12 @@ type PageProps = {
 
 const getParam = (value: string | string[] | undefined) => (typeof value === "string" ? value : "");
 
-async function fetchPublishedJobs(filters: ReturnType<typeof filtersFromSearchParams>): Promise<{ jobs: Job[]; total: number | null }> {
+async function fetchPublishedJobs(filters: ReturnType<typeof filtersFromSearchParams>): Promise<{ jobs: Job[]; catalog: Job[] }> {
   try {
-    const jobs = filterAndSortBoard(await getBoardCatalog(), filters);
-    return { jobs, total: jobs.length };
+    const catalog = await getBoardCatalog();
+    return { catalog, jobs: filterAndSortBoard(catalog, filters) };
   } catch {
-    return { jobs: [], total: null };
+    return { jobs: [], catalog: [] };
   }
 }
 
@@ -139,12 +139,14 @@ export default async function JobsPage({ searchParams }: PageProps) {
   const initialQuery = filters.query || getParam(params.query);
   const initialLocation = filters.location || getParam(params.location);
   const [loaded, tier] = await Promise.all([fetchPublishedJobs(filters), viewerTier()]);
+  const catalog = listingsForViewer(loaded.catalog, tier);
   const jobs = listingsForViewer(loaded.jobs, tier);
   const total = jobs.length;
   const page = pageBoard(jobs, 0);
   const initialJobs = page.jobs;
   const initialLocked = lockedBoardPreviews(jobs, boardCap(tier));
   const categoryTotals = categoryCountsForJobs(jobs);
+  const initialFacets = boardFacets(catalog, filters);
 
   return (
     <div className="pt-3">
@@ -164,6 +166,7 @@ export default async function JobsPage({ searchParams }: PageProps) {
         initialAccess={tier}
         initialTotal={total}
         initialCategoryTotals={categoryTotals}
+        initialFacets={initialFacets}
         initialQuery={initialQuery}
         initialLocation={initialLocation}
         initialFilterKey={boardFilterKey(filters)}

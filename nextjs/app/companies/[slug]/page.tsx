@@ -13,8 +13,8 @@ import { previewListedJobs, toPublicJobCard, withoutHiddenStatuses } from "../..
 import PremiumListContinuation from "../../../components/PremiumListContinuation";
 import { listingsForViewer } from "../../../lib/listingWindow";
 import { viewerTier } from "../../../lib/viewerTier";
-import { publicCategoryLabel } from "../../../lib/categories";
-import { publicLocationLabel } from "../../../lib/workMode";
+import CompanyRoleFilters from "../../../components/CompanyRoleFilters";
+import { companyRoleFacets, filterCompanyRoles } from "../../../lib/companyRoleFilters";
 
 // Ensure a consistent runtime (avoid edge differences that can cause production-only crashes).
 export const runtime = "nodejs";
@@ -107,9 +107,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function CompanyPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const query = (await searchParams) || {};
-  const roleQuery = oneParam(query.q).toLowerCase();
+  const roleQuery = oneParam(query.q);
   const placeQuery = oneParam(query.place);
   const categoryQuery = oneParam(query.category);
+  const workQuery = oneParam(query.work) === "Hybrid" ? "Hybrid" : oneParam(query.work) === "Remote" ? "Remote" : "";
   let result: CompanyFetchResult | null = null;
   try {
     result = await fetchCompanyAndJobs(slug);
@@ -150,16 +151,11 @@ export default async function CompanyPage({ params, searchParams }: PageProps) {
 
   const { company, jobs: rawJobs } = result;
   const jobs = listingsForViewer(withoutHiddenStatuses(rawJobs.filter((job) => isOnNicheJob(job))), await viewerTier());
-  const places = [...new Set(jobs.map((job) => publicLocationLabel(job)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  const categories = [...new Set(jobs.map((job) => publicCategoryLabel(job)).filter((label): label is string => Boolean(label)))].sort((a, b) => a.localeCompare(b));
-  const visibleJobs = jobs.filter((job) => {
-    if (roleQuery && !(job.title || "").toLowerCase().includes(roleQuery)) return false;
-    if (placeQuery && publicLocationLabel(job) !== placeQuery) return false;
-    if (categoryQuery && publicCategoryLabel(job) !== categoryQuery) return false;
-    return true;
-  });
+  const roleFilters = { q: roleQuery, place: placeQuery, category: categoryQuery, work: workQuery } as const;
+  const facets = companyRoleFacets(jobs, roleFilters);
+  const visibleJobs = filterCompanyRoles(jobs, roleFilters);
   const previewJobs = previewListedJobs(visibleJobs, visibleJobs.length).map((job) => toPublicJobCard(job));
-  const filtersOn = Boolean(roleQuery || placeQuery || categoryQuery);
+  const filtersOn = Boolean(roleQuery || placeQuery || categoryQuery || workQuery);
   const companyName = company.name || "Company";
   const companyWebsite = (company.website || "").trim();
   const companyDescriptionRaw = ((company.longDescription || company.description) || "").trim();
@@ -295,58 +291,17 @@ export default async function CompanyPage({ params, searchParams }: PageProps) {
                   Roles
                 </a>
               </div>
-              <form action={`/companies/${slug}`} method="get" className="space-y-3 border-t border-slate-100 px-4 py-4">
-                <div>
-                  <label htmlFor="company-role-search" className="text-[11px] font-medium text-slate-700">Search roles</label>
-                  <input
-                    id="company-role-search"
-                    name="q"
-                    defaultValue={oneParam(query.q)}
-                    placeholder="Title"
-                    className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none"
-                  />
-                </div>
-                {places.length > 1 ? (
-                  <div>
-                    <label htmlFor="company-place" className="text-[11px] font-medium text-slate-700">Location</label>
-                    <select
-                      id="company-place"
-                      name="place"
-                      defaultValue={placeQuery}
-                      className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none"
-                    >
-                      <option value="">Any location</option>
-                      {places.map((place) => (
-                        <option key={place} value={place}>{place}</option>
-                      ))}
-                    </select>
-                  </div>
-                ) : null}
-                {categories.length > 1 ? (
-                  <div>
-                    <label htmlFor="company-category" className="text-[11px] font-medium text-slate-700">Category</label>
-                    <select
-                      id="company-category"
-                      name="category"
-                      defaultValue={categoryQuery}
-                      className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none"
-                    >
-                      <option value="">Any category</option>
-                      {categories.map((label) => (
-                        <option key={label} value={label}>{label}</option>
-                      ))}
-                    </select>
-                  </div>
-                ) : null}
-                <button type="submit" className="h-10 w-full rounded-lg bg-slate-900 text-sm font-medium text-white hover:bg-black">
-                  Show roles
-                </button>
-                {filtersOn ? (
-                  <Link href={`/companies/${slug}`} className="block text-center text-xs font-medium text-slate-500 hover:text-slate-900">
-                    Clear filters
-                  </Link>
-                ) : null}
-              </form>
+              <CompanyRoleFilters
+                slug={slug}
+                query={roleQuery}
+                place={placeQuery}
+                category={categoryQuery}
+                work={workQuery}
+                total={facets.total}
+                categories={facets.categories}
+                workModes={facets.work}
+                locations={facets.locations}
+              />
             </div>
           </aside>
 
@@ -434,11 +389,11 @@ export default async function CompanyPage({ params, searchParams }: PageProps) {
                       </li>
                     ))}
                   </ul>
-                  {jobs.length > previewJobs.length ? (
+                  {visibleJobs.length > previewJobs.length ? (
                     <PremiumListContinuation
                       endpoint={`/api/companies/${encodeURIComponent(slug)}`}
                       knownIds={previewJobs.map((job) => job.id).join(",")}
-                      total={jobs.length}
+                      total={visibleJobs.length}
                       shown={previewJobs.length}
                     />
                   ) : null}

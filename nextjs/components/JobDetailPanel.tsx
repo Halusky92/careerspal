@@ -13,7 +13,9 @@ import { publicPostedLabel } from "../lib/formatPosted";
 import { geographyLabel, inferWorkMode } from "../lib/workMode";
 import FeaturedBadge from "./FeaturedBadge";
 import NewListingBadge from "./NewListingBadge";
+import PremiumWindowBadge from "./PremiumWindowBadge";
 import { isPaidFeaturedListing } from "../lib/featuredListing";
+import { isEarlyAccessListing } from "../lib/listingWindow";
 import { trackJobView } from "../lib/trackJobEvent";
 import { formatSourcedDescription } from "../lib/sourcing/normalization/description";
 import { authFetch } from "../lib/authFetch";
@@ -226,7 +228,7 @@ export default function JobDetailPanel({
               </span>
             ) : null}
             {isPaidFeaturedListing(job) ? <FeaturedBadge job={job} /> : null}
-            <NewListingBadge job={job} />
+            {isEarlyAccessListing(job) ? <PremiumWindowBadge job={job} /> : <NewListingBadge job={job} />}
           </div>
 
           <div className="mt-4 flex items-center justify-between gap-3">

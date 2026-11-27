@@ -21,6 +21,7 @@ import { applyLiveBoardFilter, isLiveBoardJob } from "../../../lib/liveBoard";
 import { isEarlyAccessListing, listingsForViewer } from "../../../lib/listingWindow";
 import { viewerTier } from "../../../lib/viewerTier";
 import NewListingBadge from "../../../components/NewListingBadge";
+import PremiumWindowBadge from "../../../components/PremiumWindowBadge";
 import { getCanonicalSiteUrl } from "../../../lib/alerts/siteUrl";
 import { publicJobPostingLd } from "../../../lib/jobPostingLd";
 import { ApplyClickLink, JobViewTracker } from "../../../components/JobAnalytics";
@@ -378,6 +379,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
   );
 
   const hasApplyUrl = Boolean(job.applyUrl && job.applyUrl.trim() && job.applyUrl.trim() !== "#");
+  const early = isEarlyAccessListing(job);
   const applyExternal = isExternalUrl(job.applyUrl);
   const companySlug = (job.companySlug || "").toString().trim();
   const companyHref = `/companies/${(companySlug && companySlug !== "undefined" && companySlug !== "null"
@@ -420,7 +422,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
           </BackToBoard>
         </div>
 
-        <div className="mt-3 rounded-xl border border-slate-200 bg-white overflow-hidden">
+        <div className={["mt-3 rounded-xl border bg-white overflow-hidden", early ? "border-[#c6a15b]" : "border-slate-200"].join(" ")}>
           <div className="p-4 sm:p-6 border-b border-slate-100">
             <div className="flex flex-col sm:flex-row sm:items-start gap-6">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-white border border-slate-200/70 p-1 flex-shrink-0">
@@ -476,7 +478,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
                   <span className="text-slate-300">•</span>
                   <span className="text-sm sm:text-base font-black text-slate-900">{formatJobSalary(job)}</span>
                   {isPaidFeaturedListing(job) ? <FeaturedBadge job={job} size="md" /> : null}
-                  <NewListingBadge job={job} />
+                  {early ? <PremiumWindowBadge job={job} /> : <NewListingBadge job={job} />}
                 </div>
 
                 <div className="mt-6 flex flex-col sm:flex-row gap-3">
